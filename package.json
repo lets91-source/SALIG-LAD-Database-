@@ -1,0 +1,12 @@
+{
+  "name": "split-region8-consolidated-hub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "DAR Region VIII SPLIT Milestone Monitoring System & Consolidated Regional Google Sheet Web Application",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "test": "node --test server/tests/app.test.js"
+  }
+}

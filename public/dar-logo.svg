@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Department of Agrarian Reform Logo">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffdf0"/>
+      <stop offset="100%" stop-color="#fef08a"/>
+    </linearGradient>
+    <linearGradient id="sunGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <clipPath id="innerCircle">
+      <circle cx="100" cy="100" r="69"/>
+    </clipPath>
+    <path id="topArc" d="M 18 100 A 82 82 0 0 1 182 100"/>
+    <path id="botArc" d="M 18 100 A 82 82 0 0 0 182 100"/>
+  </defs>
+
+  <!-- Outer White Shield & Gold Rim -->
+  <circle cx="100" cy="100" r="97" fill="#ffffff"/>
+  <circle cx="100" cy="100" r="93" fill="none" stroke="#f59e0b" stroke-width="4.5"/>
+
+  <!-- Official DAR Green Outer Seal Ring -->
+  <circle cx="100" cy="100" r="82" fill="none" stroke="#006b38" stroke-width="20"/>
+  <circle cx="100" cy="100" r="70.5" fill="none" stroke="#facc15" stroke-width="2.5"/>
+
+  <!-- Ring Typography -->
+  <text fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="10.8" font-weight="800" letter-spacing="0.9">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle" dominant-baseline="central">DEPARTMENT OF AGRARIAN REFORM</textPath>
+  </text>
+  <text fill="#fde047" font-family="Segoe UI, Arial, sans-serif" font-size="10.8" font-weight="800" letter-spacing="1.4">
+    <textPath href="#botArc" startOffset="50%" text-anchor="middle" dominant-baseline="central">REGION VIII • CARP</textPath>
+  </text>
+
+  <!-- Side Gold Stars -->
+  <polygon points="18,94 19.8,98.2 24.4,98.6 20.9,101.6 22,106 18,103.6 14,106 15.1,101.6 11.6,98.6 16.2,98.2" fill="#facc15"/>
+  <polygon points="182,94 183.8,98.2 188.4,98.6 184.9,101.6 186,106 182,103.6 178,106 179.1,101.6 175.6,98.6 180.2,98.2" fill="#facc15"/>
+
+  <!-- Inner Seal Artwork -->
+  <g clip-path="url(#innerCircle)">
+    <rect x="30" y="30" width="140" height="86" fill="url(#skyGrad)"/>
+
+    <!-- Sunburst Rays above Horizon -->
+    <g fill="#f59e0b" opacity="0.28">
+      <polygon points="100,114 44,44 62,36"/>
+      <polygon points="100,114 78,30 92,30"/>
+      <polygon points="100,114 108,30 122,30"/>
+      <polygon points="100,114 138,36 156,44"/>
+      <polygon points="100,114 30,72 34,58"/>
+      <polygon points="100,114 166,58 170,72"/>
+    </g>
+
+    <!-- Rising Golden Sun -->
+    <circle cx="100" cy="116" r="24" fill="url(#sunGrad)"/>
+    <circle cx="100" cy="116" r="18" fill="#fef08a" opacity="0.65"/>
+
+    <!-- 12-Segment Stylized Agrarian Field -->
+    <rect x="30" y="114" width="140" height="60" fill="#006b38"/>
+    <g>
+      <polygon points="100,114 30,130 30,114" fill="#15803d"/>
+      <polygon points="100,114 30,152 30,130" fill="#047857"/>
+      <polygon points="100,114 38,172 30,152" fill="#006b38"/>
+      <polygon points="100,114 60,172 38,172" fill="#10b981"/>
+      <polygon points="100,114 80,172 60,172" fill="#047857"/>
+      <polygon points="100,114 100,172 80,172" fill="#059669"/>
+      <polygon points="100,114 120,172 100,172" fill="#006b38"/>
+      <polygon points="100,114 140,172 120,172" fill="#10b981"/>
+      <polygon points="100,114 162,172 140,172" fill="#047857"/>
+      <polygon points="100,114 170,152 162,172" fill="#006b38"/>
+      <polygon points="100,114 170,130 170,152" fill="#059669"/>
+      <polygon points="100,114 170,114 170,130" fill="#15803d"/>
+    </g>
+
+    <!-- Crisp Field Furrow Lines & Gold Horizon -->
+    <g stroke="#dcfce7" stroke-width="1.3" opacity="0.72">
+      <line x1="100" y1="114" x2="30" y2="130"/>
+      <line x1="100" y1="114" x2="30" y2="152"/>
+      <line x1="100" y1="114" x2="60" y2="172"/>
+      <line x1="100" y1="114" x2="80" y2="172"/>
+      <line x1="100" y1="114" x2="100" y2="172"/>
+      <line x1="100" y1="114" x2="120" y2="172"/>
+      <line x1="100" y1="114" x2="140" y2="172"/>
+      <line x1="100" y1="114" x2="170" y2="152"/>
+      <line x1="100" y1="114" x2="170" y2="130"/>
+    </g>
+    <line x1="30" y1="114" x2="170" y2="114" stroke="#f59e0b" stroke-width="2.5"/>
+
+    <!-- Bold DAR Agency Monogram -->
+    <text
+      x="100"
+      y="84"
+      text-anchor="middle"
+      font-family="Segoe UI, Arial Black, Arial, sans-serif"
+      font-size="37"
+      font-weight="900"
+      letter-spacing="1.5"
+      fill="#064e3b"
+      stroke="#ffffff"
+      stroke-width="3"
+      paint-order="stroke"
+    >DAR</text>
+  </g>
+</svg>
+

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAD Database Consolidated — DAR Region VIII (GAS Web App)</title>
+  <style>
+    :root {
+      --bg: #f3f6f4;
+      --surface: #ffffff;
+      --surface-alt: #f8faf9;
+      --border: #dce4de;
+      --text: #132018;
+      --muted: #52665a;
+      --green: #0f4c29;
+      --green-dark: #0a361d;
+      --emerald: #15803d;
+      --emerald-soft: #dcfce7;
+      --amber: #b45309;
+      --blue: #1e40af;
+      --blue-soft: #dbeafe;
+      --red: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 13.5px;
+    }
+    .mono { font-family: Consolas, monospace; }
+    .num { font-variant-numeric: tabular-nums; }
+    .hidden { display: none !important; }
+
+    .header {
+      background: linear-gradient(90deg, var(--green-dark), var(--green));
+      color: #fff;
+      padding: 14px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header h1 { margin: 0; font-size: 17px; }
+    .header-sub { font-size: 11.5px; color: #cce6d5; margin-top: 2px; }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .nav-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 22px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .nav-btn {
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--muted);
+      font-weight: 600;
+      padding: 7px 13px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .nav-btn.active {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    .filters {
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 22px;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .f-group { display: flex; flex-direction: column; gap: 4px; }
+    .f-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+    select, input {
+      height: 33px;
+      padding: 0 9px;
+      border: 1px solid #c2d0c6;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+    }
+
+    .seg { display: inline-flex; background: #e4ebe6; padding: 2px; border-radius: 6px; }
+    .seg button {
+      border: 0; background: transparent; color: var(--muted); font-weight: 600;
+      font-size: 12px; padding: 5px 10px; border-radius: 4px; cursor: pointer;
+    }
+    .seg button.active { background: #fff; color: var(--green); }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12.5px;
+      padding: 7px 13px;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--green); color: #fff; }
+    .btn-amber { background: #f59e0b; color: #142218; }
+    .btn-secondary { background: #fff; border-color: #c2d0c6; color: var(--text); }
+    .btn-danger { background: #fee2e2; color: var(--red); border-color: #fecaca; }
+
+    .main { padding: 18px 22px 34px; display: flex; flex-direction: column; gap: 16px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 14px 16px;
+    }
+    .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+    .kpi-val { font-size: 23px; font-weight: 800; margin: 4px 0 2px; }
+    .kpi-sub { font-size: 12.5px; font-weight: 600; color: var(--emerald); }
+
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+    .panel-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .panel-head h3 { margin: 0; font-size: 14.5px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { background: var(--surface-alt); color: var(--muted); font-size: 11px; text-transform: uppercase; white-space: nowrap; }
+    th.right, td.right { text-align: right; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .badge-green { background: var(--emerald-soft); color: var(--green-dark); }
+    .badge-blue { background: var(--blue-soft); color: var(--blue); }
+    .badge-amber { background: #fef3c7; color: var(--amber); }
+
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(10, 24, 15, 0.55);
+      display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50;
+    }
+    .modal {
+      background: #fff; border-radius: 10px; width: min(640px, 100%);
+      max-height: 90vh; overflow-y: auto; padding: 18px;
+    }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .form-field { display: flex; flex-direction: column; gap: 4px; }
+    .form-field label { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+    .toast {
+      position: fixed; right: 16px; bottom: 16px; background: #132018; color: #fff;
+      padding: 10px 14px; border-radius: 8px; border-left: 4px solid #22c55e; z-index: 90;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>DAR Region VIII — LAD Database Consolidated</h1>
+      <div class="header-sub">Google Apps Script Live Consolidated Hub • Regional Sheet: 1jTVJ...qb0Lw</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-amber" onclick="triggerETL()">Run Regional ETL Now</button>
+      <button class="btn btn-secondary" onclick="openBaselinesModal()">Baseline Targets</button>
+      <button class="btn btn-secondary" onclick="openMilestoneModal(null)">+ New Milestone</button>
+    </div>
+  </header>
+
+  <nav class="nav-bar">
+    <button class="nav-btn active" id="nav-dashboard" onclick="setView('dashboard')">Regional Dashboard</button>
+    <button class="nav-btn" id="nav-milestones" onclick="setView('milestones')">Milestone_Data Ledger</button>
+    <button class="nav-btn" id="nav-optool" onclick="setView('optool')">OPTool 6-Tab Hub</button>
+    <button class="nav-btn" id="nav-etl" onclick="setView('etl')">Provincial ETL &amp; Logs</button>
+  </nav>
+
+  <section class="filters">
+    <div class="f-group">
+      <label>Province</label>
+      <select id="f-prov" onchange="render()">
+        <option value="ALL">All Region VIII (6 Provinces)</option>
+        <option value="BIL">Biliran Province (BIL)</option>
+        <option value="ESA">Eastern Samar (ESA)</option>
+        <option value="LEY">Leyte (LEY)</option>
+        <option value="NSA">Northern Samar (NSA)</option>
+        <option value="SAM">Samar / Western Samar (SAM)</option>
+        <option value="SLE">Southern Leyte (SLE)</option>
+      </select>
+    </div>
+    <div class="f-group">
+      <label>Reporting Period</label>
+      <select id="f-month" onchange="render()">
+        <option value="LATEST">Latest Active Month</option>
+        <option value="ALL">All Months</option>
+      </select>
+    </div>
+    <div class="f-group">
+      <label>Monitoring Level</label>
+      <div class="seg" id="seg-level">
+        <button class="active" onclick="setLevel('both', this)">Both</button>
+        <button onclick="setLevel('etitles', this)">eTitles</button>
+        <button onclick="setLevel('area', this)">Area (HAS)</button>
+      </div>
+    </div>
+    <div class="f-group">
+      <label>Measurement Logic</label>
+      <div class="seg" id="seg-logic">
+        <button class="active" onclick="setLogic('both', this)">Both</button>
+        <button onclick="setLogic('incremental', this)">Incremental</button>
+        <button onclick="setLogic('cumulative', this)">Cumulative</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="main" id="app-main">
+    <div class="card">Loading live Regional Hub Google Sheet…</div>
+  </main>
+
+  <div class="modal-bg hidden" id="modal-bg">
+    <div class="modal" id="modal-box"></div>
+  </div>
+  <div id="toast-area"></div>
+
+  <script>
+    const LGU_LIST = {
+      BIL: ['Almeria','Biliran','Cabucgayan','Caibiran','Culaba','Kawayan','Maripipi','Naval'],
+      ESA: ['Arteche','Balangiga','Balangkayan','Borongan City','Can-avid','Dolores','General MacArthur','Giporlos','Guiuan','Hernani','Jipapad','Lawaan','Llorente','Maslog','Maydolong','Mercedes','Oras','Quinapondan','Salcedo','San Julian','San Policarpo','Sulat','Taft'],
+      LEY: ['Abuyog','Alangalang','Albuera','Babatngon','Barugo','Bato','Baybay City','Burauen','Calubian','Capoocan','Carigara','Dagami','Dulag','Hilongos','Hindang','Inopacan','Isabel','Jaro','Javier','Julita','Kananga','La Paz','Leyte','MacArthur','Mahaplag','Matag-ob','Matalom','Mayorga','Merida','Ormoc City','Palo','Palompon','Pastrana','San Isidro','San Miguel','Santa Fe','Tabango','Tabontabon','Tacloban City','Tanauan','Tolosa','Tunga','Villaba'],
+      NSA: ['Allen','Biri','Bobon','Capul','Catarman','Catubig','Gamay','Laoang','Lapinig','Las Navas','Lavezares','Lope de Vega','Mapanas','Mondragon','Palapag','Pambujan','Rosario','San Antonio','San Isidro','San Jose','San Roque','San Vicente','Silvino Lobos','Victoria'],
+      SAM: ['Almagro','Basey','Calbayog City','Calbiga','Catbalogan City','Daram','Gandara','Hinabangan','Jiabong','Marabut','Matuguinao','Motiong','Pagsanghan','Paranas','Pinabacdao','San Jorge','San Jose de Buan','San Sebastian','Santa Margarita','Santa Rita','Santo Niño','Tagapul-an','Talalora','Tarangnan','Villareal','Zumarraga'],
+      SLE: ['Anahawan','Bontoc','Hinunangan','Hinundayan','Libagon','Liloan','Limasawa','Maasin City','Macrohon','Malitbog','Padre Burgos','Pintuyan','Saint Bernard','San Francisco','San Juan','San Ricardo','Silago','Sogod','Tomas Oppus']
+    };
+    const STAGES = ['CF / Field Investigation Completed','Survey Returns Submitted (DARPO/DARRO)','ASP Approved (DENR-SMD)','MOV Transmitted to LBP/AOC','eTitle Generated','eTitle Registered','eTitle Distributed to ARB','ARB Installed'];
+    const BATCHES = ['ADMIN BATCH 1','ADMIN BATCH 2','ADMIN BATCH 3','SPLIT PIPELINE 2026','CARRYOVER BASELINE','REDOC & DNYD'];
+
+    let boot = null;
+    let currentView = 'dashboard';
+    let currentOptoolTab = 'Database';
+    let level = 'both';
+    let logic = 'both';
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function fmt4(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n.toFixed(4) : '0.0000';
+    }
+    function notify(msg) {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = msg;
+      document.getElementById('toast-area').appendChild(el);
+      setTimeout(() => el.remove(), 3800);
+    }
+
+    function setView(v) {
+      currentView = v;
+      ['dashboard','milestones','optool','etl'].forEach(id => {
+        document.getElementById('nav-' + id).classList.toggle('active', id === v);
+      });
+      render();
+    }
+    function setLevel(v, btn) {
+      level = v;
+      document.querySelectorAll('#seg-level button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    }
+    function setLogic(v, btn) {
+      logic = v;
+      document.querySelectorAll('#seg-logic button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    }
+
+    function loadData() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          boot = data;
+          populateMonths();
+          render();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('app-main').innerHTML = '<div class="card">Error loading sheet: ' + esc(err.message) + '</div>';
+        })
+        .getHubBootstrap();
+    }
+
+    function populateMonths() {
+      const sel = document.getElementById('f-month');
+      const cur = sel.value;
+      const months = Array.from(new Set((boot.milestoneData || []).map(r => String(r.Milestone_Date || '').slice(0, 7)).filter(m => /^\d{4}-\d{2}$/.test(m)))).sort();
+      sel.innerHTML = '<option value="LATEST">Latest Active Month (' + esc(months[months.length - 1] || 'Current') + ')</option>' +
+        '<option value="ALL">All Months (Full Cumulative)</option>' +
+        months.slice().reverse().map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
+      if (cur) sel.value = cur;
+    }
+
+    function computeStats() {
+      const provFilter = document.getElementById('f-prov').value;
+      const monthFilter = document.getElementById('f-month').value;
+      const rows = (boot.milestoneData || []).map(r => ({
+        ...r,
+        Province_Code: String(r.Province_Code || String(r.Record_ID || '').slice(0,3) || 'LEY'),
+        Month_Key: String(r.Milestone_Date || '').slice(0,7),
+        Area_Num: Number(r.Area_HAS) || 0
+      }));
+      const months = Array.from(new Set(rows.map(r => r.Month_Key).filter(m => /^\d{4}-\d{2}$/.test(m)))).sort();
+      const activeMonth = monthFilter === 'LATEST' ? (months[months.length - 1] || new Date().toISOString().slice(0,7)) : monthFilter;
+
+      const scoped = rows.filter(r => provFilter === 'ALL' || r.Province_Code === provFilter);
+      const cumRows = activeMonth === 'ALL' ? scoped : scoped.filter(r => !r.Month_Key || r.Month_Key <= activeMonth);
+      const incMonth = activeMonth === 'ALL' ? (months[months.length - 1] || '') : activeMonth;
+      const incRows = incMonth ? scoped.filter(r => r.Month_Key === incMonth) : scoped;
+
+      const sumArea = arr => arr.reduce((s, r) => s + r.Area_Num, 0);
+      const provList = boot.registry || [];
+      const targetProvs = provFilter === 'ALL' ? provList.map(p => p.code) : [provFilter];
+      const baseTitles = targetProvs.reduce((s, c) => s + ((boot.baselines[c] && boot.baselines[c].targetETitles) || 0), 0);
+      const baseArea = targetProvs.reduce((s, c) => s + ((boot.baselines[c] && boot.baselines[c].targetAreaHas) || 0), 0);
+
+      const provMatrix = provList.map(p => {
+        const pCum = cumRows.filter(r => r.Province_Code === p.code);
+        const pInc = incRows.filter(r => r.Province_Code === p.code);
+        const b = boot.baselines[p.code] || { targetETitles: 0, targetAreaHas: 0 };
+        const cumT = pCum.length;
+        const cumA = sumArea(pCum);
+        return {
+          ...p,
+          baseT: b.targetETitles,
+          baseA: b.targetAreaHas,
+          incT: pInc.length,
+          incA: sumArea(pInc),
+          cumT: cumT,
+          cumA: cumA,
+          pctT: b.targetETitles > 0 ? ((cumT / b.targetETitles) * 100).toFixed(2) : '0.00',
+          pctA: b.targetAreaHas > 0 ? ((cumA / b.targetAreaHas) * 100).toFixed(2) : '0.00'
+        };
+      });
+
+      return { activeMonth, incMonth, scoped, cumRows, incRows, cumT: cumRows.length, cumA: sumArea(cumRows), incT: incRows.length, incA: sumArea(incRows), baseTitles, baseArea, provMatrix };
+    }
+
+    function fmtMetric(t, a) {
+      if (level === 'etitles') return '<strong>' + t + '</strong> eTitles';
+      if (level === 'area') return '<strong>' + fmt4(a) + '</strong> HAS';
+      return '<strong>' + t + '</strong> eTitles <span style="color:var(--muted)">(' + fmt4(a) + ' HAS)</span>';
+    }
+
+    function render() {
+      if (!boot) return;
+      const main = document.getElementById('app-main');
+      const st = computeStats();
+
+      if (currentView === 'dashboard') {
+        const showInc = logic === 'both' || logic === 'incremental';
+        const showCum = logic === 'both' || logic === 'cumulative';
+        const optCounts = Object.entries(boot.optool || {}).map(([k, v]) => k + ': ' + v.length).join(' • ');
+
+        main.innerHTML = `
+          <div class="kpi-grid">
+            ${showCum ? `<div class="card"><div class="kpi-label">Cumulative Accomplishment</div><div class="kpi-val num">${level === 'area' ? fmt4(st.cumA) + ' HAS' : st.cumT + ' eTitles'}</div><div class="kpi-sub num">${fmt4(st.cumA)} HAS • Through ${esc(st.activeMonth)}</div></div>` : ''}
+            ${showInc ? `<div class="card"><div class="kpi-label">Incremental (${esc(st.incMonth || '-')})</div><div class="kpi-val num" style="color:var(--blue)">${level === 'area' ? fmt4(st.incA) + ' HAS' : st.incT + ' eTitles'}</div><div class="kpi-sub num" style="color:var(--blue)">${fmt4(st.incA)} HAS</div></div>` : ''}
+            <div class="card"><div class="kpi-label">Cumulative Baseline Target</div><div class="kpi-val num">${level === 'area' ? fmt4(st.baseArea) + ' HAS' : st.baseTitles + ' eTitles'}</div><div class="kpi-sub num" style="color:var(--amber)">${fmt4(st.baseArea)} HAS Target</div></div>
+            <div class="card"><div class="kpi-label">OPTool Regional Tabs</div><div class="kpi-val num">${(boot.optool.Database || []).length} Parcels</div><div class="kpi-sub" style="color:var(--muted)">${esc(optCounts)}</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Region VIII Provincial Consolidation Matrix</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Province</th><th class="right">Baseline Target</th>${showInc ? '<th class="right">Incremental</th>' : ''}${showCum ? '<th class="right">Cumulative</th>' : ''}<th class="right">% Attained</th></tr></thead>
+                <tbody>
+                  ${st.provMatrix.map(p => `
+                    <tr>
+                      <td><strong>${esc(p.name)}</strong> <span class="mono">(${esc(p.code)})</span></td>
+                      <td class="right num">${fmtMetric(p.baseT, p.baseA)}</td>
+                      ${showInc ? `<td class="right num">${fmtMetric(p.incT, p.incA)}</td>` : ''}
+                      ${showCum ? `<td class="right num">${fmtMetric(p.cumT, p.cumA)}</td>` : ''}
+                      <td class="right num"><span class="badge badge-green">${level === 'area' ? p.pctA : p.pctT}%</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (currentView === 'milestones') {
+        main.innerHTML = `
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Milestone_Data Sheet Tab (${st.scoped.length} rows)</h3>
+              <button class="btn btn-primary" onclick="openMilestoneModal(null)">+ Add Milestone Entry</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Record_ID</th><th>Prov</th><th>Municipality</th><th>Land_Allocation_ID</th><th>eTitle_No</th><th class="right">Area_HAS</th><th>Milestone_Stage</th><th>Milestone_Date</th><th>Batch_Category</th><th class="right">Actions</th></tr></thead>
+                <tbody>
+                  ${st.scoped.length === 0 ? '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">No rows in Milestone_Data tab yet. Click + Add Milestone Entry or Run Regional ETL Now.</td></tr>' :
+                    st.scoped.map((r, i) => `
+                      <tr>
+                        <td class="mono"><strong>${esc(r.Record_ID)}</strong></td>
+                        <td><span class="badge badge-blue">${esc(r.Province_Code)}</span></td>
+                        <td>${esc(r.Municipality)}</td>
+                        <td class="mono">${esc(r.Land_Allocation_ID)}</td>
+                        <td class="mono">${esc(r.eTitle_No)}</td>
+                        <td class="right mono num">${fmt4(r.Area_HAS)}</td>
+                        <td><span class="badge badge-green">${esc(r.Milestone_Stage)}</span></td>
+                        <td class="mono">${esc(r.Milestone_Date)}</td>
+                        <td>${esc(r.Batch_Category)}</td>
+                        <td class="right" style="white-space:nowrap">
+                          <button class="btn btn-secondary" onclick='editMilestoneById(${JSON.stringify(r.Record_ID)})'>Edit</button>
+                          <button class="btn btn-danger" onclick='deleteMilestone(${JSON.stringify(r.Record_ID)})'>Delete</button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (currentView === 'optool') {
+        const tabs = Object.keys(boot.optool || {});
+        const rows = (boot.optool && boot.optool[currentOptoolTab]) || [];
+        const headers = (boot.optoolHeaders && boot.optoolHeaders[currentOptoolTab]) || [];
+        const showHeaders = headers.slice(0, 10);
+
+        main.innerHTML = `
+          <div class="panel">
+            <div class="panel-head">
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${tabs.map(t => `<button class="nav-btn ${t === currentOptoolTab ? 'active' : ''}" onclick='switchOptoolTab(${JSON.stringify(t)})'>${esc(t)} (${(boot.optool[t] || []).length})</button>`).join('')}
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>${showHeaders.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+                <tbody>
+                  ${rows.length === 0 ? `<tr><td colspan="${Math.max(1, showHeaders.length)}" style="text-align:center;padding:24px;color:var(--muted)">0 populated rows in ${esc(currentOptoolTab)}.</td></tr>` :
+                    rows.map(r => `<tr>${showHeaders.map(h => `<td>${esc(r[h.replace(/\r?\n/g, ' ')] ?? '')}</td>`).join('')}</tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (currentView === 'etl') {
+        main.innerHTML = `
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Provincial Google Sheets ETL Sync Logs</h3>
+              <button class="btn btn-amber" onclick="triggerETL()">Run Regional ETL Now</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Timestamp</th><th>Code</th><th>Province</th><th>Status</th><th class="right">Milestone Rows</th><th class="right">OPTool Rows</th><th>Message</th></tr></thead>
+                <tbody>
+                  ${(boot.syncLogs || []).length === 0 ? '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">No ETL runs logged yet. Click Run Regional ETL Now.</td></tr>' :
+                    (boot.syncLogs || []).map(l => `
+                      <tr>
+                        <td class="mono">${esc(l.Timestamp)}</td>
+                        <td class="mono"><strong>${esc(l.Code)}</strong></td>
+                        <td>${esc(l.Province)}</td>
+                        <td><span class="badge ${l.Status === 'SUCCESS' ? 'badge-green' : 'badge-amber'}">${esc(l.Status)}</span></td>
+                        <td class="right num">${esc(l['Milestone Rows'])}</td>
+                        <td class="right num">${esc(l['OPTool Rows'])}</td>
+                        <td>${esc(l.Message)}</td>
+                      </tr>
+                    `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function switchOptoolTab(t) { currentOptoolTab = t; render(); }
+
+    function editMilestoneById(id) {
+      const rec = (boot.milestoneData || []).find(r => r.Record_ID === id);
+      if (rec) openMilestoneModal(rec);
+    }
+
+    function openMilestoneModal(rec) {
+      const isEdit = Boolean(rec);
+      const prov = rec ? rec.Province_Code : (document.getElementById('f-prov').value !== 'ALL' ? document.getElementById('f-prov').value : 'LEY');
+      const mDate = rec ? rec.Milestone_Date : new Date().toISOString().slice(0, 10);
+
+      document.getElementById('modal-box').innerHTML = `
+        <h3 style="margin-top:0">${isEdit ? 'Edit Milestone ' + esc(rec.Record_ID) : 'New Milestone_Data Transaction'}</h3>
+        <form onsubmit="submitMilestone(event)">
+          <div class="form-grid">
+            <div class="form-field"><label>Province</label><select id="m-prov" onchange="fillLgus(this.value)">${Object.keys(LGU_LIST).map(c => `<option value="${c}" ${c === prov ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+            <div class="form-field"><label>Record_ID (Blank = Auto)</label><input id="m-id" class="mono" value="${esc(rec ? rec.Record_ID : '')}" ${isEdit ? 'readonly' : ''} placeholder="Auto PROV-YYYYMM-XXXX" /></div>
+            <div class="form-field"><label>Municipality (LGU Master List)</label><select id="m-muni"></select></div>
+            <div class="form-field"><label>Milestone_Date</label><input id="m-date" type="date" required value="${esc(mDate)}" /></div>
+            <div class="form-field"><label>Land_Allocation_ID</label><input id="m-laid" required value="${esc(rec ? rec.Land_Allocation_ID : '')}" placeholder="LA-08-37-0012" /></div>
+            <div class="form-field"><label>eTitle_No</label><input id="m-et" required value="${esc(rec ? rec.eTitle_No : '')}" placeholder="eT-2026-00891" /></div>
+            <div class="form-field"><label>Area_HAS (4 dec)</label><input id="m-area" type="number" step="0.0001" min="0" required value="${esc(rec ? rec.Area_HAS : '')}" placeholder="2.4500" /></div>
+            <div class="form-field"><label>Milestone_Stage</label><select id="m-stage">${STAGES.map(s => `<option ${rec && rec.Milestone_Stage === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+            <div class="form-field"><label>Batch_Category</label><select id="m-batch">${BATCHES.map(b => `<option ${rec && rec.Batch_Category === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></div>
+            <div class="form-field"><label>Linked LHID (Optional)</label><input id="m-lhid" value="${esc(rec ? rec.LHID : '')}" /></div>
+          </div>
+          <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save to Google Sheet</button>
+          </div>
+        </form>
+      `;
+      fillLgus(prov, rec ? rec.Municipality : '');
+      document.getElementById('modal-bg').classList.remove('hidden');
+    }
+
+    function fillLgus(prov, selected) {
+      const sel = document.getElementById('m-muni');
+      sel.innerHTML = (LGU_LIST[prov] || []).map(m => `<option ${m === selected ? 'selected' : ''}>${esc(m)}</option>`).join('');
+    }
+
+    function submitMilestone(e) {
+      e.preventDefault();
+      const payload = {
+        Record_ID: document.getElementById('m-id').value.trim(),
+        Province_Code: document.getElementById('m-prov').value,
+        Municipality: document.getElementById('m-muni').value,
+        Land_Allocation_ID: document.getElementById('m-laid').value.trim(),
+        eTitle_No: document.getElementById('m-et').value.trim(),
+        Area_HAS: document.getElementById('m-area').value,
+        Milestone_Stage: document.getElementById('m-stage').value,
+        Milestone_Date: document.getElementById('m-date').value,
+        Batch_Category: document.getElementById('m-batch').value,
+        LHID: document.getElementById('m-lhid').value.trim()
+      };
+      closeModal();
+      notify('Saving to Regional Hub Sheet…');
+      google.script.run.withSuccessHandler(data => {
+        boot = data;
+        populateMonths();
+        render();
+        notify('Saved ' + data.savedRecord.Record_ID);
+      }).withFailureHandler(err => notify(err.message)).saveMilestoneFromUi(payload);
+    }
+
+    function deleteMilestone(id) {
+      if (!confirm('Delete ' + id + ' from Google Sheet?')) return;
+      google.script.run.withSuccessHandler(data => {
+        boot = data;
+        populateMonths();
+        render();
+        notify('Deleted ' + id);
+      }).deleteMilestoneFromUi(id);
+    }
+
+    function openBaselinesModal() {
+      const provList = boot.registry || [];
+      document.getElementById('modal-box').innerHTML = `
+        <h3 style="margin-top:0">Regional Cumulative Baseline Targets</h3>
+        <form onsubmit="submitBaselines(event)">
+          <table>
+            <thead><tr><th>Province</th><th>Target eTitles</th><th>Target Area (HAS)</th></tr></thead>
+            <tbody>
+              ${provList.map(p => {
+                const b = boot.baselines[p.code] || { targetETitles: 0, targetAreaHas: 0 };
+                return `<tr><td><strong>${esc(p.name)}</strong></td><td><input id="bt-${p.code}" type="number" min="0" value="${b.targetETitles}" /></td><td><input id="ba-${p.code}" type="number" step="0.0001" min="0" value="${fmt4(b.targetAreaHas)}" /></td></tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Baselines to Sheet</button>
+          </div>
+        </form>
+      `;
+      document.getElementById('modal-bg').classList.remove('hidden');
+    }
+
+    function submitBaselines(e) {
+      e.preventDefault();
+      const map = {};
+      (boot.registry || []).forEach(p => {
+        map[p.code] = {
+          targetETitles: Number(document.getElementById('bt-' + p.code).value) || 0,
+          targetAreaHas: Number(document.getElementById('ba-' + p.code).value) || 0
+        };
+      });
+      closeModal();
+      google.script.run.withSuccessHandler(data => {
+        boot = data;
+        render();
+        notify('Updated Regional_Baselines sheet');
+      }).saveBaselinesFromUi(map);
+    }
+
+    function triggerETL() {
+      notify('Running Regional ETL across 6 provincial Google Sheets…');
+      google.script.run.withSuccessHandler(data => {
+        boot = data;
+        populateMonths();
+        render();
+        notify('Regional ETL completed (' + (data.etlSummary ? data.etlSummary.milestones : 0) + ' milestone rows)');
+      }).withFailureHandler(err => notify(err.message)).runRegionalETLFromUi();
+    }
+
+    function closeModal() { document.getElementById('modal-bg').classList.add('hidden'); }
+    loadData();
+  </script>
+</body>
+</html>
+
