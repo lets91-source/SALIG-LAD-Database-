@@ -283,7 +283,7 @@ function doGet(e) {
 }
 
 /**
- * Web App POST Endpoint: Upserts Milestone_Data or OPTool rows from external Web App
+ * Web App POST Endpoint: Upserts or deletes Milestone_Data, Baselines, or OPTool rows from external Web App
  */
 function doPost(e) {
   try {
@@ -298,6 +298,24 @@ function doPost(e) {
     if (body.action === 'deleteMilestone' && body.recordId) {
       const deleted = deleteMilestoneRecord_(body.recordId);
       return ContentService.createTextOutput(JSON.stringify({ ok: deleted }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'upsertOptoolRow' && body.tabName && body.row) {
+      const result = upsertOptoolRecord_(body.tabName, body.headers || [], body.row, body.prevRow || null);
+      return ContentService.createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'deleteOptoolRow' && body.tabName && body.row) {
+      const deleted = deleteOptoolRecord_(body.tabName, body.headers || [], body.row);
+      return ContentService.createTextOutput(JSON.stringify({ ok: deleted, tabName: body.tabName }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'saveBaselines' && body.baselines) {
+      saveBaselinesRecord_(body.baselines);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true }))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -382,6 +400,11 @@ function deleteMilestoneFromUi(recordId) {
 }
 
 function saveBaselinesFromUi(baselinesMap) {
+  saveBaselinesRecord_(baselinesMap);
+  return getHubBootstrap();
+}
+
+function saveBaselinesRecord_(baselinesMap) {
   const sheet = ensureBaselineSheet_();
   const rows = PROVINCIAL_NODES.map(function (n) {
     const item = (baselinesMap && baselinesMap[n.code]) || DEFAULT_BASELINES[n.code];
@@ -389,7 +412,6 @@ function saveBaselinesFromUi(baselinesMap) {
   });
   sheet.getRange(2, 1, rows.length, 4).setValues(rows);
   sheet.getRange(2, 4, rows.length, 1).setNumberFormat('0.0000');
-  return getHubBootstrap();
 }
 
 function runRegionalETLFromUi() {
@@ -492,4 +514,137 @@ function readSheetObjects_(sheet) {
     rows.push(obj);
   }
   return rows;
+}
+
+function normalizeHeaderKey_(val) {
+  return String(val || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function ensureOptoolSheet_(tabName, headersSpec) {
+  if (OPTOOL_TABS.indexOf(tabName) === -1) {
+    throw new Error('Unsupported OPTool tab: ' + tabName);
+  }
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  let sheet = hub.getSheetByName(tabName);
+  if (!sheet) {
+    sheet = hub.insertSheet(tabName);
+  }
+  if (sheet.getLastColumn() === 0 && headersSpec && headersSpec.length > 0) {
+    const titles = headersSpec.map(function (h) { return h.header || h.key; });
+    sheet.getRange(1, 1, 1, titles.length).setValues([titles]);
+    sheet.getRange(1, 1, 1, titles.length).setFontWeight('bold').setBackground('#14532D').setFontColor('#FFFFFF');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function buildOptoolColMap_(sheet, headersSpec) {
+  const lastCol = Math.max(sheet.getLastColumn(), (headersSpec && headersSpec.length) || 0);
+  const sheetHeaders = sheet.getLastColumn() > 0
+    ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+    : (headersSpec || []).map(function (h) { return h.header || h.key; });
+
+  const buckets = {};
+  (headersSpec || []).forEach(function (spec) {
+    const k = normalizeHeaderKey_(spec.header || spec.key);
+    if (!buckets[k]) buckets[k] = [];
+    buckets[k].push(spec);
+  });
+
+  const colMap = [];
+  for (let c = 0; c < sheetHeaders.length; c++) {
+    const norm = normalizeHeaderKey_(sheetHeaders[c]);
+    let spec = buckets[norm] && buckets[norm].length > 0 ? buckets[norm].shift() : null;
+    if (!spec && headersSpec && headersSpec[c] && normalizeHeaderKey_(headersSpec[c].header || headersSpec[c].key) === norm) {
+      spec = headersSpec[c];
+    }
+    colMap.push(spec || null);
+  }
+  return { colMap: colMap, width: Math.max(lastCol, colMap.length) };
+}
+
+function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
+  if (sheet.getLastRow() <= 1) return -1;
+  const values = sheet.getDataRange().getValues();
+  let lhidCol = -1;
+  for (let c = 0; c < colMap.length; c++) {
+    if (colMap[c] && colMap[c].key === 'lhid') {
+      lhidCol = c;
+      break;
+    }
+  }
+  const ref = prevRow || targetRow || {};
+  const refLhid = String(ref.lhid || targetRow.lhid || '').trim().toLowerCase();
+  if (!refLhid || lhidCol < 0) return -1;
+
+  const isUniqueByLhid = tabName === 'Database';
+  let firstLhidMatch = -1;
+
+  for (let r = 1; r < values.length; r++) {
+    const rowLhid = String(values[r][lhidCol] || '').trim().toLowerCase();
+    if (rowLhid !== refLhid) continue;
+    if (isUniqueByLhid) return r + 1;
+    if (firstLhidMatch === -1) firstLhidMatch = r + 1;
+
+    // Match multi-row tab entries more precisely when secondary identifiers exist
+    let secondaryMatches = true;
+    for (let c = 0; c < colMap.length; c++) {
+      const spec = colMap[c];
+      if (!spec || spec.key === 'lhid') continue;
+      if (spec.key === 'monthReported' || spec.key === 'remarks' || spec.key === 'target') {
+        const expected = String(ref[spec.key] ?? '').trim();
+        const actual = String(values[r][c] ?? '').trim();
+        if (expected && actual !== expected) {
+          secondaryMatches = false;
+          break;
+        }
+      }
+    }
+    if (secondaryMatches) return r + 1;
+  }
+  return prevRow ? -1 : firstLhidMatch;
+}
+
+function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow) {
+  const sheet = ensureOptoolSheet_(tabName, headersSpec);
+  const mapped = buildOptoolColMap_(sheet, headersSpec);
+  const colMap = mapped.colMap;
+  const width = mapped.width;
+
+  const outRow = [];
+  for (let c = 0; c < width; c++) {
+    const spec = colMap[c];
+    if (!spec) {
+      outRow.push('');
+      continue;
+    }
+    const raw = rowObj[spec.key] !== undefined ? rowObj[spec.key] : '';
+    if (spec.type === 'decimal' && raw !== '') {
+      const num = Number(raw);
+      outRow.push(isNaN(num) ? String(raw) : Number(num.toFixed(4)));
+    } else {
+      outRow.push(raw);
+    }
+  }
+
+  const rowNumber = findOptoolRowNumber_(sheet, colMap, tabName, rowObj, prevRow);
+  if (rowNumber > 0) {
+    sheet.getRange(rowNumber, 1, 1, width).setValues([outRow]);
+  } else {
+    sheet.appendRow(outRow);
+  }
+  return { ok: true, tabName: tabName, updated: rowNumber > 0, rowNumber: rowNumber > 0 ? rowNumber : sheet.getLastRow() };
+}
+
+function deleteOptoolRecord_(tabName, headersSpec, rowObj) {
+  const sheet = ensureOptoolSheet_(tabName, headersSpec);
+  const mapped = buildOptoolColMap_(sheet, headersSpec);
+  const rowNumber = findOptoolRowNumber_(sheet, mapped.colMap, tabName, rowObj, rowObj);
+  if (rowNumber > 1) {
+    sheet.deleteRow(rowNumber);
+    return true;
+  }
+  return false;
 }

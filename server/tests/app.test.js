@@ -950,3 +950,102 @@ test('Serverless handler export and Vercel /tmp fallback work without server.lis
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('GAS_WEB_APP_URL env default and automatic Google Sheet two-way push on mutations', async () => {
+  const dir = makeTempDir();
+  const prevGasEnv = process.env.GAS_WEB_APP_URL;
+  const pushedPayloads = [];
+
+  try {
+    process.env.GAS_WEB_APP_URL = 'https://script.google.com/macros/s/test-exec/exec';
+    const { handler, store } = createAppServer(dir, {
+      pushToGasWebApp: async (url, payload) => {
+        pushedPayloads.push({ url, payload });
+        return { ok: true };
+      }
+    });
+
+    assert.equal(store.state.gasWebAppUrl, 'https://script.google.com/macros/s/test-exec/exec');
+
+    const callApi = (url, method = 'GET', bodyObj = null) =>
+      new Promise((resolve, reject) => {
+        const bodyBuf = bodyObj ? Buffer.from(JSON.stringify(bodyObj), 'utf8') : Buffer.alloc(0);
+        const chunks = [];
+        const req = {
+          url,
+          method,
+          headers: { host: 'localhost:3001', 'content-type': 'application/json' },
+          async *[Symbol.asyncIterator]() {
+            if (bodyBuf.length) yield bodyBuf;
+          }
+        };
+        const res = {
+          statusCode: 200,
+          headers: {},
+          writeHead(code, headers = {}) {
+            this.statusCode = code;
+            Object.assign(this.headers, headers);
+          },
+          setHeader(name, value) {
+            this.headers[name.toLowerCase()] = value;
+          },
+          write(chunk) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+          },
+          end(chunk) {
+            if (chunk) this.write(chunk);
+            resolve({
+              statusCode: this.statusCode,
+              body: JSON.parse(Buffer.concat(chunks).toString('utf8'))
+            });
+          }
+        };
+        Promise.resolve(handler(req, res)).catch(reject);
+      });
+
+    // 1. Saving a Database row with milestoneTarget automatically pushes Database + routed Survey row
+    const saveRes = await callApi('/api/optool/Database', 'POST', {
+      row: {
+        lhid: 'LH-AUTO-001',
+        province: 'Leyte',
+        municipality: 'Palo',
+        milestoneTarget: 'Survey'
+      }
+    });
+    assert.equal(saveRes.statusCode, 200);
+    assert.equal(saveRes.body.gasPushResult?.ok, true);
+    assert.ok(pushedPayloads.some((p) => p.payload.action === 'upsertOptoolRow' && p.payload.tabName === 'Database'));
+    assert.ok(pushedPayloads.some((p) => p.payload.action === 'upsertOptoolRow' && p.payload.tabName === 'Survey'));
+
+    // 2. Deleting an OPTool row automatically pushes deleteOptoolRow
+    const delRes = await callApi('/api/optool/Database/0', 'DELETE');
+    assert.equal(delRes.statusCode, 200);
+    assert.equal(delRes.body.gasPushResult?.ok, true);
+    assert.ok(pushedPayloads.some((p) => p.payload.action === 'deleteOptoolRow' && p.payload.tabName === 'Database'));
+
+    // 3. Milestone upsert & delete push automatically without requiring pushToGas=true
+    const msRes = await callApi('/api/milestones', 'POST', {
+      Province_Code: 'LEY',
+      Municipality: 'Palo',
+      Area_HAS: '2.5000',
+      Milestone_Stage: 'eTitle Registered',
+      Milestone_Date: '2026-11-12',
+      Batch_Category: 'ADMIN BATCH 1'
+    });
+    assert.equal(msRes.statusCode, 200);
+    assert.equal(msRes.body.gasPushResult?.ok, true);
+    assert.ok(pushedPayloads.some((p) => p.payload.action === 'upsertMilestone'));
+
+    const delMsRes = await callApi(`/api/milestones/${encodeURIComponent(msRes.body.record.Record_ID)}`, 'DELETE');
+    assert.equal(delMsRes.statusCode, 200);
+    assert.equal(delMsRes.body.gasPushResult?.ok, true);
+    assert.ok(pushedPayloads.some((p) => p.payload.action === 'deleteMilestone'));
+  } finally {
+    if (prevGasEnv === undefined) {
+      delete process.env.GAS_WEB_APP_URL;
+    } else {
+      process.env.GAS_WEB_APP_URL = prevGasEnv;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

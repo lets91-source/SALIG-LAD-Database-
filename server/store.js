@@ -192,6 +192,7 @@ export class ConsolidatedStore {
       }
     }
     this.state = createSeedState();
+    this.normalizeState();
     this.save();
   }
 
@@ -243,6 +244,9 @@ export class ConsolidatedStore {
           }
         }
       }
+    }
+    if (!this.state.gasWebAppUrl && process.env.GAS_WEB_APP_URL) {
+      this.state.gasWebAppUrl = String(process.env.GAS_WEB_APP_URL).trim();
     }
     if (!Array.isArray(this.state.syncLogs)) this.state.syncLogs = [];
     if (!this.state.liveHubSnapshot) {

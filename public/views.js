@@ -1543,7 +1543,7 @@ export function renderSyncView(ctx) {
             <button class="btn btn-primary btn-sm" id="btn-pull-gas-url">Pull Snapshot via GAS</button>
           </div>
           <p style="margin:0;font-size:12px;color:var(--text-muted)">
-            When configured, new <strong>Milestone_Data</strong> entries can also be pushed live to your Google Sheet.
+            When configured (or set via Vercel <code>GAS_WEB_APP_URL</code> env var), edits across all <strong>6 OPTool tabs</strong>, <strong>Milestone_Data</strong>, and <strong>Regional_Baselines</strong> automatically push live to your Google Sheet, while active spreadsheets auto-sync in the background.
           </p>
         </div>
       </div>

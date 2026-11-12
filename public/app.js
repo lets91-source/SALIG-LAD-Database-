@@ -47,8 +47,19 @@ const appState = {
   optoolColPage: 1
 };
 
+const AUTO_SYNC_MAX_AGE_MS = 2 * 60 * 1000;
+const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+
 let optoolSearchTimer = null;
 let closeColPopoverFn = null;
+let isAutoSyncRunning = false;
+let autoSyncTimer = null;
+
+function formatGasPushSuffix(res) {
+  if (!res?.gasPushResult) return '';
+  if (res.gasPushResult.ok) return ' & synced to Google Sheet';
+  return ` (Google Sheet push warning: ${res.gasPushResult.error || 'failed'})`;
+}
 
 function closeColFilterPopover() {
   if (closeColPopoverFn) {
@@ -788,12 +799,12 @@ function bindOptoolViewEvents(container) {
       }
       if (milestoneTarget) {
         toast(
-          res.createdInTab
+          (res.createdInTab
             ? `Milestone Target set to ${milestoneTarget} (added to ${milestoneTarget} tab)`
-            : `Milestone Target set to ${milestoneTarget}`
+            : `Milestone Target set to ${milestoneTarget}`) + formatGasPushSuffix(res)
         );
       } else {
-        toast(`Cleared Milestone Target for ${res.row.lhid || `row #${idx + 1}`}`);
+        toast(`Cleared Milestone Target for ${res.row.lhid || `row #${idx + 1}`}${formatGasPushSuffix(res)}`);
       }
     } catch (err) {
       targetSel.disabled = false;
@@ -899,8 +910,19 @@ function bindSyncViewEvents(container) {
   });
 }
 
-async function syncAllNodes(mode = 'merge') {
-  toast('Checking & syncing Regional Hub + all 6 provincial Google Sheets…');
+function isUserActivelyEditing() {
+  const modalOpen = !document.getElementById('modal-backdrop')?.classList.contains('hidden');
+  const activeInTable = Boolean(document.activeElement?.closest('[data-optool-table]'));
+  return modalOpen || activeInTable;
+}
+
+async function syncAllNodes(mode = 'merge', options = {}) {
+  const { quiet = false } = options;
+  if (isAutoSyncRunning) return;
+  isAutoSyncRunning = true;
+  if (!quiet) {
+    toast('Checking & syncing Regional Hub + all 6 provincial Google Sheets…');
+  }
   try {
     const res = await api('/api/sync/all-nodes', {
       method: 'POST',
@@ -908,13 +930,39 @@ async function syncAllNodes(mode = 'merge') {
       body: JSON.stringify({ mode })
     });
     appState.state = { ...appState.state, ...res.state };
-    await refreshAnalytics();
+    if (!quiet || !isUserActivelyEditing()) {
+      await refreshAnalytics();
+    }
     const synced = (res.results || []).filter((r) => r.status === 'synced').length;
     const restricted = (res.results || []).filter((r) => r.status === 'unauthorized').length;
-    toast(`Checked 7 sheets: ${synced} reachable (${res.totalImported} rows imported), ${restricted} restricted (401).`);
+    if (!quiet) {
+      toast(`Checked 7 sheets: ${synced} reachable (${res.totalImported} rows imported), ${restricted} restricted (401).`);
+    } else if (res.totalImported > 0) {
+      toast(`Auto-synced ${res.totalImported} rows across ${synced}/7 Google Sheets`);
+    }
   } catch (err) {
-    toast(err.message, true);
+    if (!quiet) toast(err.message, true);
+  } finally {
+    isAutoSyncRunning = false;
   }
+}
+
+function maybeAutoSyncGoogleSheets() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  const lastSyncMs = appState.state?.lastSyncAt ? Date.parse(appState.state.lastSyncAt) : 0;
+  const isStale = !lastSyncMs || Number.isNaN(lastSyncMs) || Date.now() - lastSyncMs > AUTO_SYNC_MAX_AGE_MS;
+  if (isStale) {
+    syncAllNodes('merge', { quiet: true });
+  }
+}
+
+function startAutoSyncLoop() {
+  if (autoSyncTimer) clearInterval(autoSyncTimer);
+  autoSyncTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !isUserActivelyEditing()) {
+      syncAllNodes('merge', { quiet: true });
+    }
+  }, AUTO_SYNC_INTERVAL_MS);
 }
 
 async function syncRegionalHub(mode = 'merge') {
@@ -1183,7 +1231,7 @@ async function openMilestoneModal(existing) {
       appState.state.milestoneData = res.milestoneData;
       closeModal();
       await refreshAnalytics();
-      toast(`Saved ${res.record.Record_ID}`);
+      toast(`Saved ${res.record.Record_ID}${formatGasPushSuffix(res)}`);
     } catch (err) {
       toast(err.message, true);
     }
@@ -1496,7 +1544,7 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       }
       closeModal();
       await refreshAnalytics();
-      toast(`Saved row in ${tabName}`);
+      toast(`Saved row in ${tabName}${formatGasPushSuffix(res)}`);
     } catch (err) {
       toast(err.message, true);
     }
@@ -1655,6 +1703,8 @@ async function init() {
     appState.gasHtml = boot.gasHtml || '';
 
     renderActiveView();
+    maybeAutoSyncGoogleSheets();
+    startAutoSyncLoop();
   } catch (err) {
     document.getElementById('view-container').innerHTML = `<div class="loading-box">Failed to load hub: ${esc(
       err.message

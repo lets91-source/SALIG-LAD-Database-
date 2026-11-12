@@ -79,8 +79,55 @@ async function readJsonBody(req) {
   return JSON.parse(buf.toString('utf8'));
 }
 
-export function createAppServer(dataDir) {
+function getOptoolHeadersSpec(tabName) {
+  return (OPTOOL_SHEET_SCHEMAS[tabName] || []).map((c) => ({
+    key: c.key,
+    header: c.header,
+    type: c.type
+  }));
+}
+
+/**
+ * Automatically mirror local store mutations back to the configured GAS Web App endpoint.
+ */
+async function pushMutationToGas(store, payload, summaryLabel, pushFn = pushToGasWebApp) {
+  const gasUrl = String(store.state.gasWebAppUrl || '').trim();
+  if (!gasUrl) return null;
+  try {
+    const result = await pushFn(gasUrl, payload);
+    store.addSyncLog('GAS Web App Auto-Push', 'success', summaryLabel);
+    store.save();
+    return { ok: true, ...result };
+  } catch (err) {
+    store.addSyncLog('GAS Web App Auto-Push', 'error', `${summaryLabel} failed: ${err.message}`);
+    store.save();
+    return { ok: false, error: err.message };
+  }
+}
+
+async function pushRoutedTargetRow(store, targetTab, lhid, gasPushFn) {
+  if (!targetTab) return null;
+  const lhidKey = String(lhid || '').trim().toLowerCase();
+  const targetRow = (store.state.optool[targetTab] || []).find(
+    (r) => String(r.lhid || '').trim().toLowerCase() === lhidKey
+  );
+  if (!targetRow) return null;
+  return pushMutationToGas(
+    store,
+    {
+      action: 'upsertOptoolRow',
+      tabName: targetTab,
+      headers: getOptoolHeadersSpec(targetTab),
+      row: targetRow
+    },
+    `Routed ${targetRow.lhid || 'parcel'} into Google Sheet tab ${targetTab}.`,
+    gasPushFn
+  );
+}
+
+export function createAppServer(dataDir, options = {}) {
   const store = new ConsolidatedStore(dataDir);
+  const gasPushFn = options.pushToGasWebApp || pushToGasWebApp;
 
   const handler = async (req, res) => {
     if (req.method === 'OPTIONS') {
@@ -149,29 +196,15 @@ export function createAppServer(dataDir) {
       if (req.method === 'POST' && pathname === '/api/milestones') {
         const body = await readJsonBody(req);
         const saved = store.upsertMilestone(body);
-        let gasPushResult = null;
-        if (body.pushToGas && store.state.gasWebAppUrl) {
-          try {
-            gasPushResult = await pushToGasWebApp(store.state.gasWebAppUrl, {
-              action: 'upsertMilestone',
-              record: saved
-            });
-            store.addSyncLog(
-              'GAS Web App Push',
-              'success',
-              `Pushed ${saved.Record_ID} to Regional Google Sheet.`
-            );
-            store.save();
-          } catch (err) {
-            gasPushResult = { ok: false, error: err.message };
-            store.addSyncLog(
-              'GAS Web App Push',
-              'error',
-              `Saved locally; GAS push failed: ${err.message}`
-            );
-            store.save();
-          }
-        }
+        const gasPushResult =
+          body.pushToGas !== false
+            ? await pushMutationToGas(
+                store,
+                { action: 'upsertMilestone', record: saved },
+                `Pushed ${saved.Record_ID} to Regional Google Sheet.`,
+                gasPushFn
+              )
+            : null;
         return sendJson(res, 200, {
           record: saved,
           gasPushResult,
@@ -184,8 +217,15 @@ export function createAppServer(dataDir) {
         const recordId = decodeURIComponent(pathname.slice('/api/milestones/'.length));
         const ok = store.deleteMilestone(recordId);
         if (!ok) return sendJson(res, 404, { error: 'Record not found' });
+        const gasPushResult = await pushMutationToGas(
+          store,
+          { action: 'deleteMilestone', recordId },
+          `Deleted milestone ${recordId} from Regional Google Sheet.`,
+          gasPushFn
+        );
         return sendJson(res, 200, {
           ok: true,
+          gasPushResult,
           milestoneData: store.state.milestoneData,
           analytics: store.computeAnalytics(query)
         });
@@ -201,9 +241,25 @@ export function createAppServer(dataDir) {
           const idx = Number(body.index);
           try {
             const result = store.setDatabaseMilestoneTarget(idx, body.milestoneTarget ?? '');
+            const gasPushResult = await pushMutationToGas(
+              store,
+              {
+                action: 'upsertOptoolRow',
+                tabName: 'Database',
+                headers: getOptoolHeadersSpec('Database'),
+                row: result.row,
+                prevRow: result.row
+              },
+              `Updated Database Milestone Target (${result.row.lhid || `row #${idx + 1}`}) in Google Sheet.`,
+              gasPushFn
+            );
+            if (result.createdInTab && result.targetTab) {
+              await pushRoutedTargetRow(store, result.targetTab, result.row.lhid, gasPushFn);
+            }
             return sendJson(res, 200, {
               ok: true,
               ...result,
+              gasPushResult,
               rows: store.state.optool.Database,
               optool: store.state.optool,
               analytics: store.computeAnalytics(query)
@@ -215,12 +271,32 @@ export function createAppServer(dataDir) {
 
         if (req.method === 'POST' && parts.length === 1) {
           const body = await readJsonBody(req);
-          const saved = store.upsertOptoolRow(tabName, body.row || body, body.index ?? null);
-          if (tabName === 'Database' && MILESTONE_TARGET_TABS.includes(saved.milestoneTarget)) {
-            store.syncDatabaseRowToTargetTab(saved);
+          const idx = body.index !== undefined && body.index !== null ? Number(body.index) : null;
+          const prevRow =
+            idx !== null && Number.isInteger(idx) && idx >= 0 ? store.state.optool[tabName]?.[idx] || null : null;
+          const saved = store.upsertOptoolRow(tabName, body.row || body, idx);
+          const createdInTab =
+            tabName === 'Database' && MILESTONE_TARGET_TABS.includes(saved.milestoneTarget)
+              ? store.syncDatabaseRowToTargetTab(saved)
+              : false;
+          const gasPushResult = await pushMutationToGas(
+            store,
+            {
+              action: 'upsertOptoolRow',
+              tabName,
+              headers: getOptoolHeadersSpec(tabName),
+              row: saved,
+              prevRow
+            },
+            `Saved ${tabName} row (${saved.lhid || 'record'}) to Regional Google Sheet.`,
+            gasPushFn
+          );
+          if (createdInTab && saved.milestoneTarget) {
+            await pushRoutedTargetRow(store, saved.milestoneTarget, saved.lhid, gasPushFn);
           }
           return sendJson(res, 200, {
             row: saved,
+            gasPushResult,
             rows: store.state.optool[tabName],
             optool: store.state.optool,
             analytics: store.computeAnalytics(query)
@@ -229,10 +305,25 @@ export function createAppServer(dataDir) {
 
         if (req.method === 'DELETE' && parts.length === 2) {
           const idx = Number(parts[1]);
+          const deletedRow = Number.isInteger(idx) && idx >= 0 ? store.state.optool[tabName]?.[idx] || null : null;
           const ok = store.deleteOptoolRow(tabName, idx);
           if (!ok) return sendJson(res, 404, { error: 'OPTool row not found' });
+          const gasPushResult = deletedRow
+            ? await pushMutationToGas(
+                store,
+                {
+                  action: 'deleteOptoolRow',
+                  tabName,
+                  headers: getOptoolHeadersSpec(tabName),
+                  row: deletedRow
+                },
+                `Deleted ${tabName} row (${deletedRow.lhid || `#${idx + 1}`}) from Regional Google Sheet.`,
+                gasPushFn
+              )
+            : null;
           return sendJson(res, 200, {
             ok: true,
+            gasPushResult,
             rows: store.state.optool[tabName],
             analytics: store.computeAnalytics(query)
           });
@@ -247,7 +338,13 @@ export function createAppServer(dataDir) {
       if (req.method === 'PUT' && pathname === '/api/baselines') {
         const body = await readJsonBody(req);
         const baselines = store.updateBaselines(body);
-        return sendJson(res, 200, { baselines, analytics: store.computeAnalytics(query) });
+        const gasPushResult = await pushMutationToGas(
+          store,
+          { action: 'saveBaselines', baselines },
+          'Updated Regional Baselines in Google Sheet.',
+          gasPushFn
+        );
+        return sendJson(res, 200, { baselines, gasPushResult, analytics: store.computeAnalytics(query) });
       }
 
       if (req.method === 'POST' && pathname === '/api/sync/google-sheet') {
