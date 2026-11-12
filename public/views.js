@@ -1541,6 +1541,7 @@ export function renderSyncView(ctx) {
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" id="btn-save-gas-url">Save Endpoint</button>
             <button class="btn btn-primary btn-sm" id="btn-pull-gas-url">Pull Snapshot via GAS</button>
+            <button class="btn btn-secondary btn-sm" id="btn-sync-gas-headers">Sync Column Headers to Google Sheets</button>
           </div>
           <p style="margin:0;font-size:12px;color:var(--text-muted)">
             When configured (or set via Vercel <code>GAS_WEB_APP_URL</code> env var), edits across all <strong>6 OPTool tabs</strong>, <strong>Milestone_Data</strong>, and <strong>Regional_Baselines</strong> automatically push live to your Google Sheet, while active spreadsheets auto-sync in the background.

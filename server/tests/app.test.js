@@ -1040,6 +1040,46 @@ test('GAS_WEB_APP_URL env default and automatic Google Sheet two-way push on mut
     assert.equal(delMsRes.statusCode, 200);
     assert.equal(delMsRes.body.gasPushResult?.ok, true);
     assert.ok(pushedPayloads.some((p) => p.payload.action === 'deleteMilestone'));
+
+    // 4. Provincial routing attaches provinceCode & sync-gas-headers pushes syncOptoolHeaders
+    const nsaSave = await callApi('/api/optool/Database', 'POST', {
+      row: {
+        lhid: 'LH-NSA-001',
+        province: 'Northern Samar',
+        municipality: 'Catarman',
+        milestoneTarget: 'RegistrationDistribution'
+      }
+    });
+    assert.equal(nsaSave.statusCode, 200);
+    assert.ok(
+      pushedPayloads.some(
+        (p) =>
+          p.payload.action === 'upsertOptoolRow' &&
+          p.payload.tabName === 'Database' &&
+          p.payload.provinceCode === 'NSA'
+      )
+    );
+    assert.ok(
+      pushedPayloads.some(
+        (p) =>
+          p.payload.action === 'upsertOptoolRow' &&
+          p.payload.tabName === 'RegistrationDistribution' &&
+          p.payload.provinceCode === 'NSA'
+      )
+    );
+
+    const hdrSyncRes = await callApi('/api/sync/gas-headers', 'POST', {});
+    assert.equal(hdrSyncRes.statusCode, 200);
+    assert.ok(pushedPayloads.some((p) => p.payload.action === 'syncOptoolHeaders'));
+
+    // 5. Verify gas/Code.gs OPTOOL_SCHEMA_HEADERS matches OPTOOL_SHEET_SCHEMAS 1:1
+    const gasCode = fs.readFileSync(path.resolve('gas/Code.gs'), 'utf8');
+    const match = gasCode.match(/const OPTOOL_SCHEMA_HEADERS = (\{[\s\S]*?\n\});/);
+    assert.ok(match, 'OPTOOL_SCHEMA_HEADERS missing from gas/Code.gs');
+    const gasHeaders = new Function(`return (${match[1]});`)();
+    for (const [tab, cols] of Object.entries(OPTOOL_SHEET_SCHEMAS)) {
+      assert.deepEqual(gasHeaders[tab], cols.map((c) => c.header), `Mismatch in gas/Code.gs headers for ${tab}`);
+    }
   } finally {
     if (prevGasEnv === undefined) {
       delete process.env.GAS_WEB_APP_URL;

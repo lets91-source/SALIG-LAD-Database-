@@ -891,6 +891,25 @@ function bindSyncViewEvents(container) {
     }
   });
 
+  container.querySelector('#btn-sync-gas-headers')?.addEventListener('click', async () => {
+    const gasWebAppUrl = document.getElementById('gas-url-input').value.trim();
+    if (!gasWebAppUrl) return toast('Enter a deployed GAS Web App URL first', true);
+    toast('Syncing updated SALIG column headers across Google Sheets…');
+    try {
+      const res = await api('/api/sync/gas-headers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gasWebAppUrl })
+      });
+      appState.state.syncLogs = res.syncLogs;
+      renderActiveView();
+      const syncedCount = (res.results || []).filter((r) => r.status === 'synced').length;
+      toast(`Synced SALIG column headers on ${syncedCount} Google Sheet(s)`);
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+
   container.querySelector('#btn-copy-gas')?.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(appState.gasScript || '');

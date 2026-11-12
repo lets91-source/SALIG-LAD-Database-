@@ -11,7 +11,9 @@ import {
   MILESTONE_TARGET_TABS,
   MILESTONE_DATA_COLUMNS,
   OPTOOL_SHEET_SCHEMAS,
-  OPTOOL_PREVIEW_COLUMNS
+  OPTOOL_PREVIEW_COLUMNS,
+  inferProvinceCodeFromText,
+  inferProvinceCodeFromMunicipality
 } from './schema.js';
 import { ConsolidatedStore } from './store.js';
 import {
@@ -105,6 +107,20 @@ async function pushMutationToGas(store, payload, summaryLabel, pushFn = pushToGa
   }
 }
 
+function inferOptoolRowProvinceCode(store, row) {
+  const lhid = String(row?.lhid || '').trim().toLowerCase();
+  const dbRow = lhid
+    ? (store.state.optool?.Database || []).find((r) => String(r.lhid || '').trim().toLowerCase() === lhid)
+    : null;
+  return (
+    inferProvinceCodeFromText(row?.province) ||
+    inferProvinceCodeFromText(dbRow?.province) ||
+    inferProvinceCodeFromMunicipality(row?.municipality || dbRow?.municipality) ||
+    inferProvinceCodeFromText(row?.lhid) ||
+    ''
+  );
+}
+
 async function pushRoutedTargetRow(store, targetTab, lhid, gasPushFn) {
   if (!targetTab) return null;
   const lhidKey = String(lhid || '').trim().toLowerCase();
@@ -118,7 +134,8 @@ async function pushRoutedTargetRow(store, targetTab, lhid, gasPushFn) {
       action: 'upsertOptoolRow',
       tabName: targetTab,
       headers: getOptoolHeadersSpec(targetTab),
-      row: targetRow
+      row: targetRow,
+      provinceCode: inferOptoolRowProvinceCode(store, targetRow)
     },
     `Routed ${targetRow.lhid || 'parcel'} into Google Sheet tab ${targetTab}.`,
     gasPushFn
@@ -248,7 +265,8 @@ export function createAppServer(dataDir, options = {}) {
                 tabName: 'Database',
                 headers: getOptoolHeadersSpec('Database'),
                 row: result.row,
-                prevRow: result.row
+                prevRow: result.row,
+                provinceCode: inferOptoolRowProvinceCode(store, result.row)
               },
               `Updated Database Milestone Target (${result.row.lhid || `row #${idx + 1}`}) in Google Sheet.`,
               gasPushFn
@@ -286,7 +304,8 @@ export function createAppServer(dataDir, options = {}) {
               tabName,
               headers: getOptoolHeadersSpec(tabName),
               row: saved,
-              prevRow
+              prevRow,
+              provinceCode: inferOptoolRowProvinceCode(store, saved)
             },
             `Saved ${tabName} row (${saved.lhid || 'record'}) to Regional Google Sheet.`,
             gasPushFn
@@ -315,7 +334,8 @@ export function createAppServer(dataDir, options = {}) {
                   action: 'deleteOptoolRow',
                   tabName,
                   headers: getOptoolHeadersSpec(tabName),
-                  row: deletedRow
+                  row: deletedRow,
+                  provinceCode: inferOptoolRowProvinceCode(store, deletedRow)
                 },
                 `Deleted ${tabName} row (${deletedRow.lhid || `#${idx + 1}`}) from Regional Google Sheet.`,
                 gasPushFn
@@ -608,6 +628,30 @@ export function createAppServer(dataDir, options = {}) {
           gasWebAppUrl: store.state.gasWebAppUrl,
           syncLogs: store.state.syncLogs
         });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/sync/gas-headers') {
+        const body = await readJsonBody(req);
+        const gasUrl = String(body.gasWebAppUrl || store.state.gasWebAppUrl || '').trim();
+        if (!gasUrl) {
+          return sendJson(res, 400, { ok: false, error: 'Configured GAS Web App URL is required.' });
+        }
+        try {
+          const result = await gasPushFn(gasUrl, { action: 'syncOptoolHeaders' });
+          const syncedSheets = (result.results || []).filter((r) => r.status === 'synced').length;
+          store.addSyncLog(
+            'GAS Header Sync',
+            'success',
+            `Synchronized SALIG column headers across ${syncedSheets} Google Sheet(s).`,
+            result.results
+          );
+          store.save();
+          return sendJson(res, 200, { ok: true, ...result, syncLogs: store.state.syncLogs });
+        } catch (err) {
+          store.addSyncLog('GAS Header Sync', 'error', err.message);
+          store.save();
+          return sendJson(res, 502, { ok: false, error: err.message, syncLogs: store.state.syncLogs });
+        }
       }
 
       if (req.method === 'POST' && pathname === '/api/import/xlsx') {

@@ -48,6 +48,78 @@ const OPTOOL_TABS = [
   'Installation'
 ];
 
+const OPTOOL_SCHEMA_HEADERS = {
+  Database: [
+    'LHID', 'Title Number', 'Land Owner', 'MOA', 'Phase',
+    'RegionName', 'Province', 'Municipality', 'Barangay',
+    'SurveyStatus', 'TargetYear', 'PipelineYear', 'problematic',
+    'Total Area', 'ComputedArea', 'DistributedArea', 'SurveyNumber', 'LotNumber',
+    'CARPable', 'NONCARPable', 'Optool Status', 'CurrentStatusDesc',
+    'NewLandSize', 'Lad Status', 'Milestone Target', 'Year'
+  ],
+  'CF(DOC)': [
+    'LHID', 'Certificate of TItle', 'DENR Certification', 'Tax Declaration',
+    'Carper Lad Form 1&2', 'Carper Lad Form 3', 'ASP', 'Carper Lad form 18',
+    'Carper LAD form 20', 'MARPO Cert.', 'FIR Carper LAD Form 46',
+    'Land use per FI', 'Copy of the AdvSP', 'Carper LAD No. 49',
+    'Carper LAD No. 37/oathe of ARB', 'Carper LAD form 47',
+    'Approved Subdivision/Segregation Plan', 'DATE FI CONDUCTED',
+    'DATE PREPARED & SIGNED', 'TARGET\n (Current/ Previous)',
+    'Reported Month', 'REMARKS', 'PDF File'
+  ],
+  Survey: [
+    'LHID', 'Kind of Survey', 'Date RSS', 'Field Work Start Date',
+    'Field Work Completion Date', 'Finalized Survey Return \nDate',
+    'SR Forwarded to DARRO', 'SR Accepted by DARRO', 'Plan\n(With/Out)',
+    'Field Notes W/Cover\n(With/Out)', 'Traverse Computation\n(With/Out)',
+    'Lot Data Computation\n(With/Out)', 'DLSD File',
+    'Transmittal of Survey Returned PDF File\n(With/Out)',
+    'Reference Boundary Computation\n(With/Out)', 'Notice of Coverage\n(With/Out)',
+    'Tax Declaration\n(With/Out)', 'Certified Copy of Title\n(With/Out)',
+    'MARPO Certification', 'Survey Authority\nIF APPLICABLE',
+    'CENRO Certification\nIF APPLICABLE', 'Order of Cancellation\nIF APPLICABLE \n',
+    'Order of Correction\nIF APPLICABLE', 'Remarks\n(SR Returned by DARRO to DARPO',
+    'Survey Returns Returned DARRO to DARPO\nDATE',
+    'Sruvey Returns Re-Submitted to DARRO\nDATE',
+    'Surver Returns Trasmitted to DENR-SMD DATE', 'Transaction Number',
+    'Date Accepted by DENR-SMD\nDATE', 'With Submitted DLSD',
+    'SR Returned by DENR-SMD to DARRO\nDATE',
+    'SR Returned DENR-SMD -> DARRO - DARPO',
+    'Remarks\n(Returned SRs from DENR)',
+    'SR Returned by DARPO to DARRO\nDATE',
+    'DARRO Re-submitted survey to DENR-SMD\nDATE',
+    'ASP Date', 'ASP No.', 'Received By',
+    'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File',
+    'Current Status', 'Current Date'
+  ],
+  MOV: [
+    'LHID', 'PPU Date', 'PPU Review Result\n(PASSED/FAILED)',
+    'Date Received at DARPO', 'Compensation Amount', 'Date of MOV',
+    'Date Trans to LBP/AOC', 'LBP Claim Number', 'AOC Number',
+    'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File'
+  ],
+  RegistrationDistribution: [
+    'LHID/ Sequence No.', 'Origin/\nSource:\n(New Land, REDOC & DNYD)',
+    'CLOA TYPE (EP/CLOA OR COLLECTIVE)', 'REGION', 'PROVINCE',
+    'MUNICIPALITY', 'BARANGAY', 'NAME OF ARB (LN, FN, MI)',
+    'EP or CLOA \nSERIAL No.', 'AREA\n(HAs)', 'MOA', 'ROD TITLE NO.',
+    'DATE REGISTERED', 'DATE OF DISTRIBUTION (mm/dd/yyyy)',
+    'Total Number of ARB', 'Male', 'Female', 'NO. OF TITLES',
+    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'REMARKS'
+  ],
+  Installation: [
+    'LHID \n (From OPTool, \n if New Land)', 'REGION', 'PROVINCE',
+    'MUNICIPALITY', 'BARANGAY', 'LAST NAME', 'FIRST NAME', 'MIDDLE NAME',
+    'TITLE NO. OR TAX DEC. NO.', 'LOT No.', 'AREA (Has.)',
+    'LAST NAME', 'FIRST NAME', 'MIDDLE NAME', 'GENDER (M/F)',
+    'ROD TITLE No.', 'EP OR CLOA \n SERIAL No.', 'SURVEY No.', 'LOT No.2',
+    'AREA\n (HAs) 2', 'DATE REGISTERED', 'DATE DISTRIBUTED',
+    'DATE OF INSTALLATION (mm/dd/yyyy)', 'REMARKS (Installed - Yes/No)',
+    'No. OF ARBs', 'No. OF TITLES', 'REMARKS', 'YEAR ACCOMP',
+    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED'
+  ]
+};
+
 const DEFAULT_BASELINES = {
   BIL: { targetETitles: 180, targetAreaHas: 245.5 },
   ESA: { targetETitles: 320, targetAreaHas: 512.75 },
@@ -61,6 +133,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('SPLIT Region VIII Hub')
     .addItem('Run Regional ETL Consolidation Now', 'runRegionalETL')
+    .addItem('Sync SALIG Column Headers Across Sheets', 'syncAllSheetHeaders')
     .addItem('Initialize Milestone_Data & Baselines Tabs', 'initializeHubTabs')
     .addItem('Install Hourly Auto-Sync Trigger', 'installHourlyTrigger')
     .addToUi();
@@ -302,14 +375,31 @@ function doPost(e) {
     }
 
     if (body.action === 'upsertOptoolRow' && body.tabName && body.row) {
-      const result = upsertOptoolRecord_(body.tabName, body.headers || [], body.row, body.prevRow || null);
+      const result = upsertOptoolRecord_(
+        body.tabName,
+        body.headers || [],
+        body.row,
+        body.prevRow || null,
+        body.provinceCode || ''
+      );
       return ContentService.createTextOutput(JSON.stringify(result))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
     if (body.action === 'deleteOptoolRow' && body.tabName && body.row) {
-      const deleted = deleteOptoolRecord_(body.tabName, body.headers || [], body.row);
+      const deleted = deleteOptoolRecord_(
+        body.tabName,
+        body.headers || [],
+        body.row,
+        body.provinceCode || ''
+      );
       return ContentService.createTextOutput(JSON.stringify({ ok: deleted, tabName: body.tabName }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'syncOptoolHeaders') {
+      const syncResult = syncAllSheetHeaders(body.spreadsheetId || '');
+      return ContentService.createTextOutput(JSON.stringify(syncResult))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -522,32 +612,214 @@ function normalizeHeaderKey_(val) {
     .replace(/[^a-z0-9]/g, '');
 }
 
-function ensureOptoolSheet_(tabName, headersSpec) {
+function findOptoolSheet_(ss, tabName) {
+  const exact = ss.getSheetByName(tabName);
+  if (exact) return exact;
+  const targetNorm = normalizeHeaderKey_(tabName);
+  const sheets = ss.getSheets();
+  for (let i = 0; i < sheets.length; i++) {
+    if (normalizeHeaderKey_(sheets[i].getName()) === targetNorm) {
+      return sheets[i];
+    }
+  }
+  return null;
+}
+
+function isColumnEmptyBelowHeader_(sheet, colOneBased) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return true;
+  const vals = sheet.getRange(2, colOneBased, lastRow - 1, 1).getValues();
+  for (let r = 0; r < vals.length; r++) {
+    if (String(vals[r][0] || '').trim() !== '') return false;
+  }
+  return true;
+}
+
+function getDefaultHeaderTitles_(tabName, headersSpec) {
+  if (OPTOOL_SCHEMA_HEADERS[tabName]) return OPTOOL_SCHEMA_HEADERS[tabName].slice();
+  return (headersSpec || []).map(function (h) { return h.header || h.key; });
+}
+
+function styleHeaderRange_(range) {
+  range.setFontWeight('bold').setBackground('#14532D').setFontColor('#FFFFFF');
+}
+
+function syncOptoolTabHeaders_(ss, tabName, headersSpec) {
   if (OPTOOL_TABS.indexOf(tabName) === -1) {
     throw new Error('Unsupported OPTool tab: ' + tabName);
   }
-  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
-  let sheet = hub.getSheetByName(tabName);
+  const expectedTitles = getDefaultHeaderTitles_(tabName, headersSpec);
+  let sheet = findOptoolSheet_(ss, tabName);
   if (!sheet) {
-    sheet = hub.insertSheet(tabName);
+    sheet = ss.insertSheet(tabName);
   }
-  if (sheet.getLastColumn() === 0 && headersSpec && headersSpec.length > 0) {
-    const titles = headersSpec.map(function (h) { return h.header || h.key; });
-    sheet.getRange(1, 1, 1, titles.length).setValues([titles]);
-    sheet.getRange(1, 1, 1, titles.length).setFontWeight('bold').setBackground('#14532D').setFontColor('#FFFFFF');
-    sheet.setFrozenRows(1);
+  if (sheet.getLastColumn() === 0) {
+    if (expectedTitles.length > 0) {
+      const range = sheet.getRange(1, 1, 1, expectedTitles.length);
+      range.setValues([expectedTitles]);
+      styleHeaderRange_(range);
+      sheet.setFrozenRows(1);
+    }
+    return { sheet: sheet, added: expectedTitles.slice(), renamed: [], removedEmpty: [] };
   }
-  return sheet;
+
+  const renamed = [];
+  const removedEmpty = [];
+  const added = [];
+
+  // Safe in-place cleanup & header label upgrades without moving populated data columns
+  let headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  for (let c = headerRow.length - 1; c >= 0; c--) {
+    const norm = normalizeHeaderKey_(headerRow[c]);
+    if (tabName === 'CF(DOC)' && norm === 'test' && isColumnEmptyBelowHeader_(sheet, c + 1)) {
+      sheet.deleteColumn(c + 1);
+      removedEmpty.push('test');
+    } else if (tabName === 'RegistrationDistribution' && norm === 'gendermf' && isColumnEmptyBelowHeader_(sheet, c + 1)) {
+      sheet.deleteColumn(c + 1);
+      removedEmpty.push('Gender (M/F)');
+    }
+  }
+
+  headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  for (let c = 0; c < headerRow.length; c++) {
+    const norm = normalizeHeaderKey_(headerRow[c]);
+    if (tabName === 'MOV' && norm === 'ppureviewresult') {
+      sheet.getRange(1, c + 1).setValue('PPU Review Result\n(PASSED/FAILED)');
+      renamed.push('PPU Review Result -> PPU Review Result (PASSED/FAILED)');
+    } else if (
+      tabName === 'RegistrationDistribution' &&
+      (norm === 'noofarbs' || norm === 'totalnoofarbs' || norm === 'totalnumberofarbs')
+    ) {
+      sheet.getRange(1, c + 1).setValue('Total Number of ARB');
+      renamed.push(String(headerRow[c]) + ' -> Total Number of ARB');
+    } else if (
+      tabName === 'RegistrationDistribution' &&
+      (norm === 'targetcurrentprevious' || norm === 'targetyearcurrentprevious')
+    ) {
+      sheet.getRange(1, c + 1).setValue('TARGET YEAR\n (Current/ Previous)');
+    } else if (
+      tabName === 'Installation' &&
+      (norm === 'targetcurrentprevious' || norm === 'targetyearcurrentprevious')
+    ) {
+      sheet.getRange(1, c + 1).setValue('TARGET YEAR\n (Current/ Previous)');
+    }
+  }
+
+  // Count existing occurrences of each normalized header so duplicate names (e.g. Installation) match exact multiplicity
+  headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const existingCounts = {};
+  for (let c = 0; c < headerRow.length; c++) {
+    const norm = normalizeHeaderKey_(headerRow[c]);
+    existingCounts[norm] = (existingCounts[norm] || 0) + 1;
+  }
+
+  const seenCounts = {};
+  for (let i = 0; i < expectedTitles.length; i++) {
+    const title = expectedTitles[i];
+    const norm = normalizeHeaderKey_(title);
+    seenCounts[norm] = (seenCounts[norm] || 0) + 1;
+    if ((existingCounts[norm] || 0) < seenCounts[norm]) {
+      added.push(title);
+    }
+  }
+
+  if (added.length > 0) {
+    const startCol = sheet.getLastColumn() + 1;
+    const range = sheet.getRange(1, startCol, 1, added.length);
+    range.setValues([added]);
+    styleHeaderRange_(range);
+  }
+
+  return { sheet: sheet, added: added, renamed: renamed, removedEmpty: removedEmpty };
 }
 
-function buildOptoolColMap_(sheet, headersSpec) {
-  const lastCol = Math.max(sheet.getLastColumn(), (headersSpec && headersSpec.length) || 0);
+/**
+ * Menu & Web App action: Sync SALIG 6-tab column headers across Active Sheet, Regional Hub, and accessible Provincial Nodes.
+ */
+function syncAllSheetHeaders(specificSpreadsheetId) {
+  const targets = [];
+  const seenIds = {};
+  const addTarget = function (code, id) {
+    if (!id || seenIds[id]) return;
+    seenIds[id] = true;
+    targets.push({ code: code, id: id });
+  };
+
+  if (specificSpreadsheetId) {
+    addTarget('TARGET', specificSpreadsheetId);
+  } else {
+    try {
+      const active = SpreadsheetApp.getActiveSpreadsheet();
+      if (active) addTarget('ACTIVE', active.getId());
+    } catch (ignore) {}
+    addTarget('HUB', HUB_SPREADSHEET_ID);
+    PROVINCIAL_NODES.forEach(function (n) {
+      addTarget(n.code, n.id);
+    });
+  }
+
+  const results = [];
+  targets.forEach(function (t) {
+    try {
+      const ss = SpreadsheetApp.openById(t.id);
+      const tabReport = {};
+      OPTOOL_TABS.forEach(function (tabName) {
+        const res = syncOptoolTabHeaders_(ss, tabName, null);
+        tabReport[tabName] = {
+          added: res.added,
+          renamed: res.renamed,
+          removedEmpty: res.removedEmpty
+        };
+      });
+      results.push({ code: t.code, spreadsheetId: t.id, name: ss.getName(), status: 'synced', tabs: tabReport });
+    } catch (err) {
+      results.push({ code: t.code, spreadsheetId: t.id, status: 'error', error: err.message });
+    }
+  });
+
+  return { ok: true, results: results };
+}
+
+function resolveNodeIdFromRow_(provinceCode, rowObj) {
+  const rawCode = String(provinceCode || '').trim().toUpperCase();
+  for (let i = 0; i < PROVINCIAL_NODES.length; i++) {
+    if (PROVINCIAL_NODES[i].code === rawCode) return PROVINCIAL_NODES[i].id;
+  }
+  const provText = String((rowObj && rowObj.province) || '').toLowerCase();
+  if (provText.indexOf('biliran') !== -1) return PROVINCIAL_NODES[0].id;
+  if (provText.indexOf('eastern samar') !== -1) return PROVINCIAL_NODES[1].id;
+  if (provText.indexOf('northern samar') !== -1) return PROVINCIAL_NODES[3].id;
+  if (provText.indexOf('southern leyte') !== -1) return PROVINCIAL_NODES[5].id;
+  if (provText.indexOf('samar') !== -1) return PROVINCIAL_NODES[4].id;
+  if (provText.indexOf('leyte') !== -1) return PROVINCIAL_NODES[2].id;
+  return '';
+}
+
+function getWriteTargetSpreadsheets_(provinceCode, rowObj) {
+  const targets = [{ code: 'HUB', id: HUB_SPREADSHEET_ID }];
+  const provId = resolveNodeIdFromRow_(provinceCode, rowObj);
+  if (provId && provId !== HUB_SPREADSHEET_ID) {
+    targets.push({ code: provinceCode || 'PROVINCE', id: provId });
+  }
+  return targets;
+}
+
+function ensureOptoolSheet_(ss, tabName, headersSpec) {
+  return syncOptoolTabHeaders_(ss, tabName, headersSpec).sheet;
+}
+
+function buildOptoolColMap_(sheet, tabName, headersSpec) {
+  const specList =
+    headersSpec && headersSpec.length > 0
+      ? headersSpec
+      : getDefaultHeaderTitles_(tabName, []).map(function (h) { return { key: h, header: h }; });
+  const lastCol = Math.max(sheet.getLastColumn(), specList.length);
   const sheetHeaders = sheet.getLastColumn() > 0
     ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
-    : (headersSpec || []).map(function (h) { return h.header || h.key; });
+    : specList.map(function (h) { return h.header || h.key; });
 
   const buckets = {};
-  (headersSpec || []).forEach(function (spec) {
+  specList.forEach(function (spec) {
     const k = normalizeHeaderKey_(spec.header || spec.key);
     if (!buckets[k]) buckets[k] = [];
     buckets[k].push(spec);
@@ -557,8 +829,8 @@ function buildOptoolColMap_(sheet, headersSpec) {
   for (let c = 0; c < sheetHeaders.length; c++) {
     const norm = normalizeHeaderKey_(sheetHeaders[c]);
     let spec = buckets[norm] && buckets[norm].length > 0 ? buckets[norm].shift() : null;
-    if (!spec && headersSpec && headersSpec[c] && normalizeHeaderKey_(headersSpec[c].header || headersSpec[c].key) === norm) {
-      spec = headersSpec[c];
+    if (!spec && specList[c] && normalizeHeaderKey_(specList[c].header || specList[c].key) === norm) {
+      spec = specList[c];
     }
     colMap.push(spec || null);
   }
@@ -588,14 +860,14 @@ function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
     if (isUniqueByLhid) return r + 1;
     if (firstLhidMatch === -1) firstLhidMatch = r + 1;
 
-    // Match multi-row tab entries more precisely when secondary identifiers exist
     let secondaryMatches = true;
     for (let c = 0; c < colMap.length; c++) {
       const spec = colMap[c];
       if (!spec || spec.key === 'lhid') continue;
       if (spec.key === 'monthReported' || spec.key === 'remarks' || spec.key === 'target') {
-        const expected = String(ref[spec.key] ?? '').trim();
-        const actual = String(values[r][c] ?? '').trim();
+        const rawExpected = ref[spec.key];
+        const expected = rawExpected !== undefined && rawExpected !== null ? String(rawExpected).trim() : '';
+        const actual = String(values[r][c] || '').trim();
         if (expected && actual !== expected) {
           secondaryMatches = false;
           break;
@@ -607,9 +879,9 @@ function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
   return prevRow ? -1 : firstLhidMatch;
 }
 
-function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow) {
-  const sheet = ensureOptoolSheet_(tabName, headersSpec);
-  const mapped = buildOptoolColMap_(sheet, headersSpec);
+function upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow) {
+  const sheet = ensureOptoolSheet_(ss, tabName, headersSpec);
+  const mapped = buildOptoolColMap_(sheet, tabName, headersSpec);
   const colMap = mapped.colMap;
   const width = mapped.width;
 
@@ -638,13 +910,40 @@ function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow) {
   return { ok: true, tabName: tabName, updated: rowNumber > 0, rowNumber: rowNumber > 0 ? rowNumber : sheet.getLastRow() };
 }
 
-function deleteOptoolRecord_(tabName, headersSpec, rowObj) {
-  const sheet = ensureOptoolSheet_(tabName, headersSpec);
-  const mapped = buildOptoolColMap_(sheet, headersSpec);
-  const rowNumber = findOptoolRowNumber_(sheet, mapped.colMap, tabName, rowObj, rowObj);
-  if (rowNumber > 1) {
-    sheet.deleteRow(rowNumber);
-    return true;
-  }
-  return false;
+function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow, provinceCode) {
+  const targets = getWriteTargetSpreadsheets_(provinceCode, rowObj);
+  const perNode = [];
+  let primaryResult = { ok: true, tabName: tabName, updated: false, rowNumber: 0 };
+
+  targets.forEach(function (t, idx) {
+    try {
+      const ss = SpreadsheetApp.openById(t.id);
+      const res = upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow);
+      if (idx === 0) primaryResult = res;
+      perNode.push({ code: t.code, ok: true, updated: res.updated, rowNumber: res.rowNumber });
+    } catch (err) {
+      perNode.push({ code: t.code, ok: false, error: err.message });
+    }
+  });
+
+  primaryResult.syncedNodes = perNode;
+  return primaryResult;
+}
+
+function deleteOptoolRecord_(tabName, headersSpec, rowObj, provinceCode) {
+  const targets = getWriteTargetSpreadsheets_(provinceCode, rowObj);
+  let deletedAny = false;
+  targets.forEach(function (t) {
+    try {
+      const ss = SpreadsheetApp.openById(t.id);
+      const sheet = ensureOptoolSheet_(ss, tabName, headersSpec);
+      const mapped = buildOptoolColMap_(sheet, tabName, headersSpec);
+      const rowNumber = findOptoolRowNumber_(sheet, mapped.colMap, tabName, rowObj, rowObj);
+      if (rowNumber > 1) {
+        sheet.deleteRow(rowNumber);
+        deletedAny = true;
+      }
+    } catch (ignore) {}
+  });
+  return deletedAny;
 }
