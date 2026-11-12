@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -154,10 +155,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_DATA_DIR = path.join(__dirname, 'data');
 
+/** Resolve storage directory, falling back to /tmp on Vercel read-only filesystems. */
+export function resolveDefaultDataDir() {
+  return process.env.VERCEL ? path.join(os.tmpdir(), 'salig-data') : DEFAULT_DATA_DIR;
+}
+
 export class ConsolidatedStore {
-  constructor(dataDir = DEFAULT_DATA_DIR) {
-    this.dataDir = dataDir;
-    this.storePath = path.join(dataDir, 'store.json');
+  constructor(dataDir) {
+    this.isVercelTmpFallback = !dataDir && Boolean(process.env.VERCEL);
+    this.dataDir = dataDir || resolveDefaultDataDir();
+    this.storePath = path.join(this.dataDir, 'store.json');
     this.state = null;
     this.load();
   }
@@ -170,6 +177,10 @@ export class ConsolidatedStore {
 
   load() {
     this.ensureDir();
+    const bundledStorePath = path.join(DEFAULT_DATA_DIR, 'store.json');
+    if (this.isVercelTmpFallback && !fs.existsSync(this.storePath) && fs.existsSync(bundledStorePath)) {
+      fs.copyFileSync(bundledStorePath, this.storePath);
+    }
     if (fs.existsSync(this.storePath)) {
       try {
         const raw = fs.readFileSync(this.storePath, 'utf8');

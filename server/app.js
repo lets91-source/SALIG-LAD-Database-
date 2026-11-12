@@ -644,5 +644,5 @@ export function createAppServer(dataDir) {
   };
 
   const server = http.createServer(handler);
-  return { server, store };
+  return { server, store, handler };
 }

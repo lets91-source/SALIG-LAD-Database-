@@ -11,13 +11,14 @@ import {
   inferProvinceCodeFromMunicipality,
   isChecklistChecked as isServerChecklistChecked
 } from '../schema.js';
-import { ConsolidatedStore } from '../store.js';
+import { ConsolidatedStore, resolveDefaultDataDir } from '../store.js';
 import {
   buildConsolidatedWorkbookBuffer,
   parseWorkbookBuffer,
   parseCsvText
 } from '../sheetsSync.js';
 import { createAppServer } from '../app.js';
+import vercelHandler from '../../api/index.js';
 import {
   renderOptoolView,
   getColumnFilterValues,
@@ -874,6 +875,77 @@ test('RegistrationDistribution Reporting fields, ARB totals, Target Year, Month 
     } finally {
       fs.rmSync(legacyDir, { recursive: true, force: true });
     }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Serverless handler export and Vercel /tmp fallback work without server.listen', async () => {
+  const invokeMock = (fn, url, method = 'GET') =>
+    new Promise((resolve, reject) => {
+      const chunks = [];
+      const req = { url, method, headers: { host: 'localhost:3001' } };
+      const res = {
+        statusCode: 200,
+        headers: {},
+        writeHead(code, headers = {}) {
+          this.statusCode = code;
+          Object.assign(this.headers, headers);
+        },
+        setHeader(name, value) {
+          this.headers[name.toLowerCase()] = value;
+        },
+        write(chunk) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+        },
+        end(chunk) {
+          if (chunk) this.write(chunk);
+          resolve({
+            statusCode: this.statusCode,
+            headers: this.headers,
+            body: Buffer.concat(chunks).toString('utf8')
+          });
+        }
+      };
+      Promise.resolve(fn(req, res)).catch(reject);
+    });
+
+  const prevVercel = process.env.VERCEL;
+  const tmpVercelDir = path.join(os.tmpdir(), 'salig-data');
+  const existedBefore = fs.existsSync(tmpVercelDir);
+
+  try {
+    process.env.VERCEL = '1';
+    assert.equal(resolveDefaultDataDir(), tmpVercelDir);
+
+    const vercelHealth = await invokeMock(vercelHandler, '/api/health');
+    assert.equal(vercelHealth.statusCode, 200);
+    assert.equal(JSON.parse(vercelHealth.body).ok, true);
+    assert.ok(fs.existsSync(path.join(tmpVercelDir, 'store.json')));
+  } finally {
+    if (prevVercel === undefined) {
+      delete process.env.VERCEL;
+    } else {
+      process.env.VERCEL = prevVercel;
+    }
+    if (!existedBefore) {
+      fs.rmSync(tmpVercelDir, { recursive: true, force: true });
+    }
+  }
+
+  const dir = makeTempDir();
+  try {
+    const { handler } = createAppServer(dir);
+    assert.equal(typeof handler, 'function');
+
+    const health = await invokeMock(handler, '/api/health');
+    assert.equal(health.statusCode, 200);
+    assert.equal(JSON.parse(health.body).ok, true);
+
+    const bootstrap = await invokeMock(handler, '/api/bootstrap');
+    assert.equal(bootstrap.statusCode, 200);
+    const bootstrapJson = JSON.parse(bootstrap.body);
+    assert.ok(Array.isArray(bootstrapJson.state?.optool?.Database));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
