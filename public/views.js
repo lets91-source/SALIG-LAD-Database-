@@ -1012,18 +1012,145 @@ function formatReportedMonthDisplay(val) {
   return s;
 }
 
-export function renderCfWhereaboutsView(ctx) {
+export const WHEREABOUTS_CONFIGS = {
+  'cf-whereabouts': {
+    tabName: 'CF(DOC)',
+    viewKey: 'cf-whereabouts',
+    badgeIcon: '📄',
+    title: 'CF Whereabouts & Date Summary',
+    subtitle: 'Claim Folder (CF) Tracking • Date FI Conducted • Date Prepared & Signed • Reported Month',
+    openTabName: 'CF(DOC)',
+    dates: [
+      { key: 'dateFiConducted', label: 'DATE FI CONDUCTED', shortLabel: 'FI Conducted', badgeClass: 'badge-green', icon: '✔' },
+      { key: 'datePreparedSigned', label: 'DATE PREPARED & SIGNED', shortLabel: 'Prepared & Signed', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'reportedMonth', label: 'REPORTED MONTH', shortLabel: 'Reported Month', badgeClass: 'badge-amber', isMonth: true }
+    ],
+    resolveStage: (row) => {
+      const hasFi = Boolean(row.dateFiConducted);
+      const hasPrep = Boolean(row.datePreparedSigned);
+      const hasMonth = Boolean(row.reportedMonth);
+      if (hasFi && hasPrep && hasMonth) return { stage: 'Completed & Reported', badge: 'badge-green' };
+      if (hasPrep) return { stage: 'Prepared & Signed', badge: 'badge-blue' };
+      if (hasFi) return { stage: 'FI Conducted', badge: 'badge-amber' };
+      if (hasMonth) return { stage: 'Reported (Pending Dates)', badge: 'badge-purple' };
+      return { stage: 'Pending FI', badge: 'badge-gray' };
+    },
+    extraColHeader: 'Target',
+    extraColValue: (r) => `<span class="badge ${r.target === 'Current' ? 'badge-blue' : 'badge-gray'}">${esc(r.target || 'Current')}</span>`
+  },
+  'survey-whereabouts': {
+    tabName: 'Survey',
+    viewKey: 'survey-whereabouts',
+    badgeIcon: '📐',
+    title: 'Survey Whereabouts & Date Summary',
+    subtitle: 'Land Survey Milestone Tracking • Field Work Dates • SR Forwarded • DENR-SMD Acceptance • ASP Date • Reported Month',
+    openTabName: 'Survey',
+    dates: [
+      { key: 'fieldWorkCompletionDate', label: 'FIELD WORK COMPLETED', shortLabel: 'Field Work Done', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'srForwardedToDarro', label: 'SR TO DARRO', shortLabel: 'SR to DARRO', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'dateAcceptedDenrSmd', label: 'DENR-SMD ACCEPTED', shortLabel: 'DENR Accepted', badgeClass: 'badge-amber', icon: '✔' },
+      { key: 'aspDate', label: 'ASP DATE', shortLabel: 'ASP Approved', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
+      { key: 'reportedMonth', label: 'REPORTED MONTH', shortLabel: 'Reported Month', badgeClass: 'badge-amber', isMonth: true }
+    ],
+    resolveStage: (row) => {
+      if (row.aspDate) return { stage: 'ASP Approved', badge: 'badge-green' };
+      if (row.dateAcceptedDenrSmd) return { stage: 'Accepted DENR-SMD', badge: 'badge-blue' };
+      if (row.srForwardedToDarro) return { stage: 'SR at DARRO', badge: 'badge-purple' };
+      if (row.fieldWorkCompletionDate) return { stage: 'Field Work Done', badge: 'badge-amber' };
+      if (row.fieldWorkStartDate) return { stage: 'Field Work Started', badge: 'badge-blue' };
+      return { stage: 'Pending Survey', badge: 'badge-gray' };
+    },
+    extraColHeader: 'Survey Details',
+    extraColValue: (r) => `<span class="badge badge-gray">${esc(r.aspNo ? `ASP: ${r.aspNo}` : (r.kindOfSurvey || '—'))}</span>`
+  },
+  'mov-whereabouts': {
+    tabName: 'MOV',
+    viewKey: 'mov-whereabouts',
+    badgeIcon: '💰',
+    title: 'MOV (Land Valuation) Whereabouts & Date Summary',
+    subtitle: 'Memorandum of Valuation Tracking • PPU Date • Received at DARPO • Date of MOV • Transmitted to LBP/AOC • Reported Month',
+    openTabName: 'MOV',
+    dates: [
+      { key: 'ppuDate', label: 'PPU DATE', shortLabel: 'PPU Date', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'dateReceivedDarpo', label: 'RECEIVED DARPO', shortLabel: 'Received DARPO', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'dateOfMov', label: 'DATE OF MOV', shortLabel: 'Date of MOV', badgeClass: 'badge-amber', icon: '✔' },
+      { key: 'dateTransLbpAoc', label: 'TRANS TO LBP/AOC', shortLabel: 'Trans to LBP/AOC', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
+      { key: 'reportedMonth', label: 'REPORTED MONTH', shortLabel: 'Reported Month', badgeClass: 'badge-amber', isMonth: true }
+    ],
+    resolveStage: (row) => {
+      if (row.dateTransLbpAoc) return { stage: 'Transmitted to LBP/AOC', badge: 'badge-green' };
+      if (row.dateOfMov) return { stage: 'MOV Issued', badge: 'badge-blue' };
+      if (row.dateReceivedDarpo) return { stage: 'Received at DARPO', badge: 'badge-purple' };
+      if (row.ppuDate) return { stage: 'PPU Reviewed', badge: 'badge-amber' };
+      return { stage: 'Pending Valuation', badge: 'badge-gray' };
+    },
+    extraColHeader: 'Claim / Comp.',
+    extraColValue: (r) => `<span class="badge badge-gray">${esc(r.lbpClaimNumber ? `Claim: ${r.lbpClaimNumber}` : (r.compensationAmount ? `₱${r.compensationAmount}` : '—'))}</span>`
+  },
+  'regdist-whereabouts': {
+    tabName: 'RegistrationDistribution',
+    viewKey: 'regdist-whereabouts',
+    badgeIcon: '📜',
+    title: 'Registration & Distribution Whereabouts & Date Summary',
+    subtitle: 'EP CLOA Registration & Distribution Tracking • Date Registered • Date of Distribution • Month Reported',
+    openTabName: 'RegistrationDistribution',
+    dates: [
+      { key: 'dateRegistered', label: 'DATE REGISTERED', shortLabel: 'Date Registered', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'dateOfDistribution', label: 'DATE OF DISTRIBUTION', shortLabel: 'Date Distributed', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
+      { key: 'monthReported', label: 'MONTH REPORTED', shortLabel: 'Month Reported', badgeClass: 'badge-amber', isMonth: true }
+    ],
+    resolveStage: (row) => {
+      if (row.dateOfDistribution) return { stage: 'Distributed to ARBs', badge: 'badge-green' };
+      if (row.dateRegistered) return { stage: 'Registered with ROD', badge: 'badge-blue' };
+      if (row.monthReported) return { stage: 'Reported (Pending Reg)', badge: 'badge-amber' };
+      return { stage: 'Pending Registration', badge: 'badge-gray' };
+    },
+    extraColHeader: 'Titles / ARBs',
+    extraColValue: (r) => `<span class="badge badge-gray">${esc(`${r.noOfTitles || 0} Titles • ${r.noOfArbs || 0} ARBs`)}</span>`
+  },
+  'installation-whereabouts': {
+    tabName: 'Installation',
+    viewKey: 'installation-whereabouts',
+    badgeIcon: '🌱',
+    title: 'Installation Whereabouts & Date Summary',
+    subtitle: 'Physical Installation Tracking • Date Registered • Date Distributed • Date of Installation • Month Reported',
+    openTabName: 'Installation',
+    dates: [
+      { key: 'dateRegistered', label: 'DATE REGISTERED', shortLabel: 'Date Registered', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'dateDistributed', label: 'DATE DISTRIBUTED', shortLabel: 'Date Distributed', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'dateOfInstallation', label: 'DATE OF INSTALLATION', shortLabel: 'Date Installed', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
+      { key: 'monthReported', label: 'MONTH REPORTED', shortLabel: 'Month Reported', badgeClass: 'badge-amber', isMonth: true }
+    ],
+    resolveStage: (row) => {
+      const isInst = String(row.installedStatus || '').trim().toLowerCase() === 'yes' || Boolean(row.dateOfInstallation);
+      if (isInst) return { stage: 'Installed on Land', badge: 'badge-green' };
+      if (row.dateDistributed) return { stage: 'Distributed', badge: 'badge-purple' };
+      if (row.dateRegistered) return { stage: 'Registered', badge: 'badge-blue' };
+      return { stage: 'Pending Installation', badge: 'badge-gray' };
+    },
+    extraColHeader: 'Installed Status',
+    extraColValue: (r) => `<span class="badge ${String(r.installedStatus || '').toLowerCase() === 'yes' ? 'badge-green' : 'badge-gray'}">${esc(r.installedStatus ? `Installed: ${r.installedStatus}` : `${r.noOfArbs || 0} ARBs`)}</span>`
+  }
+};
+
+export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const {
     state,
     schemas,
     provinceScope,
-    cfSearch = '',
-    cfProvinceFilter = 'ALL',
-    cfDateStatusFilter = 'ALL',
-    cfPage = 1
+    whereaboutsSearch = {},
+    whereaboutsProvinceFilter = {},
+    whereaboutsStatusFilter = {},
+    whereaboutsPage = {}
   } = ctx;
 
-  const rawCfRows = (state?.optool?.['CF(DOC)'] || []).map((r, originalIndex) => ({
+  const viewKey = cfg.viewKey;
+  const searchVal = whereaboutsSearch[viewKey] || '';
+  const provFilterVal = whereaboutsProvinceFilter[viewKey] || 'ALL';
+  const statusFilterVal = whereaboutsStatusFilter[viewKey] || 'ALL';
+  const pageVal = whereaboutsPage[viewKey] || 1;
+
+  const rawRows = (state?.optool?.[cfg.tabName] || []).map((r, originalIndex) => ({
     ...r,
     __originalIndex: originalIndex
   }));
@@ -1034,78 +1161,64 @@ export function renderCfWhereaboutsView(ctx) {
     if (k && !dbMap.has(k)) dbMap.set(k, db);
   }
 
-  // Enrich each CF row with Database attributes
-  const enrichedRows = rawCfRows.map((cf) => {
-    const lhidKey = String(cf.lhid || '').trim().toLowerCase();
+  // Enrich each row with Database parcel attributes
+  const enrichedRows = rawRows.map((row) => {
+    const lhidKey = String(row.lhid || '').trim().toLowerCase();
     const db = dbMap.get(lhidKey) || {};
-    const carpableNum = parseNumericValue(db.carpable || cf.carpable || cf.carpableArea || 0);
-    const dateFi = String(cf.dateFiConducted || '').trim();
-    const datePrep = String(cf.datePreparedSigned || '').trim();
-    const monthRep = String(cf.reportedMonth || '').trim();
-    const provName = db.province || cf.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
-    const muniName = db.municipality || cf.municipality || '—';
-    const brgyName = db.barangay || cf.barangay || '—';
-    const titleNum = db.titleNumber || cf.titleNumber || '—';
-    const landOwner = db.landOwner || cf.landOwner || '—';
-    const targetPeriod = cf.target || db.targetYear || 'Current';
+    const carpableNum = parseNumericValue(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
+    const provName = db.province || row.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
+    const muniName = db.municipality || row.municipality || '—';
+    const brgyName = db.barangay || row.barangay || '—';
+    const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
+    const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
 
-    const hasFi = Boolean(dateFi);
-    const hasPrep = Boolean(datePrep);
-    const hasMonth = Boolean(monthRep);
-    const isComplete = hasFi && hasPrep && hasMonth;
-
-    let stage = 'Pending FI';
-    let stageBadge = 'badge-gray';
-    if (isComplete) {
-      stage = 'Completed & Reported';
-      stageBadge = 'badge-green';
-    } else if (hasPrep) {
-      stage = 'Prepared & Signed';
-      stageBadge = 'badge-blue';
-    } else if (hasFi) {
-      stage = 'FI Conducted';
-      stageBadge = 'badge-amber';
-    } else if (hasMonth) {
-      stage = 'Reported (Pending Dates)';
-      stageBadge = 'badge-blue';
+    // Dates map
+    const datesMap = {};
+    let populatedDatesCount = 0;
+    for (const d of cfg.dates) {
+      const rawVal = String(row[d.key] || '').trim();
+      datesMap[d.key] = rawVal;
+      if (rawVal) populatedDatesCount++;
     }
+    const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
+    const { stage, badge: stageBadge } = cfg.resolveStage({ ...row, ...datesMap });
 
     return {
-      ...cf,
-      lhid: cf.lhid || db.lhid || '—',
+      ...row,
+      lhid: row.lhid || db.lhid || '—',
       province: provName,
       municipality: muniName,
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
       carpable: carpableNum,
-      dateFiConducted: dateFi,
-      datePreparedSigned: datePrep,
-      reportedMonth: monthRep,
-      target: targetPeriod,
-      hasFi,
-      hasPrep,
-      hasMonth,
-      isComplete,
+      datesMap,
+      populatedDatesCount,
+      isAllDatesPopulated,
       stage,
       stageBadge
     };
   });
 
-  // Calculate summary metrics across all records
-  const totalCf = enrichedRows.length;
+  const totalCount = enrichedRows.length;
   const totalArea = enrichedRows.reduce((sum, r) => sum + r.carpable, 0);
-  const fiCount = enrichedRows.filter((r) => r.hasFi).length;
-  const fiArea = enrichedRows.filter((r) => r.hasFi).reduce((sum, r) => sum + r.carpable, 0);
-  const prepCount = enrichedRows.filter((r) => r.hasPrep).length;
-  const prepArea = enrichedRows.filter((r) => r.hasPrep).reduce((sum, r) => sum + r.carpable, 0);
-  const monthCount = enrichedRows.filter((r) => r.hasMonth).length;
-  const monthArea = enrichedRows.filter((r) => r.hasMonth).reduce((sum, r) => sum + r.carpable, 0);
-  const completeCount = enrichedRows.filter((r) => r.isComplete).length;
-  const completeArea = enrichedRows.filter((r) => r.isComplete).reduce((sum, r) => sum + r.carpable, 0);
-  const pendingCount = totalCf - completeCount;
-
   const pct = (part, whole) => (whole > 0 ? ((part / whole) * 100).toFixed(1) : '0.0');
+
+  // Compute summary count & area for each configured date
+  const dateMetrics = cfg.dates.map((d) => {
+    const matched = enrichedRows.filter((r) => Boolean(r.datesMap[d.key]));
+    return {
+      ...d,
+      count: matched.length,
+      area: matched.reduce((s, r) => s + r.carpable, 0),
+      rate: pct(matched.length, totalCount)
+    };
+  });
+
+  const allCompleteRows = enrichedRows.filter((r) => r.isAllDatesPopulated);
+  const allCompleteCount = allCompleteRows.length;
+  const allCompleteArea = allCompleteRows.reduce((s, r) => s + r.carpable, 0);
+  const pendingCount = totalCount - allCompleteCount;
 
   // Provincial Summary Matrix
   const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
@@ -1116,14 +1229,8 @@ export function renderCfWhereaboutsView(ctx) {
       code: n.code,
       total: 0,
       area: 0,
-      fiCount: 0,
-      fiArea: 0,
-      prepCount: 0,
-      prepArea: 0,
-      monthCount: 0,
-      monthArea: 0,
-      completeCount: 0,
-      completeArea: 0
+      dateCounts: {},
+      completeCount: 0
     });
   }
 
@@ -1144,53 +1251,37 @@ export function renderCfWhereaboutsView(ctx) {
         code: 'OTHER',
         total: 0,
         area: 0,
-        fiCount: 0,
-        fiArea: 0,
-        prepCount: 0,
-        prepArea: 0,
-        monthCount: 0,
-        monthArea: 0,
-        completeCount: 0,
-        completeArea: 0
+        dateCounts: {},
+        completeCount: 0
       };
       provMap.set(pKey, pObj);
     }
     pObj.total += 1;
     pObj.area += r.carpable;
-    if (r.hasFi) {
-      pObj.fiCount += 1;
-      pObj.fiArea += r.carpable;
+    for (const d of cfg.dates) {
+      if (r.datesMap[d.key]) {
+        pObj.dateCounts[d.key] = (pObj.dateCounts[d.key] || 0) + 1;
+      }
     }
-    if (r.hasPrep) {
-      pObj.prepCount += 1;
-      pObj.prepArea += r.carpable;
-    }
-    if (r.hasMonth) {
-      pObj.monthCount += 1;
-      pObj.monthArea += r.carpable;
-    }
-    if (r.isComplete) {
-      pObj.completeCount += 1;
-      pObj.completeArea += r.carpable;
-    }
+    if (r.isAllDatesPopulated) pObj.completeCount += 1;
   }
   const provSummaryList = Array.from(provMap.values()).filter(
     (p) => !provinceScope || p.code === provinceScope.code
   );
 
   // Reported Month Summary Matrix
+  const monthKeyObj = cfg.dates.find((d) => d.isMonth) || { key: 'reportedMonth' };
   const monthMap = new Map();
   for (const r of enrichedRows) {
-    const mLabel = r.reportedMonth ? formatReportedMonthDisplay(r.reportedMonth) : 'Undated / Pending';
+    const rawM = r[monthKeyObj.key] || r.reportedMonth || r.monthReported || '';
+    const mLabel = rawM ? formatReportedMonthDisplay(rawM) : 'Undated / Pending';
     if (!monthMap.has(mLabel)) {
-      monthMap.set(mLabel, { label: mLabel, total: 0, area: 0, fiCount: 0, prepCount: 0, completeCount: 0 });
+      monthMap.set(mLabel, { label: mLabel, total: 0, area: 0, completeCount: 0 });
     }
     const mObj = monthMap.get(mLabel);
     mObj.total += 1;
     mObj.area += r.carpable;
-    if (r.hasFi) mObj.fiCount += 1;
-    if (r.hasPrep) mObj.prepCount += 1;
-    if (r.isComplete) mObj.completeCount += 1;
+    if (r.isAllDatesPopulated) mObj.completeCount += 1;
   }
   const monthSummaryList = Array.from(monthMap.values()).sort((a, b) => {
     if (a.label === 'Undated / Pending') return 1;
@@ -1198,92 +1289,82 @@ export function renderCfWhereaboutsView(ctx) {
     return b.total - a.total;
   });
 
-  // Filter rows for the master table
+  // Filter rows for Master Table
   let filteredRows = enrichedRows;
-  if (cfProvinceFilter && cfProvinceFilter !== 'ALL') {
-    const fNorm = cfProvinceFilter.trim().toUpperCase();
+  if (provFilterVal && provFilterVal !== 'ALL') {
+    const fNorm = provFilterVal.trim().toUpperCase();
     filteredRows = filteredRows.filter((r) => {
       const pNorm = String(r.province || '').trim().toUpperCase();
       return pNorm === fNorm || pNorm.includes(fNorm) || fNorm.includes(pNorm);
     });
   }
-  if (cfDateStatusFilter === 'with_fi') {
-    filteredRows = filteredRows.filter((r) => r.hasFi);
-  } else if (cfDateStatusFilter === 'with_prep') {
-    filteredRows = filteredRows.filter((r) => r.hasPrep);
-  } else if (cfDateStatusFilter === 'with_month') {
-    filteredRows = filteredRows.filter((r) => r.hasMonth);
-  } else if (cfDateStatusFilter === 'all_complete') {
-    filteredRows = filteredRows.filter((r) => r.isComplete);
-  } else if (cfDateStatusFilter === 'pending') {
-    filteredRows = filteredRows.filter((r) => !r.isComplete);
+
+  if (statusFilterVal !== 'ALL') {
+    if (statusFilterVal === 'all_complete') {
+      filteredRows = filteredRows.filter((r) => r.isAllDatesPopulated);
+    } else if (statusFilterVal === 'pending') {
+      filteredRows = filteredRows.filter((r) => !r.isAllDatesPopulated);
+    } else if (statusFilterVal.startsWith('with_')) {
+      const dKey = statusFilterVal.replace('with_', '');
+      filteredRows = filteredRows.filter((r) => Boolean(r.datesMap[dKey]));
+    }
   }
 
-  const q = (cfSearch || '').trim().toLowerCase();
+  const q = (searchVal || '').trim().toLowerCase();
   if (q) {
     filteredRows = filteredRows.filter((r) => {
-      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.dateFiConducted} ${r.datePreparedSigned} ${r.reportedMonth}`.toLowerCase();
+      const dateText = Object.values(r.datesMap).join(' ');
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
       return hay.includes(q);
     });
   }
 
-  // Pagination for Master Ledger
+  // Pagination
   const pageSize = 50;
   const totalFiltered = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
-  const currentPage = Math.min(Math.max(1, Number(cfPage) || 1), totalPages);
+  const currentPage = Math.min(Math.max(1, Number(pageVal) || 1), totalPages);
   const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Top KPI Cards (Show up to 5 metrics)
+  const topDateMetrics = dateMetrics.slice(0, 3);
 
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
-    <!-- KPI Cards: Date FI Conducted, Date Prepared & Signed, Reported Month -->
+    <!-- KPI Grid -->
     <section class="kpi-grid">
       <div class="kpi-card highlight">
-        <div class="kpi-label">Total CF Landholdings</div>
-        <div class="kpi-primary">${totalCf.toLocaleString()} Parcels</div>
+        <div class="kpi-label">Total ${esc(cfg.tabName)} Parcels</div>
+        <div class="kpi-primary">${totalCount.toLocaleString()} Parcels</div>
         <div class="kpi-secondary">${fmtArea(totalArea)} CARPable HAS</div>
-        <div class="kpi-meta">Active Claim Folders in CF(DOC)</div>
+        <div class="kpi-meta">Active records in ${esc(cfg.tabName)}</div>
       </div>
 
-      <div class="kpi-card green">
-        <div class="kpi-label">Date FI Conducted</div>
-        <div class="kpi-primary">${fiCount.toLocaleString()} Parcels</div>
-        <div class="kpi-secondary" style="color:var(--dar-green);">${fmtArea(fiArea)} HAS (${pct(fiCount, totalCf)}%)</div>
-        <div class="progress-track">
-          <div class="progress-fill" style="width:${pct(fiCount, totalCf)}%;background:var(--dar-green);"></div>
+      ${topDateMetrics
+        .map(
+          (d) => `
+        <div class="kpi-card ${d.badgeClass.replace('badge-', '')}">
+          <div class="kpi-label">${esc(d.shortLabel)}</div>
+          <div class="kpi-primary">${d.count.toLocaleString()} Parcels</div>
+          <div class="kpi-secondary">${fmtArea(d.area)} HAS (${d.rate}%)</div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${d.rate}%;"></div>
+          </div>
+          <div class="kpi-meta">${esc(d.label)} completed</div>
         </div>
-        <div class="kpi-meta">Field Investigation Completed &amp; Dated</div>
-      </div>
-
-      <div class="kpi-card blue">
-        <div class="kpi-label">Date Prepared &amp; Signed</div>
-        <div class="kpi-primary">${prepCount.toLocaleString()} Parcels</div>
-        <div class="kpi-secondary" style="color:var(--dar-blue);">${fmtArea(prepArea)} HAS (${pct(prepCount, totalCf)}%)</div>
-        <div class="progress-track">
-          <div class="progress-fill" style="width:${pct(prepCount, totalCf)}%;background:var(--dar-blue);"></div>
-        </div>
-        <div class="kpi-meta">Documentation Prepared &amp; Signed</div>
-      </div>
-
-      <div class="kpi-card amber">
-        <div class="kpi-label">Reported Month</div>
-        <div class="kpi-primary">${monthCount.toLocaleString()} Parcels</div>
-        <div class="kpi-secondary" style="color:var(--dar-amber);">${fmtArea(monthArea)} HAS (${pct(monthCount, totalCf)}%)</div>
-        <div class="progress-track">
-          <div class="progress-fill" style="width:${pct(monthCount, totalCf)}%;background:var(--dar-amber);"></div>
-        </div>
-        <div class="kpi-meta">Transmitted in Reporting Month</div>
-      </div>
+      `
+        )
+        .join('')}
 
       <div class="kpi-card">
-        <div class="kpi-label">All 3 Dates Complete</div>
-        <div class="kpi-primary">${completeCount.toLocaleString()} Parcels</div>
-        <div class="kpi-secondary">${fmtArea(completeArea)} HAS (${pct(completeCount, totalCf)}%)</div>
+        <div class="kpi-label">All Milestone Dates Complete</div>
+        <div class="kpi-primary">${allCompleteCount.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary">${fmtArea(allCompleteArea)} HAS (${pct(allCompleteCount, totalCount)}%)</div>
         <div class="progress-track">
-          <div class="progress-fill" style="width:${pct(completeCount, totalCf)}%;"></div>
+          <div class="progress-fill" style="width:${pct(allCompleteCount, totalCount)}%;"></div>
         </div>
-        <div class="kpi-meta">${pendingCount} Parcels with Pending Dates</div>
+        <div class="kpi-meta">${pendingCount} Parcels with pending dates</div>
       </div>
     </section>
 
@@ -1293,8 +1374,8 @@ export function renderCfWhereaboutsView(ctx) {
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3 class="panel-title">CF Whereabouts Summary by Province</h3>
-            <p class="panel-subtitle">Claim Folder Date FI Conducted, Date Prepared &amp; Signed, and Reported Month breakdown</p>
+            <h3 class="panel-title">${esc(cfg.tabName)} Whereabouts by Province</h3>
+            <p class="panel-subtitle">Regional breakdown of ${esc(cfg.dates.map((d) => d.shortLabel).join(', '))}</p>
           </div>
         </div>
         <div class="table-wrap">
@@ -1302,18 +1383,16 @@ export function renderCfWhereaboutsView(ctx) {
             <thead>
               <tr>
                 <th>Province</th>
-                <th class="right">Total CFs</th>
-                <th class="right">CARPable (HAS)</th>
-                <th class="right">FI Conducted</th>
-                <th class="right">Prepared &amp; Signed</th>
-                <th class="right">Reported Month</th>
+                <th class="right">Total</th>
+                <th class="right">Area (HAS)</th>
+                ${cfg.dates.map((d) => `<th class="right">${esc(d.shortLabel)}</th>`).join('')}
                 <th class="right">Complete</th>
               </tr>
             </thead>
             <tbody>
               ${
                 provSummaryList.length === 0
-                  ? `<tr><td colspan="7" class="text-center" style="padding:16px;color:var(--text-muted)">No provincial CF records found</td></tr>`
+                  ? `<tr><td colspan="${4 + cfg.dates.length}" class="text-center" style="padding:16px;color:var(--text-muted)">No provincial records found</td></tr>`
                   : provSummaryList
                       .map(
                         (p) => `
@@ -1324,15 +1403,12 @@ export function renderCfWhereaboutsView(ctx) {
                       </td>
                       <td class="right"><strong>${p.total}</strong></td>
                       <td class="right">${fmtArea(p.area)} HAS</td>
-                      <td class="right">
-                        ${p.fiCount > 0 ? `<span class="badge badge-green">${p.fiCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}
-                      </td>
-                      <td class="right">
-                        ${p.prepCount > 0 ? `<span class="badge badge-blue">${p.prepCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}
-                      </td>
-                      <td class="right">
-                        ${p.monthCount > 0 ? `<span class="badge badge-amber">${p.monthCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}
-                      </td>
+                      ${cfg.dates
+                        .map((d) => {
+                          const cnt = p.dateCounts[d.key] || 0;
+                          return `<td class="right">${cnt > 0 ? `<span class="badge ${d.badgeClass}">${cnt}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>`;
+                        })
+                        .join('')}
                       <td class="right">
                         <span class="badge ${p.completeCount === p.total && p.total > 0 ? 'badge-green' : 'badge-gray'}">
                           ${p.completeCount} (${pct(p.completeCount, p.total)}%)
@@ -1347,12 +1423,10 @@ export function renderCfWhereaboutsView(ctx) {
             <tfoot>
               <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
                 <td>Region VIII Total</td>
-                <td class="right">${totalCf}</td>
+                <td class="right">${totalCount}</td>
                 <td class="right">${fmtArea(totalArea)} HAS</td>
-                <td class="right"><span class="badge badge-green">${fiCount}</span></td>
-                <td class="right"><span class="badge badge-blue">${prepCount}</span></td>
-                <td class="right"><span class="badge badge-amber">${monthCount}</span></td>
-                <td class="right"><span class="badge badge-green">${completeCount} (${pct(completeCount, totalCf)}%)</span></td>
+                ${dateMetrics.map((d) => `<td class="right"><span class="badge ${d.badgeClass}">${d.count}</span></td>`).join('')}
+                <td class="right"><span class="badge badge-green">${allCompleteCount} (${pct(allCompleteCount, totalCount)}%)</span></td>
               </tr>
             </tfoot>
           </table>
@@ -1363,26 +1437,24 @@ export function renderCfWhereaboutsView(ctx) {
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3 class="panel-title">Summary by Reported Month &amp; Cycle</h3>
-            <p class="panel-subtitle">Claim Folders scheduled and reported across monthly reporting cycles</p>
+            <h3 class="panel-title">${esc(cfg.tabName)} Summary by Reporting Month</h3>
+            <p class="panel-subtitle">Distribution of landholdings across monthly reporting cycles</p>
           </div>
         </div>
         <div class="table-wrap">
           <table class="nep-milestone-table">
             <thead>
               <tr>
-                <th>Reported Month</th>
+                <th>Reporting Month</th>
                 <th class="right">Parcels</th>
-                <th class="right">CARPable Area (HAS)</th>
-                <th class="right">FI Conducted</th>
-                <th class="right">Prepared &amp; Signed</th>
-                <th class="right">Both Dates Set</th>
+                <th class="right">Area (HAS)</th>
+                <th class="right">Dates Populated</th>
               </tr>
             </thead>
             <tbody>
               ${
                 monthSummaryList.length === 0
-                  ? `<tr><td colspan="6" class="text-center" style="padding:16px;color:var(--text-muted)">No monthly records</td></tr>`
+                  ? `<tr><td colspan="4" class="text-center" style="padding:16px;color:var(--text-muted)">No monthly records</td></tr>`
                   : monthSummaryList
                       .map(
                         (m) => `
@@ -1394,13 +1466,7 @@ export function renderCfWhereaboutsView(ctx) {
                       </td>
                       <td class="right"><strong>${m.total}</strong></td>
                       <td class="right">${fmtArea(m.area)} HAS</td>
-                      <td class="right">${m.fiCount > 0 ? `<span class="badge badge-green">${m.fiCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>
-                      <td class="right">${m.prepCount > 0 ? `<span class="badge badge-blue">${m.prepCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>
-                      <td class="right">
-                        <span class="badge ${m.completeCount > 0 ? 'badge-green' : 'badge-gray'}">
-                          ${m.completeCount}
-                        </span>
-                      </td>
+                      <td class="right"><span class="badge ${m.completeCount > 0 ? 'badge-green' : 'badge-gray'}">${m.completeCount} (${pct(m.completeCount, m.total)}%)</span></td>
                     </tr>
                   `
                       )
@@ -1410,11 +1476,9 @@ export function renderCfWhereaboutsView(ctx) {
             <tfoot>
               <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
                 <td>Total Monthly Cycles</td>
-                <td class="right">${totalCf}</td>
+                <td class="right">${totalCount}</td>
                 <td class="right">${fmtArea(totalArea)} HAS</td>
-                <td class="right">${fiCount}</td>
-                <td class="right">${prepCount}</td>
-                <td class="right">${completeCount}</td>
+                <td class="right">${allCompleteCount}</td>
               </tr>
             </tfoot>
           </table>
@@ -1422,52 +1486,55 @@ export function renderCfWhereaboutsView(ctx) {
       </div>
     </section>
 
-    <!-- Section 3: Master List Table with Filters & Search -->
-    <div class="panel" id="panel-cf-master">
+    <!-- Master Ledger Panel -->
+    <div class="panel" id="panel-whereabouts-master">
       <div class="panel-header nep-panel-header">
         <div>
-          <h3 class="panel-title">Claim Folder (CF) Whereabouts Master Ledger</h3>
-          <p class="panel-subtitle">Individual landholdings showing Date FI Conducted, Date Prepared &amp; Signed, and Reported Month</p>
+          <h3 class="panel-title">${esc(cfg.tabName)} Whereabouts Master Ledger</h3>
+          <p class="panel-subtitle">Individual landholdings showing ${esc(cfg.dates.map((d) => d.label).join(' • '))}</p>
         </div>
         <div class="nep-header-controls">
           <input
             type="search"
             class="form-control"
-            id="cf-search"
+            id="whereabouts-search"
             placeholder="Search LHID, Landowner, Title, LGU…"
-            value="${esc(cfSearch)}"
+            value="${esc(searchVal)}"
             style="min-width:210px;font-size:13px;"
           />
           ${
             !provinceScope
               ? `
-            <select class="form-control nep-filter-select" id="cf-province-filter" aria-label="Filter by Province">
-              <option value="ALL" ${cfProvinceFilter === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
+            <select class="form-control nep-filter-select" id="whereabouts-province-filter" aria-label="Filter by Province">
+              <option value="ALL" ${provFilterVal === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
               ${provNodes
                 .map(
                   (p) =>
-                    `<option value="${esc(p.provinceName)}" ${cfProvinceFilter.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+                    `<option value="${esc(p.provinceName)}" ${provFilterVal.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
                 )
                 .join('')}
             </select>
           `
               : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
           }
-          <select class="form-control nep-filter-select" id="cf-status-filter" aria-label="Filter by Date Status">
-            <option value="ALL" ${cfDateStatusFilter === 'ALL' ? 'selected' : ''}>All CF Records (${enrichedRows.length})</option>
-            <option value="with_fi" ${cfDateStatusFilter === 'with_fi' ? 'selected' : ''}>With Date FI Conducted (${fiCount})</option>
-            <option value="with_prep" ${cfDateStatusFilter === 'with_prep' ? 'selected' : ''}>With Date Prepared &amp; Signed (${prepCount})</option>
-            <option value="with_month" ${cfDateStatusFilter === 'with_month' ? 'selected' : ''}>With Reported Month (${monthCount})</option>
-            <option value="all_complete" ${cfDateStatusFilter === 'all_complete' ? 'selected' : ''}>All 3 Dates Complete (${completeCount})</option>
-            <option value="pending" ${cfDateStatusFilter === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>
+          <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="Filter by Date Status">
+            <option value="ALL" ${statusFilterVal === 'ALL' ? 'selected' : ''}>All Records (${totalCount})</option>
+            ${cfg.dates
+              .map((d) => {
+                const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
+                return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
+              })
+              .join('')}
+            <option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
+            <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>
           </select>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-cf-export-csv" title="Export this CF Whereabouts list to CSV">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
             ⬇ Export CSV
           </button>
-          <button type="button" class="btn btn-primary btn-sm" data-open-cf-tab title="Switch to Optool CF(DOC) tab">
-            Open in CF(DOC)
+          <button type="button" class="btn btn-primary btn-sm" data-open-optool-tab="${esc(cfg.openTabName)}" title="Switch to Optool ${esc(cfg.openTabName)} worksheet">
+            Open in ${esc(cfg.openTabName)}
           </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-cf" title="Full Screen Report / Table">
+          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-whereabouts" title="Full Screen Report / Table">
             <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
           </button>
         </div>
@@ -1475,18 +1542,18 @@ export function renderCfWhereaboutsView(ctx) {
 
       <div style="padding:8px 16px;background:var(--bg-light);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">
         <div>
-          Showing <strong>${pagedRows.length}</strong> of <strong>${totalFiltered}</strong> matching Claim Folders
-          ${cfProvinceFilter !== 'ALL' ? `• Province: <strong>${esc(cfProvinceFilter)}</strong>` : ''}
-          ${cfDateStatusFilter !== 'ALL' ? `• Filter: <strong>${esc(cfDateStatusFilter)}</strong>` : ''}
+          Showing <strong>${pagedRows.length}</strong> of <strong>${totalFiltered}</strong> matching ${esc(cfg.tabName)} records
+          ${provFilterVal !== 'ALL' ? `• Province: <strong>${esc(provFilterVal)}</strong>` : ''}
+          ${statusFilterVal !== 'ALL' ? `• Filter: <strong>${esc(statusFilterVal)}</strong>` : ''}
           ${q ? `• Search: "<em>${esc(q)}</em>"` : ''}
         </div>
         ${
           totalPages > 1
             ? `
           <div style="display:flex;align-items:center;gap:6px;">
-            <button type="button" class="btn btn-secondary btn-xs" data-cf-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>« Prev</button>
+            <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>« Prev</button>
             <span style="font-weight:600;">Page ${currentPage} of ${totalPages}</span>
-            <button type="button" class="btn btn-secondary btn-xs" data-cf-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>Next »</button>
+            <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>Next »</button>
           </div>
         `
             : ''
@@ -1503,10 +1570,8 @@ export function renderCfWhereaboutsView(ctx) {
               <th>Municipality / Barangay</th>
               <th>Landowner / Title</th>
               <th class="right">CARPable Area</th>
-              <th>DATE FI CONDUCTED</th>
-              <th>DATE PREPARED &amp; SIGNED</th>
-              <th>REPORTED MONTH</th>
-              <th>Target</th>
+              ${cfg.dates.map((d) => `<th>${esc(d.label)}</th>`).join('')}
+              ${cfg.extraColHeader ? `<th>${esc(cfg.extraColHeader)}</th>` : ''}
               <th>Whereabouts Status</th>
               <th class="right" style="width:110px;">Action</th>
             </tr>
@@ -1516,8 +1581,8 @@ export function renderCfWhereaboutsView(ctx) {
               pagedRows.length === 0
                 ? `
               <tr>
-                <td colspan="12" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
-                  <div style="font-size:15px;font-weight:700;margin-bottom:4px;">No Claim Folders match the selected filters</div>
+                <td colspan="${8 + cfg.dates.length}" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
+                  <div style="font-size:15px;font-weight:700;margin-bottom:4px;">No ${esc(cfg.tabName)} records match the selected filters</div>
                   <div style="font-size:12px;">Try clearing search or changing the province / date status filters.</div>
                 </td>
               </tr>
@@ -1553,30 +1618,17 @@ export function renderCfWhereaboutsView(ctx) {
                     <td class="right" style="font-weight:600;font-variant-numeric:tabular-nums;">
                       ${fmtArea(r.carpable)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
                     </td>
-                    <td>
-                      ${
-                        r.hasFi
-                          ? `<span class="badge badge-green" style="font-weight:700;letter-spacing:0.2px;"><span style="margin-right:3px;">✔</span>${esc(r.dateFiConducted)}</span>`
-                          : `<span class="badge badge-gray" style="opacity:0.75;">Pending FI</span>`
-                      }
-                    </td>
-                    <td>
-                      ${
-                        r.hasPrep
-                          ? `<span class="badge badge-blue" style="font-weight:700;letter-spacing:0.2px;"><span style="margin-right:3px;">✔</span>${esc(r.datePreparedSigned)}</span>`
-                          : `<span class="badge badge-gray" style="opacity:0.75;">Pending Sign</span>`
-                      }
-                    </td>
-                    <td>
-                      ${
-                        r.hasMonth
-                          ? `<span class="badge badge-amber" style="font-weight:700;">${esc(formatReportedMonthDisplay(r.reportedMonth))}</span>`
-                          : `<span class="badge badge-gray" style="opacity:0.75;">—</span>`
-                      }
-                    </td>
-                    <td style="font-size:11.5px;">
-                      <span class="badge ${r.target === 'Current' ? 'badge-blue' : 'badge-gray'}">${esc(r.target)}</span>
-                    </td>
+                    ${cfg.dates
+                      .map((d) => {
+                        const val = r.datesMap[d.key];
+                        if (!val) {
+                          return `<td><span class="badge badge-gray" style="opacity:0.75;">Pending</span></td>`;
+                        }
+                        const displayVal = d.isMonth ? formatReportedMonthDisplay(val) : val;
+                        return `<td><span class="badge ${d.badgeClass}" style="font-weight:700;"><span style="margin-right:3px;">${d.icon || ''}</span>${esc(displayVal)}</span></td>`;
+                      })
+                      .join('')}
+                    ${cfg.extraColValue ? `<td style="font-size:11.5px;">${cfg.extraColValue(r)}</td>` : ''}
                     <td>
                       <span class="badge ${esc(r.stageBadge)}" style="font-weight:700;">${esc(r.stage)}</span>
                     </td>
@@ -1584,10 +1636,10 @@ export function renderCfWhereaboutsView(ctx) {
                       <button
                         type="button"
                         class="btn btn-secondary btn-xs"
-                        data-open-cf-tab
-                        title="Open this Claim Folder in the Optool CF(DOC) worksheet"
+                        data-open-optool-tab="${esc(cfg.openTabName)}"
+                        title="Open in Optool ${esc(cfg.openTabName)} worksheet"
                       >
-                        Open in CF(DOC)
+                        Open in ${esc(cfg.openTabName)}
                       </button>
                     </td>
                   </tr>
@@ -1600,6 +1652,26 @@ export function renderCfWhereaboutsView(ctx) {
       </div>
     </div>
   `;
+}
+
+export function renderCfWhereaboutsView(ctx) {
+  return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['cf-whereabouts']);
+}
+
+export function renderSurveyWhereaboutsView(ctx) {
+  return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['survey-whereabouts']);
+}
+
+export function renderMovWhereaboutsView(ctx) {
+  return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['mov-whereabouts']);
+}
+
+export function renderRegDistWhereaboutsView(ctx) {
+  return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['regdist-whereabouts']);
+}
+
+export function renderInstallationWhereaboutsView(ctx) {
+  return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['installation-whereabouts']);
 }
 
 export function renderDashboardView(ctx) {

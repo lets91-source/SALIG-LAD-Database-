@@ -14,7 +14,12 @@ import {
   renderUsersView,
   renderNepView,
   renderTargetSummaryView,
-  renderCfWhereaboutsView
+  renderCfWhereaboutsView,
+  renderSurveyWhereaboutsView,
+  renderMovWhereaboutsView,
+  renderRegDistWhereaboutsView,
+  renderInstallationWhereaboutsView,
+  WHEREABOUTS_CONFIGS
 } from './views.js';
 import {
   formatCurrentMonthYear,
@@ -64,10 +69,10 @@ const appState = {
   optoolPageSize: 50,
   optoolColMode: 'preview',
   optoolColPage: 1,
-  cfSearch: '',
-  cfProvinceFilter: 'ALL',
-  cfDateStatusFilter: 'ALL',
-  cfPage: 1
+  whereaboutsSearch: {},
+  whereaboutsProvinceFilter: {},
+  whereaboutsStatusFilter: {},
+  whereaboutsPage: {}
 };
 
 const AUTO_SYNC_MAX_AGE_MS = 2 * 60 * 1000;
@@ -553,6 +558,14 @@ function updateNavCounts() {
   if (optoolCountEl) optoolCountEl.textContent = totalOptool;
   const cfCountEl = document.getElementById('nav-cf-count');
   if (cfCountEl) cfCountEl.textContent = (appState.state.optool?.['CF(DOC)'] || []).length;
+  const surveyCountEl = document.getElementById('nav-survey-count');
+  if (surveyCountEl) surveyCountEl.textContent = (appState.state.optool?.Survey || []).length;
+  const movCountEl = document.getElementById('nav-mov-count');
+  if (movCountEl) movCountEl.textContent = (appState.state.optool?.MOV || []).length;
+  const regdistCountEl = document.getElementById('nav-regdist-count');
+  if (regdistCountEl) regdistCountEl.textContent = (appState.state.optool?.RegistrationDistribution || []).length;
+  const instCountEl = document.getElementById('nav-installation-count');
+  if (instCountEl) instCountEl.textContent = (appState.state.optool?.Installation || []).length;
 }
 
 function updateHeaderTitles() {
@@ -593,6 +606,22 @@ function updateHeaderTitles() {
     'cf-whereabouts': [
       `${scopeLabel} CF Whereabouts & Date Summary`,
       'Claim Folder (CF) Tracking • Date FI Conducted • Date Prepared & Signed • Reported Month'
+    ],
+    'survey-whereabouts': [
+      `${scopeLabel} Survey Whereabouts & Milestone Tracking`,
+      'Land Survey Tracking • Field Work Dates • SR Forwarded • DENR-SMD Acceptance • ASP Date • Reported Month'
+    ],
+    'mov-whereabouts': [
+      `${scopeLabel} MOV Whereabouts & Land Valuation`,
+      'Memorandum of Valuation Tracking • PPU Date • Received at DARPO • Date of MOV • Transmitted to LBP/AOC • Reported Month'
+    ],
+    'regdist-whereabouts': [
+      `${scopeLabel} Registration & Distribution Whereabouts`,
+      'EP CLOA Registration & Distribution Tracking • Date Registered • Date of Distribution • Month Reported'
+    ],
+    'installation-whereabouts': [
+      `${scopeLabel} Installation Whereabouts & Milestone Tracking`,
+      'Physical Installation Tracking • Date Registered • Date Distributed • Date of Installation • Month Reported'
     ],
     nep: [
       'Regional Hub NEP Targets & Sheet',
@@ -699,12 +728,48 @@ function renderActiveView() {
   } else if (appState.view === 'cf-whereabouts') {
     container.innerHTML = renderCfWhereaboutsView({
       ...ctx,
-      cfSearch: appState.cfSearch || '',
-      cfProvinceFilter: appState.cfProvinceFilter || 'ALL',
-      cfDateStatusFilter: appState.cfDateStatusFilter || 'ALL',
-      cfPage: appState.cfPage || 1
+      whereaboutsSearch: appState.whereaboutsSearch,
+      whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
+      whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsPage: appState.whereaboutsPage
     });
-    bindCfWhereaboutsEvents(container);
+    bindWhereaboutsEvents(container, 'cf-whereabouts');
+  } else if (appState.view === 'survey-whereabouts') {
+    container.innerHTML = renderSurveyWhereaboutsView({
+      ...ctx,
+      whereaboutsSearch: appState.whereaboutsSearch,
+      whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
+      whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsPage: appState.whereaboutsPage
+    });
+    bindWhereaboutsEvents(container, 'survey-whereabouts');
+  } else if (appState.view === 'mov-whereabouts') {
+    container.innerHTML = renderMovWhereaboutsView({
+      ...ctx,
+      whereaboutsSearch: appState.whereaboutsSearch,
+      whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
+      whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsPage: appState.whereaboutsPage
+    });
+    bindWhereaboutsEvents(container, 'mov-whereabouts');
+  } else if (appState.view === 'regdist-whereabouts') {
+    container.innerHTML = renderRegDistWhereaboutsView({
+      ...ctx,
+      whereaboutsSearch: appState.whereaboutsSearch,
+      whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
+      whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsPage: appState.whereaboutsPage
+    });
+    bindWhereaboutsEvents(container, 'regdist-whereabouts');
+  } else if (appState.view === 'installation-whereabouts') {
+    container.innerHTML = renderInstallationWhereaboutsView({
+      ...ctx,
+      whereaboutsSearch: appState.whereaboutsSearch,
+      whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
+      whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsPage: appState.whereaboutsPage
+    });
+    bindWhereaboutsEvents(container, 'installation-whereabouts');
   } else if (appState.view === 'nep') {
     container.innerHTML = renderNepView(ctx);
     bindDashboardViewEvents(container);
@@ -2837,42 +2902,42 @@ function bindUsersViewEvents(container) {
   });
 }
 
-function bindCfWhereaboutsEvents(container) {
-  const searchInput = container.querySelector('#cf-search');
+function bindWhereaboutsEvents(container, viewKey) {
+  const searchInput = container.querySelector('#whereabouts-search');
   searchInput?.addEventListener('input', (e) => {
-    appState.cfSearch = e.target.value;
-    appState.cfPage = 1;
+    appState.whereaboutsSearch[viewKey] = e.target.value;
+    appState.whereaboutsPage[viewKey] = 1;
     const pos = e.target.selectionStart;
     renderActiveView();
-    const nextInput = document.getElementById('cf-search');
+    const nextInput = document.getElementById('whereabouts-search');
     if (nextInput) {
       nextInput.focus();
       nextInput.setSelectionRange(pos, pos);
     }
   });
 
-  container.querySelector('#cf-province-filter')?.addEventListener('change', (e) => {
-    appState.cfProvinceFilter = e.target.value;
-    appState.cfPage = 1;
+  container.querySelector('#whereabouts-province-filter')?.addEventListener('change', (e) => {
+    appState.whereaboutsProvinceFilter[viewKey] = e.target.value;
+    appState.whereaboutsPage[viewKey] = 1;
     renderActiveView();
   });
 
-  container.querySelector('#cf-status-filter')?.addEventListener('change', (e) => {
-    appState.cfDateStatusFilter = e.target.value;
-    appState.cfPage = 1;
+  container.querySelector('#whereabouts-status-filter')?.addEventListener('change', (e) => {
+    appState.whereaboutsStatusFilter[viewKey] = e.target.value;
+    appState.whereaboutsPage[viewKey] = 1;
     renderActiveView();
   });
 
-  container.querySelectorAll('[data-cf-page]').forEach((btn) => {
+  container.querySelectorAll('[data-whereabouts-page]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      appState.cfPage = Number(btn.dataset.cfPage) || 1;
+      appState.whereaboutsPage[viewKey] = Number(btn.dataset.whereaboutsPage) || 1;
       renderActiveView();
     });
   });
 
-  container.querySelectorAll('[data-open-cf-tab]').forEach((btn) => {
+  container.querySelectorAll('[data-open-optool-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      appState.activeOptoolTab = 'CF(DOC)';
+      appState.activeOptoolTab = btn.dataset.openOptoolTab;
       appState.optoolPage = 1;
       appState.optoolColPage = 1;
       appState.view = 'optool';
@@ -2880,13 +2945,16 @@ function bindCfWhereaboutsEvents(container) {
     });
   });
 
-  container.querySelector('#btn-cf-export-csv')?.addEventListener('click', () => {
-    exportCfWhereaboutsCsv();
+  container.querySelector('#btn-whereabouts-export-csv')?.addEventListener('click', () => {
+    exportWhereaboutsCsv(viewKey);
   });
 }
 
-function exportCfWhereaboutsCsv() {
-  const rawCfRows = appState.state?.optool?.['CF(DOC)'] || [];
+function exportWhereaboutsCsv(viewKey) {
+  const cfg = WHEREABOUTS_CONFIGS[viewKey];
+  if (!cfg) return;
+
+  const rawRows = appState.state?.optool?.[cfg.tabName] || [];
   const dbRows = appState.state?.optool?.Database || [];
   const dbMap = new Map();
   for (const db of dbRows) {
@@ -2894,89 +2962,73 @@ function exportCfWhereaboutsCsv() {
     if (k && !dbMap.has(k)) dbMap.set(k, db);
   }
 
-  const enrichedRows = rawCfRows.map((cf) => {
-    const lhidKey = String(cf.lhid || '').trim().toLowerCase();
+  const enrichedRows = rawRows.map((row) => {
+    const lhidKey = String(row.lhid || '').trim().toLowerCase();
     const db = dbMap.get(lhidKey) || {};
-    const carpableNum = Number(db.carpable || cf.carpable || cf.carpableArea || 0) || 0;
-    const dateFi = String(cf.dateFiConducted || '').trim();
-    const datePrep = String(cf.datePreparedSigned || '').trim();
-    const monthRep = String(cf.reportedMonth || '').trim();
-    const provName = db.province || cf.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
-    const muniName = db.municipality || cf.municipality || '—';
-    const brgyName = db.barangay || cf.barangay || '—';
-    const titleNum = db.titleNumber || cf.titleNumber || '—';
-    const landOwner = db.landOwner || cf.landOwner || '—';
-    const targetPeriod = cf.target || db.targetYear || 'Current';
+    const carpableNum = Number(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const provName = db.province || row.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
+    const muniName = db.municipality || row.municipality || '—';
+    const brgyName = db.barangay || row.barangay || '—';
+    const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
+    const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
 
-    const hasFi = Boolean(dateFi);
-    const hasPrep = Boolean(datePrep);
-    const hasMonth = Boolean(monthRep);
-    const isComplete = hasFi && hasPrep && hasMonth;
-
-    let stage = 'Pending FI';
-    if (isComplete) stage = 'Completed & Reported';
-    else if (hasPrep) stage = 'Prepared & Signed';
-    else if (hasFi) stage = 'FI Conducted';
-    else if (hasMonth) stage = 'Reported (Pending Dates)';
+    const datesMap = {};
+    let populatedDatesCount = 0;
+    for (const d of cfg.dates) {
+      const rawVal = String(row[d.key] || '').trim();
+      datesMap[d.key] = rawVal;
+      if (rawVal) populatedDatesCount++;
+    }
+    const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
+    const { stage } = cfg.resolveStage({ ...row, ...datesMap });
 
     return {
-      lhid: cf.lhid || db.lhid || '—',
+      lhid: row.lhid || db.lhid || '—',
       province: provName,
       municipality: muniName,
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
       carpable: carpableNum.toFixed(4),
-      dateFiConducted: dateFi || 'Pending',
-      datePreparedSigned: datePrep || 'Pending',
-      reportedMonth: monthRep || '—',
-      target: targetPeriod,
+      datesMap,
+      isAllDatesPopulated,
       stage
     };
   });
 
+  const searchVal = (appState.whereaboutsSearch?.[viewKey] || '').trim().toLowerCase();
+  const provFilterVal = appState.whereaboutsProvinceFilter?.[viewKey] || 'ALL';
+  const statusFilterVal = appState.whereaboutsStatusFilter?.[viewKey] || 'ALL';
+
   let rows = enrichedRows;
-  if (appState.cfProvinceFilter && appState.cfProvinceFilter !== 'ALL') {
-    const fNorm = appState.cfProvinceFilter.trim().toUpperCase();
+  if (provFilterVal && provFilterVal !== 'ALL') {
+    const fNorm = provFilterVal.trim().toUpperCase();
     rows = rows.filter((r) => r.province.toUpperCase().includes(fNorm));
   }
-  if (appState.cfDateStatusFilter === 'with_fi') {
-    rows = rows.filter((r) => r.dateFiConducted !== 'Pending');
-  } else if (appState.cfDateStatusFilter === 'with_prep') {
-    rows = rows.filter((r) => r.datePreparedSigned !== 'Pending');
-  } else if (appState.cfDateStatusFilter === 'with_month') {
-    rows = rows.filter((r) => r.reportedMonth !== '—');
-  } else if (appState.cfDateStatusFilter === 'all_complete') {
-    rows = rows.filter((r) => r.stage === 'Completed & Reported');
-  } else if (appState.cfDateStatusFilter === 'pending') {
-    rows = rows.filter((r) => r.stage !== 'Completed & Reported');
+  if (statusFilterVal !== 'ALL') {
+    if (statusFilterVal === 'all_complete') {
+      rows = rows.filter((r) => r.isAllDatesPopulated);
+    } else if (statusFilterVal === 'pending') {
+      rows = rows.filter((r) => !r.isAllDatesPopulated);
+    } else if (statusFilterVal.startsWith('with_')) {
+      const dKey = statusFilterVal.replace('with_', '');
+      rows = rows.filter((r) => Boolean(r.datesMap[dKey]));
+    }
   }
-  const q = (appState.cfSearch || '').trim().toLowerCase();
-  if (q) {
-    rows = rows.filter((r) =>
-      `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.dateFiConducted} ${r.datePreparedSigned} ${r.reportedMonth}`
-        .toLowerCase()
-        .includes(q)
-    );
+  if (searchVal) {
+    rows = rows.filter((r) => {
+      const dateText = Object.values(r.datesMap).join(' ');
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
+      return hay.includes(searchVal);
+    });
   }
 
-  const headers = [
-    'LHID',
-    'Province',
-    'Municipality',
-    'Barangay',
-    'TitleNumber',
-    'LandOwner',
-    'CARPable_HAS',
-    'Date_FI_Conducted',
-    'Date_Prepared_Signed',
-    'Reported_Month',
-    'Target_Period',
-    'Whereabouts_Status'
-  ];
+  const dateHeaders = cfg.dates.map((d) => d.label.replace(/\n/g, ' '));
+  const headers = ['LHID', 'Province', 'Municipality', 'Barangay', 'TitleNumber', 'LandOwner', 'CARPable_HAS', ...dateHeaders, 'Whereabouts_Status'];
   const headerLine = headers.map((h) => `"${h}"`).join(',');
-  const lines = rows.map((r) =>
-    [
+  const lines = rows.map((r) => {
+    const dateVals = cfg.dates.map((d) => r.datesMap[d.key] || 'Pending');
+    return [
       r.lhid,
       r.province,
       r.municipality,
@@ -2984,20 +3036,15 @@ function exportCfWhereaboutsCsv() {
       r.titleNumber,
       r.landOwner,
       r.carpable,
-      r.dateFiConducted,
-      r.datePreparedSigned,
-      r.reportedMonth,
-      r.target,
+      ...dateVals,
       r.stage
-    ]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      .join(',')
-  );
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',');
+  });
 
   const blob = new Blob([[headerLine, ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `CF_Whereabouts_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `${cfg.tabName}_Whereabouts_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
 }
 
