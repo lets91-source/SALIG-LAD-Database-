@@ -2082,6 +2082,7 @@ function bindDashboardViewEvents(container) {
 
   container.querySelector('#btn-toggle-nep-provinces')?.addEventListener('click', () => {
     appState.nepShowProvinces = !appState.nepShowProvinces;
+    appState.nepExpandedMilestones = {};
     renderActiveView();
   });
 
@@ -2090,7 +2091,10 @@ function bindDashboardViewEvents(container) {
       e.stopPropagation();
       const key = btn.dataset.toggleProvMilestone;
       if (!appState.nepExpandedMilestones) appState.nepExpandedMilestones = {};
-      appState.nepExpandedMilestones[key] = !appState.nepExpandedMilestones[key];
+      const currentlyExpanded = appState.nepShowProvinces
+        ? appState.nepExpandedMilestones[key] !== false
+        : Boolean(appState.nepExpandedMilestones[key]);
+      appState.nepExpandedMilestones[key] = !currentlyExpanded;
       renderActiveView();
     });
   });

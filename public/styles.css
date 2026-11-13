@@ -2813,18 +2813,19 @@ body.has-fullscreen-panel {
 }
 
 .nep-prov-toggle-btn {
-  padding: 1.5px 8px;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  border-radius: 12px;
+  border-radius: 6px;
   background: #f1f5f3;
   color: var(--dar-green-dark);
   border: 1px solid var(--border-strong);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
 .nep-prov-toggle-btn:hover {
@@ -2833,16 +2834,61 @@ body.has-fullscreen-panel {
   color: var(--dar-green-dark);
 }
 
-.nep-prov-toggle-btn.active {
+.nep-prov-toggle-btn.expanded {
   background: var(--dar-green);
   color: #ffffff;
   border-color: var(--dar-green-dark);
 }
 
-.nep-prov-toggle-btn .prov-arrow {
-  font-size: 10px;
-  display: inline-block;
+.prov-sign-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  font-size: 13px;
+  font-weight: 800;
   line-height: 1;
+  border-radius: 3px;
+  background: rgba(15, 76, 41, 0.12);
+  color: var(--dar-green-dark);
+  transition: all 0.15s ease;
+}
+
+.nep-prov-toggle-btn.expanded .prov-sign-box {
+  background: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.prov-btn-label {
+  letter-spacing: 0.01em;
+}
+
+.nep-prov-subrow-footer td {
+  padding: 4px 18px 8px 18px !important;
+  background: #f8faf8;
+  border-bottom: 2px solid var(--border-strong) !important;
+}
+
+.nep-prov-footer-btn {
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+  background: #eef3ef;
+  color: var(--dar-green-dark);
+  border: 1px solid #c8d8cc;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.nep-prov-footer-btn:hover {
+  background: #e0ece3;
+  border-color: var(--dar-green);
+  color: var(--dar-green-dark);
 }
 
 .nep-prov-badges-wrap {

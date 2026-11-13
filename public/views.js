@@ -230,6 +230,7 @@ function renderMilestoneNepSection(ctx) {
   const isQExpanded = (qNum) => nepShowMonths || Boolean(nepExpandedQuarters[qNum]);
   const hasAnyMonthExpanded = quartersConfig.some((q) => isQExpanded(q.q));
   const totalQuarterCols = quartersConfig.reduce((acc, q) => acc + (isQExpanded(q.q) ? 4 : 1), 0);
+  const totalTableCols = totalQuarterCols + 5;
 
   return `
     <div class="panel" id="panel-milestone-nep">
@@ -274,7 +275,7 @@ function renderMilestoneNepSection(ctx) {
             <span class="fs-icon">📅</span> <span>${hasAnyMonthExpanded ? 'Hide Monthly' : 'Monthly Accomp.'}</span>
           </button>
           <button type="button" class="btn btn-sm ${nepShowProvinces ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-provinces" title="Show or hide provincial breakdown rows for all milestones">
-            <span class="fs-icon">🏛️</span> <span>${nepShowProvinces ? 'Hide Provinces' : 'Province Breakdown'}</span>
+            <span class="fs-icon">${nepShowProvinces ? '−' : '+'}</span> <span>${nepShowProvinces ? 'Hide All Provinces' : 'Show All Provinces'}</span>
           </button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-hub-nep" title="Fetch live NEP target data from Regional Hub Google Sheet">
             Fetch Hub NEP Targets
@@ -348,7 +349,9 @@ function renderMilestoneNepSection(ctx) {
           <tbody>
             ${rows
               .map((r) => {
-                const isMsExpanded = nepShowProvinces || Boolean(nepExpandedMilestones[r.key]);
+                const isMsExpanded = nepShowProvinces
+                  ? nepExpandedMilestones[r.key] !== false
+                  : Boolean(nepExpandedMilestones[r.key]);
                 let provEntries = Object.values(r.provinceBreakdown || {});
                 if (activeProvince !== 'ALL') {
                   provEntries = provEntries.filter((p) => p.code === activeProvince);
@@ -361,19 +364,21 @@ function renderMilestoneNepSection(ctx) {
                   <div class="nep-ms-title-wrap">
                     <button
                       type="button"
+                      class="btn btn-xs nep-prov-toggle-btn ${isMsExpanded ? 'expanded' : 'collapsed'}"
+                      data-toggle-prov-milestone="${esc(r.key)}"
+                      title="${isMsExpanded ? 'Click (-) to hide provinces for ' + esc(r.label) : 'Click (+) to show provinces for ' + esc(r.label)}"
+                      aria-label="${isMsExpanded ? 'Hide provinces for ' + esc(r.label) : 'Show provinces for ' + esc(r.label)}"
+                    >
+                      <span class="prov-sign-box">${isMsExpanded ? '−' : '+'}</span>
+                      <span class="prov-btn-label">${isMsExpanded ? 'Hide Provinces' : 'Provinces'}</span>
+                    </button>
+                    <button
+                      type="button"
                       class="nep-milestone-link"
                       data-open-optool-tab="${esc(r.sourceTab)}"
                       title="Open ${esc(r.label)} in Optool Supportlist"
                     >
                       ${esc(r.label)}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-xs nep-prov-toggle-btn ${isMsExpanded ? 'active' : ''}"
-                      data-toggle-prov-milestone="${esc(r.key)}"
-                      title="Toggle province breakdown for ${esc(r.label)}"
-                    >
-                      <span class="prov-arrow">${isMsExpanded ? '▾' : '▸'}</span> Provinces
                     </button>
                   </div>
                   <div class="nep-sub-metric">${esc(r.sourceTab)}</div>
@@ -418,9 +423,10 @@ function renderMilestoneNepSection(ctx) {
               </tr>
               ${
                 isMsExpanded
-                  ? provEntries
-                      .map(
-                        (pd) => `
+                  ? `
+                ${provEntries
+                  .map(
+                    (pd) => `
                 <tr class="nep-prov-subrow ${pd.hasAccomp ? 'has-accomp' : 'no-accomp'}">
                   <td class="nep-prov-subcell">
                     <div class="nep-prov-indent">
@@ -457,8 +463,21 @@ function renderMilestoneNepSection(ctx) {
                   <td class="right">${formatNepVarianceCell(pd.varianceCount, pd.varianceAreaHas, nepMetricMode)}</td>
                 </tr>
               `
-                      )
-                      .join('')
+                  )
+                  .join('')}
+                <tr class="nep-prov-subrow-footer">
+                  <td colspan="${totalTableCols}" class="nep-prov-footer-cell">
+                    <button
+                      type="button"
+                      class="btn btn-xs nep-prov-footer-btn"
+                      data-toggle-prov-milestone="${esc(r.key)}"
+                      title="Hide provinces for ${esc(r.label)}"
+                    >
+                      <span class="prov-sign-box">−</span> <span>Hide ${esc(r.label)} Provinces</span>
+                    </button>
+                  </td>
+                </tr>
+              `
                   : ''
               }
             `;
