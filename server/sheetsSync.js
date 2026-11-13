@@ -427,7 +427,13 @@ async function fetchGasAction(gasUrl, action) {
   if (!resp.ok) {
     throw new Error(`GAS Web App returned HTTP ${resp.status}`);
   }
-  return await resp.json();
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const preview = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+    throw new Error(`GAS Web App returned non-JSON response: ${preview || 'HTML error page'}`);
+  }
 }
 
 export async function pullFromGasWebApp(gasUrl) {

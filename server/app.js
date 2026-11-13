@@ -926,32 +926,38 @@ export function createAppServer(dataDir, options = {}) {
         if (!gasUrl) {
           return sendJson(res, 400, { error: 'Configure the GAS Web App URL first under Google Sheets & GAS ETL.' });
         }
-        let remote = await gasPullNepFn(gasUrl);
-        if (!remote?.nepProvinceList) {
-          remote = await gasPushFn(gasUrl, {
-            action: 'initNepSheet',
-            nepProvinceList: store.state.nepProvinceList
-          });
-        }
-        if (!remote?.ok || !remote?.nepProvinceList) {
-          return sendJson(res, 502, {
-            error: remote?.error || 'GAS Web App did not return a valid NEP Sheet payload.'
-          });
-        }
-        const nepProvinceList = store.updateNepProvinceList(remote.nepProvinceList, 'overall');
-        if (remote.nepMilestoneList && typeof remote.nepMilestoneList === 'object') {
-          for (const [ms, map] of Object.entries(remote.nepMilestoneList)) {
-            store.updateNepProvinceList(map, ms);
+        try {
+          let remote = await gasPullNepFn(gasUrl);
+          if (!remote?.nepProvinceList) {
+            remote = await gasPushFn(gasUrl, {
+              action: 'initNepSheet',
+              nepProvinceList: store.state.nepProvinceList
+            });
           }
+          if (!remote?.ok || !remote?.nepProvinceList) {
+            return sendJson(res, 502, {
+              error: remote?.error || 'GAS Web App did not return a valid NEP Sheet payload.'
+            });
+          }
+          const nepProvinceList = store.updateNepProvinceList(remote.nepProvinceList, 'overall');
+          if (remote.nepMilestoneList && typeof remote.nepMilestoneList === 'object') {
+            for (const [ms, map] of Object.entries(remote.nepMilestoneList)) {
+              store.updateNepProvinceList(map, ms);
+            }
+          }
+          store.addSyncLog('Hub NEP Sheet Sync', 'success', 'Synced Regional Hub NEP sheet (LHS, AREA, ARBs, Year).');
+          store.save();
+          return sendJson(res, 200, {
+            ok: true,
+            nepProvinceList,
+            nepMilestoneList: store.state.nepMilestoneList || {},
+            analytics: computeScopedAnalytics(store, query, scopeCode)
+          });
+        } catch (err) {
+          return sendJson(res, 502, {
+            error: `GAS NEP Sync failed: ${err.message}`
+          });
         }
-        store.addSyncLog('Hub NEP Sheet Sync', 'success', 'Synced Regional Hub NEP sheet (LHS, AREA, ARBs, Year).');
-        store.save();
-        return sendJson(res, 200, {
-          ok: true,
-          nepProvinceList,
-          nepMilestoneList: store.state.nepMilestoneList || {},
-          analytics: computeScopedAnalytics(store, query, scopeCode)
-        });
       }
 
       if (req.method === 'POST' && pathname === '/api/sync/google-sheet') {

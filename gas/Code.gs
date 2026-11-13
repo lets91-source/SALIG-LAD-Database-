@@ -409,41 +409,47 @@ function installHourlyTrigger() {
  *  - default (no action) -> serves hosted GAS HtmlService Web Application (Index.html)
  */
 function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || '';
+  try {
+    const action = (e && e.parameter && e.parameter.action) || '';
 
-  if (action === 'runETL') {
-    const res = runRegionalETL();
-    return ContentService.createTextOutput(JSON.stringify({ ok: true, etl: res }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+    if (action === 'runETL') {
+      const res = runRegionalETL();
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, etl: res }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
-  if (action === 'snapshot') {
-    return ContentService.createTextOutput(JSON.stringify(getHubBootstrap()))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+    if (action === 'snapshot') {
+      return ContentService.createTextOutput(JSON.stringify(getHubBootstrap()))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
-  if (action === 'users') {
+    if (action === 'users') {
+      return ContentService.createTextOutput(
+        JSON.stringify({ ok: true, spreadsheetId: HUB_SPREADSHEET_ID, users: readUserAccountsFromHub_() })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'nep') {
+      ensureNepSheet_();
+      const hubNep = readNepSheetFromHub_();
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          ok: true,
+          spreadsheetId: HUB_SPREADSHEET_ID,
+          nepProvinceList: hubNep.nepProvinceList,
+          nepMilestoneList: hubNep.nepMilestoneList || {}
+        })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return HtmlService.createHtmlOutputFromFile('Index')
+      .setTitle('SPLIT Milestone Monitoring System — DAR Region VIII Hub')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (err) {
     return ContentService.createTextOutput(
-      JSON.stringify({ ok: true, spreadsheetId: HUB_SPREADSHEET_ID, users: readUserAccountsFromHub_() })
+      JSON.stringify({ ok: false, error: String(err && err.message ? err.message : err) })
     ).setMimeType(ContentService.MimeType.JSON);
   }
-
-  if (action === 'nep') {
-    ensureNepSheet_();
-    const hubNep = readNepSheetFromHub_();
-    return ContentService.createTextOutput(
-      JSON.stringify({
-        ok: true,
-        spreadsheetId: HUB_SPREADSHEET_ID,
-        nepProvinceList: hubNep.nepProvinceList || hubNep,
-        nepMilestoneList: hubNep.nepMilestoneList || {}
-      })
-    ).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('SPLIT Milestone Monitoring System — DAR Region VIII Hub')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
@@ -507,7 +513,7 @@ function doPost(e) {
         JSON.stringify({
           ok: true,
           sheetName: 'NEP',
-          nepProvinceList: hubNep.nepProvinceList || hubNep,
+          nepProvinceList: hubNep.nepProvinceList,
           nepMilestoneList: hubNep.nepMilestoneList || {}
         })
       ).setMimeType(ContentService.MimeType.JSON);
@@ -528,7 +534,7 @@ function doPost(e) {
         JSON.stringify({
           ok: true,
           sheetName: 'NEP',
-          nepProvinceList: hubNep.nepProvinceList || hubNep,
+          nepProvinceList: hubNep.nepProvinceList,
           nepMilestoneList: hubNep.nepMilestoneList || {}
         })
       ).setMimeType(ContentService.MimeType.JSON);
@@ -666,9 +672,10 @@ function readNepSheetFromHub_() {
     out[n.code] = { lhs: 0, area: 0, arbs: 0, year: currentYear };
   });
   if (!sheet || sheet.getLastRow() <= 1) {
-    out.nepProvinceList = out;
-    out.nepMilestoneList = nepMilestoneList;
-    return out;
+    return {
+      nepProvinceList: out,
+      nepMilestoneList: nepMilestoneList
+    };
   }
   const rows = sheet.getDataRange().getValues();
   const headers = rows[0].map(function (h) { return String(h || '').trim().toUpperCase(); });
@@ -716,9 +723,10 @@ function readNepSheetFromHub_() {
       }
     }
   }
-  out.nepProvinceList = out;
-  out.nepMilestoneList = nepMilestoneList;
-  return out;
+  return {
+    nepProvinceList: out,
+    nepMilestoneList: nepMilestoneList
+  };
 }
 
 /** Write per-province LHS, AREA, ARBs, and Year into the Regional Hub NEP tab. */
