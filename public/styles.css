@@ -2805,6 +2805,11 @@ body.has-fullscreen-panel {
 }
 
 /* Milestone NEP Provincial Breakdown & Zero Accomplishment Indicators */
+.nep-prov-toggle-wrap {
+  margin-top: 6px;
+  display: block;
+}
+
 .nep-ms-title-wrap {
   display: flex;
   align-items: center;

@@ -361,7 +361,16 @@ function renderMilestoneNepSection(ctx) {
                 return `
               <tr class="nep-milestone-main-row ${isMsExpanded ? 'nep-expanded-row' : ''}">
                 <td>
-                  <div class="nep-ms-title-wrap">
+                  <button
+                    type="button"
+                    class="nep-milestone-link"
+                    data-open-optool-tab="${esc(r.sourceTab)}"
+                    title="Open ${esc(r.label)} in Optool Supportlist"
+                  >
+                    ${esc(r.label)}
+                  </button>
+                  <div class="nep-sub-metric">${esc(r.sourceTab)}</div>
+                  <div class="nep-prov-toggle-wrap">
                     <button
                       type="button"
                       class="btn btn-xs nep-prov-toggle-btn ${isMsExpanded ? 'expanded' : 'collapsed'}"
@@ -372,24 +381,6 @@ function renderMilestoneNepSection(ctx) {
                       <span class="prov-sign-box">${isMsExpanded ? '−' : '+'}</span>
                       <span class="prov-btn-label">${isMsExpanded ? 'Hide Provinces' : 'Provinces'}</span>
                     </button>
-                    <button
-                      type="button"
-                      class="nep-milestone-link"
-                      data-open-optool-tab="${esc(r.sourceTab)}"
-                      title="Open ${esc(r.label)} in Optool Supportlist"
-                    >
-                      ${esc(r.label)}
-                    </button>
-                  </div>
-                  <div class="nep-sub-metric">${esc(r.sourceTab)}</div>
-                  <div class="nep-prov-badges-wrap">
-                    ${
-                      zeroList.length > 0
-                        ? `<span class="nep-badge-no-accomp" title="Provinces with 0 accomplishments recorded for ${esc(r.label)}">
-                            <span class="no-accomp-dot">●</span> No Accomp: <strong>${esc(zeroList.join(', '))}</strong>
-                           </span>`
-                        : `<span class="nep-badge-all-accomp" title="All provinces have recorded accomplishment">✓ All Active</span>`
-                    }
                   </div>
                 </td>
                 <td class="right">${formatNepMetricCell(r.nepTargetCount, r.nepTargetAreaHas, nepMetricMode)}</td>
