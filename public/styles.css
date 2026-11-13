@@ -2804,6 +2804,67 @@ body.has-fullscreen-panel {
   background: #e6f4ea !important;
 }
 
+/* Milestone NEP Semestral (1st Sem & 2nd Sem) Headers and Cells */
+.nep-sem-header {
+  border-bottom: 1px solid var(--border-strong) !important;
+  font-weight: 700 !important;
+  text-align: center;
+  padding: 7px 10px !important;
+}
+
+.nep-sem1-header {
+  background: #e2f1e6 !important;
+  color: var(--dar-green-dark) !important;
+  border-right: 1px solid var(--border-strong) !important;
+}
+
+.nep-sem2-header {
+  background: #d8ece0 !important;
+  color: var(--dar-green-dark) !important;
+  border-right: 1px solid var(--border-strong) !important;
+}
+
+.nep-annual-header {
+  background: #cfe5d6 !important;
+  color: var(--dar-green-dark) !important;
+  font-weight: 700 !important;
+}
+
+.nep-sem-col-header {
+  background: #edf6f0 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: var(--dar-green-dark) !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  padding: 6px 8px !important;
+  white-space: nowrap;
+}
+
+.nep-sem1-col-th {
+  background: #eaf5ee !important;
+}
+
+.nep-sem2-col-th {
+  background: #e1efe6 !important;
+}
+
+.nep-annual-total-th {
+  background: #dcece1 !important;
+  font-weight: 700 !important;
+}
+
+.nep-sem-cell {
+  background: rgba(240, 248, 243, 0.45);
+}
+
+.nep-sem1-cell {
+  background: rgba(235, 247, 239, 0.55);
+}
+
+.nep-sem2-cell {
+  background: rgba(228, 244, 233, 0.55);
+}
+
 /* Milestone Column Header Dropdown */
 .nep-th-milestone-col {
   vertical-align: middle !important;

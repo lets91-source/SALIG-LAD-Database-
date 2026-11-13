@@ -1187,6 +1187,26 @@ export class ConsolidatedStore {
           zeroAccompProvinces.push(node.code);
         }
 
+        const pSem1Count = (pd.q[1]?.count || 0) + (pd.q[2]?.count || 0);
+        const pSem1Area = roundArea((pd.q[1]?.areaHas || 0) + (pd.q[2]?.areaHas || 0));
+        const pSem2Count = (pd.q[3]?.count || 0) + (pd.q[4]?.count || 0);
+        const pSem2Area = roundArea((pd.q[3]?.areaHas || 0) + (pd.q[4]?.areaHas || 0));
+
+        const pSem1TargetCount = pTargetCount > 0 ? pTargetCount / 2 : 0;
+        const pSem1TargetArea = roundArea(pTargetArea / 2);
+        const pSem2TargetCount = pTargetCount > 0 ? pTargetCount / 2 : 0;
+        const pSem2TargetArea = roundArea(pTargetArea / 2);
+
+        const pSem1RateCount = pSem1TargetCount > 0 ? Number(((pSem1Count / pSem1TargetCount) * 100).toFixed(2)) : 0;
+        const pSem1RateArea = pSem1TargetArea > 0 ? Number(((pSem1Area / pSem1TargetArea) * 100).toFixed(2)) : 0;
+        const pSem1VarCount = pSem1Count - pSem1TargetCount;
+        const pSem1VarArea = roundArea(pSem1Area - pSem1TargetArea);
+
+        const pSem2RateCount = pSem2TargetCount > 0 ? Number(((pSem2Count / pSem2TargetCount) * 100).toFixed(2)) : 0;
+        const pSem2RateArea = pSem2TargetArea > 0 ? Number(((pSem2Area / pSem2TargetArea) * 100).toFixed(2)) : 0;
+        const pSem2VarCount = pSem2Count - pSem2TargetCount;
+        const pSem2VarArea = roundArea(pSem2Area - pSem2TargetArea);
+
         provinceBreakdown[node.code] = {
           code: node.code,
           name: node.name,
@@ -1199,6 +1219,26 @@ export class ConsolidatedStore {
           q2: { count: pd.q[2]?.count || 0, areaHas: roundArea(pd.q[2]?.areaHas || 0) },
           q3: { count: pd.q[3]?.count || 0, areaHas: roundArea(pd.q[3]?.areaHas || 0) },
           q4: { count: pd.q[4]?.count || 0, areaHas: roundArea(pd.q[4]?.areaHas || 0) },
+          sem1: {
+            count: pSem1Count,
+            areaHas: pSem1Area,
+            targetCount: pSem1TargetCount,
+            targetAreaHas: pSem1TargetArea,
+            rateCountPct: pSem1RateCount,
+            rateAreaPct: pSem1RateArea,
+            varianceCount: pSem1VarCount,
+            varianceAreaHas: pSem1VarArea
+          },
+          sem2: {
+            count: pSem2Count,
+            areaHas: pSem2Area,
+            targetCount: pSem2TargetCount,
+            targetAreaHas: pSem2TargetArea,
+            rateCountPct: pSem2RateCount,
+            rateAreaPct: pSem2RateArea,
+            varianceCount: pSem2VarCount,
+            varianceAreaHas: pSem2VarArea
+          },
           months: {
             1: { count: pd.m[1]?.count || 0, areaHas: roundArea(pd.m[1]?.areaHas || 0) },
             2: { count: pd.m[2]?.count || 0, areaHas: roundArea(pd.m[2]?.areaHas || 0) },
@@ -1220,6 +1260,26 @@ export class ConsolidatedStore {
         };
       }
 
+      const sem1Count = q[1].count + q[2].count;
+      const sem1Area = roundArea(q[1].areaHas + q[2].areaHas);
+      const sem2Count = q[3].count + q[4].count;
+      const sem2Area = roundArea(q[3].areaHas + q[4].areaHas);
+
+      const sem1TargetCount = nepTargetCount > 0 ? nepTargetCount / 2 : 0;
+      const sem1TargetAreaHas = roundArea(nepTargetAreaHas / 2);
+      const sem2TargetCount = nepTargetCount > 0 ? nepTargetCount / 2 : 0;
+      const sem2TargetAreaHas = roundArea(nepTargetAreaHas / 2);
+
+      const sem1RateCountPct = sem1TargetCount > 0 ? Number(((sem1Count / sem1TargetCount) * 100).toFixed(2)) : 0;
+      const sem1RateAreaPct = sem1TargetAreaHas > 0 ? Number(((sem1Area / sem1TargetAreaHas) * 100).toFixed(2)) : 0;
+      const sem1VarianceCount = sem1Count - sem1TargetCount;
+      const sem1VarianceAreaHas = roundArea(sem1Area - sem1TargetAreaHas);
+
+      const sem2RateCountPct = sem2TargetCount > 0 ? Number(((sem2Count / sem2TargetCount) * 100).toFixed(2)) : 0;
+      const sem2RateAreaPct = sem2TargetAreaHas > 0 ? Number(((sem2Area / sem2TargetAreaHas) * 100).toFixed(2)) : 0;
+      const sem2VarianceCount = sem2Count - sem2TargetCount;
+      const sem2VarianceAreaHas = roundArea(sem2Area - sem2TargetAreaHas);
+
       return {
         key: meta.key,
         label: meta.label,
@@ -1233,6 +1293,26 @@ export class ConsolidatedStore {
         q2: { count: q[2].count, areaHas: roundArea(q[2].areaHas) },
         q3: { count: q[3].count, areaHas: roundArea(q[3].areaHas) },
         q4: { count: q[4].count, areaHas: roundArea(q[4].areaHas) },
+        sem1: {
+          count: sem1Count,
+          areaHas: sem1Area,
+          targetCount: sem1TargetCount,
+          targetAreaHas: sem1TargetAreaHas,
+          rateCountPct: sem1RateCountPct,
+          rateAreaPct: sem1RateAreaPct,
+          varianceCount: sem1VarianceCount,
+          varianceAreaHas: sem1VarianceAreaHas
+        },
+        sem2: {
+          count: sem2Count,
+          areaHas: sem2Area,
+          targetCount: sem2TargetCount,
+          targetAreaHas: sem2TargetAreaHas,
+          rateCountPct: sem2RateCountPct,
+          rateAreaPct: sem2RateAreaPct,
+          varianceCount: sem2VarianceCount,
+          varianceAreaHas: sem2VarianceAreaHas
+        },
         months: {
           1: { count: m[1].count, areaHas: roundArea(m[1].areaHas) },
           2: { count: m[2].count, areaHas: roundArea(m[2].areaHas) },

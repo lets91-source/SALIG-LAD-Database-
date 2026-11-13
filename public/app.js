@@ -45,6 +45,7 @@ const appState = {
   nepDisplayMode: 'table', // 'table' | 'cards'
   nepShowMonths: false,
   nepExpandedQuarters: {},
+  nepShowSemesters: true,
   nepShowProvinces: false,
   nepExpandedMilestones: {},
   filters: {
@@ -666,6 +667,7 @@ function renderActiveView() {
     nepMetricMode: appState.nepMetricMode,
     nepShowMonths: Boolean(appState.nepShowMonths),
     nepExpandedQuarters: appState.nepExpandedQuarters || {},
+    nepShowSemesters: Boolean(appState.nepShowSemesters !== false),
     nepShowProvinces: Boolean(appState.nepShowProvinces),
     nepExpandedMilestones: appState.nepExpandedMilestones || {},
     nepYearFilter: appState.nepYearFilter,
@@ -2093,6 +2095,11 @@ function bindDashboardViewEvents(container) {
     const willShow = !appState.nepShowMonths;
     appState.nepShowMonths = willShow;
     appState.nepExpandedQuarters = { 1: willShow, 2: willShow, 3: willShow, 4: willShow };
+    renderActiveView();
+  });
+
+  container.querySelector('#btn-toggle-nep-semesters')?.addEventListener('click', () => {
+    appState.nepShowSemesters = !Boolean(appState.nepShowSemesters !== false);
     renderActiveView();
   });
 

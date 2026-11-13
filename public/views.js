@@ -166,6 +166,7 @@ function renderMilestoneNepSection(ctx) {
     nepExpandedQuarters = {},
     nepShowProvinces = false,
     nepExpandedMilestones = {},
+    nepShowSemesters = true,
     nepMilestoneTableFilter = 'ALL'
   } = ctx;
   const rows = analytics.milestoneNepBreakdown || [];
@@ -243,8 +244,29 @@ function renderMilestoneNepSection(ctx) {
 
   const isQExpanded = (qNum) => nepShowMonths || Boolean(nepExpandedQuarters[qNum]);
   const hasAnyMonthExpanded = quartersConfig.some((q) => isQExpanded(q.q));
-  const totalQuarterCols = quartersConfig.reduce((acc, q) => acc + (isQExpanded(q.q) ? 4 : 1), 0);
-  const totalTableCols = totalQuarterCols + 5;
+  const q1Cols = isQExpanded(1) ? 4 : 1;
+  const q2Cols = isQExpanded(2) ? 4 : 1;
+  const q3Cols = isQExpanded(3) ? 4 : 1;
+  const q4Cols = isQExpanded(4) ? 4 : 1;
+  const totalQuarterCols = q1Cols + q2Cols + q3Cols + q4Cols;
+  const totalTableCols = 2 + (nepShowSemesters ? (totalQuarterCols + 6 + 3) : (totalQuarterCols + 3));
+
+  const renderQuarterCells = (dataObj, qNum) => {
+    const qData = dataObj[`q${qNum}`] || { count: 0, areaHas: 0 };
+    if (!isQExpanded(qNum)) {
+      return `<td class="right">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>`;
+    }
+    const qCfg = quartersConfig.find((q) => q.q === qNum);
+    const m1 = dataObj.months?.[qCfg.months[0].num] || { count: 0, areaHas: 0 };
+    const m2 = dataObj.months?.[qCfg.months[1].num] || { count: 0, areaHas: 0 };
+    const m3 = dataObj.months?.[qCfg.months[2].num] || { count: 0, areaHas: 0 };
+    return `
+      <td class="right nep-month-cell">${formatNepMetricCell(m1.count, m1.areaHas, nepMetricMode)}</td>
+      <td class="right nep-month-cell">${formatNepMetricCell(m2.count, m2.areaHas, nepMetricMode)}</td>
+      <td class="right nep-month-cell">${formatNepMetricCell(m3.count, m3.areaHas, nepMetricMode)}</td>
+      <td class="right nep-q-total-cell">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>
+    `;
+  };
 
   return `
     <div class="panel" id="panel-milestone-nep">
@@ -296,6 +318,9 @@ function renderMilestoneNepSection(ctx) {
           <button type="button" class="btn btn-sm ${hasAnyMonthExpanded ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-months" title="Toggle monthly accomplishment in each quarter">
             <span class="fs-icon">📅</span> <span>${hasAnyMonthExpanded ? 'Hide Monthly' : 'Monthly Accomp.'}</span>
           </button>
+          <button type="button" class="btn btn-sm ${nepShowSemesters ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-semesters" title="Toggle 1st Sem &amp; 2nd Sem columns">
+            <span class="fs-icon">🌓</span> <span>${nepShowSemesters ? 'Hide Semesters' : '1st &amp; 2nd Sem'}</span>
+          </button>
           <button type="button" class="btn btn-sm ${nepShowProvinces ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-provinces" title="Show or hide provincial breakdown rows for all milestones">
             <span class="fs-icon">${nepShowProvinces ? '−' : '+'}</span> <span>${nepShowProvinces ? 'Hide All Provinces' : 'Show All Provinces'}</span>
           </button>
@@ -316,7 +341,82 @@ function renderMilestoneNepSection(ctx) {
         <table class="nep-milestone-table">
           <thead>
             ${
-              !hasAnyMonthExpanded
+              nepShowSemesters
+                ? `
+            <tr>
+              <th rowspan="${hasAnyMonthExpanded ? 3 : 2}" class="nep-th-milestone-col">
+                <div class="nep-th-milestone-flex">
+                  <span>Milestone</span>
+                  <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter" title="Filter by Milestone" aria-label="Filter by Milestone">
+                    ${milestoneTableOptions
+                      .map(
+                        (m) =>
+                          `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+                      )
+                      .join('')}
+                  </select>
+                </div>
+              </th>
+              <th rowspan="${hasAnyMonthExpanded ? 3 : 2}" class="right">NEP Target</th>
+              <th colspan="${q1Cols + q2Cols + 3}" class="center nep-sem-header nep-sem1-header">1st Semester (Jan – Jun)</th>
+              <th colspan="${q3Cols + q4Cols + 3}" class="center nep-sem-header nep-sem2-header">2nd Semester (Jul – Dec)</th>
+              <th colspan="3" class="center nep-annual-header">Full Year (Total)</th>
+            </tr>
+            <tr>
+              ${
+                isQExpanded(1)
+                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="1" title="Click to hide Q1 months">Q1 <span class="q-toggle-pill">Hide Months ▴</span></th>`
+                  : `<th class="right nep-q-col-header" data-toggle-q="1" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q1">Q1 <span class="q-toggle-pill">+</span></th>`
+              }
+              ${
+                isQExpanded(2)
+                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="2" title="Click to hide Q2 months">Q2 <span class="q-toggle-pill">Hide Months ▴</span></th>`
+                  : `<th class="right nep-q-col-header" data-toggle-q="2" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q2">Q2 <span class="q-toggle-pill">+</span></th>`
+              }
+              <th class="right nep-sem-col-header nep-sem1-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="1st Semester Accomplishment (Q1 + Q2)">1st Sem Accomp</th>
+              <th class="right nep-sem-col-header nep-sem1-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="1st Semester Rate of Accomplishment">1st Sem Rate</th>
+              <th class="right nep-sem-col-header nep-sem1-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="1st Semester Variance vs 1st Sem Target">1st Sem Variance</th>
+
+              ${
+                isQExpanded(3)
+                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="3" title="Click to hide Q3 months">Q3 <span class="q-toggle-pill">Hide Months ▴</span></th>`
+                  : `<th class="right nep-q-col-header" data-toggle-q="3" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q3">Q3 <span class="q-toggle-pill">+</span></th>`
+              }
+              ${
+                isQExpanded(4)
+                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="4" title="Click to hide Q4 months">Q4 <span class="q-toggle-pill">Hide Months ▴</span></th>`
+                  : `<th class="right nep-q-col-header" data-toggle-q="4" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q4">Q4 <span class="q-toggle-pill">+</span></th>`
+              }
+              <th class="right nep-sem-col-header nep-sem2-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="2nd Semester Accomplishment (Q3 + Q4)">2nd Sem Accomp</th>
+              <th class="right nep-sem-col-header nep-sem2-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="2nd Semester Rate of Accomplishment">2nd Sem Rate</th>
+              <th class="right nep-sem-col-header nep-sem2-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="2nd Semester Variance vs 2nd Sem Target">2nd Sem Variance</th>
+
+              <th class="right nep-annual-total-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''}>Total</th>
+              <th class="right nep-annual-total-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''}>Rate of Accomp.</th>
+              <th class="right nep-annual-total-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''}>Variance</th>
+            </tr>
+            ${
+              hasAnyMonthExpanded
+                ? `
+            <tr>
+              ${[1, 2, 3, 4]
+                .map((qNum) => {
+                  if (!isQExpanded(qNum)) return '';
+                  const qCfg = quartersConfig.find((q) => q.q === qNum);
+                  return `
+                    <th class="right nep-month-header">${qCfg.months[0].label}</th>
+                    <th class="right nep-month-header">${qCfg.months[1].label}</th>
+                    <th class="right nep-month-header">${qCfg.months[2].label}</th>
+                    <th class="right nep-q-subtotal-header">Q${qNum} Total</th>
+                  `;
+                })
+                .join('')}
+            </tr>
+            `
+                : ''
+            }
+            `
+                : !hasAnyMonthExpanded
                 ? `
             <tr>
               <th rowspan="2" class="nep-th-milestone-col">
@@ -430,23 +530,28 @@ function renderMilestoneNepSection(ctx) {
                   </div>
                 </td>
                 <td class="right">${formatNepMetricCell(r.nepTargetCount, r.nepTargetAreaHas, nepMetricMode)}</td>
-                ${quartersConfig
-                  .map((q) => {
-                    const qData = r[`q${q.q}`] || { count: 0, areaHas: 0 };
-                    if (!isQExpanded(q.q)) {
-                      return `<td class="right">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>`;
-                    }
-                    const m1 = r.months?.[q.months[0].num] || { count: 0, areaHas: 0 };
-                    const m2 = r.months?.[q.months[1].num] || { count: 0, areaHas: 0 };
-                    const m3 = r.months?.[q.months[2].num] || { count: 0, areaHas: 0 };
-                    return `
-                      <td class="right nep-month-cell">${formatNepMetricCell(m1.count, m1.areaHas, nepMetricMode)}</td>
-                      <td class="right nep-month-cell">${formatNepMetricCell(m2.count, m2.areaHas, nepMetricMode)}</td>
-                      <td class="right nep-month-cell">${formatNepMetricCell(m3.count, m3.areaHas, nepMetricMode)}</td>
-                      <td class="right nep-q-total-cell">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>
-                    `;
-                  })
-                  .join('')}
+                ${renderQuarterCells(r, 1)}
+                ${renderQuarterCells(r, 2)}
+                ${
+                  nepShowSemesters
+                    ? `
+                  <td class="right nep-sem-cell nep-sem1-cell font-semibold">${formatNepMetricCell(r.sem1?.count, r.sem1?.areaHas, nepMetricMode)}</td>
+                  <td class="right nep-sem-cell nep-sem1-cell">${formatNepRateCell(r.sem1?.rateCountPct, r.sem1?.rateAreaPct, nepMetricMode)}</td>
+                  <td class="right nep-sem-cell nep-sem1-cell">${formatNepVarianceCell(r.sem1?.varianceCount, r.sem1?.varianceAreaHas, nepMetricMode)}</td>
+                `
+                    : ''
+                }
+                ${renderQuarterCells(r, 3)}
+                ${renderQuarterCells(r, 4)}
+                ${
+                  nepShowSemesters
+                    ? `
+                  <td class="right nep-sem-cell nep-sem2-cell font-semibold">${formatNepMetricCell(r.sem2?.count, r.sem2?.areaHas, nepMetricMode)}</td>
+                  <td class="right nep-sem-cell nep-sem2-cell">${formatNepRateCell(r.sem2?.rateCountPct, r.sem2?.rateAreaPct, nepMetricMode)}</td>
+                  <td class="right nep-sem-cell nep-sem2-cell">${formatNepVarianceCell(r.sem2?.varianceCount, r.sem2?.varianceAreaHas, nepMetricMode)}</td>
+                `
+                    : ''
+                }
                 <td class="right">
                   ${formatNepMetricCell(r.total.count, r.total.areaHas, nepMetricMode)}
                   ${
@@ -478,23 +583,28 @@ function renderMilestoneNepSection(ctx) {
                     </div>
                   </td>
                   <td class="right">${formatNepMetricCell(pd.targetCount, pd.targetAreaHas, nepMetricMode)}</td>
-                  ${quartersConfig
-                    .map((q) => {
-                      const qData = pd[`q${q.q}`] || { count: 0, areaHas: 0 };
-                      if (!isQExpanded(q.q)) {
-                        return `<td class="right">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>`;
-                      }
-                      const m1 = pd.months?.[q.months[0].num] || { count: 0, areaHas: 0 };
-                      const m2 = pd.months?.[q.months[1].num] || { count: 0, areaHas: 0 };
-                      const m3 = pd.months?.[q.months[2].num] || { count: 0, areaHas: 0 };
-                      return `
-                        <td class="right nep-month-cell">${formatNepMetricCell(m1.count, m1.areaHas, nepMetricMode)}</td>
-                        <td class="right nep-month-cell">${formatNepMetricCell(m2.count, m2.areaHas, nepMetricMode)}</td>
-                        <td class="right nep-month-cell">${formatNepMetricCell(m3.count, m3.areaHas, nepMetricMode)}</td>
-                        <td class="right nep-q-total-cell">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>
-                      `;
-                    })
-                    .join('')}
+                  ${renderQuarterCells(pd, 1)}
+                  ${renderQuarterCells(pd, 2)}
+                  ${
+                    nepShowSemesters
+                      ? `
+                    <td class="right nep-sem-cell nep-sem1-cell font-semibold">${formatNepMetricCell(pd.sem1?.count, pd.sem1?.areaHas, nepMetricMode)}</td>
+                    <td class="right nep-sem-cell nep-sem1-cell">${formatNepRateCell(pd.sem1?.rateCountPct, pd.sem1?.rateAreaPct, nepMetricMode)}</td>
+                    <td class="right nep-sem-cell nep-sem1-cell">${formatNepVarianceCell(pd.sem1?.varianceCount, pd.sem1?.varianceAreaHas, nepMetricMode)}</td>
+                  `
+                      : ''
+                  }
+                  ${renderQuarterCells(pd, 3)}
+                  ${renderQuarterCells(pd, 4)}
+                  ${
+                    nepShowSemesters
+                      ? `
+                    <td class="right nep-sem-cell nep-sem2-cell font-semibold">${formatNepMetricCell(pd.sem2?.count, pd.sem2?.areaHas, nepMetricMode)}</td>
+                    <td class="right nep-sem-cell nep-sem2-cell">${formatNepRateCell(pd.sem2?.rateCountPct, pd.sem2?.rateAreaPct, nepMetricMode)}</td>
+                    <td class="right nep-sem-cell nep-sem2-cell">${formatNepVarianceCell(pd.sem2?.varianceCount, pd.sem2?.varianceAreaHas, nepMetricMode)}</td>
+                  `
+                      : ''
+                  }
                   <td class="right font-semibold">${formatNepMetricCell(pd.count, pd.areaHas, nepMetricMode)}</td>
                   <td class="right">${formatNepRateCell(pd.rateCountPct, pd.rateAreaPct, nepMetricMode)}</td>
                   <td class="right">${formatNepVarianceCell(pd.varianceCount, pd.varianceAreaHas, nepMetricMode)}</td>
