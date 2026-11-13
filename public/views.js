@@ -363,17 +363,6 @@ function renderMilestoneNepSection(ctx) {
           <button type="button" class="btn btn-sm ${nepExpandedTargetSems ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-target-sems" title="Toggle 1st Sem &amp; 2nd Sem Target columns">
             <span class="fs-icon">🎯</span> <span>${nepExpandedTargetSems ? 'Hide Target Sems' : '1st &amp; 2nd Target'}</span>
           </button>
-          <button type="button" class="btn btn-sm ${nepShowProvinces ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-provinces" title="Show or hide provincial breakdown rows for all milestones">
-            <span class="fs-icon">${nepShowProvinces ? '−' : '+'}</span> <span>${nepShowProvinces ? 'Hide All Provinces' : 'Show All Provinces'}</span>
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-hub-nep" title="Fetch live NEP target data from Regional Hub Google Sheet">
-            Fetch Hub NEP Targets
-          </button>
-          ${
-            canEditNepTargets
-              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-targets">Regional NEP Target List</button>`
-              : ''
-          }
           <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-nep" title="Full Screen Report / Table">
             <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
           </button>
@@ -1007,6 +996,609 @@ export function renderTargetSummaryView(ctx) {
   return `
     ${renderEmptyWorkspaceCallout(ctx.state)}
     ${renderMilestoneNepSection(ctx)}
+  `;
+}
+
+function formatReportedMonthDisplay(val) {
+  if (!val || !String(val).trim()) return '—';
+  const s = String(val).trim();
+  const match = s.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
+  if (match) {
+    const yr = match[1];
+    const mo = parseInt(match[2], 10) - 1;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (mo >= 0 && mo < 12) return `${months[mo]} ${yr}`;
+  }
+  return s;
+}
+
+export function renderCfWhereaboutsView(ctx) {
+  const {
+    state,
+    schemas,
+    provinceScope,
+    cfSearch = '',
+    cfProvinceFilter = 'ALL',
+    cfDateStatusFilter = 'ALL',
+    cfPage = 1
+  } = ctx;
+
+  const rawCfRows = (state?.optool?.['CF(DOC)'] || []).map((r, originalIndex) => ({
+    ...r,
+    __originalIndex: originalIndex
+  }));
+  const dbRows = state?.optool?.Database || [];
+  const dbMap = new Map();
+  for (const db of dbRows) {
+    const k = String(db.lhid || '').trim().toLowerCase();
+    if (k && !dbMap.has(k)) dbMap.set(k, db);
+  }
+
+  // Enrich each CF row with Database attributes
+  const enrichedRows = rawCfRows.map((cf) => {
+    const lhidKey = String(cf.lhid || '').trim().toLowerCase();
+    const db = dbMap.get(lhidKey) || {};
+    const carpableNum = parseNumericValue(db.carpable || cf.carpable || cf.carpableArea || 0);
+    const dateFi = String(cf.dateFiConducted || '').trim();
+    const datePrep = String(cf.datePreparedSigned || '').trim();
+    const monthRep = String(cf.reportedMonth || '').trim();
+    const provName = db.province || cf.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
+    const muniName = db.municipality || cf.municipality || '—';
+    const brgyName = db.barangay || cf.barangay || '—';
+    const titleNum = db.titleNumber || cf.titleNumber || '—';
+    const landOwner = db.landOwner || cf.landOwner || '—';
+    const targetPeriod = cf.target || db.targetYear || 'Current';
+
+    const hasFi = Boolean(dateFi);
+    const hasPrep = Boolean(datePrep);
+    const hasMonth = Boolean(monthRep);
+    const isComplete = hasFi && hasPrep && hasMonth;
+
+    let stage = 'Pending FI';
+    let stageBadge = 'badge-gray';
+    if (isComplete) {
+      stage = 'Completed & Reported';
+      stageBadge = 'badge-green';
+    } else if (hasPrep) {
+      stage = 'Prepared & Signed';
+      stageBadge = 'badge-blue';
+    } else if (hasFi) {
+      stage = 'FI Conducted';
+      stageBadge = 'badge-amber';
+    } else if (hasMonth) {
+      stage = 'Reported (Pending Dates)';
+      stageBadge = 'badge-blue';
+    }
+
+    return {
+      ...cf,
+      lhid: cf.lhid || db.lhid || '—',
+      province: provName,
+      municipality: muniName,
+      barangay: brgyName,
+      titleNumber: titleNum,
+      landOwner: landOwner,
+      carpable: carpableNum,
+      dateFiConducted: dateFi,
+      datePreparedSigned: datePrep,
+      reportedMonth: monthRep,
+      target: targetPeriod,
+      hasFi,
+      hasPrep,
+      hasMonth,
+      isComplete,
+      stage,
+      stageBadge
+    };
+  });
+
+  // Calculate summary metrics across all records
+  const totalCf = enrichedRows.length;
+  const totalArea = enrichedRows.reduce((sum, r) => sum + r.carpable, 0);
+  const fiCount = enrichedRows.filter((r) => r.hasFi).length;
+  const fiArea = enrichedRows.filter((r) => r.hasFi).reduce((sum, r) => sum + r.carpable, 0);
+  const prepCount = enrichedRows.filter((r) => r.hasPrep).length;
+  const prepArea = enrichedRows.filter((r) => r.hasPrep).reduce((sum, r) => sum + r.carpable, 0);
+  const monthCount = enrichedRows.filter((r) => r.hasMonth).length;
+  const monthArea = enrichedRows.filter((r) => r.hasMonth).reduce((sum, r) => sum + r.carpable, 0);
+  const completeCount = enrichedRows.filter((r) => r.isComplete).length;
+  const completeArea = enrichedRows.filter((r) => r.isComplete).reduce((sum, r) => sum + r.carpable, 0);
+  const pendingCount = totalCf - completeCount;
+
+  const pct = (part, whole) => (whole > 0 ? ((part / whole) * 100).toFixed(1) : '0.0');
+
+  // Provincial Summary Matrix
+  const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  const provMap = new Map();
+  for (const n of provNodes) {
+    provMap.set(n.provinceName.toUpperCase(), {
+      name: n.provinceName,
+      code: n.code,
+      total: 0,
+      area: 0,
+      fiCount: 0,
+      fiArea: 0,
+      prepCount: 0,
+      prepArea: 0,
+      monthCount: 0,
+      monthArea: 0,
+      completeCount: 0,
+      completeArea: 0
+    });
+  }
+
+  for (const r of enrichedRows) {
+    const pKey = String(r.province || '').trim().toUpperCase();
+    let pObj = provMap.get(pKey);
+    if (!pObj) {
+      for (const [k, v] of provMap.entries()) {
+        if (pKey.includes(k) || k.includes(pKey)) {
+          pObj = v;
+          break;
+        }
+      }
+    }
+    if (!pObj) {
+      pObj = {
+        name: r.province || 'Other',
+        code: 'OTHER',
+        total: 0,
+        area: 0,
+        fiCount: 0,
+        fiArea: 0,
+        prepCount: 0,
+        prepArea: 0,
+        monthCount: 0,
+        monthArea: 0,
+        completeCount: 0,
+        completeArea: 0
+      };
+      provMap.set(pKey, pObj);
+    }
+    pObj.total += 1;
+    pObj.area += r.carpable;
+    if (r.hasFi) {
+      pObj.fiCount += 1;
+      pObj.fiArea += r.carpable;
+    }
+    if (r.hasPrep) {
+      pObj.prepCount += 1;
+      pObj.prepArea += r.carpable;
+    }
+    if (r.hasMonth) {
+      pObj.monthCount += 1;
+      pObj.monthArea += r.carpable;
+    }
+    if (r.isComplete) {
+      pObj.completeCount += 1;
+      pObj.completeArea += r.carpable;
+    }
+  }
+  const provSummaryList = Array.from(provMap.values()).filter(
+    (p) => !provinceScope || p.code === provinceScope.code
+  );
+
+  // Reported Month Summary Matrix
+  const monthMap = new Map();
+  for (const r of enrichedRows) {
+    const mLabel = r.reportedMonth ? formatReportedMonthDisplay(r.reportedMonth) : 'Undated / Pending';
+    if (!monthMap.has(mLabel)) {
+      monthMap.set(mLabel, { label: mLabel, total: 0, area: 0, fiCount: 0, prepCount: 0, completeCount: 0 });
+    }
+    const mObj = monthMap.get(mLabel);
+    mObj.total += 1;
+    mObj.area += r.carpable;
+    if (r.hasFi) mObj.fiCount += 1;
+    if (r.hasPrep) mObj.prepCount += 1;
+    if (r.isComplete) mObj.completeCount += 1;
+  }
+  const monthSummaryList = Array.from(monthMap.values()).sort((a, b) => {
+    if (a.label === 'Undated / Pending') return 1;
+    if (b.label === 'Undated / Pending') return -1;
+    return b.total - a.total;
+  });
+
+  // Filter rows for the master table
+  let filteredRows = enrichedRows;
+  if (cfProvinceFilter && cfProvinceFilter !== 'ALL') {
+    const fNorm = cfProvinceFilter.trim().toUpperCase();
+    filteredRows = filteredRows.filter((r) => {
+      const pNorm = String(r.province || '').trim().toUpperCase();
+      return pNorm === fNorm || pNorm.includes(fNorm) || fNorm.includes(pNorm);
+    });
+  }
+  if (cfDateStatusFilter === 'with_fi') {
+    filteredRows = filteredRows.filter((r) => r.hasFi);
+  } else if (cfDateStatusFilter === 'with_prep') {
+    filteredRows = filteredRows.filter((r) => r.hasPrep);
+  } else if (cfDateStatusFilter === 'with_month') {
+    filteredRows = filteredRows.filter((r) => r.hasMonth);
+  } else if (cfDateStatusFilter === 'all_complete') {
+    filteredRows = filteredRows.filter((r) => r.isComplete);
+  } else if (cfDateStatusFilter === 'pending') {
+    filteredRows = filteredRows.filter((r) => !r.isComplete);
+  }
+
+  const q = (cfSearch || '').trim().toLowerCase();
+  if (q) {
+    filteredRows = filteredRows.filter((r) => {
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.dateFiConducted} ${r.datePreparedSigned} ${r.reportedMonth}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  // Pagination for Master Ledger
+  const pageSize = 50;
+  const totalFiltered = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const currentPage = Math.min(Math.max(1, Number(cfPage) || 1), totalPages);
+  const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  return `
+    ${renderEmptyWorkspaceCallout(state)}
+
+    <!-- KPI Cards: Date FI Conducted, Date Prepared & Signed, Reported Month -->
+    <section class="kpi-grid">
+      <div class="kpi-card highlight">
+        <div class="kpi-label">Total CF Landholdings</div>
+        <div class="kpi-primary">${totalCf.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary">${fmtArea(totalArea)} CARPable HAS</div>
+        <div class="kpi-meta">Active Claim Folders in CF(DOC)</div>
+      </div>
+
+      <div class="kpi-card green">
+        <div class="kpi-label">Date FI Conducted</div>
+        <div class="kpi-primary">${fiCount.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary" style="color:var(--dar-green);">${fmtArea(fiArea)} HAS (${pct(fiCount, totalCf)}%)</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct(fiCount, totalCf)}%;background:var(--dar-green);"></div>
+        </div>
+        <div class="kpi-meta">Field Investigation Completed &amp; Dated</div>
+      </div>
+
+      <div class="kpi-card blue">
+        <div class="kpi-label">Date Prepared &amp; Signed</div>
+        <div class="kpi-primary">${prepCount.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary" style="color:var(--dar-blue);">${fmtArea(prepArea)} HAS (${pct(prepCount, totalCf)}%)</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct(prepCount, totalCf)}%;background:var(--dar-blue);"></div>
+        </div>
+        <div class="kpi-meta">Documentation Prepared &amp; Signed</div>
+      </div>
+
+      <div class="kpi-card amber">
+        <div class="kpi-label">Reported Month</div>
+        <div class="kpi-primary">${monthCount.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary" style="color:var(--dar-amber);">${fmtArea(monthArea)} HAS (${pct(monthCount, totalCf)}%)</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct(monthCount, totalCf)}%;background:var(--dar-amber);"></div>
+        </div>
+        <div class="kpi-meta">Transmitted in Reporting Month</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">All 3 Dates Complete</div>
+        <div class="kpi-primary">${completeCount.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary">${fmtArea(completeArea)} HAS (${pct(completeCount, totalCf)}%)</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct(completeCount, totalCf)}%;"></div>
+        </div>
+        <div class="kpi-meta">${pendingCount} Parcels with Pending Dates</div>
+      </div>
+    </section>
+
+    <!-- Provincial & Monthly Summary Matrices -->
+    <section class="grid-2" style="margin-bottom: 18px;">
+      <!-- Panel 1: Provincial Summary Matrix -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="panel-title">CF Whereabouts Summary by Province</h3>
+            <p class="panel-subtitle">Claim Folder Date FI Conducted, Date Prepared &amp; Signed, and Reported Month breakdown</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="nep-milestone-table">
+            <thead>
+              <tr>
+                <th>Province</th>
+                <th class="right">Total CFs</th>
+                <th class="right">CARPable (HAS)</th>
+                <th class="right">FI Conducted</th>
+                <th class="right">Prepared &amp; Signed</th>
+                <th class="right">Reported Month</th>
+                <th class="right">Complete</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                provSummaryList.length === 0
+                  ? `<tr><td colspan="7" class="text-center" style="padding:16px;color:var(--text-muted)">No provincial CF records found</td></tr>`
+                  : provSummaryList
+                      .map(
+                        (p) => `
+                    <tr>
+                      <td style="font-weight:700;">
+                        <span class="badge badge-gray" style="margin-right:6px;">${esc(p.code)}</span>
+                        ${esc(p.name)}
+                      </td>
+                      <td class="right"><strong>${p.total}</strong></td>
+                      <td class="right">${fmtArea(p.area)} HAS</td>
+                      <td class="right">
+                        ${p.fiCount > 0 ? `<span class="badge badge-green">${p.fiCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}
+                      </td>
+                      <td class="right">
+                        ${p.prepCount > 0 ? `<span class="badge badge-blue">${p.prepCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}
+                      </td>
+                      <td class="right">
+                        ${p.monthCount > 0 ? `<span class="badge badge-amber">${p.monthCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}
+                      </td>
+                      <td class="right">
+                        <span class="badge ${p.completeCount === p.total && p.total > 0 ? 'badge-green' : 'badge-gray'}">
+                          ${p.completeCount} (${pct(p.completeCount, p.total)}%)
+                        </span>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+            <tfoot>
+              <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
+                <td>Region VIII Total</td>
+                <td class="right">${totalCf}</td>
+                <td class="right">${fmtArea(totalArea)} HAS</td>
+                <td class="right"><span class="badge badge-green">${fiCount}</span></td>
+                <td class="right"><span class="badge badge-blue">${prepCount}</span></td>
+                <td class="right"><span class="badge badge-amber">${monthCount}</span></td>
+                <td class="right"><span class="badge badge-green">${completeCount} (${pct(completeCount, totalCf)}%)</span></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Panel 2: Monthly / Timeline Summary Matrix -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="panel-title">Summary by Reported Month &amp; Cycle</h3>
+            <p class="panel-subtitle">Claim Folders scheduled and reported across monthly reporting cycles</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="nep-milestone-table">
+            <thead>
+              <tr>
+                <th>Reported Month</th>
+                <th class="right">Parcels</th>
+                <th class="right">CARPable Area (HAS)</th>
+                <th class="right">FI Conducted</th>
+                <th class="right">Prepared &amp; Signed</th>
+                <th class="right">Both Dates Set</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                monthSummaryList.length === 0
+                  ? `<tr><td colspan="6" class="text-center" style="padding:16px;color:var(--text-muted)">No monthly records</td></tr>`
+                  : monthSummaryList
+                      .map(
+                        (m) => `
+                    <tr>
+                      <td style="font-weight:700;">
+                        <span class="badge ${m.label.includes('Undated') ? 'badge-gray' : 'badge-amber'}">
+                          ${esc(m.label)}
+                        </span>
+                      </td>
+                      <td class="right"><strong>${m.total}</strong></td>
+                      <td class="right">${fmtArea(m.area)} HAS</td>
+                      <td class="right">${m.fiCount > 0 ? `<span class="badge badge-green">${m.fiCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>
+                      <td class="right">${m.prepCount > 0 ? `<span class="badge badge-blue">${m.prepCount}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>
+                      <td class="right">
+                        <span class="badge ${m.completeCount > 0 ? 'badge-green' : 'badge-gray'}">
+                          ${m.completeCount}
+                        </span>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+            <tfoot>
+              <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
+                <td>Total Monthly Cycles</td>
+                <td class="right">${totalCf}</td>
+                <td class="right">${fmtArea(totalArea)} HAS</td>
+                <td class="right">${fiCount}</td>
+                <td class="right">${prepCount}</td>
+                <td class="right">${completeCount}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Master List Table with Filters & Search -->
+    <div class="panel" id="panel-cf-master">
+      <div class="panel-header nep-panel-header">
+        <div>
+          <h3 class="panel-title">Claim Folder (CF) Whereabouts Master Ledger</h3>
+          <p class="panel-subtitle">Individual landholdings showing Date FI Conducted, Date Prepared &amp; Signed, and Reported Month</p>
+        </div>
+        <div class="nep-header-controls">
+          <input
+            type="search"
+            class="form-control"
+            id="cf-search"
+            placeholder="Search LHID, Landowner, Title, LGU…"
+            value="${esc(cfSearch)}"
+            style="min-width:210px;font-size:13px;"
+          />
+          ${
+            !provinceScope
+              ? `
+            <select class="form-control nep-filter-select" id="cf-province-filter" aria-label="Filter by Province">
+              <option value="ALL" ${cfProvinceFilter === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
+              ${provNodes
+                .map(
+                  (p) =>
+                    `<option value="${esc(p.provinceName)}" ${cfProvinceFilter.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+                )
+                .join('')}
+            </select>
+          `
+              : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
+          }
+          <select class="form-control nep-filter-select" id="cf-status-filter" aria-label="Filter by Date Status">
+            <option value="ALL" ${cfDateStatusFilter === 'ALL' ? 'selected' : ''}>All CF Records (${enrichedRows.length})</option>
+            <option value="with_fi" ${cfDateStatusFilter === 'with_fi' ? 'selected' : ''}>With Date FI Conducted (${fiCount})</option>
+            <option value="with_prep" ${cfDateStatusFilter === 'with_prep' ? 'selected' : ''}>With Date Prepared &amp; Signed (${prepCount})</option>
+            <option value="with_month" ${cfDateStatusFilter === 'with_month' ? 'selected' : ''}>With Reported Month (${monthCount})</option>
+            <option value="all_complete" ${cfDateStatusFilter === 'all_complete' ? 'selected' : ''}>All 3 Dates Complete (${completeCount})</option>
+            <option value="pending" ${cfDateStatusFilter === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-cf-export-csv" title="Export this CF Whereabouts list to CSV">
+            ⬇ Export CSV
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" data-open-cf-tab title="Switch to Optool CF(DOC) tab">
+            Open in CF(DOC)
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-cf" title="Full Screen Report / Table">
+            <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+          </button>
+        </div>
+      </div>
+
+      <div style="padding:8px 16px;background:var(--bg-light);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">
+        <div>
+          Showing <strong>${pagedRows.length}</strong> of <strong>${totalFiltered}</strong> matching Claim Folders
+          ${cfProvinceFilter !== 'ALL' ? `• Province: <strong>${esc(cfProvinceFilter)}</strong>` : ''}
+          ${cfDateStatusFilter !== 'ALL' ? `• Filter: <strong>${esc(cfDateStatusFilter)}</strong>` : ''}
+          ${q ? `• Search: "<em>${esc(q)}</em>"` : ''}
+        </div>
+        ${
+          totalPages > 1
+            ? `
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" class="btn btn-secondary btn-xs" data-cf-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>« Prev</button>
+            <span style="font-weight:600;">Page ${currentPage} of ${totalPages}</span>
+            <button type="button" class="btn btn-secondary btn-xs" data-cf-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>Next »</button>
+          </div>
+        `
+            : ''
+        }
+      </div>
+
+      <div class="table-wrap">
+        <table class="nep-milestone-table">
+          <thead>
+            <tr>
+              <th style="width:36px;">#</th>
+              <th>LHID</th>
+              <th>Province</th>
+              <th>Municipality / Barangay</th>
+              <th>Landowner / Title</th>
+              <th class="right">CARPable Area</th>
+              <th>DATE FI CONDUCTED</th>
+              <th>DATE PREPARED &amp; SIGNED</th>
+              <th>REPORTED MONTH</th>
+              <th>Target</th>
+              <th>Whereabouts Status</th>
+              <th class="right" style="width:110px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              pagedRows.length === 0
+                ? `
+              <tr>
+                <td colspan="12" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
+                  <div style="font-size:15px;font-weight:700;margin-bottom:4px;">No Claim Folders match the selected filters</div>
+                  <div style="font-size:12px;">Try clearing search or changing the province / date status filters.</div>
+                </td>
+              </tr>
+            `
+                : pagedRows
+                    .map((r, idx) => {
+                      const rowNum = (currentPage - 1) * pageSize + idx + 1;
+                      return `
+                  <tr>
+                    <td class="text-muted" style="font-size:11px;">${rowNum}</td>
+                    <td>
+                      <button
+                        type="button"
+                        class="btn btn-ghost-light btn-xs lhid-chip"
+                        data-lhid="${esc(r.lhid)}"
+                        title="Click to view Landholding Profile &amp; Milestones"
+                        style="font-family:var(--font-mono);font-weight:700;letter-spacing:0.3px;"
+                      >
+                        ${esc(r.lhid)}
+                      </button>
+                    </td>
+                    <td>
+                      <span class="badge badge-gray" style="font-weight:600;">${esc(r.province)}</span>
+                    </td>
+                    <td style="font-size:12px;">
+                      <div><strong>${esc(r.municipality)}</strong></div>
+                      <div class="text-muted">${esc(r.barangay)}</div>
+                    </td>
+                    <td style="font-size:12px;">
+                      <div><strong>${esc(r.landOwner)}</strong></div>
+                      <div class="text-muted">Title: ${esc(r.titleNumber)}</div>
+                    </td>
+                    <td class="right" style="font-weight:600;font-variant-numeric:tabular-nums;">
+                      ${fmtArea(r.carpable)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
+                    </td>
+                    <td>
+                      ${
+                        r.hasFi
+                          ? `<span class="badge badge-green" style="font-weight:700;letter-spacing:0.2px;"><span style="margin-right:3px;">✔</span>${esc(r.dateFiConducted)}</span>`
+                          : `<span class="badge badge-gray" style="opacity:0.75;">Pending FI</span>`
+                      }
+                    </td>
+                    <td>
+                      ${
+                        r.hasPrep
+                          ? `<span class="badge badge-blue" style="font-weight:700;letter-spacing:0.2px;"><span style="margin-right:3px;">✔</span>${esc(r.datePreparedSigned)}</span>`
+                          : `<span class="badge badge-gray" style="opacity:0.75;">Pending Sign</span>`
+                      }
+                    </td>
+                    <td>
+                      ${
+                        r.hasMonth
+                          ? `<span class="badge badge-amber" style="font-weight:700;">${esc(formatReportedMonthDisplay(r.reportedMonth))}</span>`
+                          : `<span class="badge badge-gray" style="opacity:0.75;">—</span>`
+                      }
+                    </td>
+                    <td style="font-size:11.5px;">
+                      <span class="badge ${r.target === 'Current' ? 'badge-blue' : 'badge-gray'}">${esc(r.target)}</span>
+                    </td>
+                    <td>
+                      <span class="badge ${esc(r.stageBadge)}" style="font-weight:700;">${esc(r.stage)}</span>
+                    </td>
+                    <td class="right">
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-xs"
+                        data-open-cf-tab
+                        title="Open this Claim Folder in the Optool CF(DOC) worksheet"
+                      >
+                        Open in CF(DOC)
+                      </button>
+                    </td>
+                  </tr>
+                `;
+                    })
+                    .join('')
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
   `;
 }
 

@@ -2716,12 +2716,6 @@ body.has-fullscreen-panel #loading-overlay,
   margin-bottom: 12px !important;
 }
 
-/* In full screen mode, remove the secondary provincial toggle, sync and target list buttons from header */
-.panel.is-fullscreen #btn-toggle-nep-provinces,
-.panel.is-fullscreen #btn-sync-hub-nep,
-.panel.is-fullscreen #btn-edit-nep-targets {
-  display: none !important;
-}
 
 .panel.is-fullscreen .toolbar,
 .panel:fullscreen .toolbar {

@@ -13,7 +13,8 @@ import {
   renderSyncView,
   renderUsersView,
   renderNepView,
-  renderTargetSummaryView
+  renderTargetSummaryView,
+  renderCfWhereaboutsView
 } from './views.js';
 import {
   formatCurrentMonthYear,
@@ -62,7 +63,11 @@ const appState = {
   optoolPage: 1,
   optoolPageSize: 50,
   optoolColMode: 'preview',
-  optoolColPage: 1
+  optoolColPage: 1,
+  cfSearch: '',
+  cfProvinceFilter: 'ALL',
+  cfDateStatusFilter: 'ALL',
+  cfPage: 1
 };
 
 const AUTO_SYNC_MAX_AGE_MS = 2 * 60 * 1000;
@@ -546,6 +551,8 @@ function updateNavCounts() {
   );
   const optoolCountEl = document.getElementById('nav-optool-count');
   if (optoolCountEl) optoolCountEl.textContent = totalOptool;
+  const cfCountEl = document.getElementById('nav-cf-count');
+  if (cfCountEl) cfCountEl.textContent = (appState.state.optool?.['CF(DOC)'] || []).length;
 }
 
 function updateHeaderTitles() {
@@ -582,6 +589,10 @@ function updateHeaderTitles() {
     'target-summary': [
       `${scopeLabel} Target Summary`,
       'Physical Accomplishment per Milestone vs Regional NEP Targets & Quarterly Performance'
+    ],
+    'cf-whereabouts': [
+      `${scopeLabel} CF Whereabouts & Date Summary`,
+      'Claim Folder (CF) Tracking • Date FI Conducted • Date Prepared & Signed • Reported Month'
     ],
     nep: [
       'Regional Hub NEP Targets & Sheet',
@@ -685,6 +696,15 @@ function renderActiveView() {
   } else if (appState.view === 'target-summary') {
     container.innerHTML = renderTargetSummaryView(ctx);
     bindDashboardViewEvents(container);
+  } else if (appState.view === 'cf-whereabouts') {
+    container.innerHTML = renderCfWhereaboutsView({
+      ...ctx,
+      cfSearch: appState.cfSearch || '',
+      cfProvinceFilter: appState.cfProvinceFilter || 'ALL',
+      cfDateStatusFilter: appState.cfDateStatusFilter || 'ALL',
+      cfPage: appState.cfPage || 1
+    });
+    bindCfWhereaboutsEvents(container);
   } else if (appState.view === 'nep') {
     container.innerHTML = renderNepView(ctx);
     bindDashboardViewEvents(container);
@@ -2815,6 +2835,170 @@ function bindUsersViewEvents(container) {
       }
     });
   });
+}
+
+function bindCfWhereaboutsEvents(container) {
+  const searchInput = container.querySelector('#cf-search');
+  searchInput?.addEventListener('input', (e) => {
+    appState.cfSearch = e.target.value;
+    appState.cfPage = 1;
+    const pos = e.target.selectionStart;
+    renderActiveView();
+    const nextInput = document.getElementById('cf-search');
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.setSelectionRange(pos, pos);
+    }
+  });
+
+  container.querySelector('#cf-province-filter')?.addEventListener('change', (e) => {
+    appState.cfProvinceFilter = e.target.value;
+    appState.cfPage = 1;
+    renderActiveView();
+  });
+
+  container.querySelector('#cf-status-filter')?.addEventListener('change', (e) => {
+    appState.cfDateStatusFilter = e.target.value;
+    appState.cfPage = 1;
+    renderActiveView();
+  });
+
+  container.querySelectorAll('[data-cf-page]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.cfPage = Number(btn.dataset.cfPage) || 1;
+      renderActiveView();
+    });
+  });
+
+  container.querySelectorAll('[data-open-cf-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.activeOptoolTab = 'CF(DOC)';
+      appState.optoolPage = 1;
+      appState.optoolColPage = 1;
+      appState.view = 'optool';
+      renderActiveView();
+    });
+  });
+
+  container.querySelector('#btn-cf-export-csv')?.addEventListener('click', () => {
+    exportCfWhereaboutsCsv();
+  });
+}
+
+function exportCfWhereaboutsCsv() {
+  const rawCfRows = appState.state?.optool?.['CF(DOC)'] || [];
+  const dbRows = appState.state?.optool?.Database || [];
+  const dbMap = new Map();
+  for (const db of dbRows) {
+    const k = String(db.lhid || '').trim().toLowerCase();
+    if (k && !dbMap.has(k)) dbMap.set(k, db);
+  }
+
+  const enrichedRows = rawCfRows.map((cf) => {
+    const lhidKey = String(cf.lhid || '').trim().toLowerCase();
+    const db = dbMap.get(lhidKey) || {};
+    const carpableNum = Number(db.carpable || cf.carpable || cf.carpableArea || 0) || 0;
+    const dateFi = String(cf.dateFiConducted || '').trim();
+    const datePrep = String(cf.datePreparedSigned || '').trim();
+    const monthRep = String(cf.reportedMonth || '').trim();
+    const provName = db.province || cf.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
+    const muniName = db.municipality || cf.municipality || '—';
+    const brgyName = db.barangay || cf.barangay || '—';
+    const titleNum = db.titleNumber || cf.titleNumber || '—';
+    const landOwner = db.landOwner || cf.landOwner || '—';
+    const targetPeriod = cf.target || db.targetYear || 'Current';
+
+    const hasFi = Boolean(dateFi);
+    const hasPrep = Boolean(datePrep);
+    const hasMonth = Boolean(monthRep);
+    const isComplete = hasFi && hasPrep && hasMonth;
+
+    let stage = 'Pending FI';
+    if (isComplete) stage = 'Completed & Reported';
+    else if (hasPrep) stage = 'Prepared & Signed';
+    else if (hasFi) stage = 'FI Conducted';
+    else if (hasMonth) stage = 'Reported (Pending Dates)';
+
+    return {
+      lhid: cf.lhid || db.lhid || '—',
+      province: provName,
+      municipality: muniName,
+      barangay: brgyName,
+      titleNumber: titleNum,
+      landOwner: landOwner,
+      carpable: carpableNum.toFixed(4),
+      dateFiConducted: dateFi || 'Pending',
+      datePreparedSigned: datePrep || 'Pending',
+      reportedMonth: monthRep || '—',
+      target: targetPeriod,
+      stage
+    };
+  });
+
+  let rows = enrichedRows;
+  if (appState.cfProvinceFilter && appState.cfProvinceFilter !== 'ALL') {
+    const fNorm = appState.cfProvinceFilter.trim().toUpperCase();
+    rows = rows.filter((r) => r.province.toUpperCase().includes(fNorm));
+  }
+  if (appState.cfDateStatusFilter === 'with_fi') {
+    rows = rows.filter((r) => r.dateFiConducted !== 'Pending');
+  } else if (appState.cfDateStatusFilter === 'with_prep') {
+    rows = rows.filter((r) => r.datePreparedSigned !== 'Pending');
+  } else if (appState.cfDateStatusFilter === 'with_month') {
+    rows = rows.filter((r) => r.reportedMonth !== '—');
+  } else if (appState.cfDateStatusFilter === 'all_complete') {
+    rows = rows.filter((r) => r.stage === 'Completed & Reported');
+  } else if (appState.cfDateStatusFilter === 'pending') {
+    rows = rows.filter((r) => r.stage !== 'Completed & Reported');
+  }
+  const q = (appState.cfSearch || '').trim().toLowerCase();
+  if (q) {
+    rows = rows.filter((r) =>
+      `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.dateFiConducted} ${r.datePreparedSigned} ${r.reportedMonth}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }
+
+  const headers = [
+    'LHID',
+    'Province',
+    'Municipality',
+    'Barangay',
+    'TitleNumber',
+    'LandOwner',
+    'CARPable_HAS',
+    'Date_FI_Conducted',
+    'Date_Prepared_Signed',
+    'Reported_Month',
+    'Target_Period',
+    'Whereabouts_Status'
+  ];
+  const headerLine = headers.map((h) => `"${h}"`).join(',');
+  const lines = rows.map((r) =>
+    [
+      r.lhid,
+      r.province,
+      r.municipality,
+      r.barangay,
+      r.titleNumber,
+      r.landOwner,
+      r.carpable,
+      r.dateFiConducted,
+      r.datePreparedSigned,
+      r.reportedMonth,
+      r.target,
+      r.stage
+    ]
+      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+      .join(',')
+  );
+
+  const blob = new Blob([[headerLine, ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `CF_Whereabouts_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
 }
 
 /** Load regional workspace bootstrap data after authentication succeeds. */
