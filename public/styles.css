@@ -2804,6 +2804,39 @@ body.has-fullscreen-panel {
   background: #e6f4ea !important;
 }
 
+/* Milestone Column Header Dropdown */
+.nep-th-milestone-col {
+  vertical-align: middle !important;
+}
+
+.nep-th-milestone-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nep-th-milestone-select {
+  height: 26px !important;
+  font-size: 11.5px !important;
+  padding: 0 6px !important;
+  font-weight: 600 !important;
+  border-radius: 5px !important;
+  background-color: #ffffff !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--dar-green-dark) !important;
+  cursor: pointer;
+  min-width: 135px;
+  width: auto !important;
+  max-width: 180px;
+}
+
+.nep-th-milestone-select:focus {
+  border-color: var(--dar-green);
+  outline: none;
+}
+
 /* Milestone NEP Provincial Breakdown & Zero Accomplishment Indicators */
 .nep-prov-toggle-wrap {
   margin-top: 6px;

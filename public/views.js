@@ -165,9 +165,23 @@ function renderMilestoneNepSection(ctx) {
     nepShowMonths = false,
     nepExpandedQuarters = {},
     nepShowProvinces = false,
-    nepExpandedMilestones = {}
+    nepExpandedMilestones = {},
+    nepMilestoneTableFilter = 'ALL'
   } = ctx;
   const rows = analytics.milestoneNepBreakdown || [];
+  const milestoneTableOptions = [
+    { key: 'ALL', label: 'All Milestones' },
+    { key: 'cf_doc', label: 'CF Documentation' },
+    { key: 'land_survey', label: 'Land Survey' },
+    { key: 'land_valuation', label: 'Land Valuation' },
+    { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
+    { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
+    { key: 'installation', label: 'Installation' }
+  ];
+  const activeMilestoneTable = nepMilestoneTableFilter || 'ALL';
+  const displayRows = activeMilestoneTable === 'ALL'
+    ? rows
+    : rows.filter((r) => r.key === activeMilestoneTable);
   const yearsSet = new Set(analytics.availableMilestoneYears || []);
   yearsSet.add(new Date().getFullYear());
   for (const r of analytics.nepProvinceBreakdown || []) {
@@ -262,6 +276,14 @@ function renderMilestoneNepSection(ctx) {
           `
               : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
           }
+          <select class="form-control nep-filter-select" id="nep-milestone-table-filter" aria-label="Filter by Milestone">
+            ${milestoneTableOptions
+              .map(
+                (m) =>
+                  `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+              )
+              .join('')}
+          </select>
           <select class="form-control nep-filter-select" id="nep-year-select" aria-label="Filter Milestones by Year">
             <option value="ALL" ${activeYear === 'ALL' ? 'selected' : ''}>All Years</option>
             ${years
@@ -297,7 +319,19 @@ function renderMilestoneNepSection(ctx) {
               !hasAnyMonthExpanded
                 ? `
             <tr>
-              <th rowspan="2">Milestone</th>
+              <th rowspan="2" class="nep-th-milestone-col">
+                <div class="nep-th-milestone-flex">
+                  <span>Milestone</span>
+                  <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter" title="Filter by Milestone" aria-label="Filter by Milestone">
+                    ${milestoneTableOptions
+                      .map(
+                        (m) =>
+                          `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+                      )
+                      .join('')}
+                  </select>
+                </div>
+              </th>
               <th rowspan="2" class="right">NEP Target</th>
               <th colspan="4" class="center nep-quarter-group">Accomp. per Quarter</th>
               <th rowspan="2" class="right">Total</th>
@@ -313,7 +347,19 @@ function renderMilestoneNepSection(ctx) {
             `
                 : `
             <tr>
-              <th rowspan="3">Milestone</th>
+              <th rowspan="3" class="nep-th-milestone-col">
+                <div class="nep-th-milestone-flex">
+                  <span>Milestone</span>
+                  <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter-m" title="Filter by Milestone" aria-label="Filter by Milestone">
+                    ${milestoneTableOptions
+                      .map(
+                        (m) =>
+                          `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+                      )
+                      .join('')}
+                  </select>
+                </div>
+              </th>
               <th rowspan="3" class="right">NEP Target</th>
               <th colspan="${totalQuarterCols}" class="center nep-quarter-group">Accomp. per Quarter &amp; Monthly</th>
               <th rowspan="3" class="right">Total</th>
@@ -347,7 +393,7 @@ function renderMilestoneNepSection(ctx) {
             }
           </thead>
           <tbody>
-            ${rows
+            ${displayRows
               .map((r) => {
                 const isMsExpanded = nepShowProvinces
                   ? nepExpandedMilestones[r.key] !== false

@@ -41,6 +41,7 @@ const appState = {
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
   nepYearFilter: '2026', // 'ALL' | '2026' | '2025' | ...
   nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
+  nepMilestoneTableFilter: 'ALL', // 'ALL' | 'cf_doc' | 'land_survey' | ...
   nepDisplayMode: 'table', // 'table' | 'cards'
   nepShowMonths: false,
   nepExpandedQuarters: {},
@@ -669,6 +670,7 @@ function renderActiveView() {
     nepExpandedMilestones: appState.nepExpandedMilestones || {},
     nepYearFilter: appState.nepYearFilter,
     nepMilestoneFilter: appState.nepMilestoneFilter || 'overall',
+    nepMilestoneTableFilter: appState.nepMilestoneTableFilter || 'ALL',
     nepDisplayMode: appState.nepDisplayMode || 'table',
     filters: appState.filters,
     activeOptoolTab: appState.activeOptoolTab
@@ -2071,6 +2073,20 @@ function bindDashboardViewEvents(container) {
   container.querySelector('#nep-year-select')?.addEventListener('change', async (e) => {
     appState.filters.milestoneYear = e.target.value;
     await refreshAnalytics();
+  });
+
+  const handleMilestoneTableFilter = (val) => {
+    appState.nepMilestoneTableFilter = val;
+    renderActiveView();
+  };
+  container.querySelector('#nep-milestone-table-filter')?.addEventListener('change', (e) => {
+    handleMilestoneTableFilter(e.target.value);
+  });
+  container.querySelector('#nep-th-milestone-filter')?.addEventListener('change', (e) => {
+    handleMilestoneTableFilter(e.target.value);
+  });
+  container.querySelector('#nep-th-milestone-filter-m')?.addEventListener('change', (e) => {
+    handleMilestoneTableFilter(e.target.value);
   });
 
   container.querySelector('#btn-toggle-nep-months')?.addEventListener('click', () => {
