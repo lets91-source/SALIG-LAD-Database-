@@ -596,6 +596,51 @@ function updateHeaderTitles() {
   });
 }
 
+let activeFullscreenPanelId = null;
+
+function toggleFullScreen(panel, btn) {
+  if (!panel) return;
+  const panelId = panel.id || (panel.id = 'panel-fs-' + Math.random().toString(36).slice(2, 8));
+  const isFs = panel.classList.contains('is-fullscreen');
+
+  if (!isFs) {
+    panel.classList.add('is-fullscreen');
+    document.body.classList.add('has-fullscreen-panel');
+    activeFullscreenPanelId = panelId;
+    updateFsBtn(btn, true);
+    if (panel.requestFullscreen && !document.fullscreenElement) {
+      panel.requestFullscreen().catch(() => {});
+    }
+  } else {
+    panel.classList.remove('is-fullscreen');
+    document.body.classList.remove('has-fullscreen-panel');
+    activeFullscreenPanelId = null;
+    updateFsBtn(btn, false);
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+}
+
+function updateFsBtn(btn, isFs) {
+  if (!btn) return;
+  const icon = btn.querySelector('.fs-icon');
+  const label = btn.querySelector('.fs-label');
+  if (isFs) {
+    if (icon) icon.textContent = '⤢';
+    if (label) label.textContent = 'Exit Full Screen';
+    btn.title = 'Exit Full Screen (Esc)';
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-secondary');
+  } else {
+    if (icon) icon.textContent = '⛶';
+    if (label) label.textContent = 'Full Screen';
+    btn.title = 'Full Screen Report / Table';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+  }
+}
+
 function renderActiveView() {
   closeColFilterPopover();
   updateNavCounts();
@@ -645,6 +690,27 @@ function renderActiveView() {
   }
 
   // Bind shared cross-view navigation, empty-state actions, and LHID 360 drawer triggers
+  if (activeFullscreenPanelId) {
+    const existing = document.getElementById(activeFullscreenPanelId);
+    if (existing) {
+      existing.classList.add('is-fullscreen');
+      document.body.classList.add('has-fullscreen-panel');
+      const btn = existing.querySelector('.btn-fullscreen');
+      if (btn) updateFsBtn(btn, true);
+    } else {
+      activeFullscreenPanelId = null;
+      document.body.classList.remove('has-fullscreen-panel');
+    }
+  }
+
+  container.querySelectorAll('.btn-fullscreen').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const panel = btn.closest('.panel');
+      if (panel) toggleFullScreen(panel, btn);
+    });
+  });
+
   container.querySelectorAll('[data-nav]').forEach((btn) => {
     btn.addEventListener('click', () => {
       appState.view = btn.dataset.nav;
@@ -3081,6 +3147,36 @@ async function init() {
   document.getElementById('drawer-backdrop').addEventListener('click', (e) => {
     if (e.target.id === 'drawer-backdrop') {
       document.getElementById('drawer-backdrop').classList.add('hidden');
+    }
+  });
+
+  // Global Fullscreen change & Esc key listeners
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && activeFullscreenPanelId) {
+      const p = document.getElementById(activeFullscreenPanelId);
+      if (p) {
+        p.classList.remove('is-fullscreen');
+        const btn = p.querySelector('.btn-fullscreen');
+        if (btn) updateFsBtn(btn, false);
+      }
+      document.body.classList.remove('has-fullscreen-panel');
+      activeFullscreenPanelId = null;
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && activeFullscreenPanelId) {
+      const p = document.getElementById(activeFullscreenPanelId);
+      if (p) {
+        p.classList.remove('is-fullscreen');
+        const btn = p.querySelector('.btn-fullscreen');
+        if (btn) updateFsBtn(btn, false);
+      }
+      document.body.classList.remove('has-fullscreen-panel');
+      activeFullscreenPanelId = null;
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
     }
   });
 }

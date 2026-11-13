@@ -179,7 +179,7 @@ function renderMilestoneNepSection(ctx) {
   const canEditNepTargets = !provinceScope;
 
   return `
-    <div class="panel">
+    <div class="panel" id="panel-milestone-nep">
       <div class="panel-header nep-panel-header">
         <div>
           <h3 class="panel-title">Physical Accomplishment per Milestone (NEP Target &amp; Quarterly)</h3>
@@ -225,6 +225,9 @@ function renderMilestoneNepSection(ctx) {
               ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-targets">Regional NEP Target List</button>`
               : ''
           }
+          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-nep" title="Full Screen Report / Table">
+            <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+          </button>
         </div>
       </div>
       <div class="table-wrap">
@@ -558,7 +561,7 @@ export function renderNepView(ctx) {
     </section>
 
     <!-- Provincial Allocation Section (Table View by Default with View Switcher) -->
-    <div class="panel" style="margin-bottom: 22px;">
+    <div class="panel" id="panel-nep-provincial" style="margin-bottom: 22px;">
       <div class="panel-header" style="flex-wrap:wrap;gap:12px;">
         <div>
           <h3 class="panel-title">${nepDisplayMode === 'cards' ? 'Provincial Allocation Cards' : 'Provincial Allocation Table'}</h3>
@@ -585,6 +588,9 @@ export function renderNepView(ctx) {
                  </button>`
               : ''
           }
+          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-nep-view" title="Full Screen Table">
+            <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+          </button>
         </div>
       </div>
 
@@ -1891,7 +1897,7 @@ export function renderOptoolView(ctx) {
   return `
     ${renderEmptyWorkspaceCallout(state)}
     <div class="optool-kpi-stack" id="optool-kpi-cards">${renderOptoolKpiCardsHtml(vm)}</div>
-    <div class="panel">
+    <div class="panel" id="panel-optool">
       <div class="tab-strip">
         ${tabNames
           .map(
@@ -1946,6 +1952,9 @@ export function renderOptoolView(ctx) {
             <input type="file" accept=".csv" id="optool-csv-upload" class="hidden" />
           </label>
           <button class="btn btn-primary btn-sm" id="btn-optool-add">+ Add ${esc(currentTab)} Row</button>
+          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-optool" title="Full Screen Table">
+            <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+          </button>
         </div>
       </div>
 
