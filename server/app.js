@@ -882,15 +882,15 @@ export function createAppServer(dataDir, options = {}) {
       }
 
       if (req.method === 'PUT' && pathname === '/api/nep-sheet') {
-        if (scopeCode) {
-          return sendJson(res, 403, { error: 'Only Regional Accounts can edit the Regional Hub NEP Sheet.' });
+        if (scopeCode || (sessionUser && sessionUser.role !== 'admin')) {
+          return sendJson(res, 403, { error: 'Only Administrator accounts can edit the Regional Hub NEP Sheet.' });
         }
         const body = await readJsonBody(req);
         const nepProvinceList = store.updateNepProvinceList(body);
         const gasSync = await pushMutationToGas(
           store,
           { action: 'saveNepSheet', nepProvinceList },
-          'Updated Regional Hub NEP Sheet (LHS, AREA, ARBs per province).',
+          'Updated Regional Hub NEP Sheet (LHS, AREA, ARBs, Year per province).',
           gasPushFn
         );
         return sendJson(res, 200, {

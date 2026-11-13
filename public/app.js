@@ -11,7 +11,8 @@ import {
   getColumnFilterValues,
   getColumnFilterLabel,
   renderSyncView,
-  renderUsersView
+  renderUsersView,
+  renderNepView
 } from './views.js';
 import {
   formatCurrentMonthYear,
@@ -568,6 +569,10 @@ function updateHeaderTitles() {
         ? `Smart Analytics & Logical Information Generator • ${scopeLabel} Records Only`
         : 'Smart Analytics & Logical Information Generator'
     ],
+    nep: [
+      'Regional Hub NEP Targets & Sheet',
+      'Province allocations (LHS, AREA, ARBs, Year) and Regional Milestone Targets'
+    ],
     sync: [
       appState.provinceScope ? `${scopeLabel} Google Sheet Sync` : 'Google Sheets Registry & GAS ETL Hub',
       appState.provinceScope
@@ -612,6 +617,9 @@ function renderActiveView() {
 
   if (appState.view === 'dashboard') {
     container.innerHTML = renderDashboardView(ctx);
+    bindDashboardViewEvents(container);
+  } else if (appState.view === 'nep') {
+    container.innerHTML = renderNepView(ctx);
     bindDashboardViewEvents(container);
   } else if (appState.view === 'milestones') {
     container.innerHTML = renderMilestonesView({ ...ctx, searchTerm: appState.msSearch });
@@ -2000,15 +2008,16 @@ function bindDashboardViewEvents(container) {
 }
 
 async function syncHubNepSheet() {
-  if (appState.provinceScope) {
-    toast('Only Regional Accounts can sync the Regional Hub NEP Sheet.', true);
+  const isAdmin = appState.currentUser ? appState.currentUser.role === 'admin' : !appState.provinceScope;
+  if (!isAdmin) {
+    toast('Only Administrator accounts can sync the Regional Hub NEP Sheet.', true);
     return;
   }
   try {
     const res = await withLoading(
       'fetching',
       'Syncing Hub NEP Sheet…',
-      'Reading NEP tab (LHS, AREA, ARBs) from Regional Hub Google Sheet…',
+      'Reading NEP tab (LHS, AREA, ARBs, Year) from Regional Hub Google Sheet…',
       () => api('/api/nep-sheet/sync', { method: 'POST' })
     );
     appState.state.nepProvinceList = res.nepProvinceList;
@@ -2021,8 +2030,9 @@ async function syncHubNepSheet() {
 }
 
 function openNepSheetModal() {
-  if (appState.provinceScope) {
-    toast('Only Regional Accounts can edit the Regional Hub NEP Sheet.', true);
+  const isAdmin = appState.currentUser ? appState.currentUser.role === 'admin' : !appState.provinceScope;
+  if (!isAdmin) {
+    toast('Only Administrator accounts can edit the Regional Hub NEP Sheet.', true);
     return;
   }
   const provNodes = (appState.schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
@@ -2030,7 +2040,7 @@ function openNepSheetModal() {
 
   const rowsHtml = provNodes
     .map((n) => {
-      const entry = currentList[n.code] || { lhs: 0, area: 0, arbs: 0 };
+      const entry = currentList[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
       return `
         <tr>
           <td><strong>${esc(n.provinceName)}</strong><div class="nep-sub-metric">${esc(n.code)}</div></td>
@@ -2067,6 +2077,18 @@ function openNepSheetModal() {
               value="${esc(entry.arbs || 0)}"
             />
           </td>
+          <td>
+            <input
+              type="number"
+              min="2000"
+              max="2099"
+              step="1"
+              class="form-control num nep-sheet-input"
+              data-nep-col="year"
+              name="year_${esc(n.code)}"
+              value="${esc(entry.year || 2026)}"
+            />
+          </td>
         </tr>
       `;
     })
@@ -2078,7 +2100,7 @@ function openNepSheetModal() {
     cancelId: 'nep-sheet-cancel',
     bodyHtml: `
       <p style="margin:0 0 12px;font-size:12.5px;color:var(--text-muted)">
-        Provincial LHS, AREA (HAS), and ARBs stored in the <strong>NEP</strong> tab of the Regional Hub Google Sheet. Only Regional Accounts can edit.
+        Provincial LHS, AREA (HAS), ARBs, and Year stored in the <strong>NEP</strong> tab of the Regional Hub Google Sheet. Only Administrators can edit.
       </p>
       <div class="table-wrap">
         <table>
@@ -2088,6 +2110,7 @@ function openNepSheetModal() {
               <th class="right">LHS</th>
               <th class="right">AREA (HAS)</th>
               <th class="right">ARBs</th>
+              <th class="center">Year</th>
             </tr>
           </thead>
           <tbody>
@@ -2097,6 +2120,7 @@ function openNepSheetModal() {
               <td class="right" id="nep-sheet-total-lhs">0</td>
               <td class="right" id="nep-sheet-total-area">0.0000</td>
               <td class="right" id="nep-sheet-total-arbs">0</td>
+              <td class="center">-</td>
             </tr>
           </tbody>
         </table>
@@ -2134,14 +2158,15 @@ function openNepSheetModal() {
       payload[n.code] = {
         lhs: Math.max(0, Math.round(Number(fd.get(`lhs_${n.code}`)) || 0)),
         area: Math.max(0, Number((Number(fd.get(`area_${n.code}`)) || 0).toFixed(4))),
-        arbs: Math.max(0, Math.round(Number(fd.get(`arbs_${n.code}`)) || 0))
+        arbs: Math.max(0, Math.round(Number(fd.get(`arbs_${n.code}`)) || 0)),
+        year: Math.max(2000, Math.min(2099, Math.round(Number(fd.get(`year_${n.code}`)) || 2026)))
       };
     }
     try {
       const res = await withLoading(
         'saving',
         'Saving NEP Sheet…',
-        'Updating Regional Hub NEP tab (LHS, AREA, ARBs)…',
+        'Updating Regional Hub NEP tab (LHS, AREA, ARBs, Year)…',
         () =>
           api('/api/nep-sheet', {
             method: 'PUT',

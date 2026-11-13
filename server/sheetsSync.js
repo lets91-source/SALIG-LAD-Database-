@@ -115,7 +115,8 @@ export async function parseWorkbookBuffer(buffer) {
         { key: 'provinceName', header: 'Province', label: 'Province Name' },
         { key: 'lhs', header: 'LHS', label: 'Landholdings' },
         { key: 'area', header: 'AREA', label: 'Area (HAS)' },
-        { key: 'arbs', header: 'ARBs', label: 'Beneficiaries' }
+        { key: 'arbs', header: 'ARBs', label: 'Beneficiaries' },
+        { key: 'year', header: 'Year', label: 'Target Year' }
       ];
       const mapping = buildHeaderMapping(headerValues, nepColumns);
       const parsedNep = {};
@@ -144,10 +145,12 @@ export async function parseWorkbookBuffer(buffer) {
         }
         if (!code) continue;
         rowCount++;
+        const parsedYear = parseInt(String(rec.year ?? '').replace(/,/g, ''), 10);
         parsedNep[code] = {
           lhs: Math.max(0, Math.round(Number(String(rec.lhs ?? 0).replace(/,/g, '')) || 0)),
           area: Number((Number(String(rec.area ?? 0).replace(/,/g, '')) || 0).toFixed(4)),
-          arbs: Math.max(0, Math.round(Number(String(rec.arbs ?? 0).replace(/,/g, '')) || 0))
+          arbs: Math.max(0, Math.round(Number(String(rec.arbs ?? 0).replace(/,/g, '')) || 0)),
+          year: Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : new Date().getFullYear()
         };
       }
       result.nepProvinceList = parsedNep;
@@ -333,27 +336,36 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
     rows: summaryRows
   });
 
-  // 2. NEP Province Sheet (LHS, AREA, ARBs)
+  // 2. NEP Province Sheet (LHS, AREA, ARBs, Year)
   const nepSheet = normalizeNepProvinceList(state.nepProvinceList);
   const provNodes = REGIONAL_REGISTRY.filter((n) => n.role === 'Provincial Node');
+  const defaultNepYear = new Date().getFullYear();
   const nepRows = [
-    ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs'],
+    ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year'],
     ...provNodes.map((n) => {
-      const entry = nepSheet[n.code] || { lhs: 0, area: 0, arbs: 0 };
-      return [n.code, n.provinceName, entry.lhs, Number(entry.area.toFixed(4)), entry.arbs];
+      const entry = nepSheet[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultNepYear };
+      return [
+        n.code,
+        n.provinceName,
+        entry.lhs,
+        Number(entry.area.toFixed(4)),
+        entry.arbs,
+        entry.year || defaultNepYear
+      ];
     }),
     [
       'TOTAL',
       'Region VIII Total',
       provNodes.reduce((s, n) => s + (nepSheet[n.code]?.lhs || 0), 0),
       Number(provNodes.reduce((s, n) => s + (nepSheet[n.code]?.area || 0), 0).toFixed(4)),
-      provNodes.reduce((s, n) => s + (nepSheet[n.code]?.arbs || 0), 0)
+      provNodes.reduce((s, n) => s + (nepSheet[n.code]?.arbs || 0), 0),
+      '-'
     ]
   ];
   sheetsSpec.push({
     name: 'NEP',
     headerStyle: 1,
-    colWidths: [16, 22, 16, 18, 16],
+    colWidths: [16, 22, 16, 18, 16, 14],
     fourDecCols: new Set([4]),
     rows: nepRows
   });

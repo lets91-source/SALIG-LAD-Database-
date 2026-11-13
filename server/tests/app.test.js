@@ -1829,20 +1829,23 @@ test('Regional Hub NEP Sheet (per province LHS, AREA, ARBs) XLSX round-trip, edi
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
       body: JSON.stringify({
-        BIL: { lhs: 5, area: 50.25, arbs: 12 },
-        LEY: { lhs: 40, area: 600.75, arbs: 120 }
+        BIL: { lhs: 5, area: 50.25, arbs: 12, year: 2026 },
+        LEY: { lhs: 40, area: 600.75, arbs: 120, year: 2026 }
       })
     });
     assert.equal(saveRes.status, 200);
     const saveJson = await saveRes.json();
     assert.equal(saveJson.nepProvinceList.BIL.lhs, 5);
+    assert.equal(saveJson.nepProvinceList.BIL.year, 2026);
     assert.equal(saveJson.nepProvinceList.LEY.area, 600.75);
+    assert.equal(saveJson.nepProvinceList.LEY.year, 2026);
     assert.equal(saveJson.analytics.nepProvinceBreakdown.length, 6);
     assert.equal(saveJson.analytics.nepProvinceTotals.lhs, 45);
     assert.equal(saveJson.analytics.nepProvinceTotals.area, 651);
     assert.equal(saveJson.analytics.nepProvinceTotals.arbs, 132);
     assert.equal(pushedPayloads[0].action, 'saveNepSheet');
     assert.equal(pushedPayloads[0].nepProvinceList.LEY.arbs, 120);
+    assert.equal(pushedPayloads[0].nepProvinceList.LEY.year, 2026);
 
     // 2. Consolidated XLSX export includes NEP sheet and re-parses cleanly (ignoring TOTAL row)
     const xlsxBuffer = await buildConsolidatedWorkbookBuffer(
@@ -1853,6 +1856,7 @@ test('Regional Hub NEP Sheet (per province LHS, AREA, ARBs) XLSX round-trip, edi
     assert.ok(parsed.sheetNames.includes('NEP'));
     assert.equal(parsed.tabRowCounts.NEP, 6);
     assert.equal(parsed.nepProvinceList.BIL.lhs, 5);
+    assert.equal(parsed.nepProvinceList.BIL.year, 2026);
     assert.equal(parsed.nepProvinceList.LEY.area, 600.75);
     assert.equal(parsed.nepProvinceList.LEY.arbs, 120);
 

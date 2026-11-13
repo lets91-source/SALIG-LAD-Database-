@@ -1258,14 +1258,20 @@ export class ConsolidatedStore {
 
     const normalizedNepSheet = normalizeNepProvinceList(this.state.nepProvinceList);
     const nepProvinceBreakdown = provincialNodes.map((node) => {
-      const entry = normalizedNepSheet[node.code] || { lhs: 0, area: 0, arbs: 0 };
+      const entry = normalizedNepSheet[node.code] || {
+        lhs: 0,
+        area: 0,
+        arbs: 0,
+        year: new Date().getFullYear()
+      };
       return {
         code: node.code,
         jurisdiction: node.jurisdiction,
         provinceName: node.provinceName,
         lhs: entry.lhs,
         area: entry.area,
-        arbs: entry.arbs
+        arbs: entry.arbs,
+        year: entry.year || new Date().getFullYear()
       };
     });
     const nepProvinceTotals = {

@@ -271,11 +271,11 @@ function renderMilestoneNepSection(ctx) {
 }
 
 function renderProvincialNepSheetSection(ctx) {
-  const { analytics, schemas, provinceScope } = ctx;
+  const { analytics, schemas, provinceScope, currentUser } = ctx;
   const rows = analytics.nepProvinceBreakdown || [];
   const totals = analytics.nepProvinceTotals || { lhs: 0, area: 0, arbs: 0 };
   const hubUrl = (schemas?.registry || []).find((n) => n.code === 'HUB')?.url || '';
-  const canEditNepSheet = !provinceScope;
+  const canEditNepSheet = currentUser ? currentUser.role === 'admin' : !provinceScope;
 
   return `
     <div class="panel" style="margin-bottom: 18px;">
@@ -285,7 +285,7 @@ function renderProvincialNepSheetSection(ctx) {
           <p class="panel-subtitle">${
             provinceScope
               ? `Provincial NEP Sheet allocation for ${esc(provinceScope.provinceName)} (read-only)`
-              : 'Region VIII Hub NEP tab — LHS, AREA (HAS), and ARBs across all 6 provinces'
+              : 'Region VIII Hub NEP tab — LHS, AREA (HAS), ARBs, and Year across all 6 provinces'
           }</p>
         </div>
         <div class="panel-actions">
@@ -310,6 +310,7 @@ function renderProvincialNepSheetSection(ctx) {
               <th class="right">LHS</th>
               <th class="right">AREA (HAS)</th>
               <th class="right">ARBs</th>
+              <th class="center">Year</th>
             </tr>
           </thead>
           <tbody>
@@ -324,6 +325,7 @@ function renderProvincialNepSheetSection(ctx) {
                 <td class="right">${(Number(r.lhs) || 0).toLocaleString('en-US')}</td>
                 <td class="right">${fmtArea(r.area || 0)}</td>
                 <td class="right">${(Number(r.arbs) || 0).toLocaleString('en-US')}</td>
+                <td class="center"><span class="badge badge-gray">${esc(String(r.year || 2026))}</span></td>
               </tr>
             `
               )
@@ -336,6 +338,7 @@ function renderProvincialNepSheetSection(ctx) {
                 <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>
                 <td class="right">${fmtArea(totals.area || 0)}</td>
                 <td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>
+                <td class="center">-</td>
               </tr>
             `
                 : ''
@@ -344,6 +347,51 @@ function renderProvincialNepSheetSection(ctx) {
         </table>
       </div>
     </div>
+  `;
+}
+
+export function renderNepView(ctx) {
+  const { analytics, currentUser, provinceScope } = ctx;
+  const totals = analytics.nepProvinceTotals || { lhs: 0, area: 0, arbs: 0 };
+  const rows = analytics.nepProvinceBreakdown || [];
+  const years = Array.from(new Set(rows.map((r) => r.year).filter(Boolean)));
+  const yearText = years.length ? years.sort().join(', ') : String(new Date().getFullYear());
+  const canEditNep = currentUser ? currentUser.role === 'admin' : !provinceScope;
+
+  return `
+    <!-- Top NEP Summary KPIs -->
+    <section class="grid-4" style="margin-bottom: 20px;">
+      <div class="kpi-card">
+        <div class="kpi-label">NEP Total Landholdings</div>
+        <div class="kpi-primary">${(totals.lhs || 0).toLocaleString('en-US')} LHS</div>
+        <div class="kpi-secondary">Region VIII Target</div>
+        <div class="kpi-meta">Allocated across 6 provinces</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">NEP Total Area</div>
+        <div class="kpi-primary">${fmtArea(totals.area || 0)} HAS</div>
+        <div class="kpi-secondary">CARPable Hectares</div>
+        <div class="kpi-meta">Region VIII Target</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">NEP Total ARBs</div>
+        <div class="kpi-primary">${(totals.arbs || 0).toLocaleString('en-US')} ARBs</div>
+        <div class="kpi-secondary">Target Beneficiaries</div>
+        <div class="kpi-meta">Agrarian Reform Beneficiaries</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">NEP Target Year</div>
+        <div class="kpi-primary">${esc(yearText)}</div>
+        <div class="kpi-secondary">${canEditNep ? 'Admin Editable' : 'Regional Target'}</div>
+        <div class="kpi-meta">${canEditNep ? 'Full permissions to modify figures' : 'Read-only access'}</div>
+      </div>
+    </section>
+
+    <!-- Regional Hub NEP Sheet (Per Province) -->
+    ${renderProvincialNepSheetSection(ctx)}
+
+    <!-- Regional List — Per-Milestone NEP Targets -->
+    ${renderMilestoneNepSection(ctx)}
   `;
 }
 

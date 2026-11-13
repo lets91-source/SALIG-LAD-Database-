@@ -55,7 +55,7 @@ const USER_ACCOUNTS_HEADERS = [
   'Approved_By'
 ];
 
-const NEP_SHEET_HEADERS = ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs'];
+const NEP_SHEET_HEADERS = ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year'];
 
 const OPTOOL_TABS = [
   'Database',
@@ -186,13 +186,14 @@ function ensureNepSheet_() {
   sheet.setFrozenRows(1);
 
   if (isNew || sheet.getLastRow() < PROVINCIAL_NODES.length + 1) {
+    const currentYear = new Date().getFullYear();
     const rows = PROVINCIAL_NODES.map(function (n) {
-      return [n.code, n.name, 0, 0, 0];
+      return [n.code, n.name, 0, 0, 0, currentYear];
     });
     sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
     sheet
       .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
-      .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)']]);
+      .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)', '-']]);
     formatNepSheetRanges_(sheet);
   }
   return sheet;
@@ -203,6 +204,7 @@ function formatNepSheetRanges_(sheet) {
   sheet.getRange(2, 3, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0');
   sheet.getRange(2, 4, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0.0000');
   sheet.getRange(2, 5, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0');
+  sheet.getRange(2, 6, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('0');
   sheet
     .getRange(totalRow, 1, 1, NEP_SHEET_HEADERS.length)
     .setFontWeight('bold')
@@ -632,8 +634,9 @@ function readNepSheetFromHub_() {
   const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
   const sheet = hub.getSheetByName('NEP');
   const out = {};
+  const currentYear = new Date().getFullYear();
   PROVINCIAL_NODES.forEach(function (n) {
-    out[n.code] = { lhs: 0, area: 0, arbs: 0 };
+    out[n.code] = { lhs: 0, area: 0, arbs: 0, year: currentYear };
   });
   if (!sheet || sheet.getLastRow() <= 1) return out;
   const rows = sheet.getDataRange().getValues();
@@ -643,6 +646,7 @@ function readNepSheetFromHub_() {
   const lhsCol = headers.indexOf('LHS') >= 0 ? headers.indexOf('LHS') : 2;
   const areaCol = headers.indexOf('AREA') >= 0 ? headers.indexOf('AREA') : 3;
   const arbsCol = headers.indexOf('ARBS') >= 0 ? headers.indexOf('ARBS') : 4;
+  const yearCol = headers.indexOf('YEAR') >= 0 ? headers.indexOf('YEAR') : 5;
 
   const parseNum = function (val) {
     if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
@@ -663,33 +667,38 @@ function readNepSheetFromHub_() {
       });
     }
     if (code) {
+      const parsedYear = yearCol >= 0 ? Math.round(parseNum(rows[i][yearCol])) : 0;
       out[code] = {
         lhs: Math.max(0, Math.round(parseNum(rows[i][lhsCol]))),
         area: Math.max(0, Number(parseNum(rows[i][areaCol]).toFixed(4))),
-        arbs: Math.max(0, Math.round(parseNum(rows[i][arbsCol])))
+        arbs: Math.max(0, Math.round(parseNum(rows[i][arbsCol]))),
+        year: parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear
       };
     }
   }
   return out;
 }
 
-/** Write per-province LHS, AREA, ARBs into the Regional Hub NEP tab. */
+/** Write per-province LHS, AREA, ARBs, and Year into the Regional Hub NEP tab. */
 function saveNepSheetRecord_(nepMap) {
   const sheet = ensureNepSheet_();
+  const currentYear = new Date().getFullYear();
   const rows = PROVINCIAL_NODES.map(function (n) {
     const item = (nepMap && nepMap[n.code]) || {};
+    const parsedYear = Math.round(Number(item.year) || 0);
     return [
       n.code,
       n.name,
       Math.max(0, Math.round(Number(item.lhs) || 0)),
       Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
-      Math.max(0, Math.round(Number(item.arbs) || 0))
+      Math.max(0, Math.round(Number(item.arbs) || 0)),
+      parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear
     ];
   });
   sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
   sheet
     .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
-    .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)']]);
+    .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)', '-']]);
   formatNepSheetRanges_(sheet);
 }
 

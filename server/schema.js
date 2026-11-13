@@ -187,14 +187,17 @@ export function normalizeNepTargets(raw = {}) {
 
 /** Create or normalize per-province Regional Hub NEP Sheet entries (LHS, AREA, ARBs). */
 export function normalizeNepProvinceList(raw = {}) {
+  const currentYear = new Date().getFullYear();
   const out = {};
   const src = raw && typeof raw === 'object' ? raw : {};
   for (const code of PROVINCE_CODES) {
     const item = src[code] && typeof src[code] === 'object' ? src[code] : {};
+    const parsedYear = parseInt(item.year, 10);
     out[code] = {
       lhs: Math.max(0, Math.round(Number(item.lhs) || 0)),
       area: Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
-      arbs: Math.max(0, Math.round(Number(item.arbs) || 0))
+      arbs: Math.max(0, Math.round(Number(item.arbs) || 0)),
+      year: Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear
     };
   }
   return out;
