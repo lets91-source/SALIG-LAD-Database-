@@ -134,7 +134,7 @@ function formatNepRateCell(rateCountPct, rateAreaPct, mode = 'both') {
     primary >= 100 ? 'badge-green' : primary >= 50 ? 'badge-blue' : primary > 0 ? 'badge-amber' : 'badge-gray';
   const sub =
     mode === 'both'
-      ? `<div class="nep-sub-metric">${Number(rateAreaPct || 0).toFixed(2)}% HAS</div>`
+      ? `<div class="nep-sub-metric">${Number(rateAreaPct || 0).toFixed(2)}%</div>`
       : '';
   return `<span class="badge ${tone} num">${Number(primary || 0).toFixed(2)}%</span>${sub}`;
 }
@@ -167,7 +167,6 @@ function renderMilestoneNepSection(ctx) {
     nepExpandedTargetSems = false,
     nepShowProvinces = false,
     nepExpandedMilestones = {},
-    nepShowSemesters = true,
     nepMilestoneTableFilter = 'ALL'
   } = ctx;
   const rows = analytics.milestoneNepBreakdown || [];
@@ -251,7 +250,7 @@ function renderMilestoneNepSection(ctx) {
   const q4Cols = isQExpanded(4) ? 4 : 1;
   const totalQuarterCols = q1Cols + q2Cols + q3Cols + q4Cols;
   const targetCols = nepExpandedTargetSems ? 3 : 1;
-  const totalTableCols = 1 + targetCols + (nepShowSemesters ? (totalQuarterCols + 6 + 3) : (totalQuarterCols + 3));
+  const totalTableCols = 1 + targetCols + totalQuarterCols + 3;
 
   const formatNepTargetSmall = (count, areaHas, mode = 'both') => {
     const c = Math.round(count || 0);
@@ -361,9 +360,6 @@ function renderMilestoneNepSection(ctx) {
           <button type="button" class="btn btn-sm ${hasAnyMonthExpanded ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-months" title="Toggle monthly accomplishment in each quarter">
             <span class="fs-icon">📅</span> <span>${hasAnyMonthExpanded ? 'Hide Monthly' : 'Monthly Accomp.'}</span>
           </button>
-          <button type="button" class="btn btn-sm ${nepShowSemesters ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-semesters" title="Toggle 1st Sem &amp; 2nd Sem columns">
-            <span class="fs-icon">🌓</span> <span>${nepShowSemesters ? 'Hide Semesters' : '1st &amp; 2nd Sem'}</span>
-          </button>
           <button type="button" class="btn btn-sm ${nepExpandedTargetSems ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-target-sems" title="Toggle 1st Sem &amp; 2nd Sem Target columns">
             <span class="fs-icon">🎯</span> <span>${nepExpandedTargetSems ? 'Hide Target Sems' : '1st &amp; 2nd Target'}</span>
           </button>
@@ -387,95 +383,7 @@ function renderMilestoneNepSection(ctx) {
         <table class="nep-milestone-table">
           <thead>
             ${
-              nepShowSemesters
-                ? `
-            <tr>
-              <th rowspan="${hasAnyMonthExpanded ? 3 : 2}" class="nep-th-milestone-col">
-                <div class="nep-th-milestone-flex">
-                  <span>Milestone</span>
-                  <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter" title="Filter by Milestone" aria-label="Filter by Milestone">
-                    ${milestoneTableOptions
-                      .map(
-                        (m) =>
-                          `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
-                      )
-                      .join('')}
-                  </select>
-                </div>
-              </th>
-              ${
-                !nepExpandedTargetSems
-                  ? `<th rowspan="${hasAnyMonthExpanded ? 3 : 2}" class="right nep-target-header" data-toggle-target-sems title="Click to show 1st &amp; 2nd Sem Target columns">NEP Target <span class="q-toggle-pill">+</span></th>`
-                  : `<th colspan="3" class="center nep-target-group-header" data-toggle-target-sems title="Click to collapse Target columns">NEP Target <span class="q-toggle-pill">Hide Sems ▴</span></th>`
-              }
-              <th colspan="${q1Cols + q2Cols + 3}" class="center nep-sem-header nep-sem1-header">1st Semester (Jan – Jun)</th>
-              <th colspan="${q3Cols + q4Cols + 3}" class="center nep-sem-header nep-sem2-header">2nd Semester (Jul – Dec)</th>
-              <th colspan="3" class="center nep-annual-header">Full Year (Total)</th>
-            </tr>
-            <tr>
-              ${
-                nepExpandedTargetSems
-                  ? `
-                <th class="right nep-sem-col-header nep-target-sem-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="1st Semester NEP Target (50%)">1st Sem Target</th>
-                <th class="right nep-sem-col-header nep-target-sem-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="2nd Semester NEP Target (50%)">2nd Sem Target</th>
-                <th class="right nep-annual-total-th nep-target-annual-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Full Year NEP Target">Annual Target</th>
-              `
-                  : ''
-              }
-              ${
-                isQExpanded(1)
-                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="1" title="Click to hide Q1 months">Q1 <span class="q-toggle-pill">Hide Months ▴</span></th>`
-                  : `<th class="right nep-q-col-header" data-toggle-q="1" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q1">Q1 <span class="q-toggle-pill">+</span></th>`
-              }
-              ${
-                isQExpanded(2)
-                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="2" title="Click to hide Q2 months">Q2 <span class="q-toggle-pill">Hide Months ▴</span></th>`
-                  : `<th class="right nep-q-col-header" data-toggle-q="2" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q2">Q2 <span class="q-toggle-pill">+</span></th>`
-              }
-              <th class="right nep-sem-col-header nep-sem1-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="1st Semester Accomplishment (Q1 + Q2)">1st Sem Accomp</th>
-              <th class="right nep-sem-col-header nep-sem1-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="1st Semester Rate of Accomplishment">1st Sem Rate</th>
-              <th class="right nep-sem-col-header nep-sem1-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="1st Semester Variance vs 1st Sem Target">1st Sem Variance</th>
-
-              ${
-                isQExpanded(3)
-                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="3" title="Click to hide Q3 months">Q3 <span class="q-toggle-pill">Hide Months ▴</span></th>`
-                  : `<th class="right nep-q-col-header" data-toggle-q="3" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q3">Q3 <span class="q-toggle-pill">+</span></th>`
-              }
-              ${
-                isQExpanded(4)
-                  ? `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="4" title="Click to hide Q4 months">Q4 <span class="q-toggle-pill">Hide Months ▴</span></th>`
-                  : `<th class="right nep-q-col-header" data-toggle-q="4" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="Click to show months for Q4">Q4 <span class="q-toggle-pill">+</span></th>`
-              }
-              <th class="right nep-sem-col-header nep-sem2-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="2nd Semester Accomplishment (Q3 + Q4)">2nd Sem Accomp</th>
-              <th class="right nep-sem-col-header nep-sem2-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="2nd Semester Rate of Accomplishment">2nd Sem Rate</th>
-              <th class="right nep-sem-col-header nep-sem2-col-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''} title="2nd Semester Variance vs 2nd Sem Target">2nd Sem Variance</th>
-
-              <th class="right nep-annual-total-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''}>Total</th>
-              <th class="right nep-annual-total-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''}>Rate of Accomp.</th>
-              <th class="right nep-annual-total-th" ${hasAnyMonthExpanded ? 'rowspan="2"' : ''}>Variance</th>
-            </tr>
-            ${
-              hasAnyMonthExpanded
-                ? `
-            <tr>
-              ${[1, 2, 3, 4]
-                .map((qNum) => {
-                  if (!isQExpanded(qNum)) return '';
-                  const qCfg = quartersConfig.find((q) => q.q === qNum);
-                  return `
-                    <th class="right nep-month-header">${qCfg.months[0].label}</th>
-                    <th class="right nep-month-header">${qCfg.months[1].label}</th>
-                    <th class="right nep-month-header">${qCfg.months[2].label}</th>
-                    <th class="right nep-q-subtotal-header">Q${qNum} Total</th>
-                  `;
-                })
-                .join('')}
-            </tr>
-            `
-                : ''
-            }
-            `
-                : !hasAnyMonthExpanded
+              !hasAnyMonthExpanded
                 ? `
             <tr>
               <th rowspan="2" class="nep-th-milestone-col">
@@ -617,26 +525,8 @@ function renderMilestoneNepSection(ctx) {
                 ${renderTargetCells(r)}
                 ${renderQuarterCells(r, 1)}
                 ${renderQuarterCells(r, 2)}
-                ${
-                  nepShowSemesters
-                    ? `
-                  <td class="right nep-sem-cell nep-sem1-cell font-semibold">${formatNepMetricCell(r.sem1?.count, r.sem1?.areaHas, nepMetricMode)}</td>
-                  <td class="right nep-sem-cell nep-sem1-cell">${formatNepRateCell(r.sem1?.rateCountPct, r.sem1?.rateAreaPct, nepMetricMode)}</td>
-                  <td class="right nep-sem-cell nep-sem1-cell">${formatNepVarianceCell(r.sem1?.varianceCount, r.sem1?.varianceAreaHas, nepMetricMode)}</td>
-                `
-                    : ''
-                }
                 ${renderQuarterCells(r, 3)}
                 ${renderQuarterCells(r, 4)}
-                ${
-                  nepShowSemesters
-                    ? `
-                  <td class="right nep-sem-cell nep-sem2-cell font-semibold">${formatNepMetricCell(r.sem2?.count, r.sem2?.areaHas, nepMetricMode)}</td>
-                  <td class="right nep-sem-cell nep-sem2-cell">${formatNepRateCell(r.sem2?.rateCountPct, r.sem2?.rateAreaPct, nepMetricMode)}</td>
-                  <td class="right nep-sem-cell nep-sem2-cell">${formatNepVarianceCell(r.sem2?.varianceCount, r.sem2?.varianceAreaHas, nepMetricMode)}</td>
-                `
-                    : ''
-                }
                 <td class="right">
                   ${formatNepMetricCell(r.total.count, r.total.areaHas, nepMetricMode)}
                   ${
@@ -670,26 +560,8 @@ function renderMilestoneNepSection(ctx) {
                   ${renderTargetCells(pd)}
                   ${renderQuarterCells(pd, 1)}
                   ${renderQuarterCells(pd, 2)}
-                  ${
-                    nepShowSemesters
-                      ? `
-                    <td class="right nep-sem-cell nep-sem1-cell font-semibold">${formatNepMetricCell(pd.sem1?.count, pd.sem1?.areaHas, nepMetricMode)}</td>
-                    <td class="right nep-sem-cell nep-sem1-cell">${formatNepRateCell(pd.sem1?.rateCountPct, pd.sem1?.rateAreaPct, nepMetricMode)}</td>
-                    <td class="right nep-sem-cell nep-sem1-cell">${formatNepVarianceCell(pd.sem1?.varianceCount, pd.sem1?.varianceAreaHas, nepMetricMode)}</td>
-                  `
-                      : ''
-                  }
                   ${renderQuarterCells(pd, 3)}
                   ${renderQuarterCells(pd, 4)}
-                  ${
-                    nepShowSemesters
-                      ? `
-                    <td class="right nep-sem-cell nep-sem2-cell font-semibold">${formatNepMetricCell(pd.sem2?.count, pd.sem2?.areaHas, nepMetricMode)}</td>
-                    <td class="right nep-sem-cell nep-sem2-cell">${formatNepRateCell(pd.sem2?.rateCountPct, pd.sem2?.rateAreaPct, nepMetricMode)}</td>
-                    <td class="right nep-sem-cell nep-sem2-cell">${formatNepVarianceCell(pd.sem2?.varianceCount, pd.sem2?.varianceAreaHas, nepMetricMode)}</td>
-                  `
-                      : ''
-                  }
                   <td class="right font-semibold">${formatNepMetricCell(pd.count, pd.areaHas, nepMetricMode)}</td>
                   <td class="right">${formatNepRateCell(pd.rateCountPct, pd.rateAreaPct, nepMetricMode)}</td>
                   <td class="right">${formatNepVarianceCell(pd.varianceCount, pd.varianceAreaHas, nepMetricMode)}</td>

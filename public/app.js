@@ -46,7 +46,6 @@ const appState = {
   nepShowMonths: false,
   nepExpandedQuarters: {},
   nepExpandedTargetSems: false,
-  nepShowSemesters: true,
   nepShowProvinces: false,
   nepExpandedMilestones: {},
   filters: {
@@ -608,24 +607,20 @@ let activeFullscreenPanelId = null;
 function toggleFullScreen(panel, btn) {
   if (!panel) return;
   const panelId = panel.id || (panel.id = 'panel-fs-' + Math.random().toString(36).slice(2, 8));
-  const isFs = panel.classList.contains('is-fullscreen');
+  const isFs = panel.classList.contains('is-fullscreen') || appState.activeFullscreenPanelId === panelId;
 
   if (!isFs) {
+    appState.activeFullscreenPanelId = panelId;
+    activeFullscreenPanelId = panelId;
     panel.classList.add('is-fullscreen');
     document.body.classList.add('has-fullscreen-panel');
-    activeFullscreenPanelId = panelId;
     updateFsBtn(btn, true);
-    if (panel.requestFullscreen && !document.fullscreenElement) {
-      panel.requestFullscreen().catch(() => {});
-    }
   } else {
+    appState.activeFullscreenPanelId = null;
+    activeFullscreenPanelId = null;
     panel.classList.remove('is-fullscreen');
     document.body.classList.remove('has-fullscreen-panel');
-    activeFullscreenPanelId = null;
     updateFsBtn(btn, false);
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    }
   }
 }
 
@@ -669,7 +664,6 @@ function renderActiveView() {
     nepShowMonths: Boolean(appState.nepShowMonths),
     nepExpandedQuarters: appState.nepExpandedQuarters || {},
     nepExpandedTargetSems: Boolean(appState.nepExpandedTargetSems),
-    nepShowSemesters: Boolean(appState.nepShowSemesters !== false),
     nepShowProvinces: Boolean(appState.nepShowProvinces),
     nepExpandedMilestones: appState.nepExpandedMilestones || {},
     nepYearFilter: appState.nepYearFilter,
@@ -703,17 +697,15 @@ function renderActiveView() {
     bindUsersViewEvents(container);
   }
 
-  // Bind shared cross-view navigation, empty-state actions, and LHID 360 drawer triggers
-  if (activeFullscreenPanelId) {
-    const existing = document.getElementById(activeFullscreenPanelId);
+  // Restore fullscreen state if a panel was full screen before re-rendering
+  const fsId = appState.activeFullscreenPanelId || activeFullscreenPanelId;
+  if (fsId) {
+    const existing = document.getElementById(fsId);
     if (existing) {
       existing.classList.add('is-fullscreen');
       document.body.classList.add('has-fullscreen-panel');
       const btn = existing.querySelector('.btn-fullscreen');
       if (btn) updateFsBtn(btn, true);
-    } else {
-      activeFullscreenPanelId = null;
-      document.body.classList.remove('has-fullscreen-panel');
     }
   }
 
@@ -2100,11 +2092,6 @@ function bindDashboardViewEvents(container) {
     renderActiveView();
   });
 
-  container.querySelector('#btn-toggle-nep-semesters')?.addEventListener('click', () => {
-    appState.nepShowSemesters = !Boolean(appState.nepShowSemesters !== false);
-    renderActiveView();
-  });
-
   container.querySelector('#btn-toggle-nep-target-sems')?.addEventListener('click', () => {
     appState.nepExpandedTargetSems = !Boolean(appState.nepExpandedTargetSems);
     renderActiveView();
@@ -3243,32 +3230,32 @@ async function init() {
     }
   });
 
-  // Global Fullscreen change & Esc key listeners
-  document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && activeFullscreenPanelId) {
-      const p = document.getElementById(activeFullscreenPanelId);
-      if (p) {
-        p.classList.remove('is-fullscreen');
-        const btn = p.querySelector('.btn-fullscreen');
-        if (btn) updateFsBtn(btn, false);
-      }
-      document.body.classList.remove('has-fullscreen-panel');
-      activeFullscreenPanelId = null;
-    }
-  });
-
+  // Global Esc key listener for modal, drawer, or full screen
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && activeFullscreenPanelId) {
-      const p = document.getElementById(activeFullscreenPanelId);
-      if (p) {
-        p.classList.remove('is-fullscreen');
-        const btn = p.querySelector('.btn-fullscreen');
-        if (btn) updateFsBtn(btn, false);
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('modal-backdrop');
+      if (modal && !modal.classList.contains('hidden')) {
+        closeModal();
+        e.stopPropagation();
+        return;
       }
-      document.body.classList.remove('has-fullscreen-panel');
-      activeFullscreenPanelId = null;
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+      const drawer = document.getElementById('drawer-backdrop');
+      if (drawer && !drawer.classList.contains('hidden')) {
+        drawer.classList.add('hidden');
+        e.stopPropagation();
+        return;
+      }
+      const fsId = appState.activeFullscreenPanelId || activeFullscreenPanelId;
+      if (fsId) {
+        const p = document.getElementById(fsId);
+        if (p) {
+          p.classList.remove('is-fullscreen');
+          const btn = p.querySelector('.btn-fullscreen');
+          if (btn) updateFsBtn(btn, false);
+        }
+        document.body.classList.remove('has-fullscreen-panel');
+        appState.activeFullscreenPanelId = null;
+        activeFullscreenPanelId = null;
       }
     }
   });

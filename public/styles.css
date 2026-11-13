@@ -2676,7 +2676,7 @@ body.has-fullscreen-panel {
   height: 100vh !important;
   max-width: 100vw !important;
   max-height: 100vh !important;
-  z-index: 99999 !important;
+  z-index: 5000 !important;
   margin: 0 !important;
   border: none !important;
   border-radius: 0 !important;
@@ -2684,15 +2684,43 @@ body.has-fullscreen-panel {
   background: var(--surface, #ffffff) !important;
   display: flex !important;
   flex-direction: column !important;
-  padding: 20px 28px !important;
+  padding: 16px 24px !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
+}
+
+/* Modals, drawers, and overlays must sit above fullscreen panels so user can edit in full screen */
+body.has-fullscreen-panel .modal-backdrop,
+.modal-backdrop {
+  z-index: 100000 !important;
+}
+
+body.has-fullscreen-panel .drawer-backdrop,
+.drawer-backdrop {
+  z-index: 100050 !important;
+}
+
+body.has-fullscreen-panel .toast-stack,
+.toast-stack {
+  z-index: 100100 !important;
+}
+
+body.has-fullscreen-panel #loading-overlay,
+#loading-overlay {
+  z-index: 100200 !important;
 }
 
 .panel.is-fullscreen .panel-header,
 .panel:fullscreen .panel-header {
   flex-shrink: 0 !important;
-  margin-bottom: 14px !important;
+  margin-bottom: 12px !important;
+}
+
+/* In full screen mode, remove the secondary provincial toggle, sync and target list buttons from header */
+.panel.is-fullscreen #btn-toggle-nep-provinces,
+.panel.is-fullscreen #btn-sync-hub-nep,
+.panel.is-fullscreen #btn-edit-nep-targets {
+  display: none !important;
 }
 
 .panel.is-fullscreen .toolbar,
@@ -2708,8 +2736,8 @@ body.has-fullscreen-panel {
 .panel.is-fullscreen .table-wrap,
 .panel:fullscreen .table-wrap {
   flex: 1 1 auto !important;
-  max-height: none !important;
-  height: 100% !important;
+  max-height: calc(100vh - 130px) !important;
+  height: auto !important;
   overflow: auto !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-sm) !important;
@@ -2717,7 +2745,7 @@ body.has-fullscreen-panel {
 
 .panel.is-fullscreen .table-scroll-xy,
 .panel:fullscreen .table-scroll-xy {
-  max-height: calc(100vh - 190px) !important;
+  max-height: calc(100vh - 160px) !important;
 }
 
 .btn-fullscreen {
