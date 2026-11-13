@@ -1,0 +1,64 @@
+name: SALIG CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Automated Verification & Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Syntax Checks
+        run: |
+          node --check server/schema.js
+          node --check server/seedData.js
+          node --check server/store.js
+          node --check server/sheetsSync.js
+          node --check server/app.js
+          node --check server/auth.js
+          node --check public/views.js
+          node --check public/app.js
+
+      - name: Execute 16-Test Suite
+        run: npm test
+
+  deploy:
+    name: Production Deploy to Vercel
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check for Vercel Credentials
+        id: check_token
+        run: |
+          if [ -n "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "Notice: VERCEL_TOKEN secret not configured. If you linked this repo directly on vercel.com, Vercel deploys automatically via its native Git webhook."
+          fi
+
+      - name: Deploy to Vercel (Action Runner)
+        if: steps.check_token.outputs.has_token == 'true'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
