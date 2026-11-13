@@ -619,6 +619,8 @@ function getHubBootstrap() {
 
   const logs = readSheetObjects_(logSheet).slice(-30).reverse();
 
+  const hubNep = readNepSheetFromHub_();
+
   return {
     ok: true,
     spreadsheetId: HUB_SPREADSHEET_ID,
@@ -628,7 +630,8 @@ function getHubBootstrap() {
     milestoneData: readSheetObjects_(msSheet),
     optool: optool,
     optoolHeaders: optoolHeaders,
-    nepProvinceList: readNepSheetFromHub_(),
+    nepProvinceList: hubNep.nepProvinceList,
+    nepMilestoneList: hubNep.nepMilestoneList || {},
     users: readUserAccountsFromHub_(),
     syncLogs: logs
   };

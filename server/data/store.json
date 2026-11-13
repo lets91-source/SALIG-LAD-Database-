@@ -4,6 +4,22 @@
   "lastSyncAt": "2026-11-12T15:03:55.263Z",
   "syncLogs": [
     {
+      "id": "sync-1794552063348-yon8j",
+      "timestamp": "2026-11-13T06:41:03.348Z",
+      "source": "Hub NEP Sync",
+      "status": "success",
+      "message": "Synced Regional Hub NEP targets from Google Sheet.",
+      "details": null
+    },
+    {
+      "id": "sync-1794551569082-zm8ev",
+      "timestamp": "2026-11-13T06:32:49.082Z",
+      "source": "Hub NEP Sheet Sync",
+      "status": "success",
+      "message": "Synced Regional Hub NEP sheet (LHS, AREA, ARBs, Year).",
+      "details": null
+    },
+    {
       "id": "sync-1794495949764-7a4wq",
       "timestamp": "2026-11-12T15:05:49.764Z",
       "source": "Hub NEP Sheet Sync",
@@ -95725,11 +95741,11 @@
   "nepTargets": {
     "cf_doc": {
       "targetCount": 0,
-      "targetAreaHas": 0
+      "targetAreaHas": 459.2091
     },
     "land_survey": {
       "targetCount": 0,
-      "targetAreaHas": 0
+      "targetAreaHas": 1610.8163
     },
     "land_valuation": {
       "targetCount": 0,
@@ -95752,32 +95768,268 @@
     "BIL": {
       "lhs": 0,
       "area": 0,
-      "arbs": 0
+      "arbs": 0,
+      "year": 2026
     },
     "ESA": {
       "lhs": 0,
       "area": 0,
-      "arbs": 0
+      "arbs": 0,
+      "year": 2026
     },
     "LEY": {
       "lhs": 0,
       "area": 0,
-      "arbs": 0
+      "arbs": 0,
+      "year": 2026
     },
     "NSA": {
       "lhs": 0,
       "area": 0,
-      "arbs": 0
+      "arbs": 0,
+      "year": 2026
     },
     "SAM": {
       "lhs": 0,
       "area": 0,
-      "arbs": 0
+      "arbs": 0,
+      "year": 2026
     },
     "SLE": {
       "lhs": 0,
       "area": 0,
-      "arbs": 0
+      "arbs": 0,
+      "year": 2026
+    }
+  },
+  "nepMilestoneList": {
+    "cf_doc": {
+      "BIL": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2025
+      },
+      "ESA": {
+        "lhs": 0,
+        "area": 23.5124,
+        "arbs": 0,
+        "year": 2025
+      },
+      "LEY": {
+        "lhs": 0,
+        "area": 140.6996,
+        "arbs": 0,
+        "year": 2025
+      },
+      "NSA": {
+        "lhs": 0,
+        "area": 121.8952,
+        "arbs": 0,
+        "year": 2025
+      },
+      "SAM": {
+        "lhs": 0,
+        "area": 151.8667,
+        "arbs": 0,
+        "year": 2025
+      },
+      "SLE": {
+        "lhs": 0,
+        "area": 21.2352,
+        "arbs": 0,
+        "year": 2025
+      }
+    },
+    "land_survey": {
+      "BIL": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "ESA": {
+        "lhs": 0,
+        "area": 23.5124,
+        "arbs": 0,
+        "year": 2025
+      },
+      "LEY": {
+        "lhs": 0,
+        "area": 1056.74,
+        "arbs": 0,
+        "year": 2025
+      },
+      "NSA": {
+        "lhs": 0,
+        "area": 358.5037,
+        "arbs": 0,
+        "year": 2025
+      },
+      "SAM": {
+        "lhs": 0,
+        "area": 165.3974,
+        "arbs": 0,
+        "year": 2025
+      },
+      "SLE": {
+        "lhs": 0,
+        "area": 6.6628,
+        "arbs": 0,
+        "year": 2025
+      }
+    },
+    "land_valuation": {
+      "BIL": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "ESA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "LEY": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "NSA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SAM": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SLE": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      }
+    },
+    "ep_cloa_registration": {
+      "BIL": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "ESA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "LEY": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "NSA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SAM": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SLE": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      }
+    },
+    "ep_cloa_distribution": {
+      "BIL": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "ESA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "LEY": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "NSA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SAM": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SLE": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      }
+    },
+    "installation": {
+      "BIL": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "ESA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "LEY": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "NSA": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SAM": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      },
+      "SLE": {
+        "lhs": 0,
+        "area": 0,
+        "arbs": 0,
+        "year": 2026
+      }
     }
   }
 }

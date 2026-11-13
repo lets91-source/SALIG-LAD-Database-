@@ -918,8 +918,8 @@ export function createAppServer(dataDir, options = {}) {
         });
       }
 
-      if (req.method === 'POST' && pathname === '/api/nep-sheet/sync') {
-        if (scopeCode) {
+      if (req.method === 'POST' && (pathname === '/api/nep-sheet/sync' || pathname === '/api/nep-targets/fetch-hub')) {
+        if (scopeCode && pathname === '/api/nep-sheet/sync') {
           return sendJson(res, 403, { error: 'Only Regional Accounts can sync the Regional Hub NEP Sheet.' });
         }
         const gasUrl = String(store.state.gasWebAppUrl || '').trim();
@@ -945,12 +945,13 @@ export function createAppServer(dataDir, options = {}) {
               store.updateNepProvinceList(map, ms);
             }
           }
-          store.addSyncLog('Hub NEP Sheet Sync', 'success', 'Synced Regional Hub NEP sheet (LHS, AREA, ARBs, Year).');
+          store.addSyncLog('Hub NEP Sync', 'success', 'Synced Regional Hub NEP targets from Google Sheet.');
           store.save();
           return sendJson(res, 200, {
             ok: true,
             nepProvinceList,
             nepMilestoneList: store.state.nepMilestoneList || {},
+            nepTargets: store.state.nepTargets || {},
             analytics: computeScopedAnalytics(store, query, scopeCode)
           });
         } catch (err) {
@@ -1103,13 +1104,14 @@ export function createAppServer(dataDir, options = {}) {
               parsed.milestoneData.length +
               Object.values(parsed.optool).reduce((acc, arr) => acc + arr.length, 0);
 
-            const hasNep = Boolean(!scopeCode && parsed.nepProvinceList);
+            const hasNep = Boolean(!scopeCode && (parsed.nepProvinceList || parsed.nepMilestoneList));
             if (rowCount > 0 || hasNep) {
               store.importParsedDataset(
                 {
                   milestoneData: parsed.milestoneData,
                   optool: parsed.optool,
-                  nepProvinceList: !scopeCode ? parsed.nepProvinceList : null
+                  nepProvinceList: !scopeCode ? parsed.nepProvinceList : null,
+                  nepMilestoneList: !scopeCode ? parsed.nepMilestoneList : null
                 },
                 { skipSave: true }
               );
@@ -1188,7 +1190,8 @@ export function createAppServer(dataDir, options = {}) {
               {
                 milestoneData: snapshot.milestoneData,
                 optool: snapshot.optool,
-                nepProvinceList: snapshot.nepProvinceList || null
+                nepProvinceList: snapshot.nepProvinceList || null,
+                nepMilestoneList: snapshot.nepMilestoneList || null
               },
               { skipSave: true }
             );
@@ -1406,6 +1409,23 @@ export function createAppServer(dataDir, options = {}) {
       return sendJson(res, 500, { error: err.message || 'Internal Server Error' });
     }
   };
+
+  if (options.autoFetchHubNep !== false && store.state.gasWebAppUrl) {
+    Promise.resolve().then(async () => {
+      try {
+        const remote = await gasPullNepFn(store.state.gasWebAppUrl);
+        if (remote?.nepProvinceList) {
+          store.updateNepProvinceList(remote.nepProvinceList, 'overall');
+        }
+        if (remote?.nepMilestoneList && typeof remote.nepMilestoneList === 'object') {
+          for (const [ms, map] of Object.entries(remote.nepMilestoneList)) {
+            store.updateNepProvinceList(map, ms);
+          }
+        }
+        store.save();
+      } catch (_) {}
+    });
+  }
 
   const server = http.createServer(handler);
   return { server, store, handler };

@@ -618,7 +618,7 @@ export class ConsolidatedStore {
   }
 
   /** Bulk-upsert parsed Milestone_Data, OPTool tabs, and optional NEP province sheet using O(1) indexes and a single save. */
-  importParsedDataset({ milestoneData = [], optool = {}, nepProvinceList = null } = {}, options = {}) {
+  importParsedDataset({ milestoneData = [], optool = {}, nepProvinceList = null, nepMilestoneList = null } = {}, options = {}) {
     const { skipSave = false } = options;
     let importedCount = 0;
 
@@ -694,15 +694,37 @@ export class ConsolidatedStore {
     }
 
     if (nepProvinceList && typeof nepProvinceList === 'object') {
-      const incomingNep = normalizeNepProvinceList(nepProvinceList);
+      const actualProvinceList = nepProvinceList.nepProvinceList || nepProvinceList;
+      if (nepProvinceList.nepMilestoneList && !nepMilestoneList) {
+        nepMilestoneList = nepProvinceList.nepMilestoneList;
+      }
+      const incomingNep = normalizeNepProvinceList(actualProvinceList);
       const mergedNep = normalizeNepProvinceList(this.state.nepProvinceList);
       for (const code of Object.keys(mergedNep)) {
-        if (Object.prototype.hasOwnProperty.call(nepProvinceList, code)) {
+        if (Object.prototype.hasOwnProperty.call(actualProvinceList, code)) {
           mergedNep[code] = incomingNep[code];
           importedCount++;
         }
       }
       this.state.nepProvinceList = normalizeNepProvinceList(mergedNep);
+    }
+
+    if (nepMilestoneList && typeof nepMilestoneList === 'object') {
+      if (!this.state.nepMilestoneList) this.state.nepMilestoneList = {};
+      for (const [msKey, provMap] of Object.entries(nepMilestoneList)) {
+        if (provMap && typeof provMap === 'object') {
+          const norm = normalizeNepProvinceList(provMap);
+          this.state.nepMilestoneList[msKey] = norm;
+          const totalLhs = Object.values(norm).reduce((s, r) => s + r.lhs, 0);
+          const totalArea = Number(Object.values(norm).reduce((s, r) => s + r.area, 0).toFixed(4));
+          if (!this.state.nepTargets) this.state.nepTargets = {};
+          this.state.nepTargets[msKey] = {
+            targetCount: totalLhs,
+            targetAreaHas: totalArea
+          };
+          importedCount++;
+        }
+      }
     }
 
     if (!skipSave) this.save();
@@ -1063,18 +1085,19 @@ export class ConsolidatedStore {
         if (hasEntries) {
           let specificCount = 0;
           let specificArea = 0;
-          let hasMatch = false;
           for (const [pCode, pData] of provEntries) {
             if (activeScope && pCode !== activeScope) continue;
             const pYear = Math.round(Number(pData?.year) || currentYear);
             if (filterYear && pYear !== filterYear) continue;
             specificCount += Math.max(0, Math.round(Number(pData?.lhs) || 0));
             specificArea += Math.max(0, Number(pData?.area) || 0);
-            hasMatch = true;
           }
-          if (hasMatch && (specificCount > 0 || specificArea > 0 || filterYear)) {
+          if (filterYear) {
             nepTargetCount = specificCount;
-            nepTargetAreaHas = specificArea;
+            nepTargetAreaHas = roundArea(specificArea);
+          } else if (specificCount > 0 || specificArea > 0) {
+            nepTargetCount = specificCount;
+            nepTargetAreaHas = roundArea(specificArea);
           }
         }
       }

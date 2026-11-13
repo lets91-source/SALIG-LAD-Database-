@@ -1955,6 +1955,17 @@ test('Regional Hub NEP Sheet (per province LHS, AREA, ARBs) XLSX round-trip, edi
     const yrAnalytics = await (await fetch(`${baseUrl}/api/analytics`, { headers: { Cookie: adminCookie } })).json();
     assert.ok(yrAnalytics.availableMilestoneYears.includes(2025));
     assert.ok(yrAnalytics.availableMilestoneYears.includes(2026));
+
+    // 7. Fetch live NEP targets from Regional Hub
+    const fetchHubRes = await fetch(`${baseUrl}/api/nep-targets/fetch-hub`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(fetchHubRes.status, 200);
+    const fetchHubJson = await fetchHubRes.json();
+    assert.equal(fetchHubJson.ok, true);
+    assert.ok(fetchHubJson.nepTargets);
+    assert.ok(fetchHubJson.nepProvinceList);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

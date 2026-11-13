@@ -2010,6 +2010,7 @@ function bindDashboardViewEvents(container) {
   });
 
   container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
+  container.querySelector('#btn-sync-hub-nep')?.addEventListener('click', syncHubNepSheet);
   container.querySelector('#btn-edit-nep-sheet')?.addEventListener('click', (e) => {
     const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
     openNepSheetModal(null, ms);
@@ -2042,23 +2043,19 @@ function bindDashboardViewEvents(container) {
 }
 
 async function syncHubNepSheet() {
-  const isAdmin = appState.currentUser ? appState.currentUser.role === 'admin' : !appState.provinceScope;
-  if (!isAdmin) {
-    toast('Only Administrator accounts can sync the Regional Hub NEP Sheet.', true);
-    return;
-  }
   try {
     const res = await withLoading(
       'fetching',
-      'Syncing Hub NEP Sheet…',
-      'Reading NEP tab (LHS, AREA, ARBs, Year) from Regional Hub Google Sheet…',
+      'Syncing Hub NEP Targets…',
+      'Reading NEP target data (LHS, AREA, ARBs, Year) from Regional Hub Google Sheet…',
       () => api('/api/nep-sheet/sync', { method: 'POST' })
     );
     appState.state.nepProvinceList = res.nepProvinceList;
     if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
+    if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
     appState.analytics = res.analytics;
     renderActiveView();
-    toast('Synced Regional Hub NEP Sheet');
+    toast('Fetched Regional Hub NEP Targets');
   } catch (err) {
     toast(err.message, true);
   }
@@ -2396,9 +2393,14 @@ function openNepTargetsModal() {
     submitLabel: 'Save Regional NEP Targets',
     cancelId: 'nep-cancel',
     bodyHtml: `
-      <p style="margin:0 0 12px;font-size:12.5px;color:var(--text-muted)">
-        Region VIII consolidated NEP Target per milestone. Only Regional Accounts can edit this list.
-      </p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;gap:8px">
+        <p style="margin:0;font-size:12.5px;color:var(--text-muted)">
+          Region VIII consolidated NEP Target per milestone. Only Regional Accounts can edit this list.
+        </p>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-fetch-hub-nep-modal" style="white-space:nowrap">
+          Fetch from Regional Hub NEP
+        </button>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -2414,6 +2416,34 @@ function openNepTargetsModal() {
         </table>
       </div>
     `
+  });
+
+  document.getElementById('btn-fetch-hub-nep-modal')?.addEventListener('click', async () => {
+    try {
+      const res = await withLoading(
+        'fetching',
+        'Fetching Hub NEP Targets…',
+        'Reading live NEP targets from Regional Hub Google Sheet…',
+        () => api('/api/nep-sheet/sync', { method: 'POST' })
+      );
+      appState.state.nepProvinceList = res.nepProvinceList;
+      if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
+      if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
+      appState.analytics = res.analytics;
+      const form = document.getElementById('nep-targets-form');
+      if (form) {
+        for (const m of milestones) {
+          const t = res.nepTargets?.[m.key] || { targetCount: 0, targetAreaHas: 0 };
+          const cInput = form.elements[`c_${m.key}`];
+          const aInput = form.elements[`a_${m.key}`];
+          if (cInput) cInput.value = t.targetCount || 0;
+          if (aInput) aInput.value = (Number(t.targetAreaHas) || 0).toFixed(4);
+        }
+      }
+      toast('Fetched NEP Targets from Regional Hub');
+    } catch (err) {
+      toast(err.message, true);
+    }
   });
 
   document.getElementById('nep-cancel')?.addEventListener('click', closeModal);

@@ -57,7 +57,8 @@ export async function parseWorkbookBuffer(buffer) {
     tabRowCounts: {},
     milestoneData: [],
     optool: {},
-    nepProvinceList: null
+    nepProvinceList: null,
+    nepMilestoneList: null
   };
 
   for (const tabName of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
@@ -116,10 +117,12 @@ export async function parseWorkbookBuffer(buffer) {
         { key: 'lhs', header: 'LHS', label: 'Landholdings' },
         { key: 'area', header: 'AREA', label: 'Area (HAS)' },
         { key: 'arbs', header: 'ARBs', label: 'Beneficiaries' },
-        { key: 'year', header: 'Year', label: 'Target Year' }
+        { key: 'year', header: 'Year', label: 'Target Year' },
+        { key: 'milestone', header: 'Milestone', label: 'Milestone Key' }
       ];
       const mapping = buildHeaderMapping(headerValues, nepColumns);
       const parsedNep = {};
+      const parsedMilestoneNep = {};
       let rowCount = 0;
       for (const row of dataRows) {
         const rec = {};
@@ -146,14 +149,24 @@ export async function parseWorkbookBuffer(buffer) {
         if (!code) continue;
         rowCount++;
         const parsedYear = parseInt(String(rec.year ?? '').replace(/,/g, ''), 10);
-        parsedNep[code] = {
+        const msKey = String(rec.milestone || '').trim().toLowerCase();
+        const entry = {
           lhs: Math.max(0, Math.round(Number(String(rec.lhs ?? 0).replace(/,/g, '')) || 0)),
           area: Number((Number(String(rec.area ?? 0).replace(/,/g, '')) || 0).toFixed(4)),
           arbs: Math.max(0, Math.round(Number(String(rec.arbs ?? 0).replace(/,/g, '')) || 0)),
           year: Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : new Date().getFullYear()
         };
+        if (!msKey || msKey === 'overall') {
+          parsedNep[code] = entry;
+        } else {
+          if (!parsedMilestoneNep[msKey]) parsedMilestoneNep[msKey] = {};
+          parsedMilestoneNep[msKey][code] = entry;
+        }
       }
       result.nepProvinceList = parsedNep;
+      if (Object.keys(parsedMilestoneNep).length > 0) {
+        result.nepMilestoneList = parsedMilestoneNep;
+      }
       result.tabRowCounts[name] = rowCount;
       continue;
     }

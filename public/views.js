@@ -217,6 +217,9 @@ function renderMilestoneNepSection(ctx) {
               )
               .join('')}
           </select>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-hub-nep" title="Fetch live NEP target data from Regional Hub Google Sheet">
+            Fetch Hub NEP Targets
+          </button>
           ${
             canEditNepTargets
               ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-targets">Regional NEP Target List</button>`
