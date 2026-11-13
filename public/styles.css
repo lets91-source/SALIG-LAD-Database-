@@ -1246,12 +1246,17 @@ td.col-actions-sticky .target-action-select {
   vertical-align: middle;
 }
 
-tbody tr:hover {
-  background: #f8fbf9;
+tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+tbody tr:hover,
+tbody tr:hover td {
+  background-color: #e6f4ea;
 }
 
 tbody tr:hover td.col-actions-sticky {
-  background: #f8fbf9;
+  background-color: #e6f4ea;
 }
 
 .link-btn {
@@ -2601,6 +2606,15 @@ td.cell-check {
 
 .nep-milestone-table thead th.center {
   text-align: center;
+}
+
+.nep-milestone-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.nep-milestone-table tbody tr:hover,
+.nep-milestone-table tbody tr:hover td {
+  background-color: #e6f4ea !important;
 }
 
 .nep-quarter-group {
