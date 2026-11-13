@@ -45,6 +45,7 @@ const appState = {
   nepDisplayMode: 'table', // 'table' | 'cards'
   nepShowMonths: false,
   nepExpandedQuarters: {},
+  nepExpandedTargetSems: false,
   nepShowSemesters: true,
   nepShowProvinces: false,
   nepExpandedMilestones: {},
@@ -667,6 +668,7 @@ function renderActiveView() {
     nepMetricMode: appState.nepMetricMode,
     nepShowMonths: Boolean(appState.nepShowMonths),
     nepExpandedQuarters: appState.nepExpandedQuarters || {},
+    nepExpandedTargetSems: Boolean(appState.nepExpandedTargetSems),
     nepShowSemesters: Boolean(appState.nepShowSemesters !== false),
     nepShowProvinces: Boolean(appState.nepShowProvinces),
     nepExpandedMilestones: appState.nepExpandedMilestones || {},
@@ -2101,6 +2103,19 @@ function bindDashboardViewEvents(container) {
   container.querySelector('#btn-toggle-nep-semesters')?.addEventListener('click', () => {
     appState.nepShowSemesters = !Boolean(appState.nepShowSemesters !== false);
     renderActiveView();
+  });
+
+  container.querySelector('#btn-toggle-nep-target-sems')?.addEventListener('click', () => {
+    appState.nepExpandedTargetSems = !Boolean(appState.nepExpandedTargetSems);
+    renderActiveView();
+  });
+
+  container.querySelectorAll('[data-toggle-target-sems]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      appState.nepExpandedTargetSems = !appState.nepExpandedTargetSems;
+      renderActiveView();
+    });
   });
 
   container.querySelector('#btn-toggle-nep-provinces')?.addEventListener('click', () => {

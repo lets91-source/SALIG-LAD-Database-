@@ -1703,6 +1703,14 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
     assert.equal(cf.sem1.areaHas, Number((cf.q1.areaHas + cf.q2.areaHas).toFixed(4)));
     assert.equal(cf.sem2.count, cf.q3.count + cf.q4.count);
     assert.equal(cf.sem2.areaHas, Number((cf.q3.areaHas + cf.q4.areaHas).toFixed(4)));
+    assert.equal(cf.nepTargetSem1Count, 3);
+    assert.equal(cf.nepTargetSem1AreaHas, 7.5);
+    assert.equal(cf.nepTargetSem2Count, 3);
+    assert.equal(cf.nepTargetSem2AreaHas, 7.5);
+    assert.equal(cf.sem1.targetCount, 3);
+    assert.equal(cf.sem1.targetAreaHas, 7.5);
+    assert.equal(cf.sem2.targetCount, 3);
+    assert.equal(cf.sem2.targetAreaHas, 7.5);
     assert.equal(typeof cf.sem1.rateCountPct, 'number');
     assert.equal(typeof cf.sem1.varianceAreaHas, 'number');
     assert.ok(cf.provinceBreakdown);
@@ -1714,6 +1722,8 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
     assert.equal(typeof cf.provinceBreakdown.LEY.hasAccomp, 'boolean');
     assert.ok(cf.provinceBreakdown.LEY.sem1);
     assert.ok(cf.provinceBreakdown.LEY.sem2);
+    assert.equal(typeof cf.provinceBreakdown.LEY.sem1.targetCount, 'number');
+    assert.equal(typeof cf.provinceBreakdown.LEY.sem1.targetAreaHas, 'number');
 
     const survey = rows[1];
     assert.equal(survey.q2.count, 1);

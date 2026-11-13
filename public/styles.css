@@ -2865,6 +2865,102 @@ body.has-fullscreen-panel {
   background: rgba(228, 244, 233, 0.55);
 }
 
+/* Milestone NEP Target Header, Cells & Semester Breakdown */
+.nep-target-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.nep-target-header:hover {
+  background: #e6f4ea !important;
+}
+
+.nep-target-group-header {
+  background: #d8ece0 !important;
+  color: var(--dar-green-dark) !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  border-right: 1px solid var(--border-strong) !important;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.nep-target-group-header:hover {
+  background: #cbe3d4 !important;
+}
+
+.nep-target-sem-th {
+  background: #eaf5ee !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: var(--dar-green-dark) !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  padding: 6px 8px !important;
+  white-space: nowrap;
+}
+
+.nep-target-annual-th {
+  background: #dcece1 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: var(--dar-green-dark) !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  padding: 6px 8px !important;
+  white-space: nowrap;
+}
+
+.nep-target-cell {
+  position: relative;
+}
+
+.nep-target-main {
+  font-weight: 600;
+}
+
+.nep-target-sem-breakdown {
+  margin-top: 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.nep-target-sem-tag {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  background: rgba(15, 76, 41, 0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.nep-target-sem-tag.sem1 {
+  border-left: 2px solid #2e7d32;
+}
+
+.nep-target-sem-tag.sem2 {
+  border-left: 2px solid #1565c0;
+}
+
+.nep-target-sem-cell {
+  background: rgba(245, 250, 246, 0.6);
+  font-size: 12px;
+}
+
+.nep-sem1-target-cell {
+  border-left: 1px solid var(--border-light, #e0e0e0);
+}
+
+.nep-target-annual-cell {
+  background: rgba(235, 245, 238, 0.7);
+  font-weight: 600;
+  border-right: 1px solid var(--border-strong);
+}
+
 /* Milestone Column Header Dropdown */
 .nep-th-milestone-col {
   vertical-align: middle !important;
