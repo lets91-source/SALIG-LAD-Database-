@@ -10,7 +10,8 @@ import {
   renderOptoolPartial,
   getColumnFilterValues,
   getColumnFilterLabel,
-  renderSyncView
+  renderSyncView,
+  renderUsersView
 } from './views.js';
 import {
   formatCurrentMonthYear,
@@ -24,6 +25,10 @@ import {
 
 const appState = {
   view: 'dashboard',
+  currentUser: null,
+  provinceScope: null,
+  usersList: [],
+  pendingUserCount: 0,
   schemas: null,
   state: null,
   analytics: null,
@@ -32,10 +37,12 @@ const appState = {
   activeOptoolTab: 'Database',
   monitoringLevel: 'both', // 'both' | 'etitles' | 'area'
   measurementLogic: 'both', // 'both' | 'incremental' | 'cumulative'
+  nepMetricMode: 'both', // 'both' | 'count' | 'area'
   filters: {
     province: 'ALL',
     periodMonth: 'LATEST',
-    batch: 'ALL'
+    batch: 'ALL',
+    milestoneYear: 'ALL'
   },
   msSearch: '',
   optoolSearch: '',
@@ -54,6 +61,23 @@ let optoolSearchTimer = null;
 let closeColPopoverFn = null;
 let isAutoSyncRunning = false;
 let autoSyncTimer = null;
+let autoSyncStartTimer = null;
+let autoSyncAbortController = null;
+
+function stopAutoSync() {
+  if (autoSyncStartTimer) {
+    clearTimeout(autoSyncStartTimer);
+    autoSyncStartTimer = null;
+  }
+  if (autoSyncTimer) {
+    clearInterval(autoSyncTimer);
+    autoSyncTimer = null;
+  }
+  if (autoSyncAbortController) {
+    autoSyncAbortController.abort();
+    autoSyncAbortController = null;
+  }
+}
 
 function formatGasPushSuffix(res) {
   if (!res?.gasPushResult) return '';
@@ -271,15 +295,154 @@ function openColFilterPopover(triggerBtn, colKey, container) {
   };
 }
 
+let activeLoadingCount = 0;
+
+/** Display the full-screen loading overlay for fetching or saving operations. */
+function showLoadingOverlay(mode = 'fetching', title = 'Loading Data…', subtitle = 'Please wait…') {
+  activeLoadingCount += 1;
+  const overlay = document.getElementById('loading-overlay');
+  const badge = document.getElementById('loading-badge');
+  const titleEl = document.getElementById('loading-title');
+  const subEl = document.getElementById('loading-subtitle');
+  if (badge) {
+    badge.textContent = mode === 'saving' ? 'SAVING DATA' : 'FETCHING DATA';
+    badge.classList.toggle('saving', mode === 'saving');
+  }
+  if (titleEl) titleEl.textContent = title;
+  if (subEl) subEl.textContent = subtitle;
+  overlay?.classList.remove('hidden');
+}
+
+/** Hide the full-screen loading overlay once all tracked async actions settle. */
+function hideLoadingOverlay(force = false) {
+  activeLoadingCount = force ? 0 : Math.max(0, activeLoadingCount - 1);
+  if (activeLoadingCount === 0) {
+    document.getElementById('loading-overlay')?.classList.add('hidden');
+  }
+}
+
+/** Wrap an async operation in the dedicated fetching/saving loading overlay. */
+async function withLoading(mode, title, subtitle, fn) {
+  showLoadingOverlay(mode, title, subtitle);
+  try {
+    return await fn();
+  } finally {
+    hideLoadingOverlay();
+  }
+}
+
+function setAuthFeedback(message = '', tone = 'info') {
+  const el = document.getElementById('auth-feedback');
+  if (!el) return;
+  if (!message) {
+    el.textContent = '';
+    el.className = 'auth-feedback hidden';
+    return;
+  }
+  el.textContent = message;
+  el.className = `auth-feedback ${tone}`;
+}
+
+function switchAuthTab(tabName = 'login') {
+  document.querySelectorAll('[data-auth-tab]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.authTab === tabName);
+  });
+  document.getElementById('login-form')?.classList.toggle('hidden', tabName !== 'login');
+  document.getElementById('signup-form')?.classList.toggle('hidden', tabName !== 'signup');
+  const titleEl = document.getElementById('auth-form-title');
+  const subEl = document.getElementById('auth-form-subtitle');
+  if (titleEl && subEl) {
+    if (tabName === 'signup') {
+      titleEl.textContent = 'Create SALIG Account';
+      subEl.textContent = 'Verify your email address via OTP before Administrator confirmation';
+    } else {
+      titleEl.textContent = 'Welcome Back';
+      subEl.textContent = 'Sign in with your confirmed Region VIII account';
+    }
+  }
+}
+
+function showAuthScreen(message = '', tone = 'info', tab = 'login') {
+  appState.currentUser = null;
+  appState.provinceScope = null;
+  appState.filters.province = 'ALL';
+  document.getElementById('app-shell')?.classList.add('hidden');
+  document.getElementById('auth-screen')?.classList.remove('hidden');
+  switchAuthTab(tab);
+  setAuthFeedback(message, tone);
+}
+
+function syncCurrentUserUi() {
+  const user = appState.currentUser;
+  const isAdmin = user?.role === 'admin';
+  const navUsersBtn = document.getElementById('nav-user-approvals');
+  const pendingPill = document.getElementById('nav-pending-users-count');
+  const userCard = document.getElementById('sidebar-user-card');
+  const userNameEl = document.getElementById('sidebar-user-name');
+  const userMetaEl = document.getElementById('sidebar-user-meta');
+  const logoutBtn = document.getElementById('btn-logout');
+  const topbarAuthBar = document.getElementById('topbar-auth-bar');
+  const topbarUserName = document.getElementById('topbar-user-name');
+  const topbarUserRole = document.getElementById('topbar-user-role');
+
+  navUsersBtn?.classList.toggle('hidden', !isAdmin);
+  if (pendingPill) {
+    pendingPill.textContent = String(appState.pendingUserCount || 0);
+  }
+  if (user) {
+    userCard?.classList.remove('hidden');
+    logoutBtn?.classList.remove('hidden');
+    topbarAuthBar?.classList.remove('hidden');
+    if (userNameEl) userNameEl.textContent = user.name || user.email;
+    if (userMetaEl) {
+      userMetaEl.textContent = `${user.role === 'admin' ? 'Admin' : 'User'} • ${user.province || 'Region VIII'}`;
+    }
+    if (topbarUserName) topbarUserName.textContent = user.name || user.email;
+    if (topbarUserRole) {
+      topbarUserRole.textContent = appState.provinceScope
+        ? `${appState.provinceScope.provinceName} (${appState.provinceScope.code})`
+        : user.role === 'admin'
+        ? 'Admin'
+        : 'Region VIII Hub';
+    }
+    const sidebarSyncBtn = document.getElementById('btn-sidebar-sync');
+    if (sidebarSyncBtn) {
+      sidebarSyncBtn.textContent = appState.provinceScope
+        ? `Sync ${appState.provinceScope.provinceName} Sheet`
+        : 'Sync Regional Sheet';
+    }
+  } else {
+    userCard?.classList.add('hidden');
+    logoutBtn?.classList.add('hidden');
+    topbarAuthBar?.classList.add('hidden');
+  }
+}
+
+function showAppShell() {
+  document.getElementById('auth-screen')?.classList.add('hidden');
+  document.getElementById('app-shell')?.classList.remove('hidden');
+  syncCurrentUserUi();
+}
+
 async function api(path, options = {}) {
-  const resp = await fetch(path, options);
+  const resp = await fetch(path, { credentials: 'same-origin', ...options });
   const contentType = resp.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    if (!resp.ok) {
+      if (resp.status === 401 && !String(path).startsWith('/api/auth/')) {
+        showAuthScreen('Your session has expired. Please sign in again.', 'info', 'login');
+      }
+      throw new Error(data.error || `HTTP ${resp.status}`);
+    }
     return data;
   }
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  if (!resp.ok) {
+    if (resp.status === 401 && !String(path).startsWith('/api/auth/')) {
+      showAuthScreen('Your session has expired. Please sign in again.', 'info', 'login');
+    }
+    throw new Error(`HTTP ${resp.status}`);
+  }
   return resp;
 }
 
@@ -321,12 +484,22 @@ function renderStatusBanner() {
     banner.innerHTML = `
       <div class="status-banner-left">
         <span class="badge badge-amber">SAMPLE STAGING MODE</span>
-        <span>Showing realistic Region VIII baseline &amp; sample data. ${esc(liveInfo)}</span>
+        <span>Showing realistic ${
+          appState.provinceScope
+            ? `${esc(appState.provinceScope.provinceName)} (${esc(appState.provinceScope.code)})`
+            : 'Region VIII'
+        } baseline &amp; sample data. ${esc(liveInfo)}</span>
       </div>
+      ${
+        appState.provinceScope
+          ? ''
+          : `
       <div class="status-banner-actions">
         <button class="btn btn-secondary btn-sm" id="banner-sync-btn">Sync Live Sheet</button>
         <button class="btn btn-secondary btn-sm" id="banner-clear-btn">Use Empty Live Mode</button>
       </div>
+      `
+      }
     `;
   } else {
     banner.className = 'status-banner live';
@@ -335,10 +508,16 @@ function renderStatusBanner() {
         <span class="badge badge-green">${esc(modeLabel.toUpperCase())}</span>
         <span>${esc(liveInfo)}</span>
       </div>
+      ${
+        appState.provinceScope
+          ? ''
+          : `
       <div class="status-banner-actions">
         <button class="btn btn-secondary btn-sm" id="banner-sync-btn">Refresh Live Sheet</button>
         <button class="btn btn-secondary btn-sm" id="banner-sample-btn">Load Sample Data</button>
       </div>
+      `
+      }
     `;
   }
 
@@ -359,9 +538,12 @@ function updateNavCounts() {
 }
 
 function updateHeaderTitles() {
+  const scopeLabel = appState.provinceScope
+    ? `${appState.provinceScope.provinceName} (${appState.provinceScope.code})`
+    : 'Region VIII';
   const titles = {
     dashboard: [
-      'Region VIII Consolidated Dashboard',
+      `${scopeLabel} ${appState.provinceScope ? 'Dashboard' : 'Consolidated Dashboard'}`,
       `Monitoring Level: ${
         appState.monitoringLevel === 'both'
           ? 'Both (eTitles & Area in HAS)'
@@ -377,23 +559,31 @@ function updateHeaderTitles() {
       }`
     ],
     milestones: [
-      'Milestone_Data Transaction Ledger',
-      'Standardized Region VIII Schema • Auto-Index (PROV-YYYYMM-XXXX) • LGU Master List Validation'
+      `${scopeLabel} Milestone_Data Ledger`,
+      `Standardized ${scopeLabel} Schema • Auto-Index (PROV-YYYYMM-XXXX) • LGU Master List Validation`
     ],
     optool: [
-      'SALIG',
-      'Smart Analytics & Logical Information Generator'
+      appState.provinceScope ? `SALIG — ${scopeLabel}` : 'SALIG',
+      appState.provinceScope
+        ? `Smart Analytics & Logical Information Generator • ${scopeLabel} Records Only`
+        : 'Smart Analytics & Logical Information Generator'
     ],
     sync: [
-      'Google Sheets Registry & GAS ETL Hub',
-      'Central Hub + 6 Provincial Nodes • Automated Google Apps Script ETL Pipeline & Workbook Import/Export'
+      appState.provinceScope ? `${scopeLabel} Google Sheet Sync` : 'Google Sheets Registry & GAS ETL Hub',
+      appState.provinceScope
+        ? `Assigned Provincial Node (${scopeLabel}) & Workbook Merge Import`
+        : 'Central Hub + 6 Provincial Nodes • Automated Google Apps Script ETL Pipeline & Workbook Import/Export'
+    ],
+    users: [
+      'Administrator Account Approvals',
+      'Review and confirm Sign-Up accounts (Name, Email, Province, Contact Number)'
     ]
   };
   const [title, sub] = titles[appState.view] || titles.dashboard;
   document.getElementById('page-title').textContent = title;
   document.getElementById('page-subtitle').textContent = sub;
 
-  document.querySelectorAll('.nav-item').forEach((btn) => {
+  document.querySelectorAll('[data-view]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.view === appState.view);
   });
 }
@@ -411,14 +601,18 @@ function renderActiveView() {
     analytics: appState.analytics,
     gasScript: appState.gasScript,
     gasHtml: appState.gasHtml,
+    provinceScope: appState.provinceScope,
+    currentUser: appState.currentUser,
     monitoringLevel: appState.monitoringLevel,
     measurementLogic: appState.measurementLogic,
+    nepMetricMode: appState.nepMetricMode,
     filters: appState.filters,
     activeOptoolTab: appState.activeOptoolTab
   };
 
   if (appState.view === 'dashboard') {
     container.innerHTML = renderDashboardView(ctx);
+    bindDashboardViewEvents(container);
   } else if (appState.view === 'milestones') {
     container.innerHTML = renderMilestonesView({ ...ctx, searchTerm: appState.msSearch });
     bindMilestonesViewEvents(container);
@@ -428,6 +622,12 @@ function renderActiveView() {
   } else if (appState.view === 'sync') {
     container.innerHTML = renderSyncView(ctx);
     bindSyncViewEvents(container);
+  } else if (appState.view === 'users') {
+    container.innerHTML = renderUsersView({
+      users: appState.usersList,
+      currentUser: appState.currentUser
+    });
+    bindUsersViewEvents(container);
   }
 
   // Bind shared cross-view navigation, empty-state actions, and LHID 360 drawer triggers
@@ -468,12 +668,19 @@ function bindMilestonesViewEvents(container) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const csvText = await file.text();
-      const res = await api('/api/import/csv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csvText, targetTab: 'Milestone_Data', filename: file.name })
-      });
+      const res = await withLoading(
+        'saving',
+        'Saving Imported CSV…',
+        `Importing Milestone_Data rows from ${file.name}…`,
+        async () => {
+          const csvText = await file.text();
+          return api('/api/import/csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ csvText, targetTab: 'Milestone_Data', filename: file.name })
+          });
+        }
+      );
       appState.state.milestoneData = res.milestoneData;
       appState.state.syncLogs = res.syncLogs;
       await refreshAnalytics();
@@ -495,7 +702,12 @@ function bindMilestonesViewEvents(container) {
       const id = btn.dataset.delMs;
       if (!confirm(`Delete Milestone_Data record ${id}?`)) return;
       try {
-        const res = await api(`/api/milestones/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const res = await withLoading(
+          'saving',
+          'Deleting Milestone Record…',
+          `Removing ${id} & syncing Regional Google Sheet…`,
+          () => api(`/api/milestones/${encodeURIComponent(id)}`, { method: 'DELETE' })
+        );
         appState.state.milestoneData = res.milestoneData;
         await refreshAnalytics();
         toast(`Deleted ${id}`);
@@ -582,11 +794,17 @@ async function commitOptoolInlineField(container, { tabName, idx, colKey, nextVa
   if (!existing || !colKey) return null;
   const updatedRow = { ...existing, [colKey]: nextVal };
   try {
-    const res = await api(`/api/optool/${encodeURIComponent(tabName)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ row: updatedRow, index: idx })
-    });
+    const res = await withLoading(
+      'saving',
+      'Saving Field Update…',
+      `Updating ${tabName} row & syncing with Google Sheets…`,
+      () =>
+        api(`/api/optool/${encodeURIComponent(tabName)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ row: updatedRow, index: idx })
+        })
+    );
     if (res.optool) {
       appState.state.optool = res.optool;
     } else {
@@ -674,16 +892,23 @@ function bindOptoolViewEvents(container) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const csvText = await file.text();
-      const res = await api('/api/import/csv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          csvText,
-          targetTab: appState.activeOptoolTab,
-          filename: file.name
-        })
-      });
+      const res = await withLoading(
+        'saving',
+        `Saving ${appState.activeOptoolTab} CSV…`,
+        `Importing rows from ${file.name}…`,
+        async () => {
+          const csvText = await file.text();
+          return api('/api/import/csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              csvText,
+              targetTab: appState.activeOptoolTab,
+              filename: file.name
+            })
+          });
+        }
+      );
       appState.state.optool = res.optool;
       appState.state.syncLogs = res.syncLogs;
       await refreshAnalytics();
@@ -708,9 +933,15 @@ function bindOptoolViewEvents(container) {
       const idx = Number(delBtn.dataset.delOptool);
       if (!confirm(`Delete row #${idx + 1} from ${appState.activeOptoolTab}?`)) return;
       try {
-        const res = await api(
-          `/api/optool/${encodeURIComponent(appState.activeOptoolTab)}/${idx}`,
-          { method: 'DELETE' }
+        const res = await withLoading(
+          'saving',
+          'Deleting OPTool Record…',
+          `Removing row from ${appState.activeOptoolTab} & syncing Google Sheet…`,
+          () =>
+            api(
+              `/api/optool/${encodeURIComponent(appState.activeOptoolTab)}/${idx}`,
+              { method: 'DELETE' }
+            )
         );
         appState.state.optool[appState.activeOptoolTab] = res.rows;
         await refreshAnalytics();
@@ -783,11 +1014,17 @@ function bindOptoolViewEvents(container) {
     const wrapScrollLeft = tableWrap ? tableWrap.scrollLeft : 0;
     targetSel.disabled = true;
     try {
-      const res = await api('/api/optool/Database/milestone-target', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: idx, milestoneTarget })
-      });
+      const res = await withLoading(
+        'saving',
+        'Saving Milestone Target…',
+        'Routing parcel & updating Regional Google Sheet…',
+        () =>
+          api('/api/optool/Database/milestone-target', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: idx, milestoneTarget })
+          })
+      );
       appState.state.optool = res.optool;
       appState.analytics = res.analytics;
       renderActiveView();
@@ -829,15 +1066,22 @@ function bindSyncViewEvents(container) {
     if (!file) return;
     const mode = document.getElementById('xlsx-import-mode')?.value || 'merge';
     try {
-      const buf = await file.arrayBuffer();
-      const res = await api(`/api/import/xlsx?mode=${encodeURIComponent(mode)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'X-Filename': file.name
-        },
-        body: buf
-      });
+      const res = await withLoading(
+        'saving',
+        'Saving Imported Workbook…',
+        `Parsing and storing rows from ${file.name}…`,
+        async () => {
+          const buf = await file.arrayBuffer();
+          return api(`/api/import/xlsx?mode=${encodeURIComponent(mode)}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'X-Filename': file.name
+            },
+            body: buf
+          });
+        }
+      );
       appState.state.dataSourceMode = res.dataSourceMode;
       appState.state.milestoneData = res.milestoneData;
       appState.state.optool = res.optool;
@@ -855,11 +1099,17 @@ function bindSyncViewEvents(container) {
   container.querySelector('#btn-save-gas-url')?.addEventListener('click', async () => {
     const gasWebAppUrl = document.getElementById('gas-url-input').value.trim();
     try {
-      const res = await api('/api/sync/gas-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gasWebAppUrl, action: 'save' })
-      });
+      const res = await withLoading(
+        'saving',
+        'Saving GAS Web App URL…',
+        'Updating live endpoint configuration…',
+        () =>
+          api('/api/sync/gas-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gasWebAppUrl, action: 'save' })
+          })
+      );
       appState.state.gasWebAppUrl = res.gasWebAppUrl;
       appState.state.syncLogs = res.syncLogs;
       renderActiveView();
@@ -873,11 +1123,17 @@ function bindSyncViewEvents(container) {
     const gasWebAppUrl = document.getElementById('gas-url-input').value.trim();
     if (!gasWebAppUrl) return toast('Enter a deployed GAS Web App URL first', true);
     try {
-      const res = await api('/api/sync/gas-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gasWebAppUrl, action: 'pull' })
-      });
+      const res = await withLoading(
+        'fetching',
+        'Fetching Snapshot via GAS…',
+        'Pulling regional records from Google Apps Script endpoint…',
+        () =>
+          api('/api/sync/gas-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gasWebAppUrl, action: 'pull' })
+          })
+      );
       appState.state.gasWebAppUrl = res.gasWebAppUrl;
       appState.state.dataSourceMode = 'live';
       appState.state.milestoneData = res.milestoneData;
@@ -896,11 +1152,17 @@ function bindSyncViewEvents(container) {
     if (!gasWebAppUrl) return toast('Enter a deployed GAS Web App URL first', true);
     toast('Syncing updated SALIG column headers across Google Sheets…');
     try {
-      const res = await api('/api/sync/gas-headers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gasWebAppUrl })
-      });
+      const res = await withLoading(
+        'saving',
+        'Saving Sheet Column Headers…',
+        'Updating schema columns across Google Sheets via GAS…',
+        () =>
+          api('/api/sync/gas-headers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gasWebAppUrl })
+          })
+      );
       appState.state.syncLogs = res.syncLogs;
       renderActiveView();
       const syncedCount = (res.results || []).filter((r) => r.status === 'synced').length;
@@ -940,14 +1202,26 @@ async function syncAllNodes(mode = 'merge', options = {}) {
   if (isAutoSyncRunning) return;
   isAutoSyncRunning = true;
   if (!quiet) {
+    showLoadingOverlay(
+      'fetching',
+      'Fetching All 7 Google Sheets…',
+      'Checking Regional Hub & 6 provincial nodes for updates…'
+    );
     toast('Checking & syncing Regional Hub + all 6 provincial Google Sheets…');
   }
   try {
+    let signal;
+    if (quiet) {
+      autoSyncAbortController = new AbortController();
+      signal = autoSyncAbortController.signal;
+    }
     const res = await api('/api/sync/all-nodes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode })
+      body: JSON.stringify({ mode }),
+      signal
     });
+    if (!appState.currentUser) return;
     appState.state = { ...appState.state, ...res.state };
     if (!quiet || !isUserActivelyEditing()) {
       await refreshAnalytics();
@@ -960,13 +1234,16 @@ async function syncAllNodes(mode = 'merge', options = {}) {
       toast(`Auto-synced ${res.totalImported} rows across ${synced}/7 Google Sheets`);
     }
   } catch (err) {
-    if (!quiet) toast(err.message, true);
+    if (!quiet && err?.name !== 'AbortError') toast(err.message, true);
   } finally {
+    autoSyncAbortController = null;
+    if (!quiet) hideLoadingOverlay();
     isAutoSyncRunning = false;
   }
 }
 
 function maybeAutoSyncGoogleSheets() {
+  if (!appState.currentUser) return;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
   const lastSyncMs = appState.state?.lastSyncAt ? Date.parse(appState.state.lastSyncAt) : 0;
   const isStale = !lastSyncMs || Number.isNaN(lastSyncMs) || Date.now() - lastSyncMs > AUTO_SYNC_MAX_AGE_MS;
@@ -992,11 +1269,17 @@ async function syncRegionalHub(mode = 'merge') {
 async function syncGoogleSheetNode(spreadsheetId, label, mode = 'merge') {
   toast(`Connecting to ${label}…`);
   try {
-    const res = await api('/api/sync/google-sheet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ spreadsheetId, label, mode })
-    });
+    const res = await withLoading(
+      'fetching',
+      'Fetching Google Sheet Data…',
+      `Connecting to ${label} & loading records…`,
+      () =>
+        api('/api/sync/google-sheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spreadsheetId, label, mode })
+        })
+    );
     appState.state = { ...appState.state, ...res.state };
     await refreshAnalytics();
     if (res.importedRows > 0) {
@@ -1013,7 +1296,12 @@ async function syncGoogleSheetNode(spreadsheetId, label, mode = 'merge') {
 }
 
 async function resetSampleWorkspace() {
-  const res = await api('/api/workspace/reset-sample', { method: 'POST' });
+  const res = await withLoading(
+    'saving',
+    'Loading Sample Workspace…',
+    'Restoring Region VIII sample staging data…',
+    () => api('/api/workspace/reset-sample', { method: 'POST' })
+  );
   appState.state = res.state;
   appState.analytics = res.analytics;
   renderActiveView();
@@ -1022,7 +1310,12 @@ async function resetSampleWorkspace() {
 
 async function clearToEmptyWorkspace() {
   if (!confirm('Clear sample staging records and keep an empty live workspace?')) return;
-  const res = await api('/api/workspace/clear', { method: 'POST' });
+  const res = await withLoading(
+    'saving',
+    'Clearing Workspace…',
+    'Switching workspace to empty live mode…',
+    () => api('/api/workspace/clear', { method: 'POST' })
+  );
   appState.state = res.state;
   appState.analytics = res.analytics;
   renderActiveView();
@@ -1041,7 +1334,7 @@ function exportMilestoneCsv() {
   const lines = appState.state.milestoneData.map((r) =>
     cols
       .map((c) => {
-        const val = c.key === 'Area_HAS' ? fmtArea(r[c.key]) : r[c.key] ?? '';
+        const val = c.key === 'Area_HAS' ? (Number(r[c.key]) || 0).toFixed(4) : r[c.key] ?? '';
         return `"${String(val).replace(/"/g, '""')}"`;
       })
       .join(',')
@@ -1083,7 +1376,9 @@ function closeModal() {
 
 async function openMilestoneModal(existing) {
   const isEdit = Boolean(existing);
+  const scopeCode = appState.provinceScope?.code || null;
   const defaultProv =
+    scopeCode ||
     existing?.Province_Code ||
     (appState.filters.province !== 'ALL' ? appState.filters.province : 'LEY');
   const defaultDate = existing?.Milestone_Date || new Date().toISOString().slice(0, 10);
@@ -1106,7 +1401,7 @@ async function openMilestoneModal(existing) {
         <div class="form-grid">
           <div class="form-field">
             <label for="f-prov">Province Node</label>
-            <select id="f-prov" class="form-control">
+            <select id="f-prov" class="form-control" ${scopeCode ? 'disabled' : ''}>
               ${provNodes
                 .map(
                   (p) =>
@@ -1242,11 +1537,17 @@ async function openMilestoneModal(existing) {
         LHID: document.getElementById('f-lhid').value.trim(),
         pushToGas: Boolean(document.getElementById('f-push-gas')?.checked)
       };
-      const res = await api('/api/milestones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const res = await withLoading(
+        'saving',
+        'Saving Milestone Record…',
+        `Saving ${payload.Record_ID || 'milestone'} & syncing Google Sheet…`,
+        () =>
+          api('/api/milestones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+      );
       appState.state.milestoneData = res.milestoneData;
       closeModal();
       await refreshAnalytics();
@@ -1444,6 +1745,18 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
         `;
       }
       const fieldClass = c.fullWidth ? 'form-field full' : 'form-field';
+      const lockedProvince = appState.provinceScope?.provinceName;
+      if (lockedProvince && c.key === 'province') {
+        return `
+          ${groupHtml}
+          <div class="${fieldClass}">
+            <label for="opt-${esc(c.key)}">${esc(c.label)} (Scoped)</label>
+            <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" readonly class="form-control form-control-readonly" value="${esc(
+          lockedProvince
+        )}" />
+          </div>${linkedAfterLhid}
+        `;
+      }
       if (c.type === 'select' && Array.isArray(c.options)) {
         const opts = isReportedMonthKey(c.key) ? getReportedMonthOptions() : [...c.options];
         if (val && !opts.includes(val)) opts.push(val);
@@ -1551,11 +1864,17 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       }
     }
     try {
-      const res = await api(`/api/optool/${encodeURIComponent(tabName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ row, index: rowIndex })
-      });
+      const res = await withLoading(
+        'saving',
+        `Saving ${tabName} Record…`,
+        'Persisting parcel details & pushing update to Regional Google Sheet…',
+        () =>
+          api(`/api/optool/${encodeURIComponent(tabName)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ row, index: rowIndex })
+          })
+      );
       if (res.optool) {
         appState.state.optool = res.optool;
       } else {
@@ -1603,7 +1922,7 @@ function openBaselinesModal() {
                   )}" /></td>
                       <td><input type="number" min="0" step="0.0001" class="form-control num" name="a_${esc(
                         p.code
-                      )}" value="${esc(fmtArea(b.targetAreaHas))}" /></td>
+                      )}" value="${esc((Number(b.targetAreaHas) || 0).toFixed(4))}" /></td>
                     </tr>
                   `;
                 })
@@ -1626,15 +1945,317 @@ function openBaselinesModal() {
       };
     }
     try {
-      const res = await api('/api/baselines', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const res = await withLoading(
+        'saving',
+        'Saving Baseline Targets…',
+        'Updating Region VIII cumulative baseline targets…',
+        () =>
+          api('/api/baselines', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+      );
       appState.state.baselines = res.baselines;
       closeModal();
       await refreshAnalytics();
       toast('Updated Region VIII cumulative baseline targets');
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+}
+
+function bindDashboardViewEvents(container) {
+  container.querySelectorAll('[data-nep-metric]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.nepMetricMode = btn.dataset.nepMetric;
+      renderActiveView();
+    });
+  });
+
+  container.querySelector('#nep-province-filter')?.addEventListener('change', async (e) => {
+    appState.filters.province = e.target.value;
+    await refreshAnalytics();
+  });
+
+  container.querySelector('#nep-year-select')?.addEventListener('change', async (e) => {
+    appState.filters.milestoneYear = e.target.value;
+    await refreshAnalytics();
+  });
+
+  container.querySelectorAll('[data-open-optool-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.activeOptoolTab = btn.dataset.openOptoolTab;
+      appState.optoolPage = 1;
+      appState.optoolColPage = 1;
+      appState.view = 'optool';
+      renderActiveView();
+    });
+  });
+
+  container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
+  container.querySelector('#btn-edit-nep-sheet')?.addEventListener('click', openNepSheetModal);
+  container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
+}
+
+async function syncHubNepSheet() {
+  if (appState.provinceScope) {
+    toast('Only Regional Accounts can sync the Regional Hub NEP Sheet.', true);
+    return;
+  }
+  try {
+    const res = await withLoading(
+      'fetching',
+      'Syncing Hub NEP Sheet…',
+      'Reading NEP tab (LHS, AREA, ARBs) from Regional Hub Google Sheet…',
+      () => api('/api/nep-sheet/sync', { method: 'POST' })
+    );
+    appState.state.nepProvinceList = res.nepProvinceList;
+    appState.analytics = res.analytics;
+    renderActiveView();
+    toast('Synced Regional Hub NEP Sheet');
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+function openNepSheetModal() {
+  if (appState.provinceScope) {
+    toast('Only Regional Accounts can edit the Regional Hub NEP Sheet.', true);
+    return;
+  }
+  const provNodes = (appState.schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  const currentList = appState.state?.nepProvinceList || {};
+
+  const rowsHtml = provNodes
+    .map((n) => {
+      const entry = currentList[n.code] || { lhs: 0, area: 0, arbs: 0 };
+      return `
+        <tr>
+          <td><strong>${esc(n.provinceName)}</strong><div class="nep-sub-metric">${esc(n.code)}</div></td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              class="form-control num nep-sheet-input"
+              data-nep-col="lhs"
+              name="lhs_${esc(n.code)}"
+              value="${esc(entry.lhs || 0)}"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              class="form-control num nep-sheet-input"
+              data-nep-col="area"
+              name="area_${esc(n.code)}"
+              value="${esc((Number(entry.area) || 0).toFixed(4))}"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              class="form-control num nep-sheet-input"
+              data-nep-col="arbs"
+              name="arbs_${esc(n.code)}"
+              value="${esc(entry.arbs || 0)}"
+            />
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  showFormModal('Regional Hub NEP Sheet — Province Allocation', {
+    formId: 'nep-sheet-form',
+    submitLabel: 'Save & Push to Hub NEP Sheet',
+    cancelId: 'nep-sheet-cancel',
+    bodyHtml: `
+      <p style="margin:0 0 12px;font-size:12.5px;color:var(--text-muted)">
+        Provincial LHS, AREA (HAS), and ARBs stored in the <strong>NEP</strong> tab of the Regional Hub Google Sheet. Only Regional Accounts can edit.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Province</th>
+              <th class="right">LHS</th>
+              <th class="right">AREA (HAS)</th>
+              <th class="right">ARBs</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);">
+              <td>Region VIII Total</td>
+              <td class="right" id="nep-sheet-total-lhs">0</td>
+              <td class="right" id="nep-sheet-total-area">0.0000</td>
+              <td class="right" id="nep-sheet-total-arbs">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `
+  });
+
+  const updateModalTotals = () => {
+    const form = document.getElementById('nep-sheet-form');
+    if (!form) return;
+    let lhsSum = 0;
+    let areaSum = 0;
+    let arbsSum = 0;
+    for (const n of provNodes) {
+      lhsSum += Math.max(0, Math.round(Number(form.elements[`lhs_${n.code}`]?.value) || 0));
+      areaSum += Math.max(0, Number(form.elements[`area_${n.code}`]?.value) || 0);
+      arbsSum += Math.max(0, Math.round(Number(form.elements[`arbs_${n.code}`]?.value) || 0));
+    }
+    const lhsEl = document.getElementById('nep-sheet-total-lhs');
+    const areaEl = document.getElementById('nep-sheet-total-area');
+    const arbsEl = document.getElementById('nep-sheet-total-arbs');
+    if (lhsEl) lhsEl.textContent = lhsSum.toLocaleString('en-US');
+    if (areaEl) areaEl.textContent = areaSum.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    if (arbsEl) arbsEl.textContent = arbsSum.toLocaleString('en-US');
+  };
+
+  updateModalTotals();
+  document.getElementById('nep-sheet-form')?.addEventListener('input', updateModalTotals);
+  document.getElementById('nep-sheet-cancel')?.addEventListener('click', closeModal);
+  document.getElementById('nep-sheet-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = {};
+    for (const n of provNodes) {
+      payload[n.code] = {
+        lhs: Math.max(0, Math.round(Number(fd.get(`lhs_${n.code}`)) || 0)),
+        area: Math.max(0, Number((Number(fd.get(`area_${n.code}`)) || 0).toFixed(4))),
+        arbs: Math.max(0, Math.round(Number(fd.get(`arbs_${n.code}`)) || 0))
+      };
+    }
+    try {
+      const res = await withLoading(
+        'saving',
+        'Saving NEP Sheet…',
+        'Updating Regional Hub NEP tab (LHS, AREA, ARBs)…',
+        () =>
+          api('/api/nep-sheet', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+      );
+      appState.state.nepProvinceList = res.nepProvinceList;
+      appState.analytics = res.analytics;
+      closeModal();
+      renderActiveView();
+      toast(
+        res.gasSync?.ok
+          ? 'Saved & synced Regional Hub NEP Sheet'
+          : 'Saved Regional NEP Sheet locally'
+      );
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+}
+
+function openNepTargetsModal() {
+  if (appState.provinceScope) {
+    toast('Only Regional Accounts can edit the Regional NEP Target List.', true);
+    return;
+  }
+  const milestones = appState.schemas?.dashboardMilestones || [];
+  const currentTargets = appState.state?.nepTargets || {};
+
+  const rowsHtml = milestones
+    .map((m) => {
+      const t = currentTargets[m.key] || { targetCount: 0, targetAreaHas: 0 };
+      return `
+        <tr>
+          <td><strong>${esc(m.label)}</strong><div class="nep-sub-metric">${esc(m.sourceTab)}</div></td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              class="form-control num"
+              name="c_${esc(m.key)}"
+              value="${esc(t.targetCount || 0)}"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              class="form-control num"
+              name="a_${esc(m.key)}"
+              value="${esc((Number(t.targetAreaHas) || 0).toFixed(4))}"
+            />
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  showFormModal('Regional List — NEP Targets', {
+    formId: 'nep-targets-form',
+    submitLabel: 'Save Regional NEP Targets',
+    cancelId: 'nep-cancel',
+    bodyHtml: `
+      <p style="margin:0 0 12px;font-size:12.5px;color:var(--text-muted)">
+        Region VIII consolidated NEP Target per milestone. Only Regional Accounts can edit this list.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Milestone</th>
+              <th class="right">NEP Target (Lots / eTitles)</th>
+              <th class="right">NEP Target Area (HAS)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `
+  });
+
+  document.getElementById('nep-cancel')?.addEventListener('click', closeModal);
+  document.getElementById('nep-targets-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = {};
+    for (const m of milestones) {
+      payload[m.key] = {
+        targetCount: Math.max(0, Number(fd.get(`c_${m.key}`)) || 0),
+        targetAreaHas: Math.max(0, Number(fd.get(`a_${m.key}`)) || 0)
+      };
+    }
+    try {
+      const res = await withLoading(
+        'saving',
+        'Saving Regional NEP Targets…',
+        'Updating Region VIII Regional NEP Target List…',
+        () =>
+          api('/api/nep-targets', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+      );
+      appState.state.nepTargets = res.nepTargets;
+      appState.analytics = res.analytics;
+      closeModal();
+      renderActiveView();
+      toast('Updated Regional NEP Target List');
     } catch (err) {
       toast(err.message, true);
     }
@@ -1647,7 +2268,12 @@ async function openLandholdingDrawer(lhid) {
   document.getElementById('drawer-backdrop').classList.remove('hidden');
 
   try {
-    const data = await api(`/api/landholding/${encodeURIComponent(lhid)}`);
+    const data = await withLoading(
+      'fetching',
+      'Fetching Parcel Dossier…',
+      `Loading cross-tab OPTool & Milestone details for ${lhid}…`,
+      () => api(`/api/landholding/${encodeURIComponent(lhid)}`)
+    );
     const blocks = [];
 
     if (data.milestones.length > 0) {
@@ -1712,22 +2338,438 @@ async function openLandholdingDrawer(lhid) {
   }
 }
 
-async function init() {
-  try {
-    const boot = await api('/api/bootstrap');
-    appState.schemas = boot.schemas;
-    appState.state = boot.state;
-    appState.analytics = boot.analytics;
-    appState.gasScript = boot.gasScript;
-    appState.gasHtml = boot.gasHtml || '';
+/** Fetch user registration list for Administrator confirmation management. */
+async function loadUsersDirectory() {
+  const data = await withLoading(
+    'fetching',
+    'Fetching User Accounts…',
+    'Loading pending registrations and confirmed regional accounts…',
+    () => api('/api/auth/users')
+  );
+  appState.usersList = data.users || [];
+  appState.pendingUserCount = data.pendingCount || 0;
+  syncCurrentUserUi();
+}
 
-    renderActiveView();
-    maybeAutoSyncGoogleSheets();
-    startAutoSyncLoop();
+/** Attach Administrator Account Confirmation view actions. */
+function bindUsersViewEvents(container) {
+  container.querySelector('#btn-refresh-users')?.addEventListener('click', async () => {
+    try {
+      await loadUsersDirectory();
+      renderActiveView();
+      toast('Refreshed account approvals list');
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+
+  container.querySelector('#btn-sync-users-sheet')?.addEventListener('click', async () => {
+    try {
+      const res = await withLoading(
+        'saving',
+        'Syncing User_Accounts Sheet…',
+        'Synchronizing user accounts with Regional Account Hub Google Sheet…',
+        () => api('/api/auth/users/sync-sheet', { method: 'POST' })
+      );
+      appState.usersList = res.users || [];
+      appState.pendingUserCount = res.pendingCount || 0;
+      syncCurrentUserUi();
+      renderActiveView();
+      toast(`Synced ${res.synced || appState.usersList.length} account(s) with Regional Google Sheet`);
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+
+  container.querySelectorAll('[data-user-action]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const userId = btn.dataset.userId;
+      const action = btn.dataset.userAction;
+      if (action === 'delete') {
+        const label = btn.dataset.userName || userId;
+        if (!confirm(`Permanently delete account "${label}"? This removes the user from SALIG and User_Accounts.`)) {
+          return;
+        }
+        try {
+          const res = await withLoading(
+            'saving',
+            'Deleting Account…',
+            `Removing ${label} from SALIG & Regional Hub User_Accounts…`,
+            () => api(`/api/auth/users/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+          );
+          appState.usersList = res.users || [];
+          appState.pendingUserCount = res.pendingCount || 0;
+          syncCurrentUserUi();
+          renderActiveView();
+          toast(`Deleted account for ${label}${formatGasPushSuffix(res)}`);
+        } catch (err) {
+          toast(err.message, true);
+        }
+        return;
+      }
+      const payload =
+        action === 'approve'
+          ? { status: 'approved' }
+          : action === 'reject'
+          ? { status: 'rejected' }
+          : action === 'promote'
+          ? { role: 'admin' }
+          : { role: 'user' };
+      try {
+        const res = await withLoading(
+          'saving',
+          'Saving Account Confirmation…',
+          'Updating user approval status and permissions…',
+          () =>
+            api(`/api/auth/users/${encodeURIComponent(userId)}/status`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            })
+        );
+        appState.usersList = res.users || [];
+        appState.pendingUserCount = res.pendingCount || 0;
+        syncCurrentUserUi();
+        renderActiveView();
+        toast(
+          (action === 'approve'
+            ? `Confirmed account for ${res.user.name}`
+            : action === 'reject'
+            ? `Declined account for ${res.user.name}`
+            : `Updated role for ${res.user.name} (${res.user.role})`) + formatGasPushSuffix(res)
+        );
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+  });
+}
+
+/** Load regional workspace bootstrap data after authentication succeeds. */
+async function bootAppSession() {
+  const boot = await withLoading(
+    'fetching',
+    'Fetching Regional Data…',
+    'Loading Region VIII OPTool database, analytics, and sync state…',
+    () => api('/api/bootstrap')
+  );
+  appState.currentUser = boot.currentUser || appState.currentUser;
+  appState.provinceScope = boot.provinceScope || null;
+  appState.filters.province = appState.provinceScope?.code || 'ALL';
+  appState.pendingUserCount = boot.pendingUserCount || 0;
+  appState.schemas = boot.schemas;
+  appState.state = boot.state;
+  appState.analytics = boot.analytics;
+  appState.gasScript = boot.gasScript;
+  appState.gasHtml = boot.gasHtml || '';
+  if (appState.view === 'users' && appState.currentUser?.role !== 'admin') {
+    appState.view = 'dashboard';
+  }
+  showAppShell();
+  renderActiveView();
+  stopAutoSync();
+  autoSyncStartTimer = setTimeout(() => {
+    if (appState.currentUser) maybeAutoSyncGoogleSheets();
+  }, 2000);
+  startAutoSyncLoop();
+}
+
+/** Bind Sign In, Email OTP, Create Account, Password Toggles, and Log Out actions. */
+function bindAuthEvents() {
+  let otpCooldownTimer = null;
+  let signupOtpStepActive = false;
+
+  const stopOtpCooldown = () => {
+    if (otpCooldownTimer) {
+      clearInterval(otpCooldownTimer);
+      otpCooldownTimer = null;
+    }
+    const sendBtn = document.getElementById('btn-send-otp');
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Resend OTP';
+    }
+  };
+
+  const startOtpCooldown = (seconds = 30) => {
+    stopOtpCooldown();
+    const sendBtn = document.getElementById('btn-send-otp');
+    if (!sendBtn) return;
+    let remaining = Math.max(1, Number(seconds) || 30);
+    sendBtn.disabled = true;
+    sendBtn.textContent = `Resend (${remaining}s)`;
+    otpCooldownTimer = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        stopOtpCooldown();
+      } else {
+        sendBtn.textContent = `Resend (${remaining}s)`;
+      }
+    }, 1000);
+  };
+
+  const setSignupOtpStep = (active, email = '') => {
+    signupOtpStepActive = Boolean(active);
+    const detailsStep = document.getElementById('signup-details-step');
+    const otpBox = document.getElementById('otp-verification-box');
+    const targetEmailEl = document.getElementById('otp-target-email');
+    const otpInput = document.getElementById('signup-otp');
+    const submitBtn = document.getElementById('btn-signup-submit');
+    const titleEl = document.getElementById('auth-form-title');
+    const subEl = document.getElementById('auth-form-subtitle');
+
+    detailsStep?.classList.toggle('hidden', signupOtpStepActive);
+    otpBox?.classList.toggle('hidden', !signupOtpStepActive);
+    if (targetEmailEl && email) {
+      targetEmailEl.textContent = email;
+    }
+    if (otpInput) {
+      otpInput.required = signupOtpStepActive;
+      if (!signupOtpStepActive) otpInput.value = '';
+    }
+    if (submitBtn) {
+      submitBtn.textContent = signupOtpStepActive ? 'Verify OTP & Complete Account' : 'Create Account';
+    }
+    if (titleEl && subEl && document.querySelector('[data-auth-tab="signup"]')?.classList.contains('active')) {
+      titleEl.textContent = signupOtpStepActive ? 'Verify Your Email' : 'Create SALIG Account';
+      subEl.textContent = signupOtpStepActive
+        ? 'Enter the 6-digit OTP sent to your email address'
+        : 'Fill in your details and click Create Account to receive an Email OTP';
+    }
+  };
+
+  const requestSignupOtp = async (email, name) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAuthFeedback('Please enter a valid Email address before continuing.', 'error');
+      document.getElementById('signup-email')?.focus();
+      return false;
+    }
+    setAuthFeedback('');
+    try {
+      const res = await withLoading(
+        'saving',
+        'Sending Verification OTP…',
+        `Sending a 6-digit verification code to ${email}…`,
+        () =>
+          api('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, name })
+          })
+      );
+      setSignupOtpStep(true, email);
+      const previewEl = document.getElementById('otp-preview-banner');
+      if (previewEl) {
+        if (res.previewOtp) {
+          previewEl.classList.remove('hidden');
+          const reasonNote = res.reason ? ` (${esc(res.reason)})` : '';
+          previewEl.innerHTML = `Staging OTP Preview Code: <strong class="mono">${esc(res.previewOtp)}</strong>${reasonNote}`;
+        } else {
+          previewEl.classList.add('hidden');
+          previewEl.textContent = '';
+        }
+      }
+      setAuthFeedback(res.message, res.deliveryMode === 'email' ? 'success' : 'info');
+      startOtpCooldown(res.cooldownSeconds || 30);
+      document.getElementById('signup-otp')?.focus();
+      return true;
+    } catch (err) {
+      setAuthFeedback(err.message, 'error');
+      if (err.message && /wait (\d+)s/i.test(err.message)) {
+        const m = err.message.match(/wait (\d+)s/i);
+        if (m) {
+          setSignupOtpStep(true, email);
+          startOtpCooldown(Number(m[1]));
+        }
+      }
+      return false;
+    }
+  };
+
+  document.querySelectorAll('[data-auth-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      switchAuthTab(btn.dataset.authTab);
+      if (btn.dataset.authTab === 'signup') {
+        setSignupOtpStep(signupOtpStepActive);
+      }
+      setAuthFeedback('');
+    });
+  });
+
+  document.querySelectorAll('[data-toggle-pw]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.togglePw);
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Hide' : 'Show';
+    });
+  });
+
+  document.getElementById('btn-signup-back')?.addEventListener('click', () => {
+    setSignupOtpStep(false);
+    setAuthFeedback('');
+  });
+
+  document.getElementById('btn-send-otp')?.addEventListener('click', async () => {
+    const email = document.getElementById('signup-email').value.trim();
+    const name = document.getElementById('signup-name').value.trim();
+    await requestSignupOtp(email, name);
+  });
+
+  document.getElementById('login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    setAuthFeedback('');
+    try {
+      const res = await withLoading(
+        'saving',
+        'Signing In…',
+        'Verifying credentials & Administrator confirmation…',
+        () =>
+          api('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          })
+      );
+      appState.currentUser = res.user;
+      document.getElementById('login-password').value = '';
+      await bootAppSession();
+      toast(`Welcome back, ${res.user.name}`);
+    } catch (err) {
+      setAuthFeedback(err.message, 'error');
+    }
+  });
+
+  document.getElementById('signup-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const otpCode = document.getElementById('signup-otp').value.trim();
+    const province = document.getElementById('signup-province').value;
+    const contactNumber = document.getElementById('signup-contact').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const confirmPassword = document.getElementById('signup-confirm').value;
+
+    if (password !== confirmPassword) {
+      if (signupOtpStepActive) setSignupOtpStep(false);
+      setAuthFeedback('Password and Confirm Password do not match.', 'error');
+      return;
+    }
+
+    if (!signupOtpStepActive) {
+      await requestSignupOtp(email, name);
+      return;
+    }
+
+    if (!/^\d{6}$/.test(otpCode)) {
+      setAuthFeedback('Enter the 6-digit Email OTP code sent to your email address.', 'error');
+      document.getElementById('signup-otp')?.focus();
+      return;
+    }
+
+    setAuthFeedback('');
+    try {
+      const res = await withLoading(
+        'saving',
+        'Creating Account…',
+        'Verifying Email OTP & submitting registration for Administrator confirmation…',
+        () =>
+          api('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, province, contactNumber, password, otpCode })
+          })
+      );
+      document.getElementById('signup-form').reset();
+      setSignupOtpStep(false);
+      document.getElementById('otp-preview-banner')?.classList.add('hidden');
+      stopOtpCooldown();
+      showAuthScreen(res.message, 'success', 'login');
+      document.getElementById('login-email').value = email;
+    } catch (err) {
+      setAuthFeedback(err.message, 'error');
+    }
+  });
+
+  const performLogout = async () => {
+    stopAutoSync();
+    try {
+      await withLoading(
+        'saving',
+        'Logging Out…',
+        'Closing active SALIG session…',
+        () =>
+          Promise.all([
+            api('/api/auth/logout', {
+              method: 'POST',
+              signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+                ? AbortSignal.timeout(1200)
+                : undefined
+            }).catch(() => null),
+            new Promise((resolve) => setTimeout(resolve, 600))
+          ])
+      );
+    } finally {
+      appState.usersList = [];
+      appState.pendingUserCount = 0;
+      appState.view = 'dashboard';
+      showAuthScreen('You have logged out cleanly.', 'info', 'login');
+      syncCurrentUserUi();
+      hideLoadingOverlay(true);
+    }
+  };
+
+  document.getElementById('btn-logout')?.addEventListener('click', performLogout);
+  document.getElementById('btn-topbar-logout')?.addEventListener('click', performLogout);
+}
+
+function updateTopbarClock() {
+  const dateEl = document.getElementById('topbar-date');
+  const timeEl = document.getElementById('topbar-time');
+  if (!dateEl && !timeEl) return;
+  const now = new Date();
+  if (dateEl) {
+    dateEl.textContent = now.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+  if (timeEl) {
+    timeEl.textContent = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  }
+}
+
+async function init() {
+  updateTopbarClock();
+  setInterval(updateTopbarClock, 1000);
+  bindAuthEvents();
+  try {
+    const session = await withLoading(
+      'fetching',
+      'Loading SALIG (LAD DATABASE)…',
+      'Checking active authentication session…',
+      () => api('/api/auth/session')
+    );
+    if (session.authenticated || session.requireAuth === false) {
+      appState.currentUser = session.user || { name: 'Local Operator', role: 'admin', province: 'Region VIII Hub' };
+      await bootAppSession();
+    } else {
+      showAuthScreen('');
+    }
   } catch (err) {
-    document.getElementById('view-container').innerHTML = `<div class="loading-box">Failed to load hub: ${esc(
-      err.message
-    )}</div>`;
+    showAuthScreen(`Unable to check session: ${err.message}`, 'error', 'login');
+  } finally {
+    hideLoadingOverlay(true);
   }
 
   const isMobileSidebar = () => window.matchMedia('(max-width: 860px)').matches;
@@ -1767,11 +2809,18 @@ async function init() {
   syncSidebarToggleUi();
 
   // Navigation
-  document.querySelectorAll('.nav-item').forEach((btn) => {
-    btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-view]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
       appState.view = btn.dataset.view;
       sidebarEl?.classList.remove('open');
       syncSidebarToggleUi();
+      if (appState.view === 'users') {
+        try {
+          await loadUsersDirectory();
+        } catch (err) {
+          toast(err.message, true);
+        }
+      }
       renderActiveView();
     });
   });

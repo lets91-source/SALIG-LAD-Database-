@@ -1,3 +1,5 @@
+import { normalizeNepTargets, normalizeNepProvinceList } from './schema.js';
+
 export function createSeedState() {
   const baselines = {
     BIL: { targetETitles: 180, targetAreaHas: 245.5000 },
@@ -7,6 +9,9 @@ export function createSeedState() {
     SAM: { targetETitles: 440, targetAreaHas: 715.8000 },
     SLE: { targetETitles: 260, targetAreaHas: 385.4000 }
   };
+
+  const nepTargets = normalizeNepTargets();
+  const nepProvinceList = normalizeNepProvinceList();
 
   const milestoneData = [
     // June - October 2026 cumulative history + November 2026 current month
@@ -558,6 +563,8 @@ export function createSeedState() {
       tabRowCounts: {}
     },
     baselines,
+    nepTargets,
+    nepProvinceList,
     milestoneData,
     optool
   };

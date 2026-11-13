@@ -54,7 +54,9 @@ export function renderTrendChartSvg(trend, { monitoringLevel, measurementLogic }
           const x = pad.left + idx * stepX + (stepX - barW) / 2;
           const y = yPos(val, showCum ? primaryMax : maxInc * 1.15);
           const h = Math.max(2, pad.top + plotH - y);
-          const label = useArea ? `${val.toFixed(4)} HAS` : `${val} eTitle(s)`;
+          const label = useArea
+            ? `${val.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} HAS`
+            : `${val.toLocaleString('en-US')} eTitle(s)`;
           return `
             <g>
               <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="#86efac" stroke="#16a34a" stroke-width="1">
@@ -83,7 +85,9 @@ export function renderTrendChartSvg(trend, { monitoringLevel, measurementLogic }
     `;
     points = coords
       .map((c) => {
-        const label = useArea ? `${c.val.toFixed(4)} HAS` : `${c.val} eTitles`;
+        const label = useArea
+          ? `${c.val.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} HAS`
+          : `${c.val.toLocaleString('en-US')} eTitles`;
         return `
           <circle cx="${c.x}" cy="${c.y}" r="4.2" fill="#0f4c29" stroke="#ffffff" stroke-width="1.5">
             <title>${esc(c.d.month)} Cumulative: ${esc(label)}</title>

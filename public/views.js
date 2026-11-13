@@ -9,9 +9,19 @@ export function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
+export function parseNumericValue(val) {
+  const cleaned = typeof val === 'string' ? val.replace(/,/g, '').trim() : val;
+  if (cleaned === '' || cleaned === null || cleaned === undefined) return NaN;
+  return Number(cleaned);
+}
+
 export function fmtArea(val) {
-  const num = Number(val);
-  return Number.isFinite(num) ? num.toFixed(4) : '0.0000';
+  const num = parseNumericValue(val);
+  if (!Number.isFinite(num)) return '0.0000';
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
+  });
 }
 
 function stageBadgeClass(stage) {
@@ -96,8 +106,249 @@ function renderEmptyWorkspaceCallout(state) {
   `;
 }
 
+function formatSignedCount(val) {
+  const num = Number(val) || 0;
+  return num > 0 ? `+${num.toLocaleString('en-US')}` : num.toLocaleString('en-US');
+}
+
+function formatSignedArea(val) {
+  const num = Number(val) || 0;
+  return num > 0 ? `+${fmtArea(num)}` : num < 0 ? `-${fmtArea(Math.abs(num))}` : fmtArea(0);
+}
+
+function formatNepMetricCell(count, areaHas, mode = 'both') {
+  const safeCount = (Number(count) || 0).toLocaleString('en-US');
+  const safeArea = fmtArea(areaHas);
+  if (mode === 'count') {
+    return `<span class="num"><strong>${safeCount}</strong></span>`;
+  }
+  if (mode === 'area') {
+    return `<span class="num"><strong>${safeArea}</strong> <small class="muted">HAS</small></span>`;
+  }
+  return `<div class="num"><strong>${safeCount}</strong></div><div class="nep-sub-metric">${safeArea} HAS</div>`;
+}
+
+function formatNepRateCell(rateCountPct, rateAreaPct, mode = 'both') {
+  const primary = mode === 'area' ? rateAreaPct : rateCountPct;
+  const tone =
+    primary >= 100 ? 'badge-green' : primary >= 50 ? 'badge-blue' : primary > 0 ? 'badge-amber' : 'badge-gray';
+  const sub =
+    mode === 'both'
+      ? `<div class="nep-sub-metric">${Number(rateAreaPct || 0).toFixed(2)}% HAS</div>`
+      : '';
+  return `<span class="badge ${tone} num">${Number(primary || 0).toFixed(2)}%</span>${sub}`;
+}
+
+function formatNepVarianceCell(varianceCount, varianceAreaHas, mode = 'both') {
+  const primary = mode === 'area' ? varianceAreaHas : varianceCount;
+  const cls = primary >= 0 ? 'variance-pos' : 'variance-neg';
+  if (mode === 'count') {
+    return `<span class="num ${cls}">${formatSignedCount(varianceCount)}</span>`;
+  }
+  if (mode === 'area') {
+    return `<span class="num ${cls}">${formatSignedArea(varianceAreaHas)} HAS</span>`;
+  }
+  const areaCls = varianceAreaHas >= 0 ? 'variance-pos' : 'variance-neg';
+  return `
+    <div class="num ${cls}">${formatSignedCount(varianceCount)}</div>
+    <div class="nep-sub-metric ${areaCls}">${formatSignedArea(varianceAreaHas)} HAS</div>
+  `;
+}
+
+function renderMilestoneNepSection(ctx) {
+  const { analytics, schemas, filters = {}, provinceScope, nepMetricMode = 'both' } = ctx;
+  const rows = analytics.milestoneNepBreakdown || [];
+  const years = analytics.availableMilestoneYears || [];
+  const activeYear = filters.milestoneYear || 'ALL';
+  const activeProvince = filters.province || 'ALL';
+  const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  const canEditNepTargets = !provinceScope;
+
+  return `
+    <div class="panel">
+      <div class="panel-header nep-panel-header">
+        <div>
+          <h3 class="panel-title">Physical Accomplishment per Milestone (NEP Target &amp; Quarterly)</h3>
+          <p class="panel-subtitle">
+            CF Documentation, Land Survey, Land Valuation, EP CLOA Registration, EP CLOA Distribution &amp; Installation • Regional NEP Target List
+          </p>
+        </div>
+        <div class="nep-header-controls">
+          <div class="nep-metric-pills" role="group" aria-label="Milestone Metric Display">
+            <button type="button" class="btn btn-sm ${nepMetricMode === 'both' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="both">Both</button>
+            <button type="button" class="btn btn-sm ${nepMetricMode === 'count' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="count">Lots / eTitles</button>
+            <button type="button" class="btn btn-sm ${nepMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="area">Area (HAS)</button>
+          </div>
+          ${
+            !provinceScope
+              ? `
+            <select class="form-control nep-filter-select" id="nep-province-filter" aria-label="Filter Milestones by Province">
+              <option value="ALL" ${activeProvince === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
+              ${provNodes
+                .map(
+                  (p) =>
+                    `<option value="${esc(p.code)}" ${activeProvince === p.code ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+                )
+                .join('')}
+            </select>
+          `
+              : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
+          }
+          <select class="form-control nep-filter-select" id="nep-year-select" aria-label="Filter Milestones by Year">
+            <option value="ALL" ${activeYear === 'ALL' ? 'selected' : ''}>All Years</option>
+            ${years
+              .map(
+                (y) =>
+                  `<option value="${esc(String(y))}" ${String(activeYear) === String(y) ? 'selected' : ''}>${esc(String(y))}</option>`
+              )
+              .join('')}
+          </select>
+          ${
+            canEditNepTargets
+              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-targets">Regional NEP Target List</button>`
+              : ''
+          }
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="nep-milestone-table">
+          <thead>
+            <tr>
+              <th rowspan="2">Milestone</th>
+              <th rowspan="2" class="right">NEP Target</th>
+              <th colspan="4" class="center nep-quarter-group">Accomp. per Quarter</th>
+              <th rowspan="2" class="right">Total</th>
+              <th rowspan="2" class="right">Rate of Accomp.</th>
+              <th rowspan="2" class="right">Variance</th>
+            </tr>
+            <tr>
+              <th class="right">Q1</th>
+              <th class="right">Q2</th>
+              <th class="right">Q3</th>
+              <th class="right">Q4</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (r) => `
+              <tr>
+                <td>
+                  <button
+                    type="button"
+                    class="nep-milestone-link"
+                    data-open-optool-tab="${esc(r.sourceTab)}"
+                    title="Open ${esc(r.label)} in Optool Supportlist"
+                  >
+                    ${esc(r.label)}
+                  </button>
+                  <div class="nep-sub-metric">${esc(r.sourceTab)}</div>
+                </td>
+                <td class="right">${formatNepMetricCell(r.nepTargetCount, r.nepTargetAreaHas, nepMetricMode)}</td>
+                <td class="right">${formatNepMetricCell(r.q1.count, r.q1.areaHas, nepMetricMode)}</td>
+                <td class="right">${formatNepMetricCell(r.q2.count, r.q2.areaHas, nepMetricMode)}</td>
+                <td class="right">${formatNepMetricCell(r.q3.count, r.q3.areaHas, nepMetricMode)}</td>
+                <td class="right">${formatNepMetricCell(r.q4.count, r.q4.areaHas, nepMetricMode)}</td>
+                <td class="right">
+                  ${formatNepMetricCell(r.total.count, r.total.areaHas, nepMetricMode)}
+                  ${
+                    r.undated?.count > 0
+                      ? `<div class="nep-undated-note" title="Records without a reported month or completion date">${r.undated.count.toLocaleString('en-US')} undated</div>`
+                      : ''
+                  }
+                </td>
+                <td class="right">${formatNepRateCell(r.rateCountPct, r.rateAreaPct, nepMetricMode)}</td>
+                <td class="right">${formatNepVarianceCell(r.varianceCount, r.varianceAreaHas, nepMetricMode)}</td>
+              </tr>
+            `
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderProvincialNepSheetSection(ctx) {
+  const { analytics, schemas, provinceScope } = ctx;
+  const rows = analytics.nepProvinceBreakdown || [];
+  const totals = analytics.nepProvinceTotals || { lhs: 0, area: 0, arbs: 0 };
+  const hubUrl = (schemas?.registry || []).find((n) => n.code === 'HUB')?.url || '';
+  const canEditNepSheet = !provinceScope;
+
+  return `
+    <div class="panel" style="margin-bottom: 18px;">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Regional Hub NEP Sheet (Per Province)</h3>
+          <p class="panel-subtitle">${
+            provinceScope
+              ? `Provincial NEP Sheet allocation for ${esc(provinceScope.provinceName)} (read-only)`
+              : 'Region VIII Hub NEP tab — LHS, AREA (HAS), and ARBs across all 6 provinces'
+          }</p>
+        </div>
+        <div class="panel-actions">
+          ${
+            hubUrl
+              ? `<a href="${esc(hubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Open NEP Sheet ↗</a>`
+              : ''
+          }
+          ${
+            canEditNepSheet
+              ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
+                 <button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet">Edit NEP Sheet</button>`
+              : ''
+          }
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="nep-sheet-table">
+          <thead>
+            <tr>
+              <th>Province</th>
+              <th class="right">LHS</th>
+              <th class="right">AREA (HAS)</th>
+              <th class="right">ARBs</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (r) => `
+              <tr>
+                <td>
+                  <strong>${esc(r.provinceName)}</strong>
+                  <div class="nep-sub-metric">${esc(r.code)}</div>
+                </td>
+                <td class="right">${(Number(r.lhs) || 0).toLocaleString('en-US')}</td>
+                <td class="right">${fmtArea(r.area || 0)}</td>
+                <td class="right">${(Number(r.arbs) || 0).toLocaleString('en-US')}</td>
+              </tr>
+            `
+              )
+              .join('')}
+            ${
+              rows.length > 1
+                ? `
+              <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);">
+                <td>Region VIII Total</td>
+                <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>
+                <td class="right">${fmtArea(totals.area || 0)}</td>
+                <td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>
+              </tr>
+            `
+                : ''
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 export function renderDashboardView(ctx) {
-  const { state, analytics, monitoringLevel, measurementLogic } = ctx;
+  const { state, analytics, monitoringLevel, measurementLogic, provinceScope } = ctx;
   const { kpis, provincialBreakdown, monthlyTrend, stageBreakdown, optoolSummary } = analytics;
 
   const showInc = measurementLogic === 'both' || measurementLogic === 'incremental';
@@ -171,13 +422,21 @@ export function renderDashboardView(ctx) {
       </div>
     </section>
 
+    ${renderMilestoneNepSection(ctx)}
+
+    ${renderProvincialNepSheetSection(ctx)}
+
     <!-- Charts Row -->
     <section class="grid-2">
       <div class="panel">
         <div class="panel-header">
           <div>
             <h3 class="panel-title">Monthly Incremental vs. Cumulative Trajectory</h3>
-            <p class="panel-subtitle">Aggregated across active Region VIII provincial ledgers</p>
+            <p class="panel-subtitle">${
+              provinceScope
+                ? `${esc(provinceScope.provinceName)} (${esc(provinceScope.code)}) provincial ledger`
+                : 'Aggregated across active Region VIII provincial ledgers'
+            }</p>
           </div>
         </div>
         <div class="panel-body chart-box">
@@ -189,7 +448,11 @@ export function renderDashboardView(ctx) {
         <div class="panel-header">
           <div>
             <h3 class="panel-title">Provincial Baseline vs. Accomplishment</h3>
-            <p class="panel-subtitle">Cumulative performance across the 6 DAR Region VIII nodes</p>
+            <p class="panel-subtitle">${
+              provinceScope
+                ? `Cumulative performance for ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
+                : 'Cumulative performance across the 6 DAR Region VIII nodes'
+            }</p>
           </div>
         </div>
         <div class="panel-body chart-box">
@@ -203,8 +466,16 @@ export function renderDashboardView(ctx) {
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3 class="panel-title">Region VIII Provincial Consolidation Matrix</h3>
-            <p class="panel-subtitle">Real-time aggregation from the 6 provincial Google Sheet nodes</p>
+            <h3 class="panel-title">${
+              provinceScope
+                ? `${esc(provinceScope.provinceName)} Consolidation Matrix`
+                : 'Region VIII Provincial Consolidation Matrix'
+            }</h3>
+            <p class="panel-subtitle">${
+              provinceScope
+                ? `Real-time metrics for ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
+                : 'Real-time aggregation from the 6 provincial Google Sheet nodes'
+            }</p>
           </div>
           <button class="btn btn-secondary btn-sm" data-nav="sync">View Node Registry</button>
         </div>
@@ -303,7 +574,7 @@ export function renderDashboardView(ctx) {
             Installation: <strong>${optoolSummary.Installation}</strong>
           </p>
         </div>
-        <button class="btn btn-secondary btn-sm" data-nav="optool">Open OPTool 6-Tab Hub</button>
+        <button class="btn btn-secondary btn-sm" data-nav="optool">Open Optool Supportlist</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -645,7 +916,7 @@ function buildDbByLhidMap(state) {
   const dbByLhid = new Map();
   let dbTotalCarpableArea = 0;
   for (const r of dbRows) {
-    dbTotalCarpableArea += Number(r.carpable) || 0;
+    dbTotalCarpableArea += parseNumericValue(r.carpable) || 0;
     const lhidKey = String(r.lhid || '').trim().toLowerCase();
     if (lhidKey && !dbByLhid.has(lhidKey)) {
       dbByLhid.set(lhidKey, r);
@@ -946,18 +1217,18 @@ function sumOptoolCarpableMetrics(rows, dbByLhid, currentTab) {
 
   for (const row of rows) {
     if (isDb) {
-      carpableArea += Number(row.carpable) || 0;
+      carpableArea += parseNumericValue(row.carpable) || 0;
     } else {
       const lhidKey = String(row.lhid || '').trim().toLowerCase();
       const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
       if (dbRow) matchedCount++;
       if (!lhidKey || !seenLhids.has(lhidKey)) {
         if (lhidKey) seenLhids.add(lhidKey);
-        if (dbRow) carpableArea += Number(dbRow.carpable) || 0;
+        if (dbRow) carpableArea += parseNumericValue(dbRow.carpable) || 0;
       }
-      totalArbs += Number(row.noOfArbs) || 0;
-      totalTitles += Number(row.noOfTitles) || 0;
-      totalCompensation += Number(row.compensationAmount) || 0;
+      totalArbs += parseNumericValue(row.noOfArbs) || 0;
+      totalTitles += parseNumericValue(row.noOfTitles) || 0;
+      totalCompensation += parseNumericValue(row.compensationAmount) || 0;
     }
   }
 
@@ -1393,22 +1664,41 @@ export function renderOptoolView(ctx) {
 }
 
 export function renderSyncView(ctx) {
-  const { state, schemas, gasScript, gasHtml } = ctx;
+  const { state, schemas, gasScript, gasHtml, provinceScope } = ctx;
   const snap = state.liveHubSnapshot || {};
   const nodeStatuses = state.nodeStatuses || {};
+  const isScoped = Boolean(provinceScope?.code);
 
   return `
     <!-- Section 1: Regional Google Sheets Data Source Repository -->
     <div class="panel">
       <div class="panel-header">
         <div>
-          <h3 class="panel-title">1. Regional Google Sheets Data Source Repository</h3>
-          <p class="panel-subtitle">Central Aggregator Hub + 6 Provincial Nodes (DAR Region VIII Active Registry)</p>
+          <h3 class="panel-title">1. ${
+            isScoped
+              ? `${esc(provinceScope.provinceName)} Google Sheet Node`
+              : 'Regional Google Sheets Data Source Repository'
+          }</h3>
+          <p class="panel-subtitle">${
+            isScoped
+              ? `Assigned Provincial Ledger: ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
+              : 'Central Aggregator Hub + 6 Provincial Nodes (DAR Region VIII Active Registry)'
+          }</p>
         </div>
         <div class="toolbar-left">
-          <button class="btn btn-secondary btn-sm" id="btn-sync-probe">Verify Live Hub Connection</button>
-          <button class="btn btn-secondary btn-sm" id="btn-sync-pull-hub">Sync &amp; Merge Live Hub Sheet</button>
-          <button class="btn btn-primary btn-sm" id="btn-sync-all-nodes">Sync All 7 Google Sheets</button>
+          ${
+            isScoped
+              ? ''
+              : `
+                <button class="btn btn-secondary btn-sm" id="btn-sync-probe">Verify Live Hub Connection</button>
+                <button class="btn btn-secondary btn-sm" id="btn-sync-pull-hub">Sync &amp; Merge Live Hub Sheet</button>
+              `
+          }
+          <button class="btn btn-primary btn-sm" id="btn-sync-all-nodes">${
+            isScoped
+              ? `Sync ${esc(provinceScope.provinceName)} Sheet`
+              : 'Sync All 7 Google Sheets'
+          }</button>
         </div>
       </div>
 
@@ -1508,20 +1798,32 @@ export function renderSyncView(ctx) {
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <select id="xlsx-import-mode" class="form-control" style="max-width:240px">
               <option value="merge">Merge / Upsert with Existing Data</option>
-              <option value="replace">Replace All Data with Workbook</option>
+              ${isScoped ? '' : '<option value="replace">Replace All Data with Workbook</option>'}
             </select>
             <label class="btn btn-primary btn-sm" style="margin:0">
               Upload .XLSX Workbook
               <input type="file" accept=".xlsx" id="xlsx-file-upload" class="hidden" />
             </label>
           </div>
-          <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" id="btn-reset-sample">Restore Sample Staging Data</button>
-            <button class="btn btn-danger btn-sm" id="btn-clear-workspace">Clear to Empty Live Workspace</button>
-          </div>
+          ${
+            isScoped
+              ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">Imports are automatically filtered to <strong>${esc(
+                  provinceScope.provinceName
+                )} (${esc(provinceScope.code)})</strong> records.</p>`
+              : `
+                <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-secondary btn-sm" id="btn-reset-sample">Restore Sample Staging Data</button>
+                  <button class="btn btn-danger btn-sm" id="btn-clear-workspace">Clear to Empty Live Workspace</button>
+                </div>
+              `
+          }
         </div>
       </div>
 
+      ${
+        isScoped
+          ? ''
+          : `
       <div class="panel">
         <div class="panel-header">
           <div>
@@ -1548,8 +1850,14 @@ export function renderSyncView(ctx) {
           </p>
         </div>
       </div>
+      `
+      }
     </section>
 
+    ${
+      isScoped
+        ? ''
+        : `
     <!-- Section 3: Ready-to-Deploy GAS ETL Pipeline Code -->
     <div class="panel">
       <div class="panel-header">
@@ -1581,6 +1889,8 @@ export function renderSyncView(ctx) {
         <pre class="code-pre" style="max-height:240px">${esc(gasHtml || '')}</pre>
       </div>
     </div>
+    `
+    }
 
     <!-- Section 4: Sync & Consolidation Audit Log -->
     <div class="panel">
@@ -1621,6 +1931,138 @@ export function renderSyncView(ctx) {
             `
               )
               .join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/** Render Administrator Account Confirmation & User Directory view. */
+export function renderUsersView({ users = [], currentUser = null }) {
+  const pendingCount = users.filter((u) => u.status === 'pending').length;
+  const approvedCount = users.filter((u) => u.status === 'approved').length;
+  const rejectedCount = users.filter((u) => u.status === 'rejected').length;
+
+  const statusBadge = (status) => {
+    if (status === 'approved') return '<span class="badge badge-green">CONFIRMED</span>';
+    if (status === 'rejected') return '<span class="badge badge-red">DECLINED</span>';
+    return '<span class="badge badge-amber">PENDING CONFIRMATION</span>';
+  };
+
+  return `
+    <div class="view-header">
+      <div>
+        <h2>Account Confirmations &amp; User Access</h2>
+        <p class="view-subtitle">Confirm pending Sign-Up registrations before provincial users can access SALIG</p>
+      </div>
+      <div class="view-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="btn-sync-users-sheet">Sync User_Accounts with Regional Sheet</button>
+        <button class="btn btn-secondary btn-sm" id="btn-refresh-users">↻ Refresh Accounts</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Pending Confirmation</div>
+        <div class="kpi-value" style="color: var(--amber)">${pendingCount}</div>
+        <div class="kpi-sub">Awaiting administrator approval</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Confirmed Users</div>
+        <div class="kpi-value" style="color: var(--accent)">${approvedCount}</div>
+        <div class="kpi-sub">Active Region VIII accounts</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Declined Accounts</div>
+        <div class="kpi-value">${rejectedCount}</div>
+        <div class="kpi-sub">Rejected registrations</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Registered</div>
+        <div class="kpi-value">${users.length}</div>
+        <div class="kpi-sub">All regional accounts</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Registered Accounts (${users.length})</h3>
+          <p class="panel-subtitle">Pending registrations appear first so Administrators can verify provincial details and confirm access</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Full Name</th>
+              <th>Email</th>
+              <th>Province</th>
+              <th>Contact Number</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Requested</th>
+              <th style="text-align:right">Administrator Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              users.length === 0
+                ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">No user accounts found.</td></tr>'
+                : users
+                    .map((u) => {
+                      const isSelf = currentUser && currentUser.id === u.id;
+                      const createdText = u.createdAt
+                        ? new Date(u.createdAt).toLocaleString()
+                        : '—';
+                      return `
+                        <tr>
+                          <td>
+                            <strong>${esc(u.name)}</strong>
+                            ${isSelf ? '<span class="badge badge-blue" style="margin-left:6px">YOU</span>' : ''}
+                          </td>
+                          <td class="mono" style="font-size:12px">${esc(u.email)}</td>
+                          <td>${esc(u.province || '—')}</td>
+                          <td class="mono" style="font-size:12px">${esc(u.contactNumber || '—')}</td>
+                          <td>
+                            <span class="badge ${u.role === 'admin' ? 'badge-blue' : 'badge-gray'}">${esc(String(u.role || 'user').toUpperCase())}</span>
+                          </td>
+                          <td>${statusBadge(u.status)}</td>
+                          <td class="mono" style="font-size:11.5px;white-space:nowrap">${esc(createdText)}</td>
+                          <td style="text-align:right;white-space:nowrap">
+                            ${
+                              u.status !== 'approved'
+                                ? `<button class="btn btn-primary btn-sm" data-user-action="approve" data-user-id="${esc(u.id)}">✓ Confirm</button>`
+                                : ''
+                            }
+                            ${
+                              u.status !== 'rejected' && !isSelf
+                                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="reject" data-user-id="${esc(u.id)}">Decline</button>`
+                                : ''
+                            }
+                            ${
+                              u.status === 'approved' && !isSelf
+                                ? `<button class="btn btn-secondary btn-sm" style="margin-left:4px" data-user-action="${
+                                    u.role === 'admin' ? 'demote' : 'promote'
+                                  }" data-user-id="${esc(u.id)}">${
+                                    u.role === 'admin' ? 'Set User' : 'Make Admin'
+                                  }</button>`
+                                : ''
+                            }
+                            ${
+                              !isSelf
+                                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="delete" data-user-id="${esc(
+                                    u.id
+                                  )}" data-user-name="${esc(u.name || u.email)}">Delete</button>`
+                                : ''
+                            }
+                          </td>
+                        </tr>
+                      `;
+                    })
+                    .join('')
+            }
           </tbody>
         </table>
       </div>

@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
-    "test": "node --test server/tests/app.test.js"
+    "test": "node --test server/tests/app.test.js",
+    "gas:push": "clasp.cmd push -f",
+    "gas:deploy": "clasp.cmd push -f && clasp.cmd deploy -i AKfycbzYXupSXeIQs96kubb7VJwMF1v3Fp0lZ-3rHEu4X_rNv7YLeNmxI4nl3_lVS8Z37YMO -d \"Auto-deployed from SALIG workspace\""
   }
 }

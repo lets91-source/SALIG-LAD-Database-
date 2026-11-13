@@ -12,6 +12,7 @@ import {
   isChecklistChecked as isServerChecklistChecked
 } from '../schema.js';
 import { ConsolidatedStore, resolveDefaultDataDir } from '../store.js';
+import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from '../auth.js';
 import {
   buildConsolidatedWorkbookBuffer,
   parseWorkbookBuffer,
@@ -270,7 +271,7 @@ test('CSV Parser parses Milestone_Data cleanly', () => {
 
 test('HTTP Server end-to-end API routes', async () => {
   const dir = makeTempDir();
-  const { server } = createAppServer(dir);
+  const { server } = createAppServer(dir, { requireAuth: false });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -935,7 +936,7 @@ test('Serverless handler export and Vercel /tmp fallback work without server.lis
 
   const dir = makeTempDir();
   try {
-    const { handler } = createAppServer(dir);
+    const { handler } = createAppServer(dir, { requireAuth: false });
     assert.equal(typeof handler, 'function');
 
     const health = await invokeMock(handler, '/api/health');
@@ -959,6 +960,7 @@ test('GAS_WEB_APP_URL env default and automatic Google Sheet two-way push on mut
   try {
     process.env.GAS_WEB_APP_URL = 'https://script.google.com/macros/s/test-exec/exec';
     const { handler, store } = createAppServer(dir, {
+      requireAuth: false,
       pushToGasWebApp: async (url, payload) => {
         pushedPayloads.push({ url, payload });
         return { ok: true };
@@ -1086,6 +1088,826 @@ test('GAS_WEB_APP_URL env default and automatic Google Sheet two-way push on mut
     } else {
       process.env.GAS_WEB_APP_URL = prevGasEnv;
     }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Authentication: Email OTP, Sign Up, Admin Confirmation Gate, Sign In, Role Guards & Logout', async () => {
+  const dir = makeTempDir();
+  const sentEmails = [];
+  const { server } = createAppServer(dir, {
+    sendOtpEmail: async (payload) => {
+      sentEmails.push(payload);
+    }
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    // 1. Protected API rejects unauthenticated access
+    const unauthBoot = await fetch(`${baseUrl}/api/bootstrap`);
+    assert.equal(unauthBoot.status, 401);
+
+    const sessionRes = await fetch(`${baseUrl}/api/auth/session`);
+    assert.equal(sessionRes.status, 200);
+    const sessionJson = await sessionRes.json();
+    assert.equal(sessionJson.authenticated, false);
+    assert.equal(sessionJson.requireAuth, true);
+    assert.ok(sessionJson.provinces.includes('Leyte'));
+
+    // 2. Sign up without OTP fails cleanly; Send OTP emails a 6-digit code
+    const signupPayload = {
+      name: 'Maria Clara',
+      email: 'maria.clara@dar8.gov.ph',
+      province: 'Leyte',
+      contactNumber: '09171234567',
+      password: 'SecretPassword123'
+    };
+    const missingOtpRes = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(signupPayload)
+    });
+    assert.equal(missingOtpRes.status, 400);
+
+    const sendOtpRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: signupPayload.email, name: signupPayload.name })
+    });
+    assert.equal(sendOtpRes.status, 200);
+    const sendOtpJson = await sendOtpRes.json();
+    assert.equal(sendOtpJson.deliveryMode, 'email');
+    assert.equal(sendOtpJson.previewOtp, undefined);
+    assert.equal(sentEmails.length, 1);
+    assert.match(sentEmails[0].otp, /^\d{6}$/);
+
+    // Wrong OTP is rejected before creating account
+    const wrongOtpRes = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...signupPayload, otpCode: '000000' })
+    });
+    assert.equal(wrongOtpRes.status, 400);
+
+    // Valid OTP creates pending account with Name, Email, Province, Contact Number
+    const signupRes = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...signupPayload, otpCode: sentEmails[0].otp })
+    });
+    assert.equal(signupRes.status, 201);
+    const signupData = await signupRes.json();
+    assert.equal(signupData.pending, true);
+    assert.equal(signupData.user.status, 'pending');
+    assert.equal(signupData.user.province, 'Leyte');
+    assert.equal(signupData.user.contactNumber, '09171234567');
+    assert.equal(signupData.user.passwordHash, undefined);
+
+    // Duplicate email rejected cleanly on both send-otp and signup
+    const dupRes = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...signupPayload, otpCode: sentEmails[0].otp })
+    });
+    assert.equal(dupRes.status, 409);
+
+    // 3. Pending account cannot log in yet
+    const pendingLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: signupPayload.email,
+        password: signupPayload.password
+      })
+    });
+    assert.equal(pendingLoginRes.status, 403);
+    const pendingErr = await pendingLoginRes.json();
+    assert.equal(pendingErr.code, 'ACCOUNT_PENDING');
+
+    // 4. Default Admin logs in and receives session cookie
+    const adminLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: DEFAULT_ADMIN_EMAIL,
+        password: DEFAULT_ADMIN_PASSWORD
+      })
+    });
+    assert.equal(adminLoginRes.status, 200);
+    const adminCookie = adminLoginRes.headers.get('set-cookie').split(';')[0];
+    assert.ok(adminCookie.startsWith('salig_session='));
+
+    const adminBoot = await (
+      await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: adminCookie } })
+    ).json();
+    assert.equal(adminBoot.currentUser.role, 'admin');
+    assert.equal(adminBoot.pendingUserCount, 1);
+
+    // 5. Admin views user directory & confirms Maria Clara
+    const usersRes = await fetch(`${baseUrl}/api/auth/users`, {
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(usersRes.status, 200);
+    const usersData = await usersRes.json();
+    const maria = usersData.users.find((u) => u.email === signupPayload.email);
+    assert.ok(maria);
+    assert.equal(maria.status, 'pending');
+
+    const approveRes = await fetch(`${baseUrl}/api/auth/users/${encodeURIComponent(maria.id)}/status`, {
+      method: 'POST',
+      headers: {
+        Cookie: adminCookie,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: 'approved' })
+    });
+    assert.equal(approveRes.status, 200);
+    const approvedData = await approveRes.json();
+    assert.equal(approvedData.user.status, 'approved');
+    assert.equal(approvedData.pendingCount, 0);
+
+    // 6. Confirmed user can now sign in & access workspace, but cannot access admin approvals
+    const userLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: signupPayload.email,
+        password: signupPayload.password
+      })
+    });
+    assert.equal(userLoginRes.status, 200);
+    const userCookie = userLoginRes.headers.get('set-cookie').split(';')[0];
+
+    const userBootRes = await fetch(`${baseUrl}/api/bootstrap`, {
+      headers: { Cookie: userCookie }
+    });
+    assert.equal(userBootRes.status, 200);
+    const userBoot = await userBootRes.json();
+    assert.equal(userBoot.currentUser.email, signupPayload.email);
+
+    const forbiddenAdminRes = await fetch(`${baseUrl}/api/auth/users`, {
+      headers: { Cookie: userCookie }
+    });
+    assert.equal(forbiddenAdminRes.status, 403);
+
+    // 7. Logout clears cookie
+    const logoutRes = await fetch(`${baseUrl}/api/auth/logout`, { method: 'POST' });
+    assert.equal(logoutRes.status, 200);
+    assert.match(logoutRes.headers.get('set-cookie'), /Max-Age=0/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Province-level scoping isolates data, preserves scoped indices, and blocks cross-province/admin mutations', async () => {
+  const dir = makeTempDir();
+  const { server, store } = createAppServer(dir, { requireAuth: true, requireOtp: false });
+
+  // Clear seed & populate deterministic multi-province dataset with Biliran placed BEFORE Leyte
+  store.state.milestoneData = [
+    {
+      Record_ID: 'BIL-202611-0001',
+      Province_Code: 'BIL',
+      Municipality: 'Naval',
+      Land_Allocation_ID: 'LA-BIL-1',
+      eTitle_No: 'eT-BIL-1',
+      Area_HAS: '1.2500',
+      Milestone_Stage: 'eTitle Registered',
+      Milestone_Date: '2026-11-05',
+      Batch_Category: 'ADMIN BATCH 1',
+      LHID: 'LH-BIL-001'
+    },
+    {
+      Record_ID: 'LEY-202611-0001',
+      Province_Code: 'LEY',
+      Municipality: 'Palo',
+      Land_Allocation_ID: 'LA-LEY-1',
+      eTitle_No: 'eT-LEY-1',
+      Area_HAS: '3.5000',
+      Milestone_Stage: 'eTitle Distributed',
+      Milestone_Date: '2026-11-06',
+      Batch_Category: 'ADMIN BATCH 1',
+      LHID: 'LH-LEY-001'
+    }
+  ];
+  for (const tab of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
+    store.state.optool[tab] = [];
+  }
+  store.state.optool.Database = [
+    { lhid: 'LH-BIL-001', province: 'Biliran', municipality: 'Naval', totalArea: '1.2500', carpable: '1.2500' },
+    { lhid: 'LH-SAM-001', province: 'Samar (Western Samar)', municipality: 'Catbalogan', totalArea: '2.0000', carpable: '2.0000' },
+    { lhid: 'LH-LEY-001', province: 'Leyte', municipality: 'Palo', totalArea: '3.5000', carpable: '3.5000', year: '2026' }
+  ];
+  store.state.optool['CF(DOC)'] = [
+    { lhid: 'LH-BIL-001', target: 'Current' },
+    { lhid: 'LH-LEY-001', target: 'Current' }
+  ];
+  store.state.optool.RegistrationDistribution = [
+    { lhid: 'LH-BIL-001', province: 'Biliran', eTitleNo: 'eT-BIL-1' },
+    { lhid: 'LH-LEY-001', province: 'Leyte', eTitleNo: 'eT-LEY-1' }
+  ];
+  store.save();
+
+  const leyteUser = store.createPendingUser(
+    {
+      name: 'Juan Leyte',
+      email: 'juan.leyte@dar8.gov.ph',
+      province: 'Leyte',
+      contactNumber: '09170001111',
+      password: 'Password123!'
+    },
+    { requireOtp: false }
+  );
+  store.updateUserStatus(leyteUser.id, { status: 'approved' }, 'admin');
+
+  const hubUser = store.createPendingUser(
+    {
+      name: 'Hub Viewer',
+      email: 'hub@dar8.gov.ph',
+      province: 'Region VIII Hub',
+      contactNumber: '09170002222',
+      password: 'Password123!'
+    },
+    { requireOtp: false }
+  );
+  store.updateUserStatus(hubUser.id, { status: 'approved' }, 'admin');
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    // 1. Admin / Region VIII Hub sees all provinces
+    const hubLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'hub@dar8.gov.ph', password: 'Password123!' })
+    });
+    const hubCookie = hubLogin.headers.get('set-cookie').split(';')[0];
+    const hubBoot = await (await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: hubCookie } })).json();
+    assert.equal(hubBoot.provinceScope, null);
+    assert.equal(hubBoot.schemas.provinceCodes.length, 6);
+    assert.equal(hubBoot.state.optool.Database.length, 3);
+    assert.equal(hubBoot.analytics.provincialBreakdown.length, 6);
+
+    // 2. Confirmed Leyte user ONLY sees Leyte across bootstrap, analytics, and all OPTool tabs
+    const leyLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'juan.leyte@dar8.gov.ph', password: 'Password123!' })
+    });
+    const leyCookie = leyLogin.headers.get('set-cookie').split(';')[0];
+    const leyBoot = await (await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: leyCookie } })).json();
+
+    assert.deepEqual(leyBoot.provinceScope, { code: 'LEY', provinceName: 'Leyte' });
+    assert.deepEqual(leyBoot.schemas.provinceCodes, ['LEY']);
+    assert.deepEqual(leyBoot.schemas.registry.map((n) => n.code), ['LEY']);
+    assert.deepEqual(leyBoot.state.milestoneData.map((m) => m.Record_ID), ['LEY-202611-0001']);
+    assert.deepEqual(leyBoot.state.optool.Database.map((r) => r.lhid), ['LH-LEY-001']);
+    assert.deepEqual(leyBoot.state.optool['CF(DOC)'].map((r) => r.lhid), ['LH-LEY-001']);
+    assert.deepEqual(leyBoot.state.optool.RegistrationDistribution.map((r) => r.lhid), ['LH-LEY-001']);
+    assert.deepEqual(leyBoot.analytics.provincialBreakdown.map((p) => p.code), ['LEY']);
+    assert.deepEqual(leyBoot.analytics.databaseByProvince.map((p) => p.code), ['LEY']);
+
+    // Landholding 360 for a Biliran LHID must not leak Biliran records to a Leyte user
+    const bilDossier = await (
+      await fetch(`${baseUrl}/api/landholding/LH-BIL-001`, { headers: { Cookie: leyCookie } })
+    ).json();
+    assert.equal(bilDossier.tabs.Database.length, 0);
+    assert.equal(bilDossier.milestones.length, 0);
+
+    // 3. Index translation: Leyte's Database row is scoped index 0, even though global index is 2!
+    const editRes = await fetch(`${baseUrl}/api/optool/Database`, {
+      method: 'POST',
+      headers: { Cookie: leyCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        index: 0,
+        row: { lhid: 'LH-LEY-001', province: 'Biliran', municipality: 'Tanauan', totalArea: '4.1000', year: '2026' }
+      })
+    });
+    assert.equal(editRes.status, 403, 'Explicit cross-province override should be blocked');
+
+    const validEditRes = await fetch(`${baseUrl}/api/optool/Database`, {
+      method: 'POST',
+      headers: { Cookie: leyCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        index: 0,
+        row: { lhid: 'LH-LEY-001', province: 'Leyte', municipality: 'Tanauan', totalArea: '4.1000', year: '2026' }
+      })
+    });
+    assert.equal(validEditRes.status, 200);
+    const validEditJson = await validEditRes.json();
+    assert.deepEqual(validEditJson.rows.map((r) => r.lhid), ['LH-LEY-001']);
+    assert.equal(validEditJson.rows[0].municipality, 'Tanauan');
+    assert.equal(store.state.optool.Database[0].lhid, 'LH-BIL-001', 'Biliran row 0 must remain untouched');
+    assert.equal(store.state.optool.Database[2].municipality, 'Tanauan', 'Leyte global row 2 updated');
+
+    // Milestone-target routing with scoped index 0 routes Leyte parcel cleanly
+    const mtRes = await fetch(`${baseUrl}/api/optool/Database/milestone-target`, {
+      method: 'POST',
+      headers: { Cookie: leyCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index: 0, milestoneTarget: 'Survey' })
+    });
+    assert.equal(mtRes.status, 200);
+    const mtJson = await mtRes.json();
+    assert.equal(mtJson.row.lhid, 'LH-LEY-001');
+    assert.equal(mtJson.row.milestoneTarget, 'Survey');
+    assert.ok(store.state.optool.Survey.some((r) => r.lhid === 'LH-LEY-001'));
+
+    // Cross-province Milestone & Admin endpoints must return 403
+    const crossMsRes = await fetch(`${baseUrl}/api/milestones`, {
+      method: 'POST',
+      headers: { Cookie: leyCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ Province_Code: 'BIL', Municipality: 'Naval', Area_HAS: '1.0000' })
+    });
+    assert.equal(crossMsRes.status, 403);
+
+    const crossDelMsRes = await fetch(`${baseUrl}/api/milestones/BIL-202611-0001`, {
+      method: 'DELETE',
+      headers: { Cookie: leyCookie }
+    });
+    assert.equal(crossDelMsRes.status, 403);
+
+    const baselinesRes = await fetch(`${baseUrl}/api/baselines`, {
+      method: 'PUT',
+      headers: { Cookie: leyCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ LEY: { targetETitles: 999, targetAreaHas: 100 } })
+    });
+    assert.equal(baselinesRes.status, 403);
+
+    const clearRes = await fetch(`${baseUrl}/api/workspace/clear`, {
+      method: 'POST',
+      headers: { Cookie: leyCookie }
+    });
+    assert.equal(clearRes.status, 403);
+
+    const wrongNodeSyncRes = await fetch(`${baseUrl}/api/sync/google-sheet`, {
+      method: 'POST',
+      headers: { Cookie: leyCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ spreadsheetId: '1w5r72b6p4cY0e8k0gE1h-dU2aL6j3R1r4P0r7n0F6v8' })
+    });
+    assert.equal(wrongNodeSyncRes.status, 403);
+
+    // Deleting scoped index 0 in CF(DOC) deletes LH-LEY-001, keeping LH-BIL-001 safe
+    const delCfRes = await fetch(`${baseUrl}/api/optool/CF(DOC)/0`, {
+      method: 'DELETE',
+      headers: { Cookie: leyCookie }
+    });
+    assert.equal(delCfRes.status, 200);
+    const delCfJson = await delCfRes.json();
+    assert.equal(delCfJson.rows.length, 0);
+    assert.deepEqual(store.state.optool['CF(DOC)'].map((r) => r.lhid), ['LH-BIL-001']);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('User_Accounts two-way sync with Regional Account Hub GAS Web App', async () => {
+  const dir = makeTempDir();
+  const sheetUsers = [];
+
+  const mockPush = async (_url, payload) => {
+    if (payload.action === 'upsertUserAccount' && payload.user) {
+      const idx = sheetUsers.findIndex(
+        (u) => u.id === payload.user.id || u.email === payload.user.email
+      );
+      if (idx >= 0) sheetUsers[idx] = { ...payload.user };
+      else sheetUsers.push({ ...payload.user });
+      return { ok: true, user: payload.user };
+    }
+    if (payload.action === 'deleteUserAccount') {
+      const idx = sheetUsers.findIndex(
+        (u) => u.id === payload.userId || u.email === payload.email
+      );
+      if (idx >= 0) sheetUsers.splice(idx, 1);
+      return { ok: true, deleted: idx >= 0 };
+    }
+    if (payload.action === 'syncUserAccounts' && Array.isArray(payload.users)) {
+      for (const u of payload.users) {
+        const idx = sheetUsers.findIndex((s) => s.id === u.id || s.email === u.email);
+        if (idx >= 0) sheetUsers[idx] = { ...u };
+        else sheetUsers.push({ ...u });
+      }
+      return { ok: true, synced: sheetUsers.length, users: [...sheetUsers] };
+    }
+    return { ok: true };
+  };
+
+  const mockPullUsers = async () => ({ ok: true, users: [...sheetUsers] });
+
+  const { server, store } = createAppServer(dir, {
+    requireAuth: true,
+    requireOtp: false,
+    pushToGasWebApp: mockPush,
+    pullUsersFromGasWebApp: mockPullUsers
+  });
+  store.state.gasWebAppUrl = 'https://script.google.com/macros/s/test-users/exec';
+  store.save();
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    // 1. Signup auto-pushes user to GAS User_Accounts
+    const signupRes = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Pedro Samar',
+        email: 'pedro.samar@dar8.gov.ph',
+        province: 'Samar (Western Samar)',
+        contactNumber: '09181112222',
+        password: 'Password123!'
+      })
+    });
+    assert.equal(signupRes.status, 201);
+    const signupJson = await signupRes.json();
+    assert.equal(signupJson.gasPushResult.ok, true);
+    assert.equal(sheetUsers.length, 1);
+    assert.equal(sheetUsers[0].status, 'pending');
+    assert.ok(sheetUsers[0].passwordHash.includes(':'));
+
+    // 2. Admin approves -> GAS User_Accounts updates to approved
+    const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD })
+    });
+    const adminCookie = adminLogin.headers.get('set-cookie').split(';')[0];
+
+    const approveRes = await fetch(
+      `${baseUrl}/api/auth/users/${encodeURIComponent(signupJson.user.id)}/status`,
+      {
+        method: 'POST',
+        headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' })
+      }
+    );
+    assert.equal(approveRes.status, 200);
+    assert.equal(sheetUsers[0].status, 'approved');
+
+    // 3. Admin syncs full directory -> both admin and Pedro are in Regional Google Sheet
+    const syncAllRes = await fetch(`${baseUrl}/api/auth/users/sync-sheet`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(syncAllRes.status, 200);
+    const syncAllJson = await syncAllRes.json();
+    assert.equal(syncAllJson.ok, true);
+    assert.equal(sheetUsers.length, 2);
+
+    // 4. Even if local store loses Pedro's record (e.g. cold serverless instance), login pulls from User_Accounts and succeeds!
+    store.state.users = store.state.users.filter((u) => u.email !== 'pedro.samar@dar8.gov.ph');
+    store.save();
+
+    const pedroLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'pedro.samar@dar8.gov.ph', password: 'Password123!' })
+    });
+    assert.equal(pedroLogin.status, 200);
+    const pedroJson = await pedroLogin.json();
+    assert.equal(pedroJson.user.province, 'Samar (Western Samar)');
+
+    // 5. Admin cannot delete own account, but deleting Pedro removes both local & Google Sheet records
+    const selfUser = store.findUserByEmail(DEFAULT_ADMIN_EMAIL);
+    const selfDelRes = await fetch(`${baseUrl}/api/auth/users/${encodeURIComponent(selfUser.id)}`, {
+      method: 'DELETE',
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(selfDelRes.status, 400);
+
+    const delPedroRes = await fetch(
+      `${baseUrl}/api/auth/users/${encodeURIComponent(signupJson.user.id)}`,
+      {
+        method: 'DELETE',
+        headers: { Cookie: adminCookie }
+      }
+    );
+    assert.equal(delPedroRes.status, 200);
+    const delPedroJson = await delPedroRes.json();
+    assert.equal(delPedroJson.gasPushResult.ok, true);
+    assert.equal(store.findUserByEmail('pedro.samar@dar8.gov.ph'), null);
+    assert.equal(sheetUsers.some((u) => u.email === 'pedro.samar@dar8.gov.ph'), false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate of Accomp., and Variance', async () => {
+  const dir = makeTempDir();
+  const { server, store } = createAppServer(dir, { requireAuth: true });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const addr = server.address();
+  const baseUrl = `http://127.0.0.1:${addr.port}`;
+
+  try {
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD })
+    });
+    assert.equal(loginRes.status, 200);
+    const adminCookie = loginRes.headers.get('set-cookie').split(';')[0];
+
+    // Clear seed rows and insert controlled rows across all 6 milestones & quarters
+    store.clearToEmptyLive();
+    store.upsertOptoolRow('Database', { lhid: 'LH-Q1', province: 'Leyte', carpable: '5.5000' });
+    store.upsertOptoolRow('Database', { lhid: 'LH-Q2', province: 'Leyte', carpable: '4.2500' });
+    store.upsertOptoolRow('Database', { lhid: 'LH-Q3', province: 'Biliran', carpable: '3.0000' });
+
+    // CF Documentation: 1 in Q1 (ISO), 1 in Q3 (Month YYYY)
+    store.upsertOptoolRow('CF(DOC)', { lhid: 'LH-Q1', reportedMonth: '2026-02-15' });
+    store.upsertOptoolRow('CF(DOC)', { lhid: 'LH-Q3', reportedMonth: 'August 2026' });
+
+    // Land Survey: 1 in Q2 via currentDate
+    store.upsertOptoolRow('Survey', { lhid: 'LH-Q2', currentDate: '2026-05-19' });
+
+    // Land Valuation: 1 in Q4 via dateTransLbpAoc
+    store.upsertOptoolRow('MOV', { lhid: 'LH-Q1', dateTransLbpAoc: '2026-10-12' });
+
+    // EP CLOA Registration (Q1, 2 titles) & EP CLOA Distribution (Q4, MM/DD/YYYY, 2 titles)
+    store.upsertOptoolRow('RegistrationDistribution', {
+      lhid: 'LH-Q1',
+      province: 'Leyte',
+      dateRegistered: '2026-03-04',
+      dateOfDistribution: '11/08/2026',
+      noOfTitles: '2',
+      areaHas: '5.5000'
+    });
+
+    // Installation: 1 in Q4
+    store.upsertOptoolRow('Installation', {
+      lhid: 'LH-Q2',
+      province: 'Leyte',
+      dateOfInstallation: '12/01/2026',
+      installedStatus: 'Yes',
+      noOfTitles: '1',
+      areaHas2: '4.2500'
+    });
+
+    // Save flat Regional List NEP Targets via Regional Account
+    const nepRes = await fetch(`${baseUrl}/api/nep-targets`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+      body: JSON.stringify({
+        cf_doc: { targetCount: 6, targetAreaHas: 15 },
+        land_survey: { targetCount: 2, targetAreaHas: 8.5 },
+        land_valuation: { targetCount: 1, targetAreaHas: 5.5 },
+        ep_cloa_registration: { targetCount: 2, targetAreaHas: 5.5 },
+        ep_cloa_distribution: { targetCount: 5, targetAreaHas: 12 },
+        installation: { targetCount: 1, targetAreaHas: 4 }
+      })
+    });
+    assert.equal(nepRes.status, 200);
+    const nepJson = await nepRes.json();
+
+    const rows = nepJson.analytics.milestoneNepBreakdown;
+    assert.equal(rows.length, 6);
+    assert.deepEqual(
+      rows.map((r) => r.label),
+      [
+        'CF Documentation',
+        'Land Survey',
+        'Land Valuation',
+        'EP CLOA Registration',
+        'EP CLOA Distribution',
+        'Installation'
+      ]
+    );
+
+    const cf = rows[0];
+    assert.equal(cf.nepTargetCount, 6);
+    assert.equal(cf.nepTargetAreaHas, 15);
+    assert.equal(cf.q1.count, 1);
+    assert.equal(cf.q1.areaHas, 5.5);
+    assert.equal(cf.q3.count, 1);
+    assert.equal(cf.q3.areaHas, 3);
+    assert.equal(cf.total.count, 2);
+    assert.equal(cf.total.areaHas, 8.5);
+    assert.equal(cf.rateCountPct, 33.33);
+    assert.equal(cf.varianceCount, -4);
+    assert.equal(cf.varianceAreaHas, -6.5);
+
+    const survey = rows[1];
+    assert.equal(survey.q2.count, 1);
+    assert.equal(survey.rateCountPct, 50);
+
+    const val = rows[2];
+    assert.equal(val.q4.count, 1);
+    assert.equal(val.rateCountPct, 100);
+    assert.equal(val.varianceCount, 0);
+
+    const reg = rows[3];
+    assert.equal(reg.q1.count, 2);
+    assert.equal(reg.rateCountPct, 100);
+
+    const dist = rows[4];
+    assert.equal(dist.q4.count, 2);
+    assert.equal(dist.varianceCount, -3);
+
+    const inst = rows[5];
+    assert.equal(inst.q4.count, 1);
+    assert.equal(inst.varianceAreaHas, 0.25);
+
+    // Year filter & province filter preserve Regional List NEP target while scoping accomplishments
+    const leyRes = await fetch(`${baseUrl}/api/analytics?province=LEY&milestoneYear=2026`, {
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(leyRes.status, 200);
+    const leyJson = await leyRes.json();
+    const leyCf = leyJson.milestoneNepBreakdown[0];
+    assert.equal(leyCf.nepTargetCount, 6);
+    assert.equal(leyCf.total.count, 1); // Only LH-Q1 is Leyte; LH-Q3 is Biliran
+
+    // Provincial user is blocked (403) while a Region VIII Hub user (role: 'user') can edit (200)
+    const provUser = store.createPendingUser(
+      {
+        name: 'Leyte Provincial User',
+        email: 'leyte.nep@dar8.gov.ph',
+        province: 'Leyte',
+        contactNumber: '09170001111',
+        password: 'Password123!'
+      },
+      { requireOtp: false }
+    );
+    store.updateUserStatus(provUser.id, { status: 'approved' }, 'admin');
+    const provLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'leyte.nep@dar8.gov.ph', password: 'Password123!' })
+    });
+    assert.equal(provLogin.status, 200);
+    const provCookie = provLogin.headers.get('set-cookie').split(';')[0];
+    const provForbidden = await fetch(`${baseUrl}/api/nep-targets`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: provCookie },
+      body: JSON.stringify({ cf_doc: { targetCount: 99, targetAreaHas: 99 } })
+    });
+    assert.equal(provForbidden.status, 403);
+
+    const hubUser = store.createPendingUser(
+      {
+        name: 'Regional Hub Staff',
+        email: 'hub.nep@dar8.gov.ph',
+        province: 'Region VIII Hub',
+        contactNumber: '09170002222',
+        password: 'Password123!'
+      },
+      { requireOtp: false }
+    );
+    store.updateUserStatus(hubUser.id, { status: 'approved' }, 'admin');
+    const hubLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'hub.nep@dar8.gov.ph', password: 'Password123!' })
+    });
+    assert.equal(hubLogin.status, 200);
+    const hubCookie = hubLogin.headers.get('set-cookie').split(';')[0];
+    const hubAllowed = await fetch(`${baseUrl}/api/nep-targets`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: hubCookie },
+      body: JSON.stringify({ cf_doc: { targetCount: 10, targetAreaHas: 25 } })
+    });
+    assert.equal(hubAllowed.status, 200);
+    const hubJson = await hubAllowed.json();
+    assert.equal(hubJson.analytics.milestoneNepBreakdown[0].nepTargetCount, 10);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Regional Hub NEP Sheet (per province LHS, AREA, ARBs) XLSX round-trip, edit RBAC, and GAS sync', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-nep-sheet-'));
+  const pushedPayloads = [];
+  let mockedRemoteNep = {
+    BIL: { lhs: 12, area: 145.5, arbs: 34 },
+    ESA: { lhs: 18, area: 210.125, arbs: 48 },
+    LEY: { lhs: 45, area: 890.75, arbs: 150 },
+    NSA: { lhs: 22, area: 310.25, arbs: 62 },
+    SAM: { lhs: 30, area: 405.5, arbs: 80 },
+    SLE: { lhs: 15, area: 198.125, arbs: 41 }
+  };
+
+  const { server, store } = createAppServer(dir, {
+    requireAuth: true,
+    pushToGasWebApp: async (_url, payload) => {
+      pushedPayloads.push(payload);
+      return { ok: true, nepProvinceList: payload.nepProvinceList };
+    },
+    pullNepFromGasWebApp: async () => ({
+      ok: true,
+      sheetName: 'NEP',
+      nepProvinceList: mockedRemoteNep
+    })
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const addr = server.address();
+  const baseUrl = `http://127.0.0.1:${addr.port}`;
+
+  try {
+    const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD })
+    });
+    assert.equal(adminLogin.status, 200);
+    const adminCookie = adminLogin.headers.get('set-cookie').split(';')[0];
+
+    // 1. Regional admin updates NEP Sheet via PUT /api/nep-sheet -> pushes saveNepSheet to GAS
+    store.state.gasWebAppUrl = 'https://script.google.com/macros/s/mock/exec';
+    store.save();
+
+    const saveRes = await fetch(`${baseUrl}/api/nep-sheet`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+      body: JSON.stringify({
+        BIL: { lhs: 5, area: 50.25, arbs: 12 },
+        LEY: { lhs: 40, area: 600.75, arbs: 120 }
+      })
+    });
+    assert.equal(saveRes.status, 200);
+    const saveJson = await saveRes.json();
+    assert.equal(saveJson.nepProvinceList.BIL.lhs, 5);
+    assert.equal(saveJson.nepProvinceList.LEY.area, 600.75);
+    assert.equal(saveJson.analytics.nepProvinceBreakdown.length, 6);
+    assert.equal(saveJson.analytics.nepProvinceTotals.lhs, 45);
+    assert.equal(saveJson.analytics.nepProvinceTotals.area, 651);
+    assert.equal(saveJson.analytics.nepProvinceTotals.arbs, 132);
+    assert.equal(pushedPayloads[0].action, 'saveNepSheet');
+    assert.equal(pushedPayloads[0].nepProvinceList.LEY.arbs, 120);
+
+    // 2. Consolidated XLSX export includes NEP sheet and re-parses cleanly (ignoring TOTAL row)
+    const xlsxBuffer = await buildConsolidatedWorkbookBuffer(
+      store.getScopedState(null),
+      store.computeAnalytics({})
+    );
+    const parsed = await parseWorkbookBuffer(xlsxBuffer);
+    assert.ok(parsed.sheetNames.includes('NEP'));
+    assert.equal(parsed.tabRowCounts.NEP, 6);
+    assert.equal(parsed.nepProvinceList.BIL.lhs, 5);
+    assert.equal(parsed.nepProvinceList.LEY.area, 600.75);
+    assert.equal(parsed.nepProvinceList.LEY.arbs, 120);
+
+    // 3. Provincial account is forbidden from editing or syncing NEP Sheet, but sees own province row read-only
+    const provUser = store.createPendingUser(
+      {
+        name: 'Biliran Officer',
+        email: 'biliran.nepsheet@dar8.gov.ph',
+        province: 'Biliran',
+        contactNumber: '09170003333',
+        password: 'Password123!'
+      },
+      { requireOtp: false }
+    );
+    store.updateUserStatus(provUser.id, { status: 'approved' }, 'admin');
+    const provLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'biliran.nepsheet@dar8.gov.ph', password: 'Password123!' })
+    });
+    assert.equal(provLogin.status, 200);
+    const provCookie = provLogin.headers.get('set-cookie').split(';')[0];
+
+    const provPut = await fetch(`${baseUrl}/api/nep-sheet`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: provCookie },
+      body: JSON.stringify({ BIL: { lhs: 999, area: 999, arbs: 999 } })
+    });
+    assert.equal(provPut.status, 403);
+
+    const provSync = await fetch(`${baseUrl}/api/nep-sheet/sync`, {
+      method: 'POST',
+      headers: { Cookie: provCookie }
+    });
+    assert.equal(provSync.status, 403);
+
+    const provAnalytics = await (
+      await fetch(`${baseUrl}/api/analytics`, { headers: { Cookie: provCookie } })
+    ).json();
+    assert.equal(provAnalytics.nepProvinceBreakdown.length, 1);
+    assert.equal(provAnalytics.nepProvinceBreakdown[0].code, 'BIL');
+    assert.equal(provAnalytics.nepProvinceBreakdown[0].lhs, 5);
+
+    // 4. Regional admin syncs from GAS Web App (?action=nep) via POST /api/nep-sheet/sync
+    const syncRes = await fetch(`${baseUrl}/api/nep-sheet/sync`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(syncRes.status, 200);
+    const syncJson = await syncRes.json();
+    assert.equal(syncJson.analytics.nepProvinceTotals.lhs, 142);
+    assert.equal(syncJson.analytics.nepProvinceTotals.area, 2160.25);
+    assert.equal(syncJson.analytics.nepProvinceTotals.arbs, 415);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

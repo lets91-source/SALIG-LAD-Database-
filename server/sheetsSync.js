@@ -1,6 +1,9 @@
 import {
   OPTOOL_SHEET_SCHEMAS,
   MILESTONE_DATA_COLUMNS,
+  PROVINCE_CODES,
+  REGIONAL_REGISTRY,
+  normalizeNepProvinceList,
   inferProvinceCodeFromMunicipality,
   inferProvinceCodeFromText,
   formatArea4,
@@ -53,7 +56,8 @@ export async function parseWorkbookBuffer(buffer) {
     sheetNames: worksheets.map((ws) => ws.name),
     tabRowCounts: {},
     milestoneData: [],
-    optool: {}
+    optool: {},
+    nepProvinceList: null
   };
 
   for (const tabName of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
@@ -101,6 +105,52 @@ export async function parseWorkbookBuffer(buffer) {
           LHID: record.LHID || ''
         });
       }
+      result.tabRowCounts[name] = rowCount;
+      continue;
+    }
+
+    if (normalizeHeader(name) === 'nep') {
+      const nepColumns = [
+        { key: 'code', header: 'Province_Code', label: 'Province Code' },
+        { key: 'provinceName', header: 'Province', label: 'Province Name' },
+        { key: 'lhs', header: 'LHS', label: 'Landholdings' },
+        { key: 'area', header: 'AREA', label: 'Area (HAS)' },
+        { key: 'arbs', header: 'ARBs', label: 'Beneficiaries' }
+      ];
+      const mapping = buildHeaderMapping(headerValues, nepColumns);
+      const parsedNep = {};
+      let rowCount = 0;
+      for (const row of dataRows) {
+        const rec = {};
+        let hasData = false;
+        for (const [colIdx, colDef] of mapping.entries()) {
+          const rawVal = row.values[colIdx];
+          if (String(rawVal ?? '').trim() !== '') hasData = true;
+          rec[colDef.key] = rawVal;
+        }
+        if (!hasData) continue;
+        const rawCode = String(rec.code || '').trim().toUpperCase();
+        const rawProv = String(rec.provinceName || '').trim().toLowerCase();
+        if (rawCode === 'TOTAL' || rawProv.includes('total')) continue;
+        let code = PROVINCE_CODES.includes(rawCode) ? rawCode : null;
+        if (!code && rawProv) {
+          const matchedNode = REGIONAL_REGISTRY.find(
+            (n) =>
+              n.role === 'Provincial Node' &&
+              (n.provinceName.toLowerCase() === rawProv ||
+                n.jurisdiction.toLowerCase().includes(rawProv))
+          );
+          if (matchedNode) code = matchedNode.code;
+        }
+        if (!code) continue;
+        rowCount++;
+        parsedNep[code] = {
+          lhs: Math.max(0, Math.round(Number(String(rec.lhs ?? 0).replace(/,/g, '')) || 0)),
+          area: Number((Number(String(rec.area ?? 0).replace(/,/g, '')) || 0).toFixed(4)),
+          arbs: Math.max(0, Math.round(Number(String(rec.arbs ?? 0).replace(/,/g, '')) || 0))
+        };
+      }
+      result.nepProvinceList = parsedNep;
       result.tabRowCounts[name] = rowCount;
       continue;
     }
@@ -283,7 +333,32 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
     rows: summaryRows
   });
 
-  // 2. Milestone_Data Sheet
+  // 2. NEP Province Sheet (LHS, AREA, ARBs)
+  const nepSheet = normalizeNepProvinceList(state.nepProvinceList);
+  const provNodes = REGIONAL_REGISTRY.filter((n) => n.role === 'Provincial Node');
+  const nepRows = [
+    ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs'],
+    ...provNodes.map((n) => {
+      const entry = nepSheet[n.code] || { lhs: 0, area: 0, arbs: 0 };
+      return [n.code, n.provinceName, entry.lhs, Number(entry.area.toFixed(4)), entry.arbs];
+    }),
+    [
+      'TOTAL',
+      'Region VIII Total',
+      provNodes.reduce((s, n) => s + (nepSheet[n.code]?.lhs || 0), 0),
+      Number(provNodes.reduce((s, n) => s + (nepSheet[n.code]?.area || 0), 0).toFixed(4)),
+      provNodes.reduce((s, n) => s + (nepSheet[n.code]?.arbs || 0), 0)
+    ]
+  ];
+  sheetsSpec.push({
+    name: 'NEP',
+    headerStyle: 1,
+    colWidths: [16, 22, 16, 18, 16],
+    fourDecCols: new Set([4]),
+    rows: nepRows
+  });
+
+  // 3. Milestone_Data Sheet
   const msRows = [
     MILESTONE_DATA_COLUMNS.map((c) => c.header),
     ...state.milestoneData.map((rec) =>
@@ -331,13 +406,30 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
   return writeXlsxWorkbook(sheetsSpec);
 }
 
-export async function pullFromGasWebApp(gasUrl) {
+/** Execute a GET query against a deployed GAS Web App action endpoint. */
+async function fetchGasAction(gasUrl, action) {
   const sep = gasUrl.includes('?') ? '&' : '?';
-  const resp = await fetch(`${gasUrl}${sep}action=snapshot`, { redirect: 'follow' });
+  const resp = await fetch(`${gasUrl}${sep}action=${encodeURIComponent(action)}`, {
+    redirect: 'follow'
+  });
   if (!resp.ok) {
     throw new Error(`GAS Web App returned HTTP ${resp.status}`);
   }
   return await resp.json();
+}
+
+export async function pullFromGasWebApp(gasUrl) {
+  return fetchGasAction(gasUrl, 'snapshot');
+}
+
+/** Pull User_Accounts list from the deployed Regional Hub GAS Web App. */
+export async function pullUsersFromGasWebApp(gasUrl) {
+  return fetchGasAction(gasUrl, 'users');
+}
+
+/** Pull the Regional Hub NEP Sheet per-province totals (?action=nep). */
+export async function pullNepFromGasWebApp(gasUrl) {
+  return fetchGasAction(gasUrl, 'nep');
 }
 
 export async function pushToGasWebApp(gasUrl, payload) {

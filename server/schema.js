@@ -141,6 +141,65 @@ export const MILESTONE_TARGET_TABS = [
   'Installation'
 ];
 
+export const DASHBOARD_MILESTONES = [
+  { key: 'cf_doc', label: 'CF Documentation', sourceTab: 'CF(DOC)' },
+  { key: 'land_survey', label: 'Land Survey', sourceTab: 'Survey' },
+  { key: 'land_valuation', label: 'Land Valuation', sourceTab: 'MOV' },
+  { key: 'ep_cloa_registration', label: 'EP CLOA Registration', sourceTab: 'RegistrationDistribution' },
+  { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution', sourceTab: 'RegistrationDistribution' },
+  { key: 'installation', label: 'Installation', sourceTab: 'Installation' }
+];
+
+/** Create or normalize the Regional List of per-milestone NEP Targets. */
+export function normalizeNepTargets(raw = {}) {
+  const out = {};
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const hasFlatKeys = DASHBOARD_MILESTONES.some(
+    (m) => src[m.key] && typeof src[m.key] === 'object'
+  );
+
+  for (const m of DASHBOARD_MILESTONES) {
+    if (hasFlatKeys) {
+      const item = src[m.key] && typeof src[m.key] === 'object' ? src[m.key] : {};
+      out[m.key] = {
+        targetCount: Math.max(0, Number(item.targetCount) || 0),
+        targetAreaHas: Math.max(0, Number((Number(item.targetAreaHas) || 0).toFixed(4)))
+      };
+    } else {
+      // Migrate legacy per-province shape by summing provinces into the Regional List
+      let sumCount = 0;
+      let sumArea = 0;
+      for (const code of PROVINCE_CODES) {
+        const item = src[code]?.[m.key];
+        if (item && typeof item === 'object') {
+          sumCount += Math.max(0, Number(item.targetCount) || 0);
+          sumArea += Math.max(0, Number(item.targetAreaHas) || 0);
+        }
+      }
+      out[m.key] = {
+        targetCount: sumCount,
+        targetAreaHas: Number(sumArea.toFixed(4))
+      };
+    }
+  }
+  return out;
+}
+
+/** Create or normalize per-province Regional Hub NEP Sheet entries (LHS, AREA, ARBs). */
+export function normalizeNepProvinceList(raw = {}) {
+  const out = {};
+  const src = raw && typeof raw === 'object' ? raw : {};
+  for (const code of PROVINCE_CODES) {
+    const item = src[code] && typeof src[code] === 'object' ? src[code] : {};
+    out[code] = {
+      lhs: Math.max(0, Math.round(Number(item.lhs) || 0)),
+      area: Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
+      arbs: Math.max(0, Math.round(Number(item.arbs) || 0))
+    };
+  }
+  return out;
+}
+
 // Milestone_Data schema from SPLIT Milestone Monitoring System Technical Spec
 export const MILESTONE_DATA_COLUMNS = [
   { key: 'Record_ID', header: 'Record_ID', label: 'Record ID', type: 'text', required: true },

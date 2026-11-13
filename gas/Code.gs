@@ -39,6 +39,24 @@ const MILESTONE_HEADERS = [
   'LHID'
 ];
 
+const USER_ACCOUNTS_HEADERS = [
+  'User_ID',
+  'Full_Name',
+  'Email',
+  'Province',
+  'Contact_Number',
+  'Role',
+  'Status',
+  'Email_Verified',
+  'Password_Hash',
+  'Created_At',
+  'Updated_At',
+  'Approved_At',
+  'Approved_By'
+];
+
+const NEP_SHEET_HEADERS = ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs'];
+
 const OPTOOL_TABS = [
   'Database',
   'CF(DOC)',
@@ -134,14 +152,66 @@ function onOpen() {
     .createMenu('SPLIT Region VIII Hub')
     .addItem('Run Regional ETL Consolidation Now', 'runRegionalETL')
     .addItem('Sync SALIG Column Headers Across Sheets', 'syncAllSheetHeaders')
-    .addItem('Initialize Milestone_Data & Baselines Tabs', 'initializeHubTabs')
+    .addItem('Initialize Milestone_Data, NEP, Baselines & User_Accounts Tabs', 'initializeHubTabs')
+    .addItem('Create / Sync NEP Sheet (LHS, AREA, ARBs)', 'initializeNepSheet')
     .addItem('Install Hourly Auto-Sync Trigger', 'installHourlyTrigger')
     .addToUi();
 }
 
 function initializeHubTabs() {
   ensureMilestoneSheet_();
+  ensureNepSheet_();
   ensureBaselineSheet_();
+  ensureUserAccountsSheet_();
+}
+
+function initializeNepSheet() {
+  return ensureNepSheet_();
+}
+
+/** Ensure the NEP tab exists in the Regional Hub with per-province LHS, AREA, and ARBs. */
+function ensureNepSheet_() {
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  let sheet = hub.getSheetByName('NEP');
+  const isNew = !sheet;
+  if (!sheet) {
+    sheet = hub.insertSheet('NEP');
+  }
+  sheet.getRange(1, 1, 1, NEP_SHEET_HEADERS.length).setValues([NEP_SHEET_HEADERS]);
+  sheet
+    .getRange(1, 1, 1, NEP_SHEET_HEADERS.length)
+    .setFontWeight('bold')
+    .setBackground('#14532D')
+    .setFontColor('#FFFFFF');
+  sheet.setFrozenRows(1);
+
+  if (isNew || sheet.getLastRow() < PROVINCIAL_NODES.length + 1) {
+    const rows = PROVINCIAL_NODES.map(function (n) {
+      return [n.code, n.name, 0, 0, 0];
+    });
+    sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
+    sheet
+      .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
+      .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)']]);
+    formatNepSheetRanges_(sheet);
+  }
+  return sheet;
+}
+
+function formatNepSheetRanges_(sheet) {
+  const totalRow = PROVINCIAL_NODES.length + 2;
+  sheet.getRange(2, 3, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0');
+  sheet.getRange(2, 4, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0.0000');
+  sheet.getRange(2, 5, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0');
+  sheet
+    .getRange(totalRow, 1, 1, NEP_SHEET_HEADERS.length)
+    .setFontWeight('bold')
+    .setBackground('#ECFDF5');
+  try {
+    sheet.autoResizeColumns(1, NEP_SHEET_HEADERS.length);
+  } catch (err) {
+    // Ignore autoResize issues in headless execution
+  }
 }
 
 function ensureMilestoneSheet_() {
@@ -350,6 +420,19 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  if (action === 'users') {
+    return ContentService.createTextOutput(
+      JSON.stringify({ ok: true, spreadsheetId: HUB_SPREADSHEET_ID, users: readUserAccountsFromHub_() })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (action === 'nep') {
+    ensureNepSheet_();
+    return ContentService.createTextOutput(
+      JSON.stringify({ ok: true, spreadsheetId: HUB_SPREADSHEET_ID, nepProvinceList: readNepSheetFromHub_() })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('SPLIT Milestone Monitoring System — DAR Region VIII Hub')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -406,6 +489,44 @@ function doPost(e) {
     if (body.action === 'saveBaselines' && body.baselines) {
       saveBaselinesRecord_(body.baselines);
       return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'initNepSheet') {
+      ensureNepSheet_();
+      return ContentService.createTextOutput(
+        JSON.stringify({ ok: true, sheetName: 'NEP', nepProvinceList: readNepSheetFromHub_() })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'saveNepSheet' && (body.nepProvinceList || body.nep)) {
+      saveNepSheetRecord_(body.nepProvinceList || body.nep);
+      return ContentService.createTextOutput(
+        JSON.stringify({ ok: true, sheetName: 'NEP', nepProvinceList: readNepSheetFromHub_() })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'sendOtpEmail' && body.email && body.otp) {
+      sendOtpEmailRecord_(body);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, sent: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'upsertUserAccount' && body.user) {
+      const savedUser = upsertUserAccountRecord_(body.user);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, user: savedUser }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'syncUserAccounts' && Array.isArray(body.users)) {
+      const syncUsersRes = syncAllUserAccountsRecord_(body.users);
+      return ContentService.createTextOutput(JSON.stringify(syncUsersRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'deleteUserAccount' && (body.userId || body.email)) {
+      const deleted = deleteUserAccountRecord_(body.userId || '', body.email || '');
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, deleted: deleted }))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -473,6 +594,8 @@ function getHubBootstrap() {
     milestoneData: readSheetObjects_(msSheet),
     optool: optool,
     optoolHeaders: optoolHeaders,
+    nepProvinceList: readNepSheetFromHub_(),
+    users: readUserAccountsFromHub_(),
     syncLogs: logs
   };
 }
@@ -502,6 +625,72 @@ function saveBaselinesRecord_(baselinesMap) {
   });
   sheet.getRange(2, 1, rows.length, 4).setValues(rows);
   sheet.getRange(2, 4, rows.length, 1).setNumberFormat('0.0000');
+}
+
+/** Read per-province LHS, AREA, ARBs from the Regional Hub NEP tab. */
+function readNepSheetFromHub_() {
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  const sheet = hub.getSheetByName('NEP');
+  const out = {};
+  PROVINCIAL_NODES.forEach(function (n) {
+    out[n.code] = { lhs: 0, area: 0, arbs: 0 };
+  });
+  if (!sheet || sheet.getLastRow() <= 1) return out;
+  const rows = sheet.getDataRange().getValues();
+  const headers = rows[0].map(function (h) { return String(h || '').trim().toUpperCase(); });
+  const codeCol = Math.max(0, headers.indexOf('PROVINCE_CODE'));
+  const provCol = headers.indexOf('PROVINCE') >= 0 ? headers.indexOf('PROVINCE') : 1;
+  const lhsCol = headers.indexOf('LHS') >= 0 ? headers.indexOf('LHS') : 2;
+  const areaCol = headers.indexOf('AREA') >= 0 ? headers.indexOf('AREA') : 3;
+  const arbsCol = headers.indexOf('ARBS') >= 0 ? headers.indexOf('ARBS') : 4;
+
+  const parseNum = function (val) {
+    if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+    const n = Number(String(val || '').replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  for (let i = 1; i < rows.length; i++) {
+    const rawCode = String(rows[i][codeCol] || '').trim().toUpperCase();
+    const rawProv = String(rows[i][provCol] || '').trim().toLowerCase();
+    if (!rawCode || rawCode === 'TOTAL' || rawProv.indexOf('total') >= 0) continue;
+    let code = out[rawCode] ? rawCode : '';
+    if (!code) {
+      PROVINCIAL_NODES.forEach(function (n) {
+        if (!code && (n.name.toLowerCase().indexOf(rawProv) >= 0 || rawProv.indexOf(n.name.toLowerCase()) >= 0)) {
+          code = n.code;
+        }
+      });
+    }
+    if (code) {
+      out[code] = {
+        lhs: Math.max(0, Math.round(parseNum(rows[i][lhsCol]))),
+        area: Math.max(0, Number(parseNum(rows[i][areaCol]).toFixed(4))),
+        arbs: Math.max(0, Math.round(parseNum(rows[i][arbsCol])))
+      };
+    }
+  }
+  return out;
+}
+
+/** Write per-province LHS, AREA, ARBs into the Regional Hub NEP tab. */
+function saveNepSheetRecord_(nepMap) {
+  const sheet = ensureNepSheet_();
+  const rows = PROVINCIAL_NODES.map(function (n) {
+    const item = (nepMap && nepMap[n.code]) || {};
+    return [
+      n.code,
+      n.name,
+      Math.max(0, Math.round(Number(item.lhs) || 0)),
+      Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
+      Math.max(0, Math.round(Number(item.arbs) || 0))
+    ];
+  });
+  sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
+  sheet
+    .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
+    .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)']]);
+  formatNepSheetRanges_(sheet);
 }
 
 function runRegionalETLFromUi() {
@@ -946,4 +1135,208 @@ function deleteOptoolRecord_(tabName, headersSpec, rowObj, provinceCode) {
     } catch (ignore) {}
   });
   return deletedAny;
+}
+
+function sendOtpEmailRecord_(payload) {
+  const recipient = String(payload.email || '').trim();
+  const otp = String(payload.otp || '').trim();
+  const recipientName = String(payload.name || 'SALIG User').trim();
+  const expires = Number(payload.expiresInMinutes || 10);
+  if (!recipient || !otp) throw new Error('Email and OTP are required.');
+
+  const subject = 'SALIG (LAD DATABASE) — Email Verification OTP Code';
+  const plainBody = [
+    'Dear ' + recipientName + ',',
+    '',
+    'Your 6-digit verification OTP code for DAR Region VIII SALIG (LAD DATABASE) is:',
+    '',
+    '    ' + otp,
+    '',
+    'This code expires in ' + expires + ' minutes.',
+    'After completing registration, an Administrator will confirm your account before login.',
+    '',
+    'DAR Region VIII — Eastern Visayas'
+  ].join('\n');
+
+  const htmlBody = [
+    '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #dce5df;border-radius:12px;">',
+    '<div style="font-size:12px;font-weight:700;color:#0f4c29;text-transform:uppercase;letter-spacing:0.06em;">Department of Agrarian Reform — Region VIII</div>',
+    '<h2 style="margin:6px 0 12px;color:#132018;">SALIG Email Verification</h2>',
+    '<p style="color:#374151;font-size:14px;">Hello <strong>' + recipientName.replace(/</g, '&lt;') + '</strong>,</p>',
+    '<p style="color:#374151;font-size:14px;">Use the 6-digit verification OTP code below to verify your email address for creating your SALIG account:</p>',
+    '<div style="margin:18px 0;padding:16px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;text-align:center;">',
+    '<span style="font-size:30px;font-weight:800;letter-spacing:0.3em;color:#0a361d;font-family:monospace;">' + otp + '</span>',
+    '</div>',
+    '<p style="color:#54655a;font-size:12.5px;">This code is valid for <strong>' + expires + ' minutes</strong>. After sign-up, your account will await Administrator confirmation.</p>',
+    '</div>'
+  ].join('');
+
+  MailApp.sendEmail({
+    to: recipient,
+    subject: subject,
+    body: plainBody,
+    htmlBody: htmlBody
+  });
+}
+
+/** Ensure the User_Accounts tab exists in the Regional Hub Google Sheet. */
+function ensureUserAccountsSheet_() {
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  let sheet = hub.getSheetByName('User_Accounts');
+  if (!sheet) {
+    sheet = hub.insertSheet('User_Accounts');
+    sheet.getRange(1, 1, 1, USER_ACCOUNTS_HEADERS.length).setValues([USER_ACCOUNTS_HEADERS]);
+    sheet
+      .getRange(1, 1, 1, USER_ACCOUNTS_HEADERS.length)
+      .setFontWeight('bold')
+      .setBackground('#14532D')
+      .setFontColor('#FFFFFF');
+    sheet.setFrozenRows(1);
+    sheet.getRange('E:E').setNumberFormat('@');
+  }
+  return sheet;
+}
+
+/** Read all SALIG user accounts from the Regional Hub User_Accounts tab. */
+function readUserAccountsFromHub_() {
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  const sheet = hub.getSheetByName('User_Accounts');
+  if (!sheet || sheet.getLastRow() <= 1) return [];
+  const data = sheet.getDataRange().getDisplayValues();
+  const headers = data[0].map(function (h) {
+    return String(h || '').trim();
+  });
+  const colIdx = {};
+  headers.forEach(function (h, i) {
+    colIdx[h] = i;
+  });
+
+  const getVal = function (row, key) {
+    const idx = colIdx[key];
+    return idx !== undefined ? String(row[idx] || '').trim() : '';
+  };
+
+  const out = [];
+  for (let r = 1; r < data.length; r++) {
+    const email = getVal(data[r], 'Email').toLowerCase();
+    const id = getVal(data[r], 'User_ID');
+    if (!email && !id) continue;
+    const verifiedRaw = getVal(data[r], 'Email_Verified').toUpperCase();
+    out.push({
+      id: id || ('usr-' + email),
+      name: getVal(data[r], 'Full_Name'),
+      email: email,
+      province: getVal(data[r], 'Province'),
+      contactNumber: getVal(data[r], 'Contact_Number'),
+      role: (getVal(data[r], 'Role') || 'user').toLowerCase(),
+      status: (getVal(data[r], 'Status') || 'pending').toLowerCase(),
+      emailVerified: verifiedRaw === 'TRUE' || verifiedRaw === 'YES',
+      passwordHash: getVal(data[r], 'Password_Hash'),
+      createdAt: getVal(data[r], 'Created_At'),
+      updatedAt: getVal(data[r], 'Updated_At') || getVal(data[r], 'Created_At'),
+      approvedAt: getVal(data[r], 'Approved_At') || null,
+      approvedBy: getVal(data[r], 'Approved_By') || null
+    });
+  }
+  return out;
+}
+
+/** Upsert a single SALIG user account into the Regional Hub User_Accounts tab. */
+function upsertUserAccountRecord_(user) {
+  const sheet = ensureUserAccountsSheet_();
+  const values = sheet.getDataRange().getDisplayValues();
+  const headers = values[0].map(function (h) { return String(h || '').trim(); });
+  const idCol = headers.indexOf('User_ID');
+  const emailCol = headers.indexOf('Email');
+
+  const targetId = String(user.id || '').trim();
+  const targetEmail = String(user.email || '').trim().toLowerCase();
+  const rowMap = {
+    User_ID: targetId,
+    Full_Name: String(user.name || '').trim(),
+    Email: targetEmail,
+    Province: String(user.province || '').trim(),
+    Contact_Number: String(user.contactNumber || '').trim(),
+    Role: String(user.role || 'user').trim().toLowerCase(),
+    Status: String(user.status || 'pending').trim().toLowerCase(),
+    Email_Verified: user.emailVerified ? 'TRUE' : 'FALSE',
+    Password_Hash: String(user.passwordHash || '').trim(),
+    Created_At: String(user.createdAt || '').trim(),
+    Updated_At: String(user.updatedAt || user.createdAt || '').trim(),
+    Approved_At: String(user.approvedAt || '').trim(),
+    Approved_By: String(user.approvedBy || '').trim()
+  };
+
+  let existingExistingHash = '';
+  let foundRow = -1;
+  for (let r = 1; r < values.length; r++) {
+    const rId = idCol >= 0 ? String(values[r][idCol] || '').trim() : '';
+    const rEmail = emailCol >= 0 ? String(values[r][emailCol] || '').trim().toLowerCase() : '';
+    if ((targetId && rId === targetId) || (targetEmail && rEmail === targetEmail)) {
+      foundRow = r + 1;
+      const hashCol = headers.indexOf('Password_Hash');
+      if (hashCol >= 0) existingExistingHash = String(values[r][hashCol] || '').trim();
+      break;
+    }
+  }
+  if (!rowMap.Password_Hash && existingExistingHash) {
+    rowMap.Password_Hash = existingExistingHash;
+  }
+
+  const outRow = USER_ACCOUNTS_HEADERS.map(function (h) {
+    return rowMap[h] !== undefined ? rowMap[h] : '';
+  });
+
+  if (foundRow > 0) {
+    sheet.getRange(foundRow, 1, 1, outRow.length).setValues([outRow]);
+    sheet.getRange(foundRow, 5, 1, 1).setNumberFormat('@');
+  } else {
+    sheet.appendRow(outRow);
+    sheet.getRange(sheet.getLastRow(), 5, 1, 1).setNumberFormat('@');
+  }
+  return rowMap;
+}
+
+/** Sync an array of SALIG user accounts into the Regional Hub User_Accounts tab. */
+function syncAllUserAccountsRecord_(users) {
+  if (!Array.isArray(users)) return { ok: true, synced: 0, users: readUserAccountsFromHub_() };
+  let synced = 0;
+  users.forEach(function (u) {
+    if (u && u.email) {
+      upsertUserAccountRecord_(u);
+      synced += 1;
+    }
+  });
+  return { ok: true, synced: synced, users: readUserAccountsFromHub_() };
+}
+
+/** Delete a SALIG user account row from the Regional Hub User_Accounts tab. */
+function deleteUserAccountRecord_(userId, email) {
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  const sheet = hub.getSheetByName('User_Accounts');
+  if (!sheet || sheet.getLastRow() <= 1) return false;
+  const values = sheet.getDataRange().getDisplayValues();
+  const headers = values[0].map(function (h) { return String(h || '').trim(); });
+  const idCol = headers.indexOf('User_ID');
+  const emailCol = headers.indexOf('Email');
+  const targetId = String(userId || '').trim();
+  const targetEmail = String(email || '').trim().toLowerCase();
+
+  let deletedAny = false;
+  for (let r = values.length - 1; r >= 1; r--) {
+    const rId = idCol >= 0 ? String(values[r][idCol] || '').trim() : '';
+    const rEmail = emailCol >= 0 ? String(values[r][emailCol] || '').trim().toLowerCase() : '';
+    if ((targetId && rId === targetId) || (targetEmail && rEmail === targetEmail)) {
+      sheet.deleteRow(r + 1);
+      deletedAny = true;
+    }
+  }
+  return deletedAny;
+}
+
+/** Run once inside Apps Script editor to authorize MailApp email sending permission. */
+function authorizeEmailQuota() {
+  const remaining = MailApp.getRemainingDailyQuota();
+  Logger.log('Remaining daily MailApp quota: ' + remaining);
+  return remaining;
 }

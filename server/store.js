@@ -1,13 +1,30 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  DEFAULT_ADMIN_EMAIL,
+  DEFAULT_ADMIN_PASSWORD,
+  USER_PROVINCE_OPTIONS,
+  OTP_TTL_MS,
+  OTP_RESEND_COOLDOWN_MS,
+  generateOtpCode,
+  hashOtpCode,
+  verifyOtpHash,
+  hashPassword,
+  verifyPassword,
+  toPublicUser
+} from './auth.js';
 import {
   REGIONAL_REGISTRY,
   PROVINCE_CODES,
   OPTOOL_SHEET_SCHEMAS,
   MILESTONE_STAGES,
   MILESTONE_TARGET_TABS,
+  DASHBOARD_MILESTONES,
+  normalizeNepTargets,
+  normalizeNepProvinceList,
   inferProvinceCodeFromMunicipality,
   inferProvinceCodeFromText,
   formatArea4,
@@ -151,6 +168,155 @@ const DATABASE_TO_TARGET_MAP = {
   }
 };
 
+const MONTH_NAME_INDEX = {
+  january: 1, jan: 1,
+  february: 2, feb: 2,
+  march: 3, mar: 3,
+  april: 4, apr: 4,
+  may: 5,
+  june: 6, jun: 6,
+  july: 7, jul: 7,
+  august: 8, aug: 8,
+  september: 9, sep: 9, sept: 9,
+  october: 10, oct: 10,
+  november: 11, nov: 11,
+  december: 12, dec: 12
+};
+
+function parseMetricNumber(val) {
+  const cleaned = typeof val === 'string' ? val.replace(/,/g, '').trim() : val;
+  if (cleaned === '' || cleaned === null || cleaned === undefined) return 0;
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : 0;
+}
+
+/** Extract `{ year, month, quarter }` from ISO, MM/DD/YYYY, or "Month YYYY" strings. */
+function parseQuarterAndYear(raw) {
+  const str = String(raw ?? '').trim();
+  if (!str) return null;
+
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12) {
+      return { year, month, quarter: Math.ceil(month / 3) };
+    }
+  }
+
+  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const first = Number(slashMatch[1]);
+    const second = Number(slashMatch[2]);
+    const year = Number(slashMatch[3]);
+    const month = first > 12 ? second : first;
+    if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12) {
+      return { year, month, quarter: Math.ceil(month / 3) };
+    }
+  }
+
+  const wordMatch = str.match(/\b([A-Za-z]+)\s+(\d{4})\b/);
+  if (wordMatch) {
+    const month = MONTH_NAME_INDEX[wordMatch[1].toLowerCase()];
+    const year = Number(wordMatch[2]);
+    if (month && year >= 1900 && year <= 2100) {
+      return { year, month, quarter: Math.ceil(month / 3) };
+    }
+  }
+
+  if (!/^\d+(?:\.\d+)?$/.test(str)) {
+    const dt = new Date(str);
+    if (!Number.isNaN(dt.getTime())) {
+      const year = dt.getFullYear();
+      const month = dt.getMonth() + 1;
+      if (year >= 1900 && year <= 2100) {
+        return { year, month, quarter: Math.ceil(month / 3) };
+      }
+    }
+  }
+
+  return null;
+}
+
+function resolveFirstDateQuarter(row, dateKeys) {
+  for (const key of dateKeys) {
+    const parsed = parseQuarterAndYear(row?.[key]);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function getDbParcelArea(dbRow) {
+  if (!dbRow) return 0;
+  return (
+    parseMetricNumber(dbRow.carpable) ||
+    parseMetricNumber(dbRow.computedArea) ||
+    parseMetricNumber(dbRow.totalArea) ||
+    0
+  );
+}
+
+const MILESTONE_ANALYTICS_SPECS = {
+  cf_doc: {
+    tabName: 'CF(DOC)',
+    dateKeys: ['reportedMonth', 'datePreparedSigned', 'dateFiConducted'],
+    include: () => true,
+    getCount: () => 1,
+    getArea: (_r, db) => getDbParcelArea(db)
+  },
+  land_survey: {
+    tabName: 'Survey',
+    dateKeys: [
+      'reportedMonth',
+      'currentDate',
+      'aspDate',
+      'dateAcceptedDenrSmd',
+      'srTransmittedDenrSmdDate',
+      'srAcceptedByDarro',
+      'srForwardedToDarro',
+      'finalizedSrDate',
+      'fieldWorkCompletionDate',
+      'fieldWorkStartDate',
+      'dateRss'
+    ],
+    include: () => true,
+    getCount: () => 1,
+    getArea: (_r, db) => getDbParcelArea(db)
+  },
+  land_valuation: {
+    tabName: 'MOV',
+    dateKeys: ['reportedMonth', 'dateTransLbpAoc', 'dateOfMov', 'dateReceivedDarpo', 'ppuDate'],
+    include: () => true,
+    getCount: () => 1,
+    getArea: (_r, db) => getDbParcelArea(db)
+  },
+  ep_cloa_registration: {
+    tabName: 'RegistrationDistribution',
+    dateKeys: ['dateRegistered', 'monthReported'],
+    include: (r) =>
+      String(r?.dateRegistered || '').trim() !== '' ||
+      String(r?.rodTitleNo || '').trim() !== '' ||
+      String(r?.dateOfDistribution || '').trim() === '',
+    getCount: (r) => Math.max(1, Number.parseInt(r?.noOfTitles, 10) || 1),
+    getArea: (r, db) => parseMetricNumber(r?.areaHas) || getDbParcelArea(db)
+  },
+  ep_cloa_distribution: {
+    tabName: 'RegistrationDistribution',
+    dateKeys: ['dateOfDistribution', 'monthReported'],
+    include: (r) => String(r?.dateOfDistribution || '').trim() !== '',
+    getCount: (r) => Math.max(1, Number.parseInt(r?.noOfTitles, 10) || 1),
+    getArea: (r, db) => parseMetricNumber(r?.areaHas) || getDbParcelArea(db)
+  },
+  installation: {
+    tabName: 'Installation',
+    dateKeys: ['dateOfInstallation', 'monthReported', 'dateDistributed', 'dateRegistered'],
+    include: (r) => !['no', 'false', '0'].includes(String(r?.installedStatus || '').trim().toLowerCase()),
+    getCount: (r) => Math.max(1, Number.parseInt(r?.noOfTitles, 10) || 1),
+    getArea: (r, db) =>
+      parseMetricNumber(r?.areaHas2) || parseMetricNumber(r?.areaHas1) || getDbParcelArea(db)
+  }
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_DATA_DIR = path.join(__dirname, 'data');
@@ -199,6 +365,8 @@ export class ConsolidatedStore {
   normalizeState() {
     const seed = createSeedState();
     if (!this.state.baselines) this.state.baselines = seed.baselines;
+    this.state.nepTargets = normalizeNepTargets(this.state.nepTargets);
+    this.state.nepProvinceList = normalizeNepProvinceList(this.state.nepProvinceList);
     if (!Array.isArray(this.state.milestoneData)) this.state.milestoneData = [];
     if (!this.state.optool) this.state.optool = {};
     let dirty = false;
@@ -248,7 +416,59 @@ export class ConsolidatedStore {
     if (!this.state.gasWebAppUrl && process.env.GAS_WEB_APP_URL) {
       this.state.gasWebAppUrl = String(process.env.GAS_WEB_APP_URL).trim();
     }
+    if (!this.state.authSecret) {
+      this.state.authSecret =
+        String(process.env.SALIG_AUTH_SECRET || '').trim() ||
+        crypto.randomBytes(32).toString('hex');
+      dirty = true;
+    }
+    if (!Array.isArray(this.state.users)) {
+      this.state.users = [];
+      dirty = true;
+    }
+    const hasApprovedAdmin = this.state.users.some(
+      (u) => u && u.role === 'admin' && u.status === 'approved'
+    );
+    if (!hasApprovedAdmin) {
+      const adminEmail = String(DEFAULT_ADMIN_EMAIL || 'admin@dar8.gov.ph').trim().toLowerCase();
+      const existingAdmin = this.state.users.find(
+        (u) => u && String(u.email || '').trim().toLowerCase() === adminEmail
+      );
+      const now = new Date().toISOString();
+      if (existingAdmin) {
+        existingAdmin.role = 'admin';
+        existingAdmin.status = 'approved';
+        existingAdmin.updatedAt = now;
+        existingAdmin.approvedAt = existingAdmin.approvedAt || now;
+        existingAdmin.approvedBy = existingAdmin.approvedBy || 'system';
+      } else {
+        this.state.users.push({
+          id: `usr-admin-${crypto.randomBytes(4).toString('hex')}`,
+          name: 'Region VIII Administrator',
+          email: adminEmail,
+          province: 'Region VIII Hub',
+          contactNumber: '0917-000-0000',
+          passwordHash: hashPassword(DEFAULT_ADMIN_PASSWORD),
+          role: 'admin',
+          status: 'approved',
+          createdAt: now,
+          updatedAt: now,
+          approvedAt: now,
+          approvedBy: 'system'
+        });
+      }
+      dirty = true;
+    }
     if (!Array.isArray(this.state.syncLogs)) this.state.syncLogs = [];
+    if (!this.state.pendingOtps || typeof this.state.pendingOtps !== 'object') {
+      this.state.pendingOtps = {};
+    }
+    const nowMs = Date.now();
+    for (const [k, entry] of Object.entries(this.state.pendingOtps)) {
+      if (!entry || !entry.expiresAt || Number(entry.expiresAt) < nowMs) {
+        delete this.state.pendingOtps[k];
+      }
+    }
     if (!this.state.liveHubSnapshot) {
       this.state.liveHubSnapshot = { checkedAt: null, reachable: null, tabRowCounts: {} };
     }
@@ -296,7 +516,8 @@ export class ConsolidatedStore {
     return `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
   }
 
-  upsertMilestone(payload) {
+  upsertMilestone(payload, options = {}) {
+    const { skipSave = false } = options;
     const provinceCode =
       PROVINCE_CODES.includes(payload.Province_Code)
         ? payload.Province_Code
@@ -330,7 +551,7 @@ export class ConsolidatedStore {
     } else {
       this.state.milestoneData.unshift(normalized);
     }
-    this.save();
+    if (!skipSave) this.save();
     return normalized;
   }
 
@@ -344,11 +565,9 @@ export class ConsolidatedStore {
     return false;
   }
 
-  upsertOptoolRow(tabName, rowPayload, index = null) {
-    if (!OPTOOL_SHEET_SCHEMAS[tabName]) {
-      throw new Error(`Unknown OPTool tab: ${tabName}`);
-    }
+  normalizeOptoolRow(tabName, rowPayload, linkedDbRow = null) {
     const schema = OPTOOL_SHEET_SCHEMAS[tabName];
+    if (!schema) throw new Error(`Unknown OPTool tab: ${tabName}`);
     const cleanRow = {};
     for (const col of schema) {
       let val = rowPayload[col.key] ?? rowPayload[col.header] ?? '';
@@ -362,12 +581,21 @@ export class ConsolidatedStore {
       }
       cleanRow[col.key] = val;
     }
-
-    const linkedDbRow =
-      tabName === 'RegistrationDistribution' || tabName === 'Installation'
+    const resolvedLinked =
+      linkedDbRow ||
+      (tabName === 'RegistrationDistribution' || tabName === 'Installation'
         ? findLinkedDatabaseRow(this.state.optool.Database, cleanRow.lhid)
-        : null;
-    applyTabRowDefaults(tabName, cleanRow, linkedDbRow);
+        : null);
+    applyTabRowDefaults(tabName, cleanRow, resolvedLinked);
+    return cleanRow;
+  }
+
+  upsertOptoolRow(tabName, rowPayload, index = null, options = {}) {
+    const { skipSave = false } = options;
+    if (!OPTOOL_SHEET_SCHEMAS[tabName]) {
+      throw new Error(`Unknown OPTool tab: ${tabName}`);
+    }
+    const cleanRow = this.normalizeOptoolRow(tabName, rowPayload);
 
     const rows = this.state.optool[tabName];
     if (index !== null && Number.isInteger(index) && index >= 0 && index < rows.length) {
@@ -383,8 +611,100 @@ export class ConsolidatedStore {
         rows.unshift(cleanRow);
       }
     }
-    this.save();
+    if (!skipSave) this.save();
     return cleanRow;
+  }
+
+  /** Bulk-upsert parsed Milestone_Data, OPTool tabs, and optional NEP province sheet using O(1) indexes and a single save. */
+  importParsedDataset({ milestoneData = [], optool = {}, nepProvinceList = null } = {}, options = {}) {
+    const { skipSave = false } = options;
+    let importedCount = 0;
+
+    if (Array.isArray(milestoneData) && milestoneData.length > 0) {
+      const msIndex = new Map();
+      this.state.milestoneData.forEach((r, idx) => {
+        if (r && r.Record_ID) msIndex.set(r.Record_ID, idx);
+      });
+      for (const ms of milestoneData) {
+        const beforeLen = this.state.milestoneData.length;
+        const saved = this.upsertMilestone(ms, { skipSave: true });
+        importedCount++;
+        if (!msIndex.has(saved.Record_ID) && this.state.milestoneData.length > beforeLen) {
+          msIndex.set(saved.Record_ID, 0);
+        }
+      }
+    }
+
+    if (optool && typeof optool === 'object') {
+      // Import Database first so linked defaults resolve for downstream tabs
+      const orderedTabs = Object.keys(optool).sort((a, b) =>
+        a === 'Database' ? -1 : b === 'Database' ? 1 : 0
+      );
+      let dbByLhid = null;
+      const getDbByLhid = () => {
+        if (dbByLhid) return dbByLhid;
+        dbByLhid = new Map();
+        for (const row of this.state.optool.Database || []) {
+          const key = String(row?.lhid || '').trim().toLowerCase();
+          if (key && !dbByLhid.has(key)) dbByLhid.set(key, row);
+        }
+        return dbByLhid;
+      };
+
+      for (const tabName of orderedTabs) {
+        const incoming = optool[tabName];
+        if (!Array.isArray(incoming) || !OPTOOL_SHEET_SCHEMAS[tabName] || incoming.length === 0) {
+          continue;
+        }
+        const targetRows = this.state.optool[tabName];
+        const lhidMap = new Map();
+        const jsonMap = new Map();
+        targetRows.forEach((r, idx) => {
+          if (tabName === 'Database' && r?.lhid) lhidMap.set(r.lhid, idx);
+          jsonMap.set(JSON.stringify(r), idx);
+        });
+        const newPrepends = [];
+        for (const rawRow of incoming) {
+          const lhidKey = String(rawRow?.lhid || '').trim().toLowerCase();
+          const linkedDb =
+            tabName === 'RegistrationDistribution' || tabName === 'Installation'
+              ? getDbByLhid().get(lhidKey) || null
+              : null;
+          const cleanRow = this.normalizeOptoolRow(tabName, rawRow, linkedDb);
+          const jsonKey = JSON.stringify(cleanRow);
+          if (tabName === 'Database' && cleanRow.lhid && lhidMap.has(cleanRow.lhid)) {
+            targetRows[lhidMap.get(cleanRow.lhid)] = cleanRow;
+          } else if (jsonMap.has(jsonKey)) {
+            targetRows[jsonMap.get(jsonKey)] = cleanRow;
+          } else {
+            newPrepends.push(cleanRow);
+            jsonMap.set(jsonKey, -1);
+          }
+          if (tabName === 'Database' && dbByLhid && cleanRow.lhid) {
+            dbByLhid.set(cleanRow.lhid.trim().toLowerCase(), cleanRow);
+          }
+          importedCount++;
+        }
+        if (newPrepends.length > 0) {
+          this.state.optool[tabName] = [...newPrepends.reverse(), ...targetRows];
+        }
+      }
+    }
+
+    if (nepProvinceList && typeof nepProvinceList === 'object') {
+      const incomingNep = normalizeNepProvinceList(nepProvinceList);
+      const mergedNep = normalizeNepProvinceList(this.state.nepProvinceList);
+      for (const code of Object.keys(mergedNep)) {
+        if (Object.prototype.hasOwnProperty.call(nepProvinceList, code)) {
+          mergedNep[code] = incomingNep[code];
+          importedCount++;
+        }
+      }
+      this.state.nepProvinceList = normalizeNepProvinceList(mergedNep);
+    }
+
+    if (!skipSave) this.save();
+    return importedCount;
   }
 
   deleteOptoolRow(tabName, index) {
@@ -454,6 +774,131 @@ export class ConsolidatedStore {
     return { lhid: target, tabs, milestones };
   }
 
+  /** Resolve province code for a milestone record (returns null if unknown). */
+  getMilestoneProvinceCode(row) {
+    if (!row) return null;
+    if (PROVINCE_CODES.includes(row.Province_Code)) return row.Province_Code;
+    return (
+      inferProvinceCodeFromMunicipality(row.Municipality) ||
+      inferProvinceCodeFromText(row.Record_ID) ||
+      null
+    );
+  }
+
+  /** Map normalized LHID -> province code from the master OPTool Database tab. */
+  buildDbLhidProvinceMap() {
+    const map = new Map();
+    for (const r of this.state.optool?.Database || []) {
+      const lhidKey = String(r.lhid || '').trim().toLowerCase();
+      if (!lhidKey) continue;
+      const code =
+        inferProvinceCodeFromText(r.province) ||
+        inferProvinceCodeFromMunicipality(r.municipality) ||
+        inferProvinceCodeFromText(r.lhid) ||
+        null;
+      if (code && !map.has(lhidKey)) {
+        map.set(lhidKey, code);
+      }
+    }
+    return map;
+  }
+
+  /** Resolve province code for any OPTool tab row via province, municipality, or Database LHID link. */
+  getOptoolRowProvinceCode(tabName, row, dbLhidMap = null) {
+    if (!row) return null;
+    if (row.province) {
+      const fromProv = inferProvinceCodeFromText(row.province);
+      if (fromProv) return fromProv;
+    }
+    if (row.municipality) {
+      const fromMun = inferProvinceCodeFromMunicipality(row.municipality);
+      if (fromMun) return fromMun;
+    }
+    const lhidKey = String(row.lhid || '').trim().toLowerCase();
+    if (lhidKey && tabName !== 'Database') {
+      const lookup = dbLhidMap || this.buildDbLhidProvinceMap();
+      if (lookup.has(lhidKey)) return lookup.get(lhidKey);
+    }
+    return inferProvinceCodeFromText(row.lhid) || null;
+  }
+
+  /** Return rows for a single OPTool tab filtered to `scopeCode` when provided. */
+  getScopedOptoolTabRows(tabName, scopeCode, dbLhidMap = null) {
+    const rows = this.state.optool?.[tabName] || [];
+    if (!scopeCode) return rows;
+    const lookup = dbLhidMap || this.buildDbLhidProvinceMap();
+    return rows.filter((row) => this.getOptoolRowProvinceCode(tabName, row, lookup) === scopeCode);
+  }
+
+  /**
+   * Translate a client-side scoped array index back to the true global index
+   * in `this.state.optool[tabName]`. Returns -1 if out of bounds.
+   */
+  getOptoolGlobalIndex(tabName, scopedIndex, scopeCode) {
+    const rows = this.state.optool?.[tabName] || [];
+    if (!Number.isInteger(scopedIndex) || scopedIndex < 0) return -1;
+    if (!scopeCode) return scopedIndex < rows.length ? scopedIndex : -1;
+
+    const lookup = this.buildDbLhidProvinceMap();
+    let seen = 0;
+    for (let i = 0; i < rows.length; i += 1) {
+      if (this.getOptoolRowProvinceCode(tabName, rows[i], lookup) === scopeCode) {
+        if (seen === scopedIndex) return i;
+        seen += 1;
+      }
+    }
+    return -1;
+  }
+
+  /** Return a shallow state view restricted to `scopeCode` (or full state when null). */
+  getScopedState(scopeCode) {
+    if (!scopeCode) return this.state;
+    const dbLhidMap = this.buildDbLhidProvinceMap();
+    const scopedOptool = {};
+    for (const tabName of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
+      scopedOptool[tabName] = this.getScopedOptoolTabRows(tabName, scopeCode, dbLhidMap);
+    }
+    const scopedBaselines = {};
+    if (this.state.baselines?.[scopeCode]) {
+      scopedBaselines[scopeCode] = this.state.baselines[scopeCode];
+    }
+    const scopedNepProvinceList = {};
+    if (this.state.nepProvinceList?.[scopeCode]) {
+      scopedNepProvinceList[scopeCode] = this.state.nepProvinceList[scopeCode];
+    }
+    const scopedNodeStatuses = {};
+    if (this.state.nodeStatuses?.[scopeCode]) {
+      scopedNodeStatuses[scopeCode] = this.state.nodeStatuses[scopeCode];
+    }
+    return {
+      ...this.state,
+      baselines: scopedBaselines,
+      nepTargets: this.state.nepTargets,
+      nepProvinceList: scopedNepProvinceList,
+      nodeStatuses: scopedNodeStatuses,
+      milestoneData: (this.state.milestoneData || []).filter(
+        (m) => this.getMilestoneProvinceCode(m) === scopeCode
+      ),
+      optool: scopedOptool
+    };
+  }
+
+  /** Restrict a Landholding 360 dossier to records belonging to `scopeCode`. */
+  filterLandholding360ByScope(dossier, scopeCode) {
+    if (!scopeCode || !dossier) return dossier;
+    const dbLhidMap = this.buildDbLhidProvinceMap();
+    const tabs = {};
+    for (const tabName of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
+      tabs[tabName] = (dossier.tabs?.[tabName] || []).filter(
+        (row) => this.getOptoolRowProvinceCode(tabName, row, dbLhidMap) === scopeCode
+      );
+    }
+    const milestones = (dossier.milestones || []).filter(
+      (m) => this.getMilestoneProvinceCode(m) === scopeCode
+    );
+    return { ...dossier, tabs, milestones };
+  }
+
   updateBaselines(newBaselines) {
     for (const code of PROVINCE_CODES) {
       if (newBaselines[code]) {
@@ -465,6 +910,20 @@ export class ConsolidatedStore {
     }
     this.save();
     return this.state.baselines;
+  }
+
+  /** Persist per-province, per-milestone NEP Target updates. */
+  updateNepTargets(newNepTargets) {
+    this.state.nepTargets = normalizeNepTargets(newNepTargets);
+    this.save();
+    return this.state.nepTargets;
+  }
+
+  /** Persist Regional Hub NEP Sheet per-province totals (LHS, AREA, ARBs). */
+  updateNepProvinceList(raw = {}) {
+    this.state.nepProvinceList = normalizeNepProvinceList(raw);
+    this.save();
+    return this.state.nepProvinceList;
   }
 
   resetToSample() {
@@ -488,21 +947,91 @@ export class ConsolidatedStore {
     return this.state;
   }
 
+  computeMilestoneNepBreakdown({ dbLhidMap, activeScope, milestoneYear = 'ALL' }) {
+    const dbByLhid = new Map();
+    for (const r of this.state.optool?.Database || []) {
+      const key = String(r?.lhid || '').trim().toLowerCase();
+      if (key && !dbByLhid.has(key)) dbByLhid.set(key, r);
+    }
+
+    const yearSet = new Set();
+    const filterYear = milestoneYear && milestoneYear !== 'ALL' ? Number(milestoneYear) : null;
+    const roundArea = (val) => Number((Number(val) || 0).toFixed(4));
+
+    const rows = DASHBOARD_MILESTONES.map((meta) => {
+      const spec = MILESTONE_ANALYTICS_SPECS[meta.key];
+      const sourceRows = this.getScopedOptoolTabRows(spec.tabName, activeScope, dbLhidMap).filter(
+        (r) => spec.include(r)
+      );
+
+      const q = {
+        1: { count: 0, areaHas: 0 },
+        2: { count: 0, areaHas: 0 },
+        3: { count: 0, areaHas: 0 },
+        4: { count: 0, areaHas: 0 },
+        undated: { count: 0, areaHas: 0 }
+      };
+
+      for (const r of sourceRows) {
+        const parsed = resolveFirstDateQuarter(r, spec.dateKeys);
+        if (parsed?.year) yearSet.add(parsed.year);
+        if (filterYear && parsed?.year !== filterYear) continue;
+
+        const dbRow = dbByLhid.get(String(r?.lhid || '').trim().toLowerCase()) || null;
+        const countVal = spec.getCount(r);
+        const areaVal = spec.getArea(r, dbRow);
+        const bucket = parsed?.quarter ? q[parsed.quarter] : q.undated;
+        bucket.count += countVal;
+        bucket.areaHas += areaVal;
+      }
+
+      const totalCount = q[1].count + q[2].count + q[3].count + q[4].count + q.undated.count;
+      const totalArea = q[1].areaHas + q[2].areaHas + q[3].areaHas + q[4].areaHas + q.undated.areaHas;
+
+      const regTarget = this.state.nepTargets?.[meta.key] || {};
+      const nepTargetCount = Number(regTarget.targetCount) || 0;
+      const nepTargetAreaHas = Number(regTarget.targetAreaHas) || 0;
+
+      return {
+        key: meta.key,
+        label: meta.label,
+        sourceTab: spec.tabName,
+        nepTargetCount,
+        nepTargetAreaHas: roundArea(nepTargetAreaHas),
+        q1: { count: q[1].count, areaHas: roundArea(q[1].areaHas) },
+        q2: { count: q[2].count, areaHas: roundArea(q[2].areaHas) },
+        q3: { count: q[3].count, areaHas: roundArea(q[3].areaHas) },
+        q4: { count: q[4].count, areaHas: roundArea(q[4].areaHas) },
+        undated: { count: q.undated.count, areaHas: roundArea(q.undated.areaHas) },
+        total: { count: totalCount, areaHas: roundArea(totalArea) },
+        rateCountPct:
+          nepTargetCount > 0 ? Number(((totalCount / nepTargetCount) * 100).toFixed(2)) : 0,
+        rateAreaPct:
+          nepTargetAreaHas > 0 ? Number(((totalArea / nepTargetAreaHas) * 100).toFixed(2)) : 0,
+        varianceCount: totalCount - nepTargetCount,
+        varianceAreaHas: roundArea(totalArea - nepTargetAreaHas)
+      };
+    });
+
+    return {
+      milestoneNepBreakdown: rows,
+      availableMilestoneYears: Array.from(yearSet).sort((a, b) => a - b)
+    };
+  }
+
   computeAnalytics(filters = {}) {
     const {
       province = 'ALL',
       periodMonth = 'LATEST',
       batch = 'ALL',
-      stage = 'ALL'
+      stage = 'ALL',
+      milestoneYear = 'ALL',
+      restrictToProvince = false
     } = filters;
 
     const allMilestones = this.state.milestoneData.map((row) => {
       const provCode =
-        PROVINCE_CODES.includes(row.Province_Code)
-          ? row.Province_Code
-          : inferProvinceCodeFromMunicipality(row.Municipality) ||
-            inferProvinceCodeFromText(row.Record_ID) ||
-            'LEY';
+        this.getMilestoneProvinceCode(row) || 'LEY';
       const monthKey = /^\d{4}-\d{2}/.test(String(row.Milestone_Date || ''))
         ? String(row.Milestone_Date).slice(0, 7)
         : 'Unknown';
@@ -514,9 +1043,14 @@ export class ConsolidatedStore {
       };
     });
 
+    const visibleMilestones =
+      restrictToProvince && province !== 'ALL'
+        ? allMilestones.filter((m) => m.Province_Code === province)
+        : allMilestones;
+
     // Discover available months sorted ascending
     const availableMonths = Array.from(
-      new Set(allMilestones.map((m) => m.Month_Key).filter((m) => m !== 'Unknown'))
+      new Set(visibleMilestones.map((m) => m.Month_Key).filter((m) => m !== 'Unknown'))
     ).sort();
 
     const activeMonth =
@@ -525,7 +1059,7 @@ export class ConsolidatedStore {
         : periodMonth;
 
     // Filter by province, batch, stage
-    const scoped = allMilestones.filter((m) => {
+    const scoped = visibleMilestones.filter((m) => {
       if (province !== 'ALL' && m.Province_Code !== province) return false;
       if (batch !== 'ALL' && m.Batch_Category !== batch) return false;
       if (stage !== 'ALL' && m.Milestone_Stage !== stage) return false;
@@ -566,7 +1100,12 @@ export class ConsolidatedStore {
     );
 
     // Provincial breakdown matrix
-    const provincialNodes = REGIONAL_REGISTRY.filter((n) => n.role === 'Provincial Node');
+    const dbLhidMap = this.buildDbLhidProvinceMap();
+    const provincialNodes = REGIONAL_REGISTRY.filter(
+      (n) =>
+        n.role === 'Provincial Node' &&
+        (!restrictToProvince || province === 'ALL' || n.code === province)
+    );
     const provincialBreakdown = provincialNodes.map((node) => {
       const code = node.code;
       const provCum = cumulativeRecords.filter((m) => m.Province_Code === code);
@@ -576,8 +1115,6 @@ export class ConsolidatedStore {
       const cumArea = sumArea(provCum);
       const incTitles = provInc.length;
       const incArea = sumArea(provInc);
-
-      const matchesProv = (val) => inferProvinceCodeFromText(val) === code;
 
       return {
         code,
@@ -596,11 +1133,13 @@ export class ConsolidatedStore {
         completionPctArea:
           base.targetAreaHas > 0 ? Number(((cumArea / base.targetAreaHas) * 100).toFixed(2)) : 0,
         optoolCounts: {
-          Database: this.state.optool.Database.filter((r) => matchesProv(r.province)).length,
-          RegistrationDistribution: this.state.optool.RegistrationDistribution.filter((r) =>
-            matchesProv(r.province)
+          Database: this.getScopedOptoolTabRows('Database', code, dbLhidMap).length,
+          RegistrationDistribution: this.getScopedOptoolTabRows(
+            'RegistrationDistribution',
+            code,
+            dbLhidMap
           ).length,
-          Installation: this.state.optool.Installation.filter((r) => matchesProv(r.province)).length
+          Installation: this.getScopedOptoolTabRows('Installation', code, dbLhidMap).length
         }
       };
     });
@@ -673,25 +1212,11 @@ export class ConsolidatedStore {
     }));
 
     // OPTool cross-tab metrics & Database per province
-    const dbRows = this.state.optool.Database.filter(
-      (r) => province === 'ALL' || inferProvinceCodeFromText(r.province) === province
-    );
-    const dbLhids = new Set(
-      dbRows.map((r) => String(r.lhid || '').trim().toLowerCase()).filter(Boolean)
-    );
-    const filterOptoolByProv = (rows, hasProvCol) => {
-      if (province === 'ALL') return rows;
-      return rows.filter((r) => {
-        if (hasProvCol && r.province) return inferProvinceCodeFromText(r.province) === province;
-        const lhidKey = String(r.lhid || '').trim().toLowerCase();
-        return lhidKey && dbLhids.has(lhidKey);
-      });
-    };
+    const activeScope = province === 'ALL' ? null : province;
+    const dbRows = this.getScopedOptoolTabRows('Database', activeScope, dbLhidMap);
 
     const databaseByProvince = provincialNodes.map((node) => {
-      const pDb = this.state.optool.Database.filter(
-        (r) => inferProvinceCodeFromText(r.province) === node.code
-      );
+      const pDb = this.getScopedOptoolTabRows('Database', node.code, dbLhidMap);
       return {
         code: node.code,
         jurisdiction: node.jurisdiction,
@@ -706,11 +1231,15 @@ export class ConsolidatedStore {
 
     const optoolSummary = {
       Database: dbRows.length,
-      'CF(DOC)': filterOptoolByProv(this.state.optool['CF(DOC)'], false).length,
-      Survey: filterOptoolByProv(this.state.optool.Survey, false).length,
-      MOV: filterOptoolByProv(this.state.optool.MOV, false).length,
-      RegistrationDistribution: filterOptoolByProv(this.state.optool.RegistrationDistribution, true).length,
-      Installation: filterOptoolByProv(this.state.optool.Installation, true).length,
+      'CF(DOC)': this.getScopedOptoolTabRows('CF(DOC)', activeScope, dbLhidMap).length,
+      Survey: this.getScopedOptoolTabRows('Survey', activeScope, dbLhidMap).length,
+      MOV: this.getScopedOptoolTabRows('MOV', activeScope, dbLhidMap).length,
+      RegistrationDistribution: this.getScopedOptoolTabRows(
+        'RegistrationDistribution',
+        activeScope,
+        dbLhidMap
+      ).length,
+      Installation: this.getScopedOptoolTabRows('Installation', activeScope, dbLhidMap).length,
       totalArea: Number(dbRows.reduce((s, r) => s + (Number(r.totalArea) || 0), 0).toFixed(4)),
       totalComputedArea: Number(dbRows.reduce((s, r) => s + (Number(r.computedArea) || 0), 0).toFixed(4)),
       totalCarpableArea: Number(
@@ -721,10 +1250,39 @@ export class ConsolidatedStore {
       )
     };
 
+    const { milestoneNepBreakdown, availableMilestoneYears } = this.computeMilestoneNepBreakdown({
+      dbLhidMap,
+      activeScope,
+      milestoneYear
+    });
+
+    const normalizedNepSheet = normalizeNepProvinceList(this.state.nepProvinceList);
+    const nepProvinceBreakdown = provincialNodes.map((node) => {
+      const entry = normalizedNepSheet[node.code] || { lhs: 0, area: 0, arbs: 0 };
+      return {
+        code: node.code,
+        jurisdiction: node.jurisdiction,
+        provinceName: node.provinceName,
+        lhs: entry.lhs,
+        area: entry.area,
+        arbs: entry.arbs
+      };
+    });
+    const nepProvinceTotals = {
+      lhs: nepProvinceBreakdown.reduce((s, r) => s + r.lhs, 0),
+      area: Number(nepProvinceBreakdown.reduce((s, r) => s + r.area, 0).toFixed(4)),
+      arbs: nepProvinceBreakdown.reduce((s, r) => s + r.arbs, 0)
+    };
+
     return {
       activeMonth,
       incrementalTargetMonth: targetIncMonth,
       availableMonths,
+      milestoneYear,
+      availableMilestoneYears,
+      milestoneNepBreakdown,
+      nepProvinceBreakdown,
+      nepProvinceTotals,
       kpis: {
         cumulativeETitles,
         cumulativeAreaHas: Number(cumulativeAreaHas.toFixed(4)),
@@ -750,6 +1308,346 @@ export class ConsolidatedStore {
       batchBreakdown,
       optoolSummary
     };
+  }
+
+  /** Return the HMAC secret used to sign session cookies. */
+  getAuthSecret() {
+    return this.state.authSecret;
+  }
+
+  /** Find a persisted user record by normalized email. */
+  findUserByEmail(email) {
+    const target = String(email || '').trim().toLowerCase();
+    if (!target) return null;
+    return (this.state.users || []).find(
+      (u) => String(u.email || '').trim().toLowerCase() === target
+    ) || null;
+  }
+
+  /** Find a persisted user record by ID. */
+  findUserById(id) {
+    const target = String(id || '').trim();
+    if (!target) return null;
+    return (this.state.users || []).find((u) => u.id === target) || null;
+  }
+
+  /** List sanitized public user records ordered with pending requests first. */
+  listPublicUsers() {
+    const rank = { pending: 0, approved: 1, rejected: 2 };
+    return [...(this.state.users || [])]
+      .sort((a, b) => {
+        const ra = rank[a.status] ?? 9;
+        const rb = rank[b.status] ?? 9;
+        if (ra !== rb) return ra - rb;
+        return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+      })
+      .map((u) => toPublicUser(u));
+  }
+
+  /** Count accounts awaiting Administrator confirmation. */
+  getPendingUserCount() {
+    return (this.state.users || []).filter((u) => u.status === 'pending').length;
+  }
+
+  /** Issue a 6-digit email verification OTP for a pending registration. */
+  issueSignupOtp(email, { bypassCooldown = false } = {}) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      const err = new Error('Please enter a valid Email address before requesting an OTP.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (this.findUserByEmail(cleanEmail)) {
+      const err = new Error('An account with that email already exists.');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    if (!this.state.pendingOtps || typeof this.state.pendingOtps !== 'object') {
+      this.state.pendingOtps = {};
+    }
+    const now = Date.now();
+    const existing = this.state.pendingOtps[cleanEmail];
+    if (!bypassCooldown && existing?.sentAt && now - existing.sentAt < OTP_RESEND_COOLDOWN_MS) {
+      const waitSec = Math.ceil((OTP_RESEND_COOLDOWN_MS - (now - existing.sentAt)) / 1000);
+      const err = new Error(`Please wait ${waitSec}s before requesting another OTP code.`);
+      err.statusCode = 429;
+      err.retryAfterSeconds = waitSec;
+      throw err;
+    }
+
+    const code = generateOtpCode();
+    this.state.pendingOtps[cleanEmail] = {
+      otpHash: hashOtpCode(cleanEmail, code, this.getAuthSecret()),
+      expiresAt: now + OTP_TTL_MS,
+      sentAt: now,
+      attempts: 0
+    };
+    this.save();
+    return {
+      email: cleanEmail,
+      code,
+      expiresInMinutes: Math.round(OTP_TTL_MS / 60000),
+      cooldownSeconds: Math.round(OTP_RESEND_COOLDOWN_MS / 1000)
+    };
+  }
+
+  /** Verify and consume a 6-digit signup email OTP code. */
+  verifyAndConsumeSignupOtp(email, otpCode) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanCode = String(otpCode || '').trim();
+    if (!/^\d{6}$/.test(cleanCode)) {
+      const err = new Error('Please enter the 6-digit Email OTP code.');
+      err.statusCode = 400;
+      throw err;
+    }
+    const entry = this.state.pendingOtps?.[cleanEmail];
+    if (!entry) {
+      const err = new Error('No active OTP found for this email. Click "Send OTP" first.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (Date.now() > Number(entry.expiresAt || 0)) {
+      delete this.state.pendingOtps[cleanEmail];
+      this.save();
+      const err = new Error('Verification OTP has expired. Please request a new code.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if ((entry.attempts || 0) >= 5) {
+      delete this.state.pendingOtps[cleanEmail];
+      this.save();
+      const err = new Error('Too many incorrect OTP attempts. Please request a new OTP code.');
+      err.statusCode = 429;
+      throw err;
+    }
+    const ok = verifyOtpHash(cleanEmail, cleanCode, entry.otpHash, this.getAuthSecret());
+    if (!ok) {
+      entry.attempts = (entry.attempts || 0) + 1;
+      this.save();
+      const err = new Error('Invalid Email OTP code. Please double-check and try again.');
+      err.statusCode = 400;
+      throw err;
+    }
+    delete this.state.pendingOtps[cleanEmail];
+    this.save();
+    return true;
+  }
+
+  /** Register a new account in pending status awaiting Admin confirmation after OTP verification. */
+  createPendingUser({ name, email, province, contactNumber, password, otpCode }, options = {}) {
+    const { requireOtp = true } = options;
+    const cleanName = String(name || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanProvince = String(province || '').trim();
+    const cleanContact = String(contactNumber || '').trim();
+    const rawPassword = String(password || '');
+
+    if (!cleanName) throw new Error('Full Name is required.');
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      throw new Error('A valid Email address is required.');
+    }
+    if (!USER_PROVINCE_OPTIONS.includes(cleanProvince)) {
+      throw new Error('Please select a valid Region VIII Province.');
+    }
+    if (!cleanContact || cleanContact.replace(/\D/g, '').length < 7) {
+      throw new Error('A valid Contact Number is required.');
+    }
+    if (rawPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters.');
+    }
+    if (this.findUserByEmail(cleanEmail)) {
+      const err = new Error('An account with that email already exists.');
+      err.statusCode = 409;
+      throw err;
+    }
+    if (requireOtp) {
+      this.verifyAndConsumeSignupOtp(cleanEmail, otpCode);
+    }
+
+    const now = new Date().toISOString();
+    const record = {
+      id: `usr-${crypto.randomBytes(6).toString('hex')}`,
+      name: cleanName,
+      email: cleanEmail,
+      province: cleanProvince,
+      contactNumber: cleanContact,
+      passwordHash: hashPassword(rawPassword),
+      emailVerified: Boolean(requireOtp),
+      emailVerifiedAt: requireOtp ? now : null,
+      role: 'user',
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+      approvedAt: null,
+      approvedBy: null
+    };
+    this.state.users.push(record);
+    this.save();
+    return toPublicUser(record);
+  }
+
+  /** Verify credentials and ensure the account has been confirmed by an Administrator. */
+  authenticateUser(email, password) {
+    const user = this.findUserByEmail(email);
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      const err = new Error('Invalid email or password.');
+      err.statusCode = 401;
+      throw err;
+    }
+    if (user.status === 'pending') {
+      const err = new Error(
+        'Your account is awaiting Administrator confirmation. Please contact your Region VIII Admin to confirm your registration.'
+      );
+      err.statusCode = 403;
+      err.code = 'ACCOUNT_PENDING';
+      throw err;
+    }
+    if (user.status === 'rejected') {
+      const err = new Error(
+        'Your account registration was declined by an Administrator.'
+      );
+      err.statusCode = 403;
+      err.code = 'ACCOUNT_REJECTED';
+      throw err;
+    }
+    return toPublicUser(user);
+  }
+
+  /** Approve, reject, or update the role of a user account by an Administrator. */
+  updateUserStatus(id, { status, role } = {}, actingAdmin = 'admin') {
+    const user = this.findUserById(id);
+    if (!user) {
+      const err = new Error('Account not found.');
+      err.statusCode = 404;
+      throw err;
+    }
+    const nextStatus = status !== undefined ? String(status).trim().toLowerCase() : user.status;
+    const nextRole = role !== undefined ? String(role).trim().toLowerCase() : user.role;
+    if (!['pending', 'approved', 'rejected'].includes(nextStatus)) {
+      throw new Error('Status must be pending, approved, or rejected.');
+    }
+    if (!['user', 'admin'].includes(nextRole)) {
+      throw new Error('Role must be user or admin.');
+    }
+    if (actingAdmin && typeof actingAdmin === 'object' && actingAdmin.id === user.id) {
+      if (nextStatus !== 'approved' || nextRole !== 'admin') {
+        throw new Error('You cannot revoke your own active Administrator access.');
+      }
+    }
+
+    const now = new Date().toISOString();
+    user.status = nextStatus;
+    user.role = nextRole;
+    user.updatedAt = now;
+    if (nextStatus === 'approved') {
+      user.approvedAt = now;
+      user.approvedBy =
+        typeof actingAdmin === 'object' ? actingAdmin.email || actingAdmin.name : String(actingAdmin);
+    }
+    this.save();
+    return toPublicUser(user);
+  }
+
+  /**
+   * Merge user account rows fetched from the Regional Hub Google Sheet (`User_Accounts`)
+   * into `this.state.users`, preserving scrypt password hashes and newer timestamps.
+   */
+  mergeUsersFromSheet(sheetUsers = []) {
+    if (!Array.isArray(sheetUsers) || sheetUsers.length === 0) {
+      return { added: 0, updated: 0, total: this.state.users.length };
+    }
+    let added = 0;
+    let updated = 0;
+
+    for (const raw of sheetUsers) {
+      const cleanEmail = String(raw?.email || '').trim().toLowerCase();
+      if (!cleanEmail) continue;
+      const cleanId = String(raw?.id || '').trim() || `usr-${crypto.randomBytes(6).toString('hex')}`;
+      const existing =
+        (this.state.users || []).find((u) => u.id === cleanId) ||
+        this.findUserByEmail(cleanEmail);
+
+      if (!existing) {
+        this.state.users.push({
+          id: cleanId,
+          name: String(raw.name || cleanEmail).trim(),
+          email: cleanEmail,
+          province: String(raw.province || 'Region VIII Hub').trim(),
+          contactNumber: String(raw.contactNumber || '').trim(),
+          passwordHash: String(raw.passwordHash || '').trim(),
+          emailVerified: Boolean(raw.emailVerified),
+          emailVerifiedAt: raw.emailVerified ? raw.createdAt || new Date().toISOString() : null,
+          role: String(raw.role || 'user').toLowerCase() === 'admin' ? 'admin' : 'user',
+          status: ['pending', 'approved', 'rejected'].includes(String(raw.status || '').toLowerCase())
+            ? String(raw.status).toLowerCase()
+            : 'pending',
+          createdAt: raw.createdAt || new Date().toISOString(),
+          updatedAt: raw.updatedAt || raw.createdAt || new Date().toISOString(),
+          approvedAt: raw.approvedAt || null,
+          approvedBy: raw.approvedBy || null
+        });
+        added += 1;
+      } else {
+        const sheetTs = Date.parse(raw.updatedAt || raw.createdAt || '') || 0;
+        const localTs = Date.parse(existing.updatedAt || existing.createdAt || '') || 0;
+        if (sheetTs >= localTs) {
+          if (raw.name) existing.name = String(raw.name).trim();
+          if (raw.province) existing.province = String(raw.province).trim();
+          if (raw.contactNumber !== undefined && String(raw.contactNumber).trim() !== '') {
+            existing.contactNumber = String(raw.contactNumber).trim();
+          }
+          if (raw.passwordHash && String(raw.passwordHash).includes(':')) {
+            existing.passwordHash = String(raw.passwordHash).trim();
+          }
+          if (raw.role && ['user', 'admin'].includes(String(raw.role).toLowerCase())) {
+            existing.role = String(raw.role).toLowerCase();
+          }
+          if (raw.status && ['pending', 'approved', 'rejected'].includes(String(raw.status).toLowerCase())) {
+            existing.status = String(raw.status).toLowerCase();
+          }
+          if (raw.updatedAt) existing.updatedAt = raw.updatedAt;
+          if (raw.approvedAt !== undefined) existing.approvedAt = raw.approvedAt || null;
+          if (raw.approvedBy !== undefined) existing.approvedBy = raw.approvedBy || null;
+          updated += 1;
+        }
+      }
+    }
+
+    if (added > 0 || updated > 0) {
+      this.save();
+    }
+    return { added, updated, total: this.state.users.length };
+  }
+
+  /** Permanently delete a user account while preventing self-delete or removing the last admin. */
+  deleteUserAccount(id, actingAdmin = null) {
+    const targetId = String(id || '').trim();
+    const idx = (this.state.users || []).findIndex((u) => u.id === targetId);
+    if (idx < 0) {
+      const err = new Error('Account not found.');
+      err.statusCode = 404;
+      throw err;
+    }
+    const target = this.state.users[idx];
+    if (actingAdmin && typeof actingAdmin === 'object' && actingAdmin.id === target.id) {
+      const err = new Error('You cannot delete your own active Administrator account.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (target.role === 'admin' && target.status === 'approved') {
+      const otherAdmins = this.state.users.filter(
+        (u) => u.id !== target.id && u.role === 'admin' && u.status === 'approved'
+      );
+      if (otherAdmins.length === 0) {
+        const err = new Error('Cannot delete the last active Administrator account.');
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+    this.state.users.splice(idx, 1);
+    this.save();
+    return toPublicUser(target);
   }
 }
 
