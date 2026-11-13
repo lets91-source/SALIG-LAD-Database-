@@ -390,7 +390,7 @@ function renderProvincialNepSheetSection(ctx) {
 }
 
 export function renderNepView(ctx) {
-  const { analytics, currentUser, provinceScope, nepYearFilter = '2026', nepMilestoneFilter = 'overall', schemas } = ctx;
+  const { analytics, currentUser, provinceScope, nepYearFilter = '2026', nepMilestoneFilter = 'overall', nepDisplayMode = 'table', schemas } = ctx;
   const activeMilestone = String(nepMilestoneFilter || 'overall');
   const milestoneOptions = schemas?.nepMilestoneOptions || [
     { key: 'overall', label: 'Overall NEP (All Milestones)' },
@@ -525,59 +525,136 @@ export function renderNepView(ctx) {
       </div>
     </section>
 
-    <!-- Provincial Allocation Cards (Card View) -->
-    <div style="margin-bottom: 22px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <!-- Provincial Allocation Section (Table View by Default with View Switcher) -->
+    <div class="panel" style="margin-bottom: 22px;">
+      <div class="panel-header" style="flex-wrap:wrap;gap:12px;">
         <div>
-          <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">Provincial Allocation Cards</h3>
-          <p style="margin:2px 0 0;font-size:12.5px;color:var(--text-muted);">Per-province cards displaying LHS, AREA (HAS), ARBs, and Target Year for <strong>${esc(milestoneLabel)}</strong></p>
+          <h3 class="panel-title">${nepDisplayMode === 'cards' ? 'Provincial Allocation Cards' : 'Provincial Allocation Table'}</h3>
+          <p class="panel-subtitle">Per-province breakdown displaying LHS, AREA (HAS), ARBs, and Target Year for <strong>${esc(milestoneLabel)}</strong></p>
         </div>
-        ${
-          canEditNep
-            ? `<button type="button" class="btn btn-outline-primary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Put Data</button>`
-            : ''
-        }
-      </div>
-      <div class="grid-3 nep-province-cards-grid">
-        ${filteredRows
-          .map(
-            (r) => `
-          <div class="nep-province-card">
-            <div class="nep-province-card-header">
-              <div class="nep-province-name">${esc(r.provinceName)}</div>
-              <span class="nep-province-code">${esc(r.code)}</span>
-            </div>
-            <div class="nep-stats-row">
-              <div class="nep-stat-box">
-                <span class="nep-stat-label">LHS</span>
-                <span class="nep-stat-val">${(Number(r.lhs) || 0).toLocaleString('en-US')}</span>
-              </div>
-              <div class="nep-stat-box">
-                <span class="nep-stat-label">AREA (HAS)</span>
-                <span class="nep-stat-val">${fmtArea(r.area || 0)}</span>
-              </div>
-              <div class="nep-stat-box">
-                <span class="nep-stat-label">ARBs</span>
-                <span class="nep-stat-val">${(Number(r.arbs) || 0).toLocaleString('en-US')}</span>
-              </div>
-            </div>
-            <div class="nep-card-footer">
-              <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
-              ${
-                canEditNep
-                  ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
-                  : '<span class="badge badge-gray">Read-Only</span>'
-              }
-            </div>
+        <div class="panel-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <!-- View Switcher Pills -->
+          <div class="nep-metric-pills" role="group" aria-label="Provincial Allocation View Mode">
+            <button type="button" class="btn btn-sm ${nepDisplayMode !== 'cards' ? 'btn-primary' : 'btn-secondary'}" data-nep-mode="table" title="Table View">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
+              Table View
+            </button>
+            <button type="button" class="btn btn-sm ${nepDisplayMode === 'cards' ? 'btn-primary' : 'btn-secondary'}" data-nep-mode="cards" title="Card View">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Card View
+            </button>
           </div>
-        `
-          )
-          .join('')}
-      </div>
-    </div>
 
-    <!-- Regional Hub NEP Sheet (Per Province) Table View -->
-    ${renderProvincialNepSheetSection(ctx)}
+          ${
+            canEditNep
+              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;">
+                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                   Put Data / Edit Figures
+                 </button>`
+              : ''
+          }
+        </div>
+      </div>
+
+      ${
+        nepDisplayMode === 'cards'
+          ? `
+        <div class="grid-3 nep-province-cards-grid" style="padding:16px;">
+          ${filteredRows
+            .map(
+              (r) => `
+            <div class="nep-province-card">
+              <div class="nep-province-card-header">
+                <div class="nep-province-name">${esc(r.provinceName)}</div>
+                <span class="nep-province-code">${esc(r.code)}</span>
+              </div>
+              <div class="nep-stats-row">
+                <div class="nep-stat-box">
+                  <span class="nep-stat-label">LHS</span>
+                  <span class="nep-stat-val">${(Number(r.lhs) || 0).toLocaleString('en-US')}</span>
+                </div>
+                <div class="nep-stat-box">
+                  <span class="nep-stat-label">AREA (HAS)</span>
+                  <span class="nep-stat-val">${fmtArea(r.area || 0)}</span>
+                </div>
+                <div class="nep-stat-box">
+                  <span class="nep-stat-label">ARBs</span>
+                  <span class="nep-stat-val">${(Number(r.arbs) || 0).toLocaleString('en-US')}</span>
+                </div>
+              </div>
+              <div class="nep-card-footer">
+                <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
+                ${
+                  canEditNep
+                    ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
+                    : '<span class="badge badge-gray">Read-Only</span>'
+                }
+              </div>
+            </div>
+          `
+            )
+            .join('')}
+        </div>
+      `
+          : `
+        <div class="table-wrap">
+          <table class="nep-sheet-table">
+            <thead>
+              <tr>
+                <th style="min-width:180px;">Province</th>
+                <th class="right" style="width:130px;">LHS</th>
+                <th class="right" style="width:160px;">AREA (HAS)</th>
+                <th class="right" style="width:130px;">ARBs</th>
+                <th class="center" style="width:120px;">Target Year</th>
+                ${canEditNep ? '<th class="center" style="width:130px;">Action</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRows
+                .map(
+                  (r) => `
+                <tr>
+                  <td>
+                    <strong>${esc(r.provinceName)}</strong>
+                    <div class="nep-sub-metric">${esc(r.code)}</div>
+                  </td>
+                  <td class="right" style="font-weight:600;">${(Number(r.lhs) || 0).toLocaleString('en-US')}</td>
+                  <td class="right" style="font-weight:700;color:var(--dar-green-dark);">${fmtArea(r.area || 0)}</td>
+                  <td class="right" style="font-weight:600;">${(Number(r.arbs) || 0).toLocaleString('en-US')}</td>
+                  <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
+                  ${
+                    canEditNep
+                      ? `<td class="center">
+                           <button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:3px 10px;font-size:12px;color:var(--dar-green-dark);font-weight:700;">
+                             Edit Figure ↗
+                           </button>
+                         </td>`
+                      : ''
+                  }
+                </tr>
+              `
+                )
+                .join('')}
+              ${
+                filteredRows.length > 1
+                  ? `
+                <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
+                  <td>Region VIII Total</td>
+                  <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>
+                  <td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)}</td>
+                  <td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>
+                  <td class="center"><span class="badge badge-green" style="font-weight:700;">${esc(yearText)}</span></td>
+                  ${canEditNep ? '<td class="center">-</td>' : ''}
+                </tr>
+              `
+                  : ''
+              }
+            </tbody>
+          </table>
+        </div>
+      `
+      }
+    </div>
 
     <!-- Regional List — Per-Milestone NEP Targets -->
     ${renderMilestoneNepSection(ctx)}

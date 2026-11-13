@@ -41,6 +41,7 @@ const appState = {
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
   nepYearFilter: '2026', // 'ALL' | '2026' | '2025' | ...
   nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
+  nepDisplayMode: 'table', // 'table' | 'cards'
   filters: {
     province: 'ALL',
     periodMonth: 'LATEST',
@@ -615,6 +616,7 @@ function renderActiveView() {
     nepMetricMode: appState.nepMetricMode,
     nepYearFilter: appState.nepYearFilter,
     nepMilestoneFilter: appState.nepMilestoneFilter || 'overall',
+    nepDisplayMode: appState.nepDisplayMode || 'table',
     filters: appState.filters,
     activeOptoolTab: appState.activeOptoolTab
   };
@@ -2029,6 +2031,12 @@ function bindDashboardViewEvents(container) {
   container.querySelector('#nep-year-filter')?.addEventListener('change', (e) => {
     appState.nepYearFilter = e.target.value;
     renderActiveView();
+  });
+  container.querySelectorAll('[data-nep-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.nepDisplayMode = btn.dataset.nepMode;
+      renderActiveView();
+    });
   });
   container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
 }
