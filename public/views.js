@@ -156,7 +156,17 @@ function formatNepVarianceCell(varianceCount, varianceAreaHas, mode = 'both') {
 }
 
 function renderMilestoneNepSection(ctx) {
-  const { analytics, schemas, filters = {}, provinceScope, nepMetricMode = 'both', nepShowMonths = false, nepExpandedQuarters = {} } = ctx;
+  const {
+    analytics,
+    schemas,
+    filters = {},
+    provinceScope,
+    nepMetricMode = 'both',
+    nepShowMonths = false,
+    nepExpandedQuarters = {},
+    nepShowProvinces = false,
+    nepExpandedMilestones = {}
+  } = ctx;
   const rows = analytics.milestoneNepBreakdown || [];
   const yearsSet = new Set(analytics.availableMilestoneYears || []);
   yearsSet.add(new Date().getFullYear());
@@ -263,6 +273,9 @@ function renderMilestoneNepSection(ctx) {
           <button type="button" class="btn btn-sm ${hasAnyMonthExpanded ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-months" title="Toggle monthly accomplishment in each quarter">
             <span class="fs-icon">📅</span> <span>${hasAnyMonthExpanded ? 'Hide Monthly' : 'Monthly Accomp.'}</span>
           </button>
+          <button type="button" class="btn btn-sm ${nepShowProvinces ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-provinces" title="Show or hide provincial breakdown rows for all milestones">
+            <span class="fs-icon">🏛️</span> <span>${nepShowProvinces ? 'Hide Provinces' : 'Province Breakdown'}</span>
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-hub-nep" title="Fetch live NEP target data from Regional Hub Google Sheet">
             Fetch Hub NEP Targets
           </button>
@@ -334,19 +347,45 @@ function renderMilestoneNepSection(ctx) {
           </thead>
           <tbody>
             ${rows
-              .map(
-                (r) => `
-              <tr>
+              .map((r) => {
+                const isMsExpanded = nepShowProvinces || Boolean(nepExpandedMilestones[r.key]);
+                let provEntries = Object.values(r.provinceBreakdown || {});
+                if (activeProvince !== 'ALL') {
+                  provEntries = provEntries.filter((p) => p.code === activeProvince);
+                }
+                const zeroList = (r.zeroAccompProvinces || []).filter((c) => activeProvince === 'ALL' || c === activeProvince);
+
+                return `
+              <tr class="nep-milestone-main-row ${isMsExpanded ? 'nep-expanded-row' : ''}">
                 <td>
-                  <button
-                    type="button"
-                    class="nep-milestone-link"
-                    data-open-optool-tab="${esc(r.sourceTab)}"
-                    title="Open ${esc(r.label)} in Optool Supportlist"
-                  >
-                    ${esc(r.label)}
-                  </button>
+                  <div class="nep-ms-title-wrap">
+                    <button
+                      type="button"
+                      class="nep-milestone-link"
+                      data-open-optool-tab="${esc(r.sourceTab)}"
+                      title="Open ${esc(r.label)} in Optool Supportlist"
+                    >
+                      ${esc(r.label)}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-xs nep-prov-toggle-btn ${isMsExpanded ? 'active' : ''}"
+                      data-toggle-prov-milestone="${esc(r.key)}"
+                      title="Toggle province breakdown for ${esc(r.label)}"
+                    >
+                      <span class="prov-arrow">${isMsExpanded ? '▾' : '▸'}</span> Provinces
+                    </button>
+                  </div>
                   <div class="nep-sub-metric">${esc(r.sourceTab)}</div>
+                  <div class="nep-prov-badges-wrap">
+                    ${
+                      zeroList.length > 0
+                        ? `<span class="nep-badge-no-accomp" title="Provinces with 0 accomplishments recorded for ${esc(r.label)}">
+                            <span class="no-accomp-dot">●</span> No Accomp: <strong>${esc(zeroList.join(', '))}</strong>
+                           </span>`
+                        : `<span class="nep-badge-all-accomp" title="All provinces have recorded accomplishment">✓ All Active</span>`
+                    }
+                  </div>
                 </td>
                 <td class="right">${formatNepMetricCell(r.nepTargetCount, r.nepTargetAreaHas, nepMetricMode)}</td>
                 ${quartersConfig
@@ -377,8 +416,53 @@ function renderMilestoneNepSection(ctx) {
                 <td class="right">${formatNepRateCell(r.rateCountPct, r.rateAreaPct, nepMetricMode)}</td>
                 <td class="right">${formatNepVarianceCell(r.varianceCount, r.varianceAreaHas, nepMetricMode)}</td>
               </tr>
-            `
-              )
+              ${
+                isMsExpanded
+                  ? provEntries
+                      .map(
+                        (pd) => `
+                <tr class="nep-prov-subrow ${pd.hasAccomp ? 'has-accomp' : 'no-accomp'}">
+                  <td class="nep-prov-subcell">
+                    <div class="nep-prov-indent">
+                      <span class="nep-prov-tree">└─</span>
+                      <strong class="nep-prov-code-tag">${esc(pd.code)}</strong>
+                      <span class="nep-prov-name-text">${esc(pd.name)}</span>
+                      ${
+                        pd.hasAccomp
+                          ? `<span class="badge badge-green badge-xs">Active</span>`
+                          : `<span class="badge badge-danger badge-xs nep-zero-status">No Accomp (0)</span>`
+                      }
+                    </div>
+                  </td>
+                  <td class="right">${formatNepMetricCell(pd.targetCount, pd.targetAreaHas, nepMetricMode)}</td>
+                  ${quartersConfig
+                    .map((q) => {
+                      const qData = pd[`q${q.q}`] || { count: 0, areaHas: 0 };
+                      if (!isQExpanded(q.q)) {
+                        return `<td class="right">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>`;
+                      }
+                      const m1 = pd.months?.[q.months[0].num] || { count: 0, areaHas: 0 };
+                      const m2 = pd.months?.[q.months[1].num] || { count: 0, areaHas: 0 };
+                      const m3 = pd.months?.[q.months[2].num] || { count: 0, areaHas: 0 };
+                      return `
+                        <td class="right nep-month-cell">${formatNepMetricCell(m1.count, m1.areaHas, nepMetricMode)}</td>
+                        <td class="right nep-month-cell">${formatNepMetricCell(m2.count, m2.areaHas, nepMetricMode)}</td>
+                        <td class="right nep-month-cell">${formatNepMetricCell(m3.count, m3.areaHas, nepMetricMode)}</td>
+                        <td class="right nep-q-total-cell">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>
+                      `;
+                    })
+                    .join('')}
+                  <td class="right font-semibold">${formatNepMetricCell(pd.count, pd.areaHas, nepMetricMode)}</td>
+                  <td class="right">${formatNepRateCell(pd.rateCountPct, pd.rateAreaPct, nepMetricMode)}</td>
+                  <td class="right">${formatNepVarianceCell(pd.varianceCount, pd.varianceAreaHas, nepMetricMode)}</td>
+                </tr>
+              `
+                      )
+                      .join('')
+                  : ''
+              }
+            `;
+              })
               .join('')}
           </tbody>
         </table>

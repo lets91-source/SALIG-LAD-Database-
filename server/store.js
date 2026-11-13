@@ -40,6 +40,8 @@ import {
   resolveTotalArbsFromGenderCounts
 } from '../public/reportingUtils.js';
 
+const PROVINCIAL_NODES = REGIONAL_REGISTRY.filter((n) => n.role === 'Provincial Node');
+
 function findLinkedDatabaseRow(dbRows, lhid) {
   const key = String(lhid ?? '').trim().toLowerCase();
   if (!key || !Array.isArray(dbRows)) return null;
@@ -1072,6 +1074,30 @@ export class ConsolidatedStore {
         12: { count: 0, areaHas: 0 }
       };
 
+      const provData = {};
+      for (const node of PROVINCIAL_NODES) {
+        provData[node.code] = {
+          code: node.code,
+          name: node.name,
+          count: 0,
+          areaHas: 0,
+          q: {
+            1: { count: 0, areaHas: 0 },
+            2: { count: 0, areaHas: 0 },
+            3: { count: 0, areaHas: 0 },
+            4: { count: 0, areaHas: 0 }
+          },
+          m: {
+            1: { count: 0, areaHas: 0 }, 2: { count: 0, areaHas: 0 }, 3: { count: 0, areaHas: 0 },
+            4: { count: 0, areaHas: 0 }, 5: { count: 0, areaHas: 0 }, 6: { count: 0, areaHas: 0 },
+            7: { count: 0, areaHas: 0 }, 8: { count: 0, areaHas: 0 }, 9: { count: 0, areaHas: 0 },
+            10: { count: 0, areaHas: 0 }, 11: { count: 0, areaHas: 0 }, 12: { count: 0, areaHas: 0 }
+          },
+          targetCount: 0,
+          targetAreaHas: 0
+        };
+      }
+
       for (const r of sourceRows) {
         const parsed = resolveFirstDateQuarter(r, spec.dateKeys);
         if (parsed?.year) yearSet.add(parsed.year);
@@ -1086,6 +1112,20 @@ export class ConsolidatedStore {
         if (parsed?.month && m[parsed.month]) {
           m[parsed.month].count += countVal;
           m[parsed.month].areaHas += areaVal;
+        }
+
+        const pCode = this.getOptoolRowProvinceCode(spec.tabName, r, dbLhidMap);
+        if (pCode && provData[pCode]) {
+          provData[pCode].count += countVal;
+          provData[pCode].areaHas += areaVal;
+          if (parsed?.quarter && provData[pCode].q[parsed.quarter]) {
+            provData[pCode].q[parsed.quarter].count += countVal;
+            provData[pCode].q[parsed.quarter].areaHas += areaVal;
+          }
+          if (parsed?.month && provData[pCode].m[parsed.month]) {
+            provData[pCode].m[parsed.month].count += countVal;
+            provData[pCode].m[parsed.month].areaHas += areaVal;
+          }
         }
       }
 
@@ -1121,12 +1161,74 @@ export class ConsolidatedStore {
         }
       }
 
+      const provinceBreakdown = {};
+      const zeroAccompProvinces = [];
+      const activeProvinces = [];
+
+      for (const node of PROVINCIAL_NODES) {
+        const pd = provData[node.code] || { count: 0, areaHas: 0, q: { 1: { count: 0, areaHas: 0 }, 2: { count: 0, areaHas: 0 }, 3: { count: 0, areaHas: 0 }, 4: { count: 0, areaHas: 0 } } };
+        const pTotalCount = pd.count;
+        const pTotalArea = roundArea(pd.areaHas);
+        let pTargetCount = 0;
+        let pTargetArea = 0;
+        if (msProvMap && msProvMap[node.code]) {
+          const pt = msProvMap[node.code];
+          const pYear = Math.round(Number(pt?.year) || currentYear);
+          if (!filterYear || pYear === filterYear) {
+            pTargetCount = Math.max(0, Math.round(Number(pt?.lhs) || 0));
+            pTargetArea = Math.max(0, Number(pt?.area) || 0);
+          }
+        }
+
+        const hasAccomp = (pTotalCount > 0 || pTotalArea > 0);
+        if (hasAccomp) {
+          activeProvinces.push(node.code);
+        } else {
+          zeroAccompProvinces.push(node.code);
+        }
+
+        provinceBreakdown[node.code] = {
+          code: node.code,
+          name: node.name,
+          count: pTotalCount,
+          areaHas: pTotalArea,
+          targetCount: pTargetCount,
+          targetAreaHas: roundArea(pTargetArea),
+          hasAccomp,
+          q1: { count: pd.q[1]?.count || 0, areaHas: roundArea(pd.q[1]?.areaHas || 0) },
+          q2: { count: pd.q[2]?.count || 0, areaHas: roundArea(pd.q[2]?.areaHas || 0) },
+          q3: { count: pd.q[3]?.count || 0, areaHas: roundArea(pd.q[3]?.areaHas || 0) },
+          q4: { count: pd.q[4]?.count || 0, areaHas: roundArea(pd.q[4]?.areaHas || 0) },
+          months: {
+            1: { count: pd.m[1]?.count || 0, areaHas: roundArea(pd.m[1]?.areaHas || 0) },
+            2: { count: pd.m[2]?.count || 0, areaHas: roundArea(pd.m[2]?.areaHas || 0) },
+            3: { count: pd.m[3]?.count || 0, areaHas: roundArea(pd.m[3]?.areaHas || 0) },
+            4: { count: pd.m[4]?.count || 0, areaHas: roundArea(pd.m[4]?.areaHas || 0) },
+            5: { count: pd.m[5]?.count || 0, areaHas: roundArea(pd.m[5]?.areaHas || 0) },
+            6: { count: pd.m[6]?.count || 0, areaHas: roundArea(pd.m[6]?.areaHas || 0) },
+            7: { count: pd.m[7]?.count || 0, areaHas: roundArea(pd.m[7]?.areaHas || 0) },
+            8: { count: pd.m[8]?.count || 0, areaHas: roundArea(pd.m[8]?.areaHas || 0) },
+            9: { count: pd.m[9]?.count || 0, areaHas: roundArea(pd.m[9]?.areaHas || 0) },
+            10: { count: pd.m[10]?.count || 0, areaHas: roundArea(pd.m[10]?.areaHas || 0) },
+            11: { count: pd.m[11]?.count || 0, areaHas: roundArea(pd.m[11]?.areaHas || 0) },
+            12: { count: pd.m[12]?.count || 0, areaHas: roundArea(pd.m[12]?.areaHas || 0) }
+          },
+          varianceCount: pTotalCount - pTargetCount,
+          varianceAreaHas: roundArea(pTotalArea - pTargetArea),
+          rateCountPct: pTargetCount > 0 ? Number(((pTotalCount / pTargetCount) * 100).toFixed(2)) : 0,
+          rateAreaPct: pTargetArea > 0 ? Number(((pTotalArea / pTargetArea) * 100).toFixed(2)) : 0
+        };
+      }
+
       return {
         key: meta.key,
         label: meta.label,
         sourceTab: spec.tabName,
         nepTargetCount,
         nepTargetAreaHas: roundArea(nepTargetAreaHas),
+        provinceBreakdown,
+        zeroAccompProvinces,
+        activeProvinces,
         q1: { count: q[1].count, areaHas: roundArea(q[1].areaHas) },
         q2: { count: q[2].count, areaHas: roundArea(q[2].areaHas) },
         q3: { count: q[3].count, areaHas: roundArea(q[3].areaHas) },

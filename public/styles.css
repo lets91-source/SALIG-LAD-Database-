@@ -2804,4 +2804,171 @@ body.has-fullscreen-panel {
   background: #e6f4ea !important;
 }
 
+/* Milestone NEP Provincial Breakdown & Zero Accomplishment Indicators */
+.nep-ms-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nep-prov-toggle-btn {
+  padding: 1.5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  background: #f1f5f3;
+  color: var(--dar-green-dark);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.nep-prov-toggle-btn:hover {
+  background: #e2ede5;
+  border-color: var(--dar-green);
+  color: var(--dar-green-dark);
+}
+
+.nep-prov-toggle-btn.active {
+  background: var(--dar-green);
+  color: #ffffff;
+  border-color: var(--dar-green-dark);
+}
+
+.nep-prov-toggle-btn .prov-arrow {
+  font-size: 10px;
+  display: inline-block;
+  line-height: 1;
+}
+
+.nep-prov-badges-wrap {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.nep-badge-no-accomp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 1.5px 7px;
+  border-radius: 5px;
+  background: #fff1f2;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
+  font-weight: 500;
+}
+
+.nep-badge-no-accomp strong {
+  font-weight: 700;
+  color: #881337;
+  letter-spacing: 0.02em;
+}
+
+.nep-badge-no-accomp .no-accomp-dot {
+  color: #e11d48;
+  font-size: 8px;
+}
+
+.nep-badge-all-accomp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 1.5px 7px;
+  border-radius: 5px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  font-weight: 600;
+}
+
+.nep-milestone-main-row.nep-expanded-row > td {
+  border-bottom: 1px solid #b2dfdb !important;
+  background-color: #f7faf8 !important;
+}
+
+.nep-prov-subrow {
+  background-color: #fcfdfc;
+  font-size: 12.5px;
+}
+
+.nep-prov-subrow td {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+  border-bottom: 1px dashed #d1ded5 !important;
+}
+
+.nep-prov-subrow:last-of-type td {
+  border-bottom: 2px solid var(--border-strong) !important;
+}
+
+.nep-prov-subrow:hover,
+.nep-prov-subrow:hover td {
+  background-color: #f2f8f4 !important;
+}
+
+.nep-prov-subrow.no-accomp td {
+  background-color: #fffdfd;
+}
+
+.nep-prov-subrow.no-accomp:hover td {
+  background-color: #fff5f5 !important;
+}
+
+.nep-prov-subcell {
+  padding-left: 20px !important;
+}
+
+.nep-prov-indent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nep-prov-tree {
+  color: #8fa397;
+  font-family: monospace;
+  font-size: 13px;
+  user-select: none;
+}
+
+.nep-prov-code-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #e8efe9;
+  color: #1b4d2e;
+  border: 1px solid #cbdcd0;
+}
+
+.nep-prov-name-text {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.nep-zero-status {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fca5a5 !important;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 1px 5px;
+}
+
+.badge-xs {
+  font-size: 10px !important;
+  padding: 1px 5px !important;
+}
+
+
 

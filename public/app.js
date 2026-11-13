@@ -42,6 +42,10 @@ const appState = {
   nepYearFilter: '2026', // 'ALL' | '2026' | '2025' | ...
   nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
   nepDisplayMode: 'table', // 'table' | 'cards'
+  nepShowMonths: false,
+  nepExpandedQuarters: {},
+  nepShowProvinces: false,
+  nepExpandedMilestones: {},
   filters: {
     province: 'ALL',
     periodMonth: 'LATEST',
@@ -661,6 +665,8 @@ function renderActiveView() {
     nepMetricMode: appState.nepMetricMode,
     nepShowMonths: Boolean(appState.nepShowMonths),
     nepExpandedQuarters: appState.nepExpandedQuarters || {},
+    nepShowProvinces: Boolean(appState.nepShowProvinces),
+    nepExpandedMilestones: appState.nepExpandedMilestones || {},
     nepYearFilter: appState.nepYearFilter,
     nepMilestoneFilter: appState.nepMilestoneFilter || 'overall',
     nepDisplayMode: appState.nepDisplayMode || 'table',
@@ -2072,6 +2078,21 @@ function bindDashboardViewEvents(container) {
     appState.nepShowMonths = willShow;
     appState.nepExpandedQuarters = { 1: willShow, 2: willShow, 3: willShow, 4: willShow };
     renderActiveView();
+  });
+
+  container.querySelector('#btn-toggle-nep-provinces')?.addEventListener('click', () => {
+    appState.nepShowProvinces = !appState.nepShowProvinces;
+    renderActiveView();
+  });
+
+  container.querySelectorAll('[data-toggle-prov-milestone]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.toggleProvMilestone;
+      if (!appState.nepExpandedMilestones) appState.nepExpandedMilestones = {};
+      appState.nepExpandedMilestones[key] = !appState.nepExpandedMilestones[key];
+      renderActiveView();
+    });
   });
 
   container.querySelectorAll('[data-toggle-q]').forEach((th) => {
