@@ -1939,6 +1939,22 @@ test('Regional Hub NEP Sheet (per province LHS, AREA, ARBs) XLSX round-trip, edi
     assert.ok(provBoot.state.nepMilestoneList.cf_doc);
     assert.equal(provBoot.state.nepMilestoneList.cf_doc.BIL.lhs, 12);
     assert.equal(provBoot.state.nepMilestoneList.cf_doc.LEY, undefined);
+
+    // 6. Target year dropdown displays all years that have a target (e.g. 2025, 2026)
+    await fetch(`${baseUrl}/api/nep-sheet`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+      body: JSON.stringify({
+        milestone: 'land_survey',
+        nepProvinceList: {
+          ESA: { lhs: 5, area: 23.5124, arbs: 10, year: 2025 },
+          LEY: { lhs: 15, area: 1056.74, arbs: 50, year: 2025 }
+        }
+      })
+    });
+    const yrAnalytics = await (await fetch(`${baseUrl}/api/analytics`, { headers: { Cookie: adminCookie } })).json();
+    assert.ok(yrAnalytics.availableMilestoneYears.includes(2025));
+    assert.ok(yrAnalytics.availableMilestoneYears.includes(2026));
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

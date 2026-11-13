@@ -158,7 +158,21 @@ function formatNepVarianceCell(varianceCount, varianceAreaHas, mode = 'both') {
 function renderMilestoneNepSection(ctx) {
   const { analytics, schemas, filters = {}, provinceScope, nepMetricMode = 'both' } = ctx;
   const rows = analytics.milestoneNepBreakdown || [];
-  const years = analytics.availableMilestoneYears || [];
+  const yearsSet = new Set(analytics.availableMilestoneYears || []);
+  yearsSet.add(new Date().getFullYear());
+  for (const r of analytics.nepProvinceBreakdown || []) {
+    const yr = Math.round(Number(r?.year) || 0);
+    if (yr >= 2000 && yr <= 2099) yearsSet.add(yr);
+  }
+  for (const msMap of Object.values(analytics.nepMilestoneList || {})) {
+    if (msMap && typeof msMap === 'object') {
+      for (const r of Object.values(msMap)) {
+        const yr = Math.round(Number(r?.year) || 0);
+        if (yr >= 2000 && yr <= 2099) yearsSet.add(yr);
+      }
+    }
+  }
+  const years = Array.from(yearsSet).sort((a, b) => b - a);
   const activeYear = filters.milestoneYear || 'ALL';
   const activeProvince = filters.province || 'ALL';
   const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
@@ -430,9 +444,24 @@ export function renderNepView(ctx) {
   const hubUrl = (schemas?.registry || []).find((n) => n.code === 'HUB')?.url || '';
   const canEditNep = currentUser ? currentUser.role === 'admin' : !provinceScope;
 
-  const availableYears = Array.from(new Set(rawRows.map((r) => r.year).filter(Boolean)));
-  if (!availableYears.includes(2026)) availableYears.push(2026);
-  availableYears.sort((a, b) => b - a);
+  const availableYearsSet = new Set(rawRows.map((r) => r.year).filter(Boolean));
+  availableYearsSet.add(new Date().getFullYear());
+  for (const r of analytics.nepProvinceBreakdown || []) {
+    const yr = Math.round(Number(r?.year) || 0);
+    if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);
+  }
+  for (const msMap of Object.values(analytics.nepMilestoneList || {})) {
+    if (msMap && typeof msMap === 'object') {
+      for (const r of Object.values(msMap)) {
+        const yr = Math.round(Number(r?.year) || 0);
+        if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);
+      }
+    }
+  }
+  for (const yr of analytics.availableMilestoneYears || []) {
+    if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);
+  }
+  const availableYears = Array.from(availableYearsSet).sort((a, b) => b - a);
 
   const activeFilter = String(nepYearFilter || '2026');
   const filteredRows =

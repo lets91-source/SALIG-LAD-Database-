@@ -980,6 +980,44 @@ export class ConsolidatedStore {
     }
 
     const yearSet = new Set();
+    const currentYear = new Date().getFullYear();
+    yearSet.add(currentYear);
+
+    // Collect all target years from Regional Hub nepProvinceList
+    if (this.state.nepProvinceList && typeof this.state.nepProvinceList === 'object') {
+      for (const p of Object.values(this.state.nepProvinceList)) {
+        const yr = Math.round(Number(p?.year) || 0);
+        if (yr >= 2000 && yr <= 2099) yearSet.add(yr);
+      }
+    }
+
+    // Collect all target years from per-milestone NEP lists
+    if (this.state.nepMilestoneList && typeof this.state.nepMilestoneList === 'object') {
+      for (const msMap of Object.values(this.state.nepMilestoneList)) {
+        if (msMap && typeof msMap === 'object') {
+          for (const p of Object.values(msMap)) {
+            const yr = Math.round(Number(p?.year) || 0);
+            if (yr >= 2000 && yr <= 2099) yearSet.add(yr);
+          }
+        }
+      }
+    }
+
+    // Collect target years and accomplishment dates from OPTool records
+    for (const tabName of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
+      const tabRows = this.getScopedOptoolTabRows(tabName, activeScope, dbLhidMap);
+      for (const r of tabRows) {
+        const rawYr = Math.round(Number(r?.targetYear || r?.Target_Year) || 0);
+        if (rawYr >= 2000 && rawYr <= 2099) {
+          yearSet.add(rawYr);
+        }
+        if (typeof r?.Target_CurrentYear_PreviousYear === 'string') {
+          const m = r.Target_CurrentYear_PreviousYear.match(/\b(20\d\d)\b/);
+          if (m) yearSet.add(Number(m[1]));
+        }
+      }
+    }
+
     const filterYear = milestoneYear && milestoneYear !== 'ALL' ? Number(milestoneYear) : null;
     const roundArea = (val) => Number((Number(val) || 0).toFixed(4));
 
@@ -1014,8 +1052,32 @@ export class ConsolidatedStore {
       const totalArea = q[1].areaHas + q[2].areaHas + q[3].areaHas + q[4].areaHas + q.undated.areaHas;
 
       const regTarget = this.state.nepTargets?.[meta.key] || {};
-      const nepTargetCount = Number(regTarget.targetCount) || 0;
-      const nepTargetAreaHas = Number(regTarget.targetAreaHas) || 0;
+      let nepTargetCount = Number(regTarget.targetCount) || 0;
+      let nepTargetAreaHas = Number(regTarget.targetAreaHas) || 0;
+
+      // If milestone-specific provincial list has targets for this milestone, calculate from it
+      const msProvMap = this.state.nepMilestoneList?.[meta.key];
+      if (msProvMap && typeof msProvMap === 'object') {
+        const provEntries = Object.entries(msProvMap);
+        const hasEntries = provEntries.some(([, d]) => (Number(d?.lhs) || 0) > 0 || (Number(d?.area) || 0) > 0);
+        if (hasEntries) {
+          let specificCount = 0;
+          let specificArea = 0;
+          let hasMatch = false;
+          for (const [pCode, pData] of provEntries) {
+            if (activeScope && pCode !== activeScope) continue;
+            const pYear = Math.round(Number(pData?.year) || currentYear);
+            if (filterYear && pYear !== filterYear) continue;
+            specificCount += Math.max(0, Math.round(Number(pData?.lhs) || 0));
+            specificArea += Math.max(0, Number(pData?.area) || 0);
+            hasMatch = true;
+          }
+          if (hasMatch && (specificCount > 0 || specificArea > 0 || filterYear)) {
+            nepTargetCount = specificCount;
+            nepTargetAreaHas = specificArea;
+          }
+        }
+      }
 
       return {
         key: meta.key,
@@ -1040,7 +1102,7 @@ export class ConsolidatedStore {
 
     return {
       milestoneNepBreakdown: rows,
-      availableMilestoneYears: Array.from(yearSet).sort((a, b) => a - b)
+      availableMilestoneYears: Array.from(yearSet).sort((a, b) => b - a)
     };
   }
 
