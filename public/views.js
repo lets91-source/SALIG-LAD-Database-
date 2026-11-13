@@ -351,43 +351,143 @@ function renderProvincialNepSheetSection(ctx) {
 }
 
 export function renderNepView(ctx) {
-  const { analytics, currentUser, provinceScope } = ctx;
-  const totals = analytics.nepProvinceTotals || { lhs: 0, area: 0, arbs: 0 };
-  const rows = analytics.nepProvinceBreakdown || [];
-  const years = Array.from(new Set(rows.map((r) => r.year).filter(Boolean)));
-  const yearText = years.length ? years.sort().join(', ') : String(new Date().getFullYear());
+  const { analytics, currentUser, provinceScope, nepYearFilter = '2026', schemas } = ctx;
+  const rawRows = analytics.nepProvinceBreakdown || [];
+  const hubUrl = (schemas?.registry || []).find((n) => n.code === 'HUB')?.url || '';
   const canEditNep = currentUser ? currentUser.role === 'admin' : !provinceScope;
 
+  const availableYears = Array.from(new Set(rawRows.map((r) => r.year).filter(Boolean)));
+  if (!availableYears.includes(2026)) availableYears.push(2026);
+  availableYears.sort((a, b) => b - a);
+
+  const activeFilter = String(nepYearFilter || '2026');
+  const filteredRows =
+    activeFilter === 'ALL'
+      ? rawRows
+      : rawRows.filter((r) => String(r.year || 2026) === activeFilter);
+
+  const totals = {
+    lhs: filteredRows.reduce((s, r) => s + (Number(r.lhs) || 0), 0),
+    area: Number(filteredRows.reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4)),
+    arbs: filteredRows.reduce((s, r) => s + (Number(r.arbs) || 0), 0)
+  };
+
+  const yearText = activeFilter === 'ALL' ? (availableYears.join(', ') || 'All Years') : activeFilter;
+
   return `
-    <!-- Top NEP Summary KPIs -->
-    <section class="grid-4" style="margin-bottom: 20px;">
+    <!-- Top Filter & Action Toolbar -->
+    <div class="panel" style="margin-bottom: 18px; padding: 12px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--dar-green);"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span style="font-weight:700;font-size:13px;color:var(--text);">Filter Target Year:</span>
+            <select class="form-control nep-filter-select" id="nep-year-filter" aria-label="Filter NEP by Year" style="font-weight:700;">
+              <option value="ALL" ${activeFilter === 'ALL' ? 'selected' : ''}>All Years</option>
+              ${availableYears
+                .map(
+                  (y) => `<option value="${y}" ${String(activeFilter) === String(y) ? 'selected' : ''}>Year ${y}</option>`
+                )
+                .join('')}
+            </select>
+          </div>
+          <span class="badge badge-green">${filteredRows.length} ${filteredRows.length === 1 ? 'Province' : 'Provinces'} Shown</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${hubUrl ? `<a href="${esc(hubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Open NEP Sheet ↗</a>` : ''}
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
+          ${
+            canEditNep
+              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet">
+                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                   Put NEP Data / Edit Figures
+                 </button>`
+              : ''
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Top NEP Summary KPIs (Clean Grid-4 Cards) -->
+    <section class="grid-4" style="margin-bottom: 22px;">
       <div class="kpi-card">
         <div class="kpi-label">NEP Total Landholdings</div>
         <div class="kpi-primary">${(totals.lhs || 0).toLocaleString('en-US')} LHS</div>
-        <div class="kpi-secondary">Region VIII Target</div>
+        <div class="kpi-secondary">Region VIII Target (${esc(yearText)})</div>
         <div class="kpi-meta">Allocated across 6 provinces</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">NEP Total Area</div>
         <div class="kpi-primary">${fmtArea(totals.area || 0)} HAS</div>
-        <div class="kpi-secondary">CARPable Hectares</div>
+        <div class="kpi-secondary">CARPable Hectares (${esc(yearText)})</div>
         <div class="kpi-meta">Region VIII Target</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">NEP Total ARBs</div>
         <div class="kpi-primary">${(totals.arbs || 0).toLocaleString('en-US')} ARBs</div>
-        <div class="kpi-secondary">Target Beneficiaries</div>
+        <div class="kpi-secondary">Target Beneficiaries (${esc(yearText)})</div>
         <div class="kpi-meta">Agrarian Reform Beneficiaries</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">NEP Target Year</div>
         <div class="kpi-primary">${esc(yearText)}</div>
         <div class="kpi-secondary">${canEditNep ? 'Admin Editable' : 'Regional Target'}</div>
-        <div class="kpi-meta">${canEditNep ? 'Full permissions to modify figures' : 'Read-only access'}</div>
+        <div class="kpi-meta">${canEditNep ? 'Click "Put NEP Data" to modify' : 'Read-only access'}</div>
       </div>
     </section>
 
-    <!-- Regional Hub NEP Sheet (Per Province) -->
+    <!-- Provincial Allocation Cards (Card View) -->
+    <div style="margin-bottom: 22px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">Provincial Allocation Cards</h3>
+          <p style="margin:2px 0 0;font-size:12.5px;color:var(--text-muted);">Per-province cards displaying LHS, AREA (HAS), ARBs, and Target Year</p>
+        </div>
+        ${
+          canEditNep
+            ? `<button type="button" class="btn btn-outline-primary btn-sm" id="btn-card-edit-nep" style="font-weight:600;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Put Data</button>`
+            : ''
+        }
+      </div>
+      <div class="grid-3 nep-province-cards-grid">
+        ${filteredRows
+          .map(
+            (r) => `
+          <div class="nep-province-card">
+            <div class="nep-province-card-header">
+              <div class="nep-province-name">${esc(r.provinceName)}</div>
+              <span class="nep-province-code">${esc(r.code)}</span>
+            </div>
+            <div class="nep-stats-row">
+              <div class="nep-stat-box">
+                <span class="nep-stat-label">LHS</span>
+                <span class="nep-stat-val">${(Number(r.lhs) || 0).toLocaleString('en-US')}</span>
+              </div>
+              <div class="nep-stat-box">
+                <span class="nep-stat-label">AREA (HAS)</span>
+                <span class="nep-stat-val">${fmtArea(r.area || 0)}</span>
+              </div>
+              <div class="nep-stat-box">
+                <span class="nep-stat-label">ARBs</span>
+                <span class="nep-stat-val">${(Number(r.arbs) || 0).toLocaleString('en-US')}</span>
+              </div>
+            </div>
+            <div class="nep-card-footer">
+              <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
+              ${
+                canEditNep
+                  ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
+                  : '<span class="badge badge-gray">Read-Only</span>'
+              }
+            </div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    </div>
+
+    <!-- Regional Hub NEP Sheet (Per Province) Table View -->
     ${renderProvincialNepSheetSection(ctx)}
 
     <!-- Regional List — Per-Milestone NEP Targets -->

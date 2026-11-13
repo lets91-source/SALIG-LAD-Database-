@@ -39,6 +39,7 @@ const appState = {
   monitoringLevel: 'both', // 'both' | 'etitles' | 'area'
   measurementLogic: 'both', // 'both' | 'incremental' | 'cumulative'
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
+  nepYearFilter: '2026', // 'ALL' | '2026' | '2025' | ...
   filters: {
     province: 'ALL',
     periodMonth: 'LATEST',
@@ -611,6 +612,7 @@ function renderActiveView() {
     monitoringLevel: appState.monitoringLevel,
     measurementLogic: appState.measurementLogic,
     nepMetricMode: appState.nepMetricMode,
+    nepYearFilter: appState.nepYearFilter,
     filters: appState.filters,
     activeOptoolTab: appState.activeOptoolTab
   };
@@ -1363,12 +1365,13 @@ function showModal(title, bodyHtml) {
   document.getElementById('modal-backdrop').classList.remove('hidden');
 }
 
-function showFormModal(title, { formId, contentHtml, cancelId, submitLabel }) {
+function showFormModal(title, { formId, contentHtml, bodyHtml, cancelId, submitLabel }) {
+  const modalContent = contentHtml !== undefined ? contentHtml : bodyHtml !== undefined ? bodyHtml : '';
   showModal(
     title,
     `
       <form id="${esc(formId)}" class="modal-form">
-        <div class="modal-scroll">${contentHtml}</div>
+        <div class="modal-scroll">${modalContent}</div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" id="${esc(cancelId)}">Cancel</button>
           <button type="submit" class="btn btn-primary">${esc(submitLabel)}</button>
@@ -2003,7 +2006,15 @@ function bindDashboardViewEvents(container) {
   });
 
   container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
-  container.querySelector('#btn-edit-nep-sheet')?.addEventListener('click', openNepSheetModal);
+  container.querySelector('#btn-edit-nep-sheet')?.addEventListener('click', () => openNepSheetModal());
+  container.querySelector('#btn-card-edit-nep')?.addEventListener('click', () => openNepSheetModal());
+  container.querySelectorAll('.btn-edit-single-nep').forEach((btn) => {
+    btn.addEventListener('click', () => openNepSheetModal(btn.dataset.prov));
+  });
+  container.querySelector('#nep-year-filter')?.addEventListener('change', (e) => {
+    appState.nepYearFilter = e.target.value;
+    renderActiveView();
+  });
   container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
 }
 
@@ -2029,7 +2040,7 @@ async function syncHubNepSheet() {
   }
 }
 
-function openNepSheetModal() {
+function openNepSheetModal(targetProv = null) {
   const isAdmin = appState.currentUser ? appState.currentUser.role === 'admin' : !appState.provinceScope;
   if (!isAdmin) {
     toast('Only Administrator accounts can edit the Regional Hub NEP Sheet.', true);
@@ -2037,10 +2048,14 @@ function openNepSheetModal() {
   }
   const provNodes = (appState.schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
   const currentList = appState.state?.nepProvinceList || {};
+  const defaultYear =
+    appState.nepYearFilter !== 'ALL' && appState.nepYearFilter
+      ? Number(appState.nepYearFilter)
+      : currentList.LEY?.year || 2026;
 
   const rowsHtml = provNodes
     .map((n) => {
-      const entry = currentList[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
+      const entry = currentList[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultYear };
       return `
         <tr>
           <td><strong>${esc(n.provinceName)}</strong><div class="nep-sub-metric">${esc(n.code)}</div></td>
@@ -2086,7 +2101,7 @@ function openNepSheetModal() {
               class="form-control num nep-sheet-input"
               data-nep-col="year"
               name="year_${esc(n.code)}"
-              value="${esc(entry.year || 2026)}"
+              value="${esc(entry.year || defaultYear)}"
             />
           </td>
         </tr>
@@ -2094,14 +2109,33 @@ function openNepSheetModal() {
     })
     .join('');
 
-  showFormModal('Regional Hub NEP Sheet — Province Allocation', {
+  showFormModal('Regional Hub NEP Sheet — Put Data / Allocation', {
     formId: 'nep-sheet-form',
     submitLabel: 'Save & Push to Hub NEP Sheet',
     cancelId: 'nep-sheet-cancel',
-    bodyHtml: `
-      <p style="margin:0 0 12px;font-size:12.5px;color:var(--text-muted)">
-        Provincial LHS, AREA (HAS), ARBs, and Year stored in the <strong>NEP</strong> tab of the Regional Hub Google Sheet. Only Administrators can edit.
+    contentHtml: `
+      <p style="margin:0 0 10px;font-size:12.5px;color:var(--text-muted)">
+        Enter or update NEP targets (<strong>LHS</strong>, <strong>AREA</strong>, <strong>ARBs</strong>, and <strong>Year</strong>) stored in the Regional Hub Google Sheet. Only Administrators can edit.
       </p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:var(--surface-alt, #f8faf9);padding:10px 14px;border-radius:8px;border:1px solid var(--border);">
+        <div>
+          <strong style="font-size:13px;color:var(--text);">Apply Year to All Provinces:</strong>
+          <span style="font-size:12px;color:var(--text-muted);margin-left:6px;">Batch update target year across all 6 province records</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input
+            type="number"
+            id="nep-global-year-input"
+            class="form-control"
+            style="width:90px;height:32px;font-weight:700;text-align:center;"
+            min="2000"
+            max="2099"
+            step="1"
+            value="${defaultYear}"
+          />
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-apply-global-year">Apply Year</button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -2149,6 +2183,24 @@ function openNepSheetModal() {
 
   updateModalTotals();
   document.getElementById('nep-sheet-form')?.addEventListener('input', updateModalTotals);
+  document.getElementById('btn-apply-global-year')?.addEventListener('click', () => {
+    const yr = Number(document.getElementById('nep-global-year-input')?.value) || 2026;
+    for (const n of provNodes) {
+      const inp = document.getElementById('nep-sheet-form')?.elements[`year_${n.code}`];
+      if (inp) inp.value = yr;
+    }
+  });
+
+  if (targetProv) {
+    setTimeout(() => {
+      const el = document.getElementById('nep-sheet-form')?.elements[`lhs_${targetProv}`];
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    }, 60);
+  }
+
   document.getElementById('nep-sheet-cancel')?.addEventListener('click', closeModal);
   document.getElementById('nep-sheet-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
