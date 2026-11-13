@@ -12,7 +12,8 @@ import {
   getColumnFilterLabel,
   renderSyncView,
   renderUsersView,
-  renderNepView
+  renderNepView,
+  renderTargetSummaryView
 } from './views.js';
 import {
   formatCurrentMonthYear,
@@ -578,6 +579,10 @@ function updateHeaderTitles() {
         ? `Smart Analytics & Logical Information Generator • ${scopeLabel} Records Only`
         : 'Smart Analytics & Logical Information Generator'
     ],
+    'target-summary': [
+      `${scopeLabel} Target Summary`,
+      'Physical Accomplishment per Milestone vs Regional NEP Targets & Quarterly Performance'
+    ],
     nep: [
       'Regional Hub NEP Targets & Sheet',
       'Province allocations (LHS, AREA, ARBs, Year) and Regional Milestone Targets'
@@ -676,6 +681,9 @@ function renderActiveView() {
 
   if (appState.view === 'dashboard') {
     container.innerHTML = renderDashboardView(ctx);
+    bindDashboardViewEvents(container);
+  } else if (appState.view === 'target-summary') {
+    container.innerHTML = renderTargetSummaryView(ctx);
     bindDashboardViewEvents(container);
   } else if (appState.view === 'nep') {
     container.innerHTML = renderNepView(ctx);

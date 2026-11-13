@@ -1003,6 +1003,13 @@ export function renderNepView(ctx) {
   `;
 }
 
+export function renderTargetSummaryView(ctx) {
+  return `
+    ${renderEmptyWorkspaceCallout(ctx.state)}
+    ${renderMilestoneNepSection(ctx)}
+  `;
+}
+
 export function renderDashboardView(ctx) {
   const { state, analytics, monitoringLevel, measurementLogic, provinceScope } = ctx;
   const { kpis, provincialBreakdown, monthlyTrend, stageBreakdown, optoolSummary } = analytics;
@@ -1077,8 +1084,6 @@ export function renderDashboardView(ctx) {
         </div>
       </div>
     </section>
-
-    ${renderMilestoneNepSection(ctx)}
 
     ${renderProvincialNepSheetSection(ctx)}
 
