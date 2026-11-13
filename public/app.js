@@ -40,6 +40,7 @@ const appState = {
   measurementLogic: 'both', // 'both' | 'incremental' | 'cumulative'
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
   nepYearFilter: '2026', // 'ALL' | '2026' | '2025' | ...
+  nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
   filters: {
     province: 'ALL',
     periodMonth: 'LATEST',
@@ -613,6 +614,7 @@ function renderActiveView() {
     measurementLogic: appState.measurementLogic,
     nepMetricMode: appState.nepMetricMode,
     nepYearFilter: appState.nepYearFilter,
+    nepMilestoneFilter: appState.nepMilestoneFilter || 'overall',
     filters: appState.filters,
     activeOptoolTab: appState.activeOptoolTab
   };
@@ -2006,10 +2008,23 @@ function bindDashboardViewEvents(container) {
   });
 
   container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
-  container.querySelector('#btn-edit-nep-sheet')?.addEventListener('click', () => openNepSheetModal());
-  container.querySelector('#btn-card-edit-nep')?.addEventListener('click', () => openNepSheetModal());
+  container.querySelector('#btn-edit-nep-sheet')?.addEventListener('click', (e) => {
+    const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
+    openNepSheetModal(null, ms);
+  });
+  container.querySelector('#btn-card-edit-nep')?.addEventListener('click', (e) => {
+    const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
+    openNepSheetModal(null, ms);
+  });
   container.querySelectorAll('.btn-edit-single-nep').forEach((btn) => {
-    btn.addEventListener('click', () => openNepSheetModal(btn.dataset.prov));
+    btn.addEventListener('click', () => {
+      const ms = btn.dataset.milestone || appState.nepMilestoneFilter || 'overall';
+      openNepSheetModal(btn.dataset.prov, ms);
+    });
+  });
+  container.querySelector('#nep-milestone-filter')?.addEventListener('change', (e) => {
+    appState.nepMilestoneFilter = e.target.value;
+    renderActiveView();
   });
   container.querySelector('#nep-year-filter')?.addEventListener('change', (e) => {
     appState.nepYearFilter = e.target.value;
@@ -2032,6 +2047,7 @@ async function syncHubNepSheet() {
       () => api('/api/nep-sheet/sync', { method: 'POST' })
     );
     appState.state.nepProvinceList = res.nepProvinceList;
+    if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
     appState.analytics = res.analytics;
     renderActiveView();
     toast('Synced Regional Hub NEP Sheet');
@@ -2040,22 +2056,48 @@ async function syncHubNepSheet() {
   }
 }
 
-function openNepSheetModal(targetProv = null) {
+function openNepSheetModal(targetProv = null, initialMilestone = null) {
   const isAdmin = appState.currentUser ? appState.currentUser.role === 'admin' : !appState.provinceScope;
   if (!isAdmin) {
     toast('Only Administrator accounts can edit the Regional Hub NEP Sheet.', true);
     return;
   }
   const provNodes = (appState.schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
-  const currentList = appState.state?.nepProvinceList || {};
+  const milestoneOptions = appState.schemas?.nepMilestoneOptions || [
+    { key: 'overall', label: 'Overall NEP (All Milestones)' },
+    { key: 'cf_doc', label: 'CF Documentation' },
+    { key: 'land_survey', label: 'Land Survey' },
+    { key: 'land_valuation', label: 'Land Valuation' },
+    { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
+    { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
+    { key: 'installation', label: 'Installation' }
+  ];
+
+  let currentMilestone = initialMilestone || appState.nepMilestoneFilter || 'overall';
+  if (!milestoneOptions.some((m) => m.key === currentMilestone)) {
+    currentMilestone = 'overall';
+  }
+
+  // In-memory working copy for each milestone
+  const localData = {};
+  localData.overall = JSON.parse(JSON.stringify(appState.state?.nepProvinceList || {}));
+  for (const m of milestoneOptions) {
+    if (m.key !== 'overall') {
+      localData[m.key] = JSON.parse(JSON.stringify(appState.state?.nepMilestoneList?.[m.key] || {}));
+    }
+  }
+
   const defaultYear =
     appState.nepYearFilter !== 'ALL' && appState.nepYearFilter
       ? Number(appState.nepYearFilter)
-      : currentList.LEY?.year || 2026;
+      : appState.state?.nepProvinceList?.LEY?.year || 2026;
+
+  const getActiveMap = () => localData[currentMilestone] || {};
 
   const rowsHtml = provNodes
     .map((n) => {
-      const entry = currentList[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultYear };
+      const activeMap = getActiveMap();
+      const entry = activeMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultYear };
       return `
         <tr>
           <td><strong>${esc(n.provinceName)}</strong><div class="nep-sub-metric">${esc(n.code)}</div></td>
@@ -2117,25 +2159,43 @@ function openNepSheetModal(targetProv = null) {
       <p style="margin:0 0 10px;font-size:12.5px;color:var(--text-muted)">
         Enter or update NEP targets (<strong>LHS</strong>, <strong>AREA</strong>, <strong>ARBs</strong>, and <strong>Year</strong>) stored in the Regional Hub Google Sheet. Only Administrators can edit.
       </p>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:var(--surface-alt, #f8faf9);padding:10px 14px;border-radius:8px;border:1px solid var(--border);">
-        <div>
-          <strong style="font-size:13px;color:var(--text);">Apply Year to All Provinces:</strong>
-          <span style="font-size:12px;color:var(--text-muted);margin-left:6px;">Batch update target year across all 6 province records</span>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;background:var(--surface-alt, #f8faf9);padding:10px 14px;border-radius:8px;border:1px solid var(--border);">
+        <!-- Milestone Selector -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <label for="nep-modal-milestone" style="font-weight:700;font-size:13px;color:var(--text);margin:0;display:flex;align-items:center;gap:6px;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--dar-green);"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Select Milestone:
+          </label>
+          <select id="nep-modal-milestone" class="form-control" style="font-weight:700;height:34px;min-width:240px;border-color:var(--dar-green);">
+            ${milestoneOptions
+              .map(
+                (m) => `<option value="${esc(m.key)}" ${currentMilestone === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+              )
+              .join('')}
+          </select>
+          <span id="nep-modal-ms-badge" class="badge badge-green" style="font-weight:700;">
+            ${esc(milestoneOptions.find((m) => m.key === currentMilestone)?.label || 'Overall NEP')}
+          </span>
         </div>
+
+        <!-- Batch Year Updater -->
         <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Apply Year:</span>
           <input
             type="number"
             id="nep-global-year-input"
             class="form-control"
-            style="width:90px;height:32px;font-weight:700;text-align:center;"
+            style="width:85px;height:34px;font-weight:700;text-align:center;"
             min="2000"
             max="2099"
             step="1"
             value="${defaultYear}"
           />
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-apply-global-year">Apply Year</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-apply-global-year" style="height:34px;">Apply Year</button>
         </div>
       </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -2162,6 +2222,34 @@ function openNepSheetModal(targetProv = null) {
     `
   });
 
+  const readCurrentFormInputs = () => {
+    const form = document.getElementById('nep-sheet-form');
+    if (!form) return {};
+    const map = {};
+    for (const n of provNodes) {
+      map[n.code] = {
+        lhs: Math.max(0, Math.round(Number(form.elements[`lhs_${n.code}`]?.value) || 0)),
+        area: Math.max(0, Number((Number(form.elements[`area_${n.code}`]?.value) || 0).toFixed(4))),
+        arbs: Math.max(0, Math.round(Number(form.elements[`arbs_${n.code}`]?.value) || 0)),
+        year: Math.max(2000, Math.min(2099, Math.round(Number(form.elements[`year_${n.code}`]?.value) || defaultYear)))
+      };
+    }
+    return map;
+  };
+
+  const populateFormWithData = (dataMap) => {
+    const form = document.getElementById('nep-sheet-form');
+    if (!form) return;
+    for (const n of provNodes) {
+      const item = dataMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultYear };
+      if (form.elements[`lhs_${n.code}`]) form.elements[`lhs_${n.code}`].value = item.lhs || 0;
+      if (form.elements[`area_${n.code}`]) form.elements[`area_${n.code}`].value = (Number(item.area) || 0).toFixed(4);
+      if (form.elements[`arbs_${n.code}`]) form.elements[`arbs_${n.code}`].value = item.arbs || 0;
+      if (form.elements[`year_${n.code}`]) form.elements[`year_${n.code}`].value = item.year || defaultYear;
+    }
+    updateModalTotals();
+  };
+
   const updateModalTotals = () => {
     const form = document.getElementById('nep-sheet-form');
     if (!form) return;
@@ -2183,6 +2271,19 @@ function openNepSheetModal(targetProv = null) {
 
   updateModalTotals();
   document.getElementById('nep-sheet-form')?.addEventListener('input', updateModalTotals);
+
+  document.getElementById('nep-modal-milestone')?.addEventListener('change', (e) => {
+    // 1. Stash current form inputs into localData
+    localData[currentMilestone] = readCurrentFormInputs();
+    // 2. Switch milestone
+    currentMilestone = e.target.value;
+    const msObj = milestoneOptions.find((m) => m.key === currentMilestone);
+    const badge = document.getElementById('nep-modal-ms-badge');
+    if (badge) badge.textContent = msObj?.label || currentMilestone;
+    // 3. Populate form with selected milestone's data
+    populateFormWithData(localData[currentMilestone] || {});
+  });
+
   document.getElementById('btn-apply-global-year')?.addEventListener('click', () => {
     const yr = Number(document.getElementById('nep-global-year-input')?.value) || 2026;
     for (const n of provNodes) {
@@ -2204,36 +2305,38 @@ function openNepSheetModal(targetProv = null) {
   document.getElementById('nep-sheet-cancel')?.addEventListener('click', closeModal);
   document.getElementById('nep-sheet-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const payload = {};
-    for (const n of provNodes) {
-      payload[n.code] = {
-        lhs: Math.max(0, Math.round(Number(fd.get(`lhs_${n.code}`)) || 0)),
-        area: Math.max(0, Number((Number(fd.get(`area_${n.code}`)) || 0).toFixed(4))),
-        arbs: Math.max(0, Math.round(Number(fd.get(`arbs_${n.code}`)) || 0)),
-        year: Math.max(2000, Math.min(2099, Math.round(Number(fd.get(`year_${n.code}`)) || 2026)))
-      };
-    }
+    localData[currentMilestone] = readCurrentFormInputs();
+    const payload = localData[currentMilestone];
+    const msObj = milestoneOptions.find((m) => m.key === currentMilestone);
+    const milestoneTitle = msObj ? msObj.label : currentMilestone;
+
     try {
       const res = await withLoading(
         'saving',
         'Saving NEP Sheet…',
-        'Updating Regional Hub NEP tab (LHS, AREA, ARBs, Year)…',
+        `Updating Regional Hub NEP tab for ${milestoneTitle} (LHS, AREA, ARBs, Year)…`,
         () =>
           api('/api/nep-sheet', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              milestone: currentMilestone,
+              nepProvinceList: payload,
+              nepMilestoneList: localData
+            })
           })
       );
       appState.state.nepProvinceList = res.nepProvinceList;
+      if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
+      if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
       appState.analytics = res.analytics;
+      appState.nepMilestoneFilter = currentMilestone;
       closeModal();
       renderActiveView();
       toast(
         res.gasSync?.ok
-          ? 'Saved & synced Regional Hub NEP Sheet'
-          : 'Saved Regional NEP Sheet locally'
+          ? `Saved & synced Regional Hub NEP Sheet (${milestoneTitle})`
+          : `Saved Regional NEP Sheet locally (${milestoneTitle})`
       );
     } catch (err) {
       toast(err.message, true);

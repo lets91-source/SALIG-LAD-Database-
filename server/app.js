@@ -10,6 +10,7 @@ import {
   BATCH_CATEGORIES,
   MILESTONE_TARGET_TABS,
   DASHBOARD_MILESTONES,
+  NEP_MILESTONE_OPTIONS,
   MILESTONE_DATA_COLUMNS,
   OPTOOL_SHEET_SCHEMAS,
   OPTOOL_PREVIEW_COLUMNS,
@@ -187,6 +188,7 @@ function buildScopedStatePayload(store, scopeCode, includeStaticConfig = true) {
     payload.baselines = view.baselines;
     payload.nepTargets = view.nepTargets;
     payload.nepProvinceList = view.nepProvinceList;
+    payload.nepMilestoneList = view.nepMilestoneList;
   }
   return payload;
 }
@@ -605,6 +607,7 @@ export function createAppServer(dataDir, options = {}) {
             batchCategories: BATCH_CATEGORIES,
             milestoneTargetTabs: MILESTONE_TARGET_TABS,
             dashboardMilestones: DASHBOARD_MILESTONES,
+            nepMilestoneOptions: NEP_MILESTONE_OPTIONS,
             milestoneColumns: MILESTONE_DATA_COLUMNS,
             optoolTabs: OPTOOL_SHEET_SCHEMAS,
             optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS
@@ -886,16 +889,30 @@ export function createAppServer(dataDir, options = {}) {
           return sendJson(res, 403, { error: 'Only Administrator accounts can edit the Regional Hub NEP Sheet.' });
         }
         const body = await readJsonBody(req);
-        const nepProvinceList = store.updateNepProvinceList(body);
+        const milestone = body.milestone || 'overall';
+        const payloadData = body.nepProvinceList || (body.BIL ? body : {});
+        if (body.nepMilestoneList && typeof body.nepMilestoneList === 'object') {
+          for (const [ms, map] of Object.entries(body.nepMilestoneList)) {
+            store.updateNepProvinceList(map, ms);
+          }
+        }
+        store.updateNepProvinceList(payloadData, milestone);
         const gasSync = await pushMutationToGas(
           store,
-          { action: 'saveNepSheet', nepProvinceList },
-          'Updated Regional Hub NEP Sheet (LHS, AREA, ARBs, Year per province).',
+          {
+            action: 'saveNepSheet',
+            milestone,
+            nepProvinceList: payloadData,
+            nepMilestoneList: store.state.nepMilestoneList
+          },
+          `Updated Regional Hub NEP Sheet (${milestone}).`,
           gasPushFn
         );
         return sendJson(res, 200, {
           ok: true,
-          nepProvinceList,
+          nepProvinceList: store.state.nepProvinceList,
+          nepMilestoneList: store.state.nepMilestoneList || {},
+          nepTargets: store.state.nepTargets,
           gasSync,
           analytics: computeScopedAnalytics(store, query, scopeCode)
         });
@@ -921,12 +938,18 @@ export function createAppServer(dataDir, options = {}) {
             error: remote?.error || 'GAS Web App did not return a valid NEP Sheet payload.'
           });
         }
-        const nepProvinceList = store.updateNepProvinceList(remote.nepProvinceList);
-        store.addSyncLog('Hub NEP Sheet Sync', 'success', 'Synced Regional Hub NEP sheet (LHS, AREA, ARBs).');
+        const nepProvinceList = store.updateNepProvinceList(remote.nepProvinceList, 'overall');
+        if (remote.nepMilestoneList && typeof remote.nepMilestoneList === 'object') {
+          for (const [ms, map] of Object.entries(remote.nepMilestoneList)) {
+            store.updateNepProvinceList(map, ms);
+          }
+        }
+        store.addSyncLog('Hub NEP Sheet Sync', 'success', 'Synced Regional Hub NEP sheet (LHS, AREA, ARBs, Year).');
         store.save();
         return sendJson(res, 200, {
           ok: true,
           nepProvinceList,
+          nepMilestoneList: store.state.nepMilestoneList || {},
           analytics: computeScopedAnalytics(store, query, scopeCode)
         });
       }

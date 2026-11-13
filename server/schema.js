@@ -150,6 +150,22 @@ export const DASHBOARD_MILESTONES = [
   { key: 'installation', label: 'Installation', sourceTab: 'Installation' }
 ];
 
+export const NEP_MILESTONE_OPTIONS = [
+  { key: 'overall', label: 'Overall NEP (All Milestones)' },
+  ...DASHBOARD_MILESTONES
+];
+
+export function normalizeNepMilestoneList(raw = {}) {
+  const out = {};
+  const src = raw && typeof raw === 'object' ? raw : {};
+  for (const m of DASHBOARD_MILESTONES) {
+    if (src[m.key] && typeof src[m.key] === 'object') {
+      out[m.key] = normalizeNepProvinceList(src[m.key]);
+    }
+  }
+  return out;
+}
+
 /** Create or normalize the Regional List of per-milestone NEP Targets. */
 export function normalizeNepTargets(raw = {}) {
   const out = {};

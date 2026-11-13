@@ -1910,6 +1910,35 @@ test('Regional Hub NEP Sheet (per province LHS, AREA, ARBs) XLSX round-trip, edi
     assert.equal(syncJson.analytics.nepProvinceTotals.lhs, 142);
     assert.equal(syncJson.analytics.nepProvinceTotals.area, 2160.25);
     assert.equal(syncJson.analytics.nepProvinceTotals.arbs, 415);
+
+    // 5. Per-Milestone selection in Put Data / Allocation modal
+    const cfPutRes = await fetch(`${baseUrl}/api/nep-sheet`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+      body: JSON.stringify({
+        milestone: 'cf_doc',
+        nepProvinceList: {
+          BIL: { lhs: 12, area: 24.5, arbs: 15, year: 2026 },
+          LEY: { lhs: 28, area: 55.5, arbs: 40, year: 2026 }
+        }
+      })
+    });
+    assert.equal(cfPutRes.status, 200);
+    const cfPutJson = await cfPutRes.json();
+    assert.ok(cfPutJson.nepMilestoneList.cf_doc);
+    assert.equal(cfPutJson.nepMilestoneList.cf_doc.BIL.lhs, 12);
+    assert.equal(cfPutJson.nepMilestoneList.cf_doc.LEY.area, 55.5);
+    // Verifies auto-calculation of NEP Target from milestone province totals
+    assert.equal(cfPutJson.nepTargets.cf_doc.targetCount, 40);
+    assert.equal(cfPutJson.nepTargets.cf_doc.targetAreaHas, 80);
+    assert.equal(cfPutJson.analytics.milestoneNepBreakdown[0].nepTargetCount, 40);
+    assert.equal(cfPutJson.analytics.milestoneNepBreakdown[0].nepTargetAreaHas, 80);
+
+    // Provincial user receives scoped milestone breakdown
+    const provBoot = await (await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: provCookie } })).json();
+    assert.ok(provBoot.state.nepMilestoneList.cf_doc);
+    assert.equal(provBoot.state.nepMilestoneList.cf_doc.BIL.lhs, 12);
+    assert.equal(provBoot.state.nepMilestoneList.cf_doc.LEY, undefined);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

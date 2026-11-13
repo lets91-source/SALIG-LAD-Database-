@@ -25,6 +25,7 @@ import {
   DASHBOARD_MILESTONES,
   normalizeNepTargets,
   normalizeNepProvinceList,
+  normalizeNepMilestoneList,
   inferProvinceCodeFromMunicipality,
   inferProvinceCodeFromText,
   formatArea4,
@@ -367,6 +368,7 @@ export class ConsolidatedStore {
     if (!this.state.baselines) this.state.baselines = seed.baselines;
     this.state.nepTargets = normalizeNepTargets(this.state.nepTargets);
     this.state.nepProvinceList = normalizeNepProvinceList(this.state.nepProvinceList);
+    this.state.nepMilestoneList = normalizeNepMilestoneList(this.state.nepMilestoneList);
     if (!Array.isArray(this.state.milestoneData)) this.state.milestoneData = [];
     if (!this.state.optool) this.state.optool = {};
     let dirty = false;
@@ -866,6 +868,14 @@ export class ConsolidatedStore {
     if (this.state.nepProvinceList?.[scopeCode]) {
       scopedNepProvinceList[scopeCode] = this.state.nepProvinceList[scopeCode];
     }
+    const scopedNepMilestoneList = {};
+    if (scopeCode) {
+      for (const [mKey, mMap] of Object.entries(this.state.nepMilestoneList || {})) {
+        if (mMap?.[scopeCode]) {
+          scopedNepMilestoneList[mKey] = { [scopeCode]: mMap[scopeCode] };
+        }
+      }
+    }
     const scopedNodeStatuses = {};
     if (this.state.nodeStatuses?.[scopeCode]) {
       scopedNodeStatuses[scopeCode] = this.state.nodeStatuses[scopeCode];
@@ -875,6 +885,7 @@ export class ConsolidatedStore {
       baselines: scopedBaselines,
       nepTargets: this.state.nepTargets,
       nepProvinceList: scopedNepProvinceList,
+      nepMilestoneList: scopeCode ? scopedNepMilestoneList : (this.state.nepMilestoneList || {}),
       nodeStatuses: scopedNodeStatuses,
       milestoneData: (this.state.milestoneData || []).filter(
         (m) => this.getMilestoneProvinceCode(m) === scopeCode
@@ -919,9 +930,23 @@ export class ConsolidatedStore {
     return this.state.nepTargets;
   }
 
-  /** Persist Regional Hub NEP Sheet per-province totals (LHS, AREA, ARBs). */
-  updateNepProvinceList(raw = {}) {
-    this.state.nepProvinceList = normalizeNepProvinceList(raw);
+  /** Persist Regional Hub NEP Sheet per-province totals (LHS, AREA, ARBs, Year) for overall or a selected milestone. */
+  updateNepProvinceList(raw = {}, milestoneKey = 'overall') {
+    const isOverall = !milestoneKey || milestoneKey === 'overall';
+    const norm = normalizeNepProvinceList(raw);
+    if (isOverall) {
+      this.state.nepProvinceList = norm;
+    } else {
+      if (!this.state.nepMilestoneList) this.state.nepMilestoneList = {};
+      this.state.nepMilestoneList[milestoneKey] = norm;
+      const totalLhs = Object.values(norm).reduce((s, r) => s + r.lhs, 0);
+      const totalArea = Number(Object.values(norm).reduce((s, r) => s + r.area, 0).toFixed(4));
+      if (!this.state.nepTargets) this.state.nepTargets = {};
+      this.state.nepTargets[milestoneKey] = {
+        targetCount: totalLhs,
+        targetAreaHas: totalArea
+      };
+    }
     this.save();
     return this.state.nepProvinceList;
   }
@@ -1289,6 +1314,7 @@ export class ConsolidatedStore {
       milestoneNepBreakdown,
       nepProvinceBreakdown,
       nepProvinceTotals,
+      nepMilestoneList: normalizeNepMilestoneList(this.state.nepMilestoneList),
       kpis: {
         cumulativeETitles,
         cumulativeAreaHas: Number(cumulativeAreaHas.toFixed(4)),

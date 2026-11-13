@@ -271,9 +271,48 @@ function renderMilestoneNepSection(ctx) {
 }
 
 function renderProvincialNepSheetSection(ctx) {
-  const { analytics, schemas, provinceScope, currentUser } = ctx;
-  const rows = analytics.nepProvinceBreakdown || [];
-  const totals = analytics.nepProvinceTotals || { lhs: 0, area: 0, arbs: 0 };
+  const { analytics, schemas, provinceScope, currentUser, nepMilestoneFilter = 'overall' } = ctx;
+  const activeMilestone = String(nepMilestoneFilter || 'overall');
+  const milestoneOptions = schemas?.nepMilestoneOptions || [
+    { key: 'overall', label: 'Overall NEP (All Milestones)' },
+    { key: 'cf_doc', label: 'CF Documentation' },
+    { key: 'land_survey', label: 'Land Survey' },
+    { key: 'land_valuation', label: 'Land Valuation' },
+    { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
+    { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
+    { key: 'installation', label: 'Installation' }
+  ];
+  const activeMilestoneObj = milestoneOptions.find((m) => m.key === activeMilestone) || milestoneOptions[0];
+  const milestoneLabel = activeMilestoneObj.label;
+
+  const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  let rows = [];
+  if (activeMilestone === 'overall') {
+    rows = analytics.nepProvinceBreakdown || [];
+  } else {
+    const msMap = (analytics.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) || {};
+    rows = provNodes.map((n) => {
+      const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
+      return {
+        code: n.code,
+        jurisdiction: n.jurisdiction,
+        provinceName: n.provinceName,
+        lhs: item.lhs || 0,
+        area: item.area || 0,
+        arbs: item.arbs || 0,
+        year: item.year || 2026
+      };
+    });
+  }
+  if (provinceScope) {
+    rows = rows.filter((r) => r.code === provinceScope.code);
+  }
+
+  const totals = {
+    lhs: rows.reduce((s, r) => s + (Number(r.lhs) || 0), 0),
+    area: Number(rows.reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4)),
+    arbs: rows.reduce((s, r) => s + (Number(r.arbs) || 0), 0)
+  };
   const hubUrl = (schemas?.registry || []).find((n) => n.code === 'HUB')?.url || '';
   const canEditNepSheet = currentUser ? currentUser.role === 'admin' : !provinceScope;
 
@@ -281,11 +320,11 @@ function renderProvincialNepSheetSection(ctx) {
     <div class="panel" style="margin-bottom: 18px;">
       <div class="panel-header">
         <div>
-          <h3 class="panel-title">Regional Hub NEP Sheet (Per Province)</h3>
+          <h3 class="panel-title">Regional Hub NEP Sheet — ${esc(milestoneLabel)} (Per Province)</h3>
           <p class="panel-subtitle">${
             provinceScope
-              ? `Provincial NEP Sheet allocation for ${esc(provinceScope.provinceName)} (read-only)`
-              : 'Region VIII Hub NEP tab — LHS, AREA (HAS), ARBs, and Year across all 6 provinces'
+              ? `Provincial NEP Sheet allocation for ${esc(provinceScope.provinceName)} (${esc(milestoneLabel)}) (read-only)`
+              : `Region VIII Hub NEP tab — LHS, AREA (HAS), ARBs, and Year for ${esc(milestoneLabel)} across all 6 provinces`
           }</p>
         </div>
         <div class="panel-actions">
@@ -297,7 +336,7 @@ function renderProvincialNepSheetSection(ctx) {
           ${
             canEditNepSheet
               ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
-                 <button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet">Edit NEP Sheet</button>`
+                 <button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet" data-milestone="${esc(activeMilestone)}">Edit NEP Sheet</button>`
               : ''
           }
         </div>
@@ -351,8 +390,43 @@ function renderProvincialNepSheetSection(ctx) {
 }
 
 export function renderNepView(ctx) {
-  const { analytics, currentUser, provinceScope, nepYearFilter = '2026', schemas } = ctx;
-  const rawRows = analytics.nepProvinceBreakdown || [];
+  const { analytics, currentUser, provinceScope, nepYearFilter = '2026', nepMilestoneFilter = 'overall', schemas } = ctx;
+  const activeMilestone = String(nepMilestoneFilter || 'overall');
+  const milestoneOptions = schemas?.nepMilestoneOptions || [
+    { key: 'overall', label: 'Overall NEP (All Milestones)' },
+    { key: 'cf_doc', label: 'CF Documentation' },
+    { key: 'land_survey', label: 'Land Survey' },
+    { key: 'land_valuation', label: 'Land Valuation' },
+    { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
+    { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
+    { key: 'installation', label: 'Installation' }
+  ];
+  const activeMilestoneObj = milestoneOptions.find((m) => m.key === activeMilestone) || milestoneOptions[0];
+  const milestoneLabel = activeMilestoneObj.label;
+
+  const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  let rawRows = [];
+  if (activeMilestone === 'overall') {
+    rawRows = analytics.nepProvinceBreakdown || [];
+  } else {
+    const msMap = (analytics.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) || {};
+    rawRows = provNodes.map((n) => {
+      const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
+      return {
+        code: n.code,
+        jurisdiction: n.jurisdiction,
+        provinceName: n.provinceName,
+        lhs: item.lhs || 0,
+        area: item.area || 0,
+        arbs: item.arbs || 0,
+        year: item.year || 2026
+      };
+    });
+  }
+  if (provinceScope) {
+    rawRows = rawRows.filter((r) => r.code === provinceScope.code);
+  }
+
   const hubUrl = (schemas?.registry || []).find((n) => n.code === 'HUB')?.url || '';
   const canEditNep = currentUser ? currentUser.role === 'admin' : !provinceScope;
 
@@ -378,10 +452,24 @@ export function renderNepView(ctx) {
     <!-- Top Filter & Action Toolbar -->
     <div class="panel" style="margin-bottom: 18px; padding: 12px 16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <!-- Milestone Selector Filter -->
+          <div style="display:flex;align-items:center;gap:8px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--dar-green);"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span style="font-weight:700;font-size:13px;color:var(--text);">Milestone:</span>
+            <select class="form-control nep-filter-select" id="nep-milestone-filter" aria-label="Select NEP Milestone" style="font-weight:700;min-width:210px;">
+              ${milestoneOptions
+                .map(
+                  (m) => `<option value="${esc(m.key)}" ${activeMilestone === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+                )
+                .join('')}
+            </select>
+          </div>
+
+          <!-- Target Year Filter -->
           <div style="display:flex;align-items:center;gap:8px;">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--dar-green);"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            <span style="font-weight:700;font-size:13px;color:var(--text);">Filter Target Year:</span>
+            <span style="font-weight:700;font-size:13px;color:var(--text);">Target Year:</span>
             <select class="form-control nep-filter-select" id="nep-year-filter" aria-label="Filter NEP by Year" style="font-weight:700;">
               <option value="ALL" ${activeFilter === 'ALL' ? 'selected' : ''}>All Years</option>
               ${availableYears
@@ -392,13 +480,14 @@ export function renderNepView(ctx) {
             </select>
           </div>
           <span class="badge badge-green">${filteredRows.length} ${filteredRows.length === 1 ? 'Province' : 'Provinces'} Shown</span>
+          <span class="badge badge-blue">${esc(milestoneLabel)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           ${hubUrl ? `<a href="${esc(hubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Open NEP Sheet ↗</a>` : ''}
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
           ${
             canEditNep
-              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet">
+              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet" data-milestone="${esc(activeMilestone)}">
                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                    Put NEP Data / Edit Figures
                  </button>`
@@ -413,25 +502,25 @@ export function renderNepView(ctx) {
       <div class="kpi-card">
         <div class="kpi-label">NEP Total Landholdings</div>
         <div class="kpi-primary">${(totals.lhs || 0).toLocaleString('en-US')} LHS</div>
-        <div class="kpi-secondary">Region VIII Target (${esc(yearText)})</div>
-        <div class="kpi-meta">Allocated across 6 provinces</div>
+        <div class="kpi-secondary">${esc(milestoneLabel)}</div>
+        <div class="kpi-meta">Allocated across 6 provinces (${esc(yearText)})</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">NEP Total Area</div>
         <div class="kpi-primary">${fmtArea(totals.area || 0)} HAS</div>
-        <div class="kpi-secondary">CARPable Hectares (${esc(yearText)})</div>
-        <div class="kpi-meta">Region VIII Target</div>
+        <div class="kpi-secondary">CARPable Hectares</div>
+        <div class="kpi-meta">${esc(milestoneLabel)} (${esc(yearText)})</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">NEP Total ARBs</div>
         <div class="kpi-primary">${(totals.arbs || 0).toLocaleString('en-US')} ARBs</div>
-        <div class="kpi-secondary">Target Beneficiaries (${esc(yearText)})</div>
-        <div class="kpi-meta">Agrarian Reform Beneficiaries</div>
+        <div class="kpi-secondary">Target Beneficiaries</div>
+        <div class="kpi-meta">${esc(milestoneLabel)} (${esc(yearText)})</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">NEP Target Year</div>
-        <div class="kpi-primary">${esc(yearText)}</div>
-        <div class="kpi-secondary">${canEditNep ? 'Admin Editable' : 'Regional Target'}</div>
+        <div class="kpi-label">Selected Milestone &amp; Year</div>
+        <div class="kpi-primary" style="font-size:18px;line-height:1.3;">${esc(milestoneLabel)}</div>
+        <div class="kpi-secondary">Target Year: <strong>${esc(yearText)}</strong></div>
         <div class="kpi-meta">${canEditNep ? 'Click "Put NEP Data" to modify' : 'Read-only access'}</div>
       </div>
     </section>
@@ -441,11 +530,11 @@ export function renderNepView(ctx) {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div>
           <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">Provincial Allocation Cards</h3>
-          <p style="margin:2px 0 0;font-size:12.5px;color:var(--text-muted);">Per-province cards displaying LHS, AREA (HAS), ARBs, and Target Year</p>
+          <p style="margin:2px 0 0;font-size:12.5px;color:var(--text-muted);">Per-province cards displaying LHS, AREA (HAS), ARBs, and Target Year for <strong>${esc(milestoneLabel)}</strong></p>
         </div>
         ${
           canEditNep
-            ? `<button type="button" class="btn btn-outline-primary btn-sm" id="btn-card-edit-nep" style="font-weight:600;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Put Data</button>`
+            ? `<button type="button" class="btn btn-outline-primary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Put Data</button>`
             : ''
         }
       </div>
@@ -476,7 +565,7 @@ export function renderNepView(ctx) {
               <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
               ${
                 canEditNep
-                  ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
+                  ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
                   : '<span class="badge badge-gray">Read-Only</span>'
               }
             </div>

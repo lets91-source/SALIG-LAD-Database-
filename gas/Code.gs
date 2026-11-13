@@ -55,7 +55,7 @@ const USER_ACCOUNTS_HEADERS = [
   'Approved_By'
 ];
 
-const NEP_SHEET_HEADERS = ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year'];
+const NEP_SHEET_HEADERS = ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year', 'Milestone'];
 
 const OPTOOL_TABS = [
   'Database',
@@ -188,25 +188,25 @@ function ensureNepSheet_() {
   if (isNew || sheet.getLastRow() < PROVINCIAL_NODES.length + 1) {
     const currentYear = new Date().getFullYear();
     const rows = PROVINCIAL_NODES.map(function (n) {
-      return [n.code, n.name, 0, 0, 0, currentYear];
+      return [n.code, n.name, 0, 0, 0, currentYear, 'overall'];
     });
     sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
     sheet
       .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
-      .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)', '-']]);
+      .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)', '-', '-']]);
     formatNepSheetRanges_(sheet);
   }
   return sheet;
 }
 
 function formatNepSheetRanges_(sheet) {
-  const totalRow = PROVINCIAL_NODES.length + 2;
-  sheet.getRange(2, 3, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0');
-  sheet.getRange(2, 4, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0.0000');
-  sheet.getRange(2, 5, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('#,##0');
-  sheet.getRange(2, 6, PROVINCIAL_NODES.length + 1, 1).setNumberFormat('0');
+  const lastRow = Math.max(sheet.getLastRow(), PROVINCIAL_NODES.length + 2);
+  sheet.getRange(2, 3, lastRow - 1, 1).setNumberFormat('#,##0');
+  sheet.getRange(2, 4, lastRow - 1, 1).setNumberFormat('#,##0.0000');
+  sheet.getRange(2, 5, lastRow - 1, 1).setNumberFormat('#,##0');
+  sheet.getRange(2, 6, lastRow - 1, 1).setNumberFormat('0');
   sheet
-    .getRange(totalRow, 1, 1, NEP_SHEET_HEADERS.length)
+    .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
     .setFontWeight('bold')
     .setBackground('#ECFDF5');
   try {
@@ -430,8 +430,14 @@ function doGet(e) {
 
   if (action === 'nep') {
     ensureNepSheet_();
+    const hubNep = readNepSheetFromHub_();
     return ContentService.createTextOutput(
-      JSON.stringify({ ok: true, spreadsheetId: HUB_SPREADSHEET_ID, nepProvinceList: readNepSheetFromHub_() })
+      JSON.stringify({
+        ok: true,
+        spreadsheetId: HUB_SPREADSHEET_ID,
+        nepProvinceList: hubNep.nepProvinceList || hubNep,
+        nepMilestoneList: hubNep.nepMilestoneList || {}
+      })
     ).setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -496,15 +502,35 @@ function doPost(e) {
 
     if (body.action === 'initNepSheet') {
       ensureNepSheet_();
+      const hubNep = readNepSheetFromHub_();
       return ContentService.createTextOutput(
-        JSON.stringify({ ok: true, sheetName: 'NEP', nepProvinceList: readNepSheetFromHub_() })
+        JSON.stringify({
+          ok: true,
+          sheetName: 'NEP',
+          nepProvinceList: hubNep.nepProvinceList || hubNep,
+          nepMilestoneList: hubNep.nepMilestoneList || {}
+        })
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (body.action === 'saveNepSheet' && (body.nepProvinceList || body.nep)) {
-      saveNepSheetRecord_(body.nepProvinceList || body.nep);
+      const milestone = body.milestone || 'overall';
+      saveNepSheetRecord_(body.nepProvinceList || body.nep, milestone);
+      if (body.nepMilestoneList && typeof body.nepMilestoneList === 'object') {
+        for (const ms in body.nepMilestoneList) {
+          if (ms !== milestone) {
+            saveNepSheetRecord_(body.nepMilestoneList[ms], ms);
+          }
+        }
+      }
+      const hubNep = readNepSheetFromHub_();
       return ContentService.createTextOutput(
-        JSON.stringify({ ok: true, sheetName: 'NEP', nepProvinceList: readNepSheetFromHub_() })
+        JSON.stringify({
+          ok: true,
+          sheetName: 'NEP',
+          nepProvinceList: hubNep.nepProvinceList || hubNep,
+          nepMilestoneList: hubNep.nepMilestoneList || {}
+        })
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -634,11 +660,16 @@ function readNepSheetFromHub_() {
   const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
   const sheet = hub.getSheetByName('NEP');
   const out = {};
+  const nepMilestoneList = {};
   const currentYear = new Date().getFullYear();
   PROVINCIAL_NODES.forEach(function (n) {
     out[n.code] = { lhs: 0, area: 0, arbs: 0, year: currentYear };
   });
-  if (!sheet || sheet.getLastRow() <= 1) return out;
+  if (!sheet || sheet.getLastRow() <= 1) {
+    out.nepProvinceList = out;
+    out.nepMilestoneList = nepMilestoneList;
+    return out;
+  }
   const rows = sheet.getDataRange().getValues();
   const headers = rows[0].map(function (h) { return String(h || '').trim().toUpperCase(); });
   const codeCol = Math.max(0, headers.indexOf('PROVINCE_CODE'));
@@ -647,6 +678,7 @@ function readNepSheetFromHub_() {
   const areaCol = headers.indexOf('AREA') >= 0 ? headers.indexOf('AREA') : 3;
   const arbsCol = headers.indexOf('ARBS') >= 0 ? headers.indexOf('ARBS') : 4;
   const yearCol = headers.indexOf('YEAR') >= 0 ? headers.indexOf('YEAR') : 5;
+  const msCol = headers.indexOf('MILESTONE') >= 0 ? headers.indexOf('MILESTONE') : 6;
 
   const parseNum = function (val) {
     if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
@@ -668,37 +700,93 @@ function readNepSheetFromHub_() {
     }
     if (code) {
       const parsedYear = yearCol >= 0 ? Math.round(parseNum(rows[i][yearCol])) : 0;
-      out[code] = {
+      const msKey = msCol >= 0 ? String(rows[i][msCol] || '').trim().toLowerCase() : '';
+      const rec = {
         lhs: Math.max(0, Math.round(parseNum(rows[i][lhsCol]))),
         area: Math.max(0, Number(parseNum(rows[i][areaCol]).toFixed(4))),
         arbs: Math.max(0, Math.round(parseNum(rows[i][arbsCol]))),
         year: parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear
       };
+
+      if (!msKey || msKey === 'overall') {
+        out[code] = rec;
+      } else {
+        if (!nepMilestoneList[msKey]) nepMilestoneList[msKey] = {};
+        nepMilestoneList[msKey][code] = rec;
+      }
     }
   }
+  out.nepProvinceList = out;
+  out.nepMilestoneList = nepMilestoneList;
   return out;
 }
 
 /** Write per-province LHS, AREA, ARBs, and Year into the Regional Hub NEP tab. */
-function saveNepSheetRecord_(nepMap) {
+function saveNepSheetRecord_(nepMap, milestoneKey) {
   const sheet = ensureNepSheet_();
   const currentYear = new Date().getFullYear();
-  const rows = PROVINCIAL_NODES.map(function (n) {
+  const isOverall = !milestoneKey || milestoneKey === 'overall';
+
+  if (isOverall) {
+    const rows = PROVINCIAL_NODES.map(function (n) {
+      const item = (nepMap && nepMap[n.code]) || {};
+      const parsedYear = Math.round(Number(item.year) || 0);
+      return [
+        n.code,
+        n.name,
+        Math.max(0, Math.round(Number(item.lhs) || 0)),
+        Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
+        Math.max(0, Math.round(Number(item.arbs) || 0)),
+        parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear,
+        'overall'
+      ];
+    });
+    sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
+    sheet
+      .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
+      .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)', '-', '-']]);
+    formatNepSheetRanges_(sheet);
+    return;
+  }
+
+  // Milestone-specific rows: locate existing rows or append
+  const allValues = sheet.getDataRange().getValues();
+  const headers = allValues[0].map(function (h) { return String(h || '').trim().toUpperCase(); });
+  const codeCol = Math.max(0, headers.indexOf('PROVINCE_CODE'));
+  const msCol = headers.indexOf('MILESTONE') >= 0 ? headers.indexOf('MILESTONE') : 6;
+
+  PROVINCIAL_NODES.forEach(function (n) {
     const item = (nepMap && nepMap[n.code]) || {};
     const parsedYear = Math.round(Number(item.year) || 0);
-    return [
+    const yr = parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear;
+    const rowVals = [
       n.code,
       n.name,
       Math.max(0, Math.round(Number(item.lhs) || 0)),
       Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
       Math.max(0, Math.round(Number(item.arbs) || 0)),
-      parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear
+      yr,
+      milestoneKey
     ];
+
+    let foundRow = -1;
+    for (let r = 8; r < allValues.length; r++) {
+      if (
+        String(allValues[r][codeCol] || '').trim().toUpperCase() === n.code &&
+        String(allValues[r][msCol] || '').trim().toLowerCase() === milestoneKey
+      ) {
+        foundRow = r + 1;
+        break;
+      }
+    }
+
+    if (foundRow > 0) {
+      sheet.getRange(foundRow, 1, 1, NEP_SHEET_HEADERS.length).setValues([rowVals]);
+    } else {
+      sheet.appendRow(rowVals);
+    }
   });
-  sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
-  sheet
-    .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
-    .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)', '-']]);
+
   formatNepSheetRanges_(sheet);
 }
 
