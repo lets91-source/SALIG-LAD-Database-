@@ -2734,4 +2734,74 @@ body.has-fullscreen-panel {
   line-height: 1;
 }
 
+/* Monthly Accomplishment Breakdown */
+.nep-month-header {
+  font-size: 10px !important;
+  color: var(--text-muted) !important;
+  font-weight: 700 !important;
+  background: #f1f8f3 !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  letter-spacing: 0.03em;
+  text-align: right;
+  padding: 6px 8px !important;
+  white-space: nowrap;
+}
+
+.nep-q-subtotal-header {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  color: var(--dar-green-dark) !important;
+  background: #e3f1e7 !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  border-right: 1px solid var(--border-strong) !important;
+  text-align: right;
+  padding: 6px 8px !important;
+  white-space: nowrap;
+}
+
+.nep-month-cell {
+  background: rgba(243, 248, 244, 0.45);
+  font-size: 12px;
+  padding: 7px 8px !important;
+}
+
+.nep-q-total-cell {
+  background: rgba(227, 241, 231, 0.55);
+  font-weight: 600;
+  border-right: 1px solid var(--border);
+  padding: 7px 9px !important;
+}
+
+.q-toggle-pill {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(15, 76, 41, 0.1);
+  color: var(--dar-green-dark);
+  margin-left: 4px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.nep-q-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.nep-q-header:hover {
+  background: #e0eee4 !important;
+}
+
+.nep-q-col-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.nep-q-col-header:hover {
+  background: #e6f4ea !important;
+}
+
 

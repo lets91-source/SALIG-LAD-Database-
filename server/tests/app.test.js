@@ -1694,6 +1694,9 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
     assert.equal(cf.rateCountPct, 33.33);
     assert.equal(cf.varianceCount, -4);
     assert.equal(cf.varianceAreaHas, -6.5);
+    assert.ok(cf.months);
+    assert.equal(typeof cf.months[1].count, 'number');
+    assert.equal(typeof cf.months[12].areaHas, 'number');
 
     const survey = rows[1];
     assert.equal(survey.q2.count, 1);

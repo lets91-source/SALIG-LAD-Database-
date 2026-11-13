@@ -1057,6 +1057,21 @@ export class ConsolidatedStore {
         undated: { count: 0, areaHas: 0 }
       };
 
+      const m = {
+        1: { count: 0, areaHas: 0 },
+        2: { count: 0, areaHas: 0 },
+        3: { count: 0, areaHas: 0 },
+        4: { count: 0, areaHas: 0 },
+        5: { count: 0, areaHas: 0 },
+        6: { count: 0, areaHas: 0 },
+        7: { count: 0, areaHas: 0 },
+        8: { count: 0, areaHas: 0 },
+        9: { count: 0, areaHas: 0 },
+        10: { count: 0, areaHas: 0 },
+        11: { count: 0, areaHas: 0 },
+        12: { count: 0, areaHas: 0 }
+      };
+
       for (const r of sourceRows) {
         const parsed = resolveFirstDateQuarter(r, spec.dateKeys);
         if (parsed?.year) yearSet.add(parsed.year);
@@ -1068,6 +1083,10 @@ export class ConsolidatedStore {
         const bucket = parsed?.quarter ? q[parsed.quarter] : q.undated;
         bucket.count += countVal;
         bucket.areaHas += areaVal;
+        if (parsed?.month && m[parsed.month]) {
+          m[parsed.month].count += countVal;
+          m[parsed.month].areaHas += areaVal;
+        }
       }
 
       const totalCount = q[1].count + q[2].count + q[3].count + q[4].count + q.undated.count;
@@ -1112,6 +1131,20 @@ export class ConsolidatedStore {
         q2: { count: q[2].count, areaHas: roundArea(q[2].areaHas) },
         q3: { count: q[3].count, areaHas: roundArea(q[3].areaHas) },
         q4: { count: q[4].count, areaHas: roundArea(q[4].areaHas) },
+        months: {
+          1: { count: m[1].count, areaHas: roundArea(m[1].areaHas) },
+          2: { count: m[2].count, areaHas: roundArea(m[2].areaHas) },
+          3: { count: m[3].count, areaHas: roundArea(m[3].areaHas) },
+          4: { count: m[4].count, areaHas: roundArea(m[4].areaHas) },
+          5: { count: m[5].count, areaHas: roundArea(m[5].areaHas) },
+          6: { count: m[6].count, areaHas: roundArea(m[6].areaHas) },
+          7: { count: m[7].count, areaHas: roundArea(m[7].areaHas) },
+          8: { count: m[8].count, areaHas: roundArea(m[8].areaHas) },
+          9: { count: m[9].count, areaHas: roundArea(m[9].areaHas) },
+          10: { count: m[10].count, areaHas: roundArea(m[10].areaHas) },
+          11: { count: m[11].count, areaHas: roundArea(m[11].areaHas) },
+          12: { count: m[12].count, areaHas: roundArea(m[12].areaHas) }
+        },
         undated: { count: q.undated.count, areaHas: roundArea(q.undated.areaHas) },
         total: { count: totalCount, areaHas: roundArea(totalArea) },
         rateCountPct:

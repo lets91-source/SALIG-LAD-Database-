@@ -659,6 +659,8 @@ function renderActiveView() {
     monitoringLevel: appState.monitoringLevel,
     measurementLogic: appState.measurementLogic,
     nepMetricMode: appState.nepMetricMode,
+    nepShowMonths: Boolean(appState.nepShowMonths),
+    nepExpandedQuarters: appState.nepExpandedQuarters || {},
     nepYearFilter: appState.nepYearFilter,
     nepMilestoneFilter: appState.nepMilestoneFilter || 'overall',
     nepDisplayMode: appState.nepDisplayMode || 'table',
@@ -2063,6 +2065,34 @@ function bindDashboardViewEvents(container) {
   container.querySelector('#nep-year-select')?.addEventListener('change', async (e) => {
     appState.filters.milestoneYear = e.target.value;
     await refreshAnalytics();
+  });
+
+  container.querySelector('#btn-toggle-nep-months')?.addEventListener('click', () => {
+    const willShow = !appState.nepShowMonths;
+    appState.nepShowMonths = willShow;
+    appState.nepExpandedQuarters = { 1: willShow, 2: willShow, 3: willShow, 4: willShow };
+    renderActiveView();
+  });
+
+  container.querySelectorAll('[data-toggle-q]').forEach((th) => {
+    th.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const q = Number(th.dataset.toggleQ);
+      if (q >= 1 && q <= 4) {
+        if (!appState.nepExpandedQuarters) {
+          appState.nepExpandedQuarters = {
+            1: Boolean(appState.nepShowMonths),
+            2: Boolean(appState.nepShowMonths),
+            3: Boolean(appState.nepShowMonths),
+            4: Boolean(appState.nepShowMonths)
+          };
+        }
+        appState.nepExpandedQuarters[q] = !appState.nepExpandedQuarters[q];
+        const allExp = [1, 2, 3, 4].every((i) => Boolean(appState.nepExpandedQuarters[i]));
+        appState.nepShowMonths = allExp;
+        renderActiveView();
+      }
+    });
   });
 
   container.querySelectorAll('[data-open-optool-tab]').forEach((btn) => {

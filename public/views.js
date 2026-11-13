@@ -156,7 +156,7 @@ function formatNepVarianceCell(varianceCount, varianceAreaHas, mode = 'both') {
 }
 
 function renderMilestoneNepSection(ctx) {
-  const { analytics, schemas, filters = {}, provinceScope, nepMetricMode = 'both' } = ctx;
+  const { analytics, schemas, filters = {}, provinceScope, nepMetricMode = 'both', nepShowMonths = false, nepExpandedQuarters = {} } = ctx;
   const rows = analytics.milestoneNepBreakdown || [];
   const yearsSet = new Set(analytics.availableMilestoneYears || []);
   yearsSet.add(new Date().getFullYear());
@@ -177,6 +177,49 @@ function renderMilestoneNepSection(ctx) {
   const activeProvince = filters.province || 'ALL';
   const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
   const canEditNepTargets = !provinceScope;
+
+  const quartersConfig = [
+    {
+      q: 1,
+      label: 'Q1',
+      months: [
+        { num: 1, label: 'Jan' },
+        { num: 2, label: 'Feb' },
+        { num: 3, label: 'Mar' }
+      ]
+    },
+    {
+      q: 2,
+      label: 'Q2',
+      months: [
+        { num: 4, label: 'Apr' },
+        { num: 5, label: 'May' },
+        { num: 6, label: 'Jun' }
+      ]
+    },
+    {
+      q: 3,
+      label: 'Q3',
+      months: [
+        { num: 7, label: 'Jul' },
+        { num: 8, label: 'Aug' },
+        { num: 9, label: 'Sep' }
+      ]
+    },
+    {
+      q: 4,
+      label: 'Q4',
+      months: [
+        { num: 10, label: 'Oct' },
+        { num: 11, label: 'Nov' },
+        { num: 12, label: 'Dec' }
+      ]
+    }
+  ];
+
+  const isQExpanded = (qNum) => nepShowMonths || Boolean(nepExpandedQuarters[qNum]);
+  const hasAnyMonthExpanded = quartersConfig.some((q) => isQExpanded(q.q));
+  const totalQuarterCols = quartersConfig.reduce((acc, q) => acc + (isQExpanded(q.q) ? 4 : 1), 0);
 
   return `
     <div class="panel" id="panel-milestone-nep">
@@ -217,6 +260,9 @@ function renderMilestoneNepSection(ctx) {
               )
               .join('')}
           </select>
+          <button type="button" class="btn btn-sm ${hasAnyMonthExpanded ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-months" title="Toggle monthly accomplishment in each quarter">
+            <span class="fs-icon">📅</span> <span>${hasAnyMonthExpanded ? 'Hide Monthly' : 'Monthly Accomp.'}</span>
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-hub-nep" title="Fetch live NEP target data from Regional Hub Google Sheet">
             Fetch Hub NEP Targets
           </button>
@@ -233,6 +279,9 @@ function renderMilestoneNepSection(ctx) {
       <div class="table-wrap">
         <table class="nep-milestone-table">
           <thead>
+            ${
+              !hasAnyMonthExpanded
+                ? `
             <tr>
               <th rowspan="2">Milestone</th>
               <th rowspan="2" class="right">NEP Target</th>
@@ -242,11 +291,46 @@ function renderMilestoneNepSection(ctx) {
               <th rowspan="2" class="right">Variance</th>
             </tr>
             <tr>
-              <th class="right">Q1</th>
-              <th class="right">Q2</th>
-              <th class="right">Q3</th>
-              <th class="right">Q4</th>
+              <th class="right nep-q-col-header" data-toggle-q="1" title="Click to show months for Q1">Q1 <span class="q-toggle-pill">+</span></th>
+              <th class="right nep-q-col-header" data-toggle-q="2" title="Click to show months for Q2">Q2 <span class="q-toggle-pill">+</span></th>
+              <th class="right nep-q-col-header" data-toggle-q="3" title="Click to show months for Q3">Q3 <span class="q-toggle-pill">+</span></th>
+              <th class="right nep-q-col-header" data-toggle-q="4" title="Click to show months for Q4">Q4 <span class="q-toggle-pill">+</span></th>
             </tr>
+            `
+                : `
+            <tr>
+              <th rowspan="3">Milestone</th>
+              <th rowspan="3" class="right">NEP Target</th>
+              <th colspan="${totalQuarterCols}" class="center nep-quarter-group">Accomp. per Quarter &amp; Monthly</th>
+              <th rowspan="3" class="right">Total</th>
+              <th rowspan="3" class="right">Rate of Accomp.</th>
+              <th rowspan="3" class="right">Variance</th>
+            </tr>
+            <tr>
+              ${quartersConfig
+                .map((q) => {
+                  if (isQExpanded(q.q)) {
+                    return `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="${q.q}" title="Click to hide Q${q.q} months">Q${q.q} <span class="q-toggle-pill">Hide Months ▴</span></th>`;
+                  }
+                  return `<th rowspan="2" class="right nep-quarter-group nep-q-header collapsed" data-toggle-q="${q.q}" title="Click to show Q${q.q} months">Q${q.q} <span class="q-toggle-pill">+ Months ▾</span></th>`;
+                })
+                .join('')}
+            </tr>
+            <tr>
+              ${quartersConfig
+                .map((q) => {
+                  if (!isQExpanded(q.q)) return '';
+                  return `
+                    <th class="right nep-month-header">${q.months[0].label}</th>
+                    <th class="right nep-month-header">${q.months[1].label}</th>
+                    <th class="right nep-month-header">${q.months[2].label}</th>
+                    <th class="right nep-q-subtotal-header">Q${q.q} Total</th>
+                  `;
+                })
+                .join('')}
+            </tr>
+            `
+            }
           </thead>
           <tbody>
             ${rows
@@ -265,10 +349,23 @@ function renderMilestoneNepSection(ctx) {
                   <div class="nep-sub-metric">${esc(r.sourceTab)}</div>
                 </td>
                 <td class="right">${formatNepMetricCell(r.nepTargetCount, r.nepTargetAreaHas, nepMetricMode)}</td>
-                <td class="right">${formatNepMetricCell(r.q1.count, r.q1.areaHas, nepMetricMode)}</td>
-                <td class="right">${formatNepMetricCell(r.q2.count, r.q2.areaHas, nepMetricMode)}</td>
-                <td class="right">${formatNepMetricCell(r.q3.count, r.q3.areaHas, nepMetricMode)}</td>
-                <td class="right">${formatNepMetricCell(r.q4.count, r.q4.areaHas, nepMetricMode)}</td>
+                ${quartersConfig
+                  .map((q) => {
+                    const qData = r[`q${q.q}`] || { count: 0, areaHas: 0 };
+                    if (!isQExpanded(q.q)) {
+                      return `<td class="right">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>`;
+                    }
+                    const m1 = r.months?.[q.months[0].num] || { count: 0, areaHas: 0 };
+                    const m2 = r.months?.[q.months[1].num] || { count: 0, areaHas: 0 };
+                    const m3 = r.months?.[q.months[2].num] || { count: 0, areaHas: 0 };
+                    return `
+                      <td class="right nep-month-cell">${formatNepMetricCell(m1.count, m1.areaHas, nepMetricMode)}</td>
+                      <td class="right nep-month-cell">${formatNepMetricCell(m2.count, m2.areaHas, nepMetricMode)}</td>
+                      <td class="right nep-month-cell">${formatNepMetricCell(m3.count, m3.areaHas, nepMetricMode)}</td>
+                      <td class="right nep-q-total-cell">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>
+                    `;
+                  })
+                  .join('')}
                 <td class="right">
                   ${formatNepMetricCell(r.total.count, r.total.areaHas, nepMetricMode)}
                   ${

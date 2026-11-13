@@ -95748,16 +95748,16 @@
       "targetAreaHas": 1610.8163
     },
     "land_valuation": {
-      "targetCount": 0,
-      "targetAreaHas": 0
+      "targetCount": 151,
+      "targetAreaHas": 1144.4651
     },
     "ep_cloa_registration": {
       "targetCount": 0,
-      "targetAreaHas": 0
+      "targetAreaHas": 2613.1689
     },
     "ep_cloa_distribution": {
       "targetCount": 0,
-      "targetAreaHas": 0
+      "targetAreaHas": 2633.581
     },
     "installation": {
       "targetCount": 0,
@@ -95884,37 +95884,37 @@
         "lhs": 0,
         "area": 0,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       },
       "ESA": {
-        "lhs": 0,
-        "area": 0,
+        "lhs": 1,
+        "area": 6.7469,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       },
       "LEY": {
-        "lhs": 0,
-        "area": 0,
+        "lhs": 106,
+        "area": 713.69,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       },
       "NSA": {
-        "lhs": 0,
-        "area": 0,
+        "lhs": 26,
+        "area": 244.4584,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       },
       "SAM": {
-        "lhs": 0,
-        "area": 0,
+        "lhs": 13,
+        "area": 165.1951,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       },
       "SLE": {
-        "lhs": 0,
-        "area": 0,
+        "lhs": 5,
+        "area": 14.3747,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       }
     },
     "ep_cloa_registration": {
@@ -95922,37 +95922,37 @@
         "lhs": 0,
         "area": 0,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       },
       "ESA": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 23.5124,
+        "arbs": 9,
+        "year": 2025
       },
       "LEY": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 1804.74,
+        "arbs": 301,
+        "year": 2025
       },
       "NSA": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 575.5516,
+        "arbs": 175,
+        "year": 2025
       },
       "SAM": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 174.0747,
+        "arbs": 50,
+        "year": 2025
       },
       "SLE": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 35.2902,
+        "arbs": 30,
+        "year": 2025
       }
     },
     "ep_cloa_distribution": {
@@ -95960,37 +95960,37 @@
         "lhs": 0,
         "area": 0,
         "arbs": 0,
-        "year": 2026
+        "year": 2025
       },
       "ESA": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 23.512,
+        "arbs": 9,
+        "year": 2025
       },
       "LEY": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 1804.74,
+        "arbs": 120,
+        "year": 2025
       },
       "NSA": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 575.552,
+        "arbs": 175,
+        "year": 2025
       },
       "SAM": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 174.075,
+        "arbs": 50,
+        "year": 2025
       },
       "SLE": {
         "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026
+        "area": 55.702,
+        "arbs": 36,
+        "year": 2025
       }
     },
     "installation": {
