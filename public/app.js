@@ -50,6 +50,8 @@ const appState = {
   monitoringLevel: 'both', // 'both' | 'etitles' | 'area'
   measurementLogic: 'both', // 'both' | 'incremental' | 'cumulative'
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
+  surveyMetricMode: 'both', // 'both' | 'lhs' | 'area'
+  surveyIndicatorTab: 'core', // 'core' (3 indicators) | 'compliance' (Milestones Summary)
   nepYearFilter: 'ALL', // 'ALL' | '2026' | '2025' | ...
   nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
   nepMilestoneTableFilter: 'ALL', // 'ALL' | 'cf_doc' | 'land_survey' | ...
@@ -892,7 +894,9 @@ function renderActiveView() {
       whereaboutsColFilters: appState.whereaboutsColFilters,
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
-      whereaboutsPage: appState.whereaboutsPage
+      whereaboutsPage: appState.whereaboutsPage,
+      surveyMetricMode: appState.surveyMetricMode || 'both',
+      surveyIndicatorTab: appState.surveyIndicatorTab || 'core'
     });
     bindWhereaboutsEvents(container, 'survey-whereabouts');
   } else if (appState.view === 'mov-whereabouts') {
@@ -3889,6 +3893,20 @@ function bindWhereaboutsEvents(container, viewKey) {
 
   container.querySelector('#btn-survey-status-refresh')?.addEventListener('click', () => {
     renderActiveView();
+  });
+
+  container.querySelectorAll('[data-survey-metric]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.surveyMetricMode = btn.dataset.surveyMetric;
+      renderActiveView();
+    });
+  });
+
+  container.querySelectorAll('[data-survey-indicator-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.surveyIndicatorTab = btn.dataset.surveyIndicatorTab;
+      renderActiveView();
+    });
   });
 
   container.querySelectorAll('[data-survey-filter-province]').forEach((el) => {

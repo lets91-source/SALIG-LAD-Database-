@@ -1633,7 +1633,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     whereaboutsColFilters = {},
     whereaboutsShowGraph = {},
     whereaboutsGraphMode = {},
-    whereaboutsPage = {}
+    whereaboutsPage = {},
+    surveyMetricMode = 'both',
+    surveyIndicatorTab = 'core'
   } = ctx;
 
   const viewKey = cfg.viewKey;
@@ -2147,10 +2149,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const allTargetYears = ['ALL', ...numYears, ...otherYears];
 
     // 2. Stage definitions and table calculations based on DEFAULT_SURVEY_STATUS_BENCHMARKS
-    const SURVEY_MONITORING_STAGES = [
+    const SURVEY_CORE_STAGES = [
       { key: 'rss', label: 'With RSS', dKey: 'dateRss', benchLhsKey: 'rssLhs', benchAreaKey: 'rssArea' },
       { key: 'ongoing', label: 'ONGOING FIELD WORK', dKey: 'fieldWorkStartDate', benchLhsKey: 'ongoingLhs', benchAreaKey: 'ongoingArea' },
-      { key: 'completed', label: 'FIELD WORK COMPLETED', dKey: 'fieldWorkCompletionDate', benchLhsKey: 'completedLhs', benchAreaKey: 'completedArea' },
+      { key: 'completed', label: 'FIELD WORK COMPLETED', dKey: 'fieldWorkCompletionDate', benchLhsKey: 'completedLhs', benchAreaKey: 'completedArea' }
+    ];
+
+    const SURVEY_COMPLIANCE_STAGES = [
       { key: 'finalizedSr', label: 'FINALIZED SR', dKey: 'finalizedSrDate' },
       { key: 'srForwarded', label: 'SR FORWARDED TO DARRO', dKey: 'srForwardedToDarro' },
       { key: 'srAcceptedDarro', label: 'SR ACCEPTED BY DARRO', dKey: 'srAcceptedByDarro' },
@@ -2161,6 +2166,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       { key: 'asp', label: 'ASP DATE', dKey: 'aspDate' }
     ];
 
+    const ALL_SURVEY_STAGES = [...SURVEY_CORE_STAGES, ...SURVEY_COMPLIANCE_STAGES];
+    const activeStages = surveyIndicatorTab === 'compliance' ? SURVEY_COMPLIANCE_STAGES : SURVEY_CORE_STAGES;
+
     const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
       const nepOverride = state?.nepMilestoneList?.survey?.[b.code];
       const targetLhs = nepOverride?.lhs != null && nepOverride?.lhs !== '' ? Number(nepOverride.lhs) : b.targetLhs;
@@ -2169,7 +2177,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       const provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
       const stages = {};
 
-      for (const st of SURVEY_MONITORING_STAGES) {
+      for (const st of ALL_SURVEY_STAGES) {
         const liveRows = provRows.filter((r) => Boolean(r.datesMap?.[st.dKey]) || Boolean(r[st.dKey]));
         const liveLhs = liveRows.length;
         const liveArea = liveRows.reduce((s, r) => s + r.carpable, 0);
@@ -2203,7 +2211,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       stages: {}
     };
 
-    for (const st of SURVEY_MONITORING_STAGES) {
+    for (const st of ALL_SURVEY_STAGES) {
       surveyTotals.stages[st.key] = {
         lhs: surveyTableRows.reduce((s, r) => s + r.stages[st.key].lhs, 0),
         area: surveyTableRows.reduce((s, r) => s + r.stages[st.key].area, 0),
@@ -2387,6 +2395,137 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       </section>
     `;
 
+    let surveyTheadHtml = '';
+    let renderSurveyRowCells = null;
+    let renderSurveyTotalCells = null;
+
+    if (surveyMetricMode === 'lhs') {
+      surveyTheadHtml = `
+        <tr class="survey-th-l1">
+          <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+          <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
+          ${activeStages.map((st) => `<th colspan="2" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
+        </tr>
+        <tr class="survey-th-l2">
+          ${activeStages.map(() => `
+            <th class="right">ACCOMPLISHMENT</th>
+            <th class="right">BALANCE</th>
+          `).join('')}
+        </tr>
+      `;
+      renderSurveyRowCells = (r) => `
+        <td class="survey-td-unit font-bold">${esc(r.name)}</td>
+        <td class="right">${r.targetLhs.toLocaleString()}</td>
+        ${activeStages.map((st) => {
+          const s = r.stages[st.key];
+          return `
+            <td class="right">${s.lhs.toLocaleString()}</td>
+            <td class="right">${s.balLhs.toLocaleString()}</td>
+          `;
+        }).join('')}
+      `;
+      renderSurveyTotalCells = () => `
+        <td class="survey-td-unit">REGION VIII</td>
+        <td class="right">${surveyTotals.targetLhs.toLocaleString()}</td>
+        ${activeStages.map((st) => {
+          const s = surveyTotals.stages[st.key];
+          return `
+            <td class="right">${s.lhs.toLocaleString()}</td>
+            <td class="right">${s.balLhs.toLocaleString()}</td>
+          `;
+        }).join('')}
+      `;
+    } else if (surveyMetricMode === 'area') {
+      surveyTheadHtml = `
+        <tr class="survey-th-l1">
+          <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+          <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
+          ${activeStages.map((st) => `<th colspan="2" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
+        </tr>
+        <tr class="survey-th-l2">
+          ${activeStages.map(() => `
+            <th class="right">ACCOMPLISHMENT (HAS)</th>
+            <th class="right">BALANCE (HAS)</th>
+          `).join('')}
+        </tr>
+      `;
+      renderSurveyRowCells = (r) => `
+        <td class="survey-td-unit font-bold">${esc(r.name)}</td>
+        <td class="right">${fmtArea(r.targetArea)}</td>
+        ${activeStages.map((st) => {
+          const s = r.stages[st.key];
+          return `
+            <td class="right">${fmtArea(s.area)}</td>
+            <td class="right">${fmtArea(s.balArea)}</td>
+          `;
+        }).join('')}
+      `;
+      renderSurveyTotalCells = () => `
+        <td class="survey-td-unit">REGION VIII</td>
+        <td class="right">${fmtArea(surveyTotals.targetArea)}</td>
+        ${activeStages.map((st) => {
+          const s = surveyTotals.stages[st.key];
+          return `
+            <td class="right">${fmtArea(s.area)}</td>
+            <td class="right">${fmtArea(s.balArea)}</td>
+          `;
+        }).join('')}
+      `;
+    } else {
+      // Default: 'both'
+      surveyTheadHtml = `
+        <tr class="survey-th-l1">
+          <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
+          <th colspan="2" class="survey-th-nep">NEP TARGET</th>
+          ${activeStages.map((st) => `<th colspan="4" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
+        </tr>
+        <tr class="survey-th-l2">
+          <th rowspan="2" class="right">LHS</th>
+          <th rowspan="2" class="right">AREA(HAS)</th>
+          ${activeStages.map(() => `
+            <th colspan="2" class="center">ACCOMPLISHMENT</th>
+            <th colspan="2" class="center">BALANCE</th>
+          `).join('')}
+        </tr>
+        <tr class="survey-th-l3">
+          ${activeStages.map(() => `
+            <th class="right">LHS</th>
+            <th class="right">AREA(HAS)</th>
+            <th class="right">LHS</th>
+            <th class="right">AREA(HAS)</th>
+          `).join('')}
+        </tr>
+      `;
+      renderSurveyRowCells = (r) => `
+        <td class="survey-td-unit font-bold">${esc(r.name)}</td>
+        <td class="right">${r.targetLhs.toLocaleString()}</td>
+        <td class="right">${fmtArea(r.targetArea)}</td>
+        ${activeStages.map((st) => {
+          const s = r.stages[st.key];
+          return `
+            <td class="right">${s.lhs.toLocaleString()}</td>
+            <td class="right">${fmtArea(s.area)}</td>
+            <td class="right">${s.balLhs.toLocaleString()}</td>
+            <td class="right">${fmtArea(s.balArea)}</td>
+          `;
+        }).join('')}
+      `;
+      renderSurveyTotalCells = () => `
+        <td class="survey-td-unit">REGION VIII</td>
+        <td class="right">${surveyTotals.targetLhs.toLocaleString()}</td>
+        <td class="right">${fmtArea(surveyTotals.targetArea)}</td>
+        ${activeStages.map((st) => {
+          const s = surveyTotals.stages[st.key];
+          return `
+            <td class="right">${s.lhs.toLocaleString()}</td>
+            <td class="right">${fmtArea(s.area)}</td>
+            <td class="right">${s.balLhs.toLocaleString()}</td>
+            <td class="right">${fmtArea(s.balArea)}</td>
+          `;
+        }).join('')}
+      `;
+    }
+
     surveyStatusTableHtml = `
       <!-- DAR Survey Status Monitoring Table -->
       <div class="panel survey-status-panel" id="panel-survey-status-monitoring" style="margin-bottom: 20px;">
@@ -2410,6 +2549,19 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             As of ${curDateFormatted}
           </div>
           <div class="survey-monitoring-controls">
+            <!-- 3 Metric Indicator Buttons -->
+            <div class="btn-group" role="group" aria-label="Survey Metric Selector">
+              <button type="button" class="btn btn-sm ${surveyMetricMode === 'both' ? 'btn-primary' : 'btn-secondary'}" data-survey-metric="both" title="Display Both LHS and Area (HAS)">Both</button>
+              <button type="button" class="btn btn-sm ${surveyMetricMode === 'lhs' ? 'btn-primary' : 'btn-secondary'}" data-survey-metric="lhs" title="Display LHS Only">LHS</button>
+              <button type="button" class="btn btn-sm ${surveyMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-survey-metric="area" title="Display Area (HAS) Only">Area (HAS)</button>
+            </div>
+
+            <!-- Indicator Stage Switcher: 3 Indicators vs Milestones Summary -->
+            <div class="btn-group" role="group" aria-label="Survey Stages View">
+              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'core' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="core" title="3 Core Indicators: With RSS, Ongoing Field Work, Field Work Completed">3 Indicators</button>
+              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'compliance' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="compliance" title="Milestones Summary: Finalized SR, Forwarded to DARRO, Accepted by DARRO, Returned DARRO->DARPO, Re-Submitted to DARRO, Accepted DENR-SMD, Returned DENR->DARRO, ASP Date">Milestones Summary</button>
+            </div>
+
             <select class="form-control whereabouts-target-year-select survey-target-year-select" aria-label="Select Target Year">
               <option value="ALL">Target Year</option>
               ${allTargetYears.filter((y) => y !== 'ALL').map((y) => `<option value="${esc(y)}" ${String(targetYearFilterVal) === String(y) ? 'selected' : ''}>Target Year: ${esc(y)}</option>`).join('')}
@@ -2423,45 +2575,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <div class="table-wrap survey-table-wrap">
           <table class="survey-monitoring-table">
             <thead>
-              <tr class="survey-th-l1">
-                <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
-                <th colspan="2" class="survey-th-nep">NEP TARGET</th>
-                ${SURVEY_MONITORING_STAGES.map((st) => `<th colspan="4" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
-              </tr>
-              <tr class="survey-th-l2">
-                <th rowspan="2" class="right">LHS</th>
-                <th rowspan="2" class="right">AREA(HAS)</th>
-                ${SURVEY_MONITORING_STAGES.map(() => `
-                  <th colspan="2" class="center">ACCOMPLISHMENT</th>
-                  <th colspan="2" class="center">BALANCE</th>
-                `).join('')}
-              </tr>
-              <tr class="survey-th-l3">
-                ${SURVEY_MONITORING_STAGES.map(() => `
-                  <th class="right">LHS</th>
-                  <th class="right">AREA(HAS)</th>
-                  <th class="right">LHS</th>
-                  <th class="right">AREA(HAS)</th>
-                `).join('')}
-              </tr>
+              ${surveyTheadHtml}
             </thead>
             <tbody>
               ${surveyTableRows
                 .map(
                   (r) => `
                 <tr class="${r.isActive ? 'survey-row-active' : ''}" data-survey-filter-province="${esc(r.name)}" style="cursor:pointer;" title="Click to filter by ${esc(r.name)}">
-                  <td class="survey-td-unit font-bold">${esc(r.name)}</td>
-                  <td class="right">${r.targetLhs.toLocaleString()}</td>
-                  <td class="right">${fmtArea(r.targetArea)}</td>
-                  ${SURVEY_MONITORING_STAGES.map((st) => {
-                    const s = r.stages[st.key];
-                    return `
-                      <td class="right">${s.lhs.toLocaleString()}</td>
-                      <td class="right">${fmtArea(s.area)}</td>
-                      <td class="right">${s.balLhs.toLocaleString()}</td>
-                      <td class="right">${fmtArea(s.balArea)}</td>
-                    `;
-                  }).join('')}
+                  ${renderSurveyRowCells(r)}
                 </tr>
               `
                 )
@@ -2469,18 +2590,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             </tbody>
             <tfoot>
               <tr class="survey-tf-total">
-                <td class="survey-td-unit">REGION VIII</td>
-                <td class="right">${surveyTotals.targetLhs.toLocaleString()}</td>
-                <td class="right">${fmtArea(surveyTotals.targetArea)}</td>
-                ${SURVEY_MONITORING_STAGES.map((st) => {
-                  const s = surveyTotals.stages[st.key];
-                  return `
-                    <td class="right">${s.lhs.toLocaleString()}</td>
-                    <td class="right">${fmtArea(s.area)}</td>
-                    <td class="right">${s.balLhs.toLocaleString()}</td>
-                    <td class="right">${fmtArea(s.balArea)}</td>
-                  `;
-                }).join('')}
+                ${renderSurveyTotalCells()}
               </tr>
             </tfoot>
           </table>
@@ -2534,10 +2644,67 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     Boolean(q) ||
     Object.values(activeColFilters).some((s) => s && s.value && s.value !== 'ALL');
 
+  const whereaboutsControlsHtml = `
+    <div class="nep-header-controls">
+      <input
+        type="search"
+        class="form-control"
+        id="whereabouts-search"
+        placeholder="Search LHID, Landowner, Title, LGU…"
+        value="${esc(searchVal)}"
+        style="min-width:210px;font-size:13px;"
+      />
+      ${
+        !provinceScope
+          ? `
+        <select class="form-control nep-filter-select" id="whereabouts-province-filter" aria-label="Filter by Province">
+          <option value="ALL" ${provFilterVal === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
+          ${provNodes
+            .map(
+              (p) =>
+                `<option value="${esc(p.provinceName)}" ${provFilterVal.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+            )
+            .join('')}
+        </select>
+      `
+          : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
+      }
+      <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="Filter by Date Status">
+        <option value="ALL" ${statusFilterVal === 'ALL' ? 'selected' : ''}>All Records (${totalCount})</option>
+        ${cfg.dates
+          .map((d) => {
+            const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
+            return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
+          })
+          .join('')}
+        <option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
+        <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
+        ⬇ Export CSV
+      </button>
+      <button type="button" class="btn btn-primary btn-sm" data-open-optool-tab="${esc(cfg.openTabName)}" title="Switch to Optool ${esc(cfg.openTabName)} worksheet">
+        Open in ${esc(cfg.openTabName)}
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-whereabouts" title="Full Screen Report / Table">
+        <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+      </button>
+      <button type="button" class="btn ${showGraphVal ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-graph-toggle" id="btn-whereabouts-toggle-graph" title="Toggle Provincial &amp; Monthly Summary Matrices">
+        <span class="icon">📊</span> <span class="label">Graph</span>
+      </button>
+    </div>
+  `;
+
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
     ${isCfWhereabouts ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
+
+    ${isSurveyWhereabouts ? `
+      <div class="panel whereabouts-toolbar-panel" style="padding:10px 16px;margin-bottom:16px;background:#ffffff;">
+        ${whereaboutsControlsHtml}
+      </div>
+    ` : ''}
 
     ${isSurveyWhereabouts ? surveyStatusTableHtml : ''}
 
@@ -2692,54 +2859,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <h3 class="panel-title">${esc(cfg.tabName)} Whereabouts Master Ledger</h3>
           <p class="panel-subtitle">Individual landholdings showing ${esc(cfg.dates.map((d) => d.label).join(' • '))}</p>
         </div>
-        <div class="nep-header-controls">
-          <input
-            type="search"
-            class="form-control"
-            id="whereabouts-search"
-            placeholder="Search LHID, Landowner, Title, LGU…"
-            value="${esc(searchVal)}"
-            style="min-width:210px;font-size:13px;"
-          />
-          ${
-            !provinceScope
-              ? `
-            <select class="form-control nep-filter-select" id="whereabouts-province-filter" aria-label="Filter by Province">
-              <option value="ALL" ${provFilterVal === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
-              ${provNodes
-                .map(
-                  (p) =>
-                    `<option value="${esc(p.provinceName)}" ${provFilterVal.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
-                )
-                .join('')}
-            </select>
-          `
-              : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
-          }
-          <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="Filter by Date Status">
-            <option value="ALL" ${statusFilterVal === 'ALL' ? 'selected' : ''}>All Records (${totalCount})</option>
-            ${cfg.dates
-              .map((d) => {
-                const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
-                return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
-              })
-              .join('')}
-            <option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
-            <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>
-          </select>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
-            ⬇ Export CSV
-          </button>
-          <button type="button" class="btn btn-primary btn-sm" data-open-optool-tab="${esc(cfg.openTabName)}" title="Switch to Optool ${esc(cfg.openTabName)} worksheet">
-            Open in ${esc(cfg.openTabName)}
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-whereabouts" title="Full Screen Report / Table">
-            <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
-          </button>
-          <button type="button" class="btn ${showGraphVal ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-graph-toggle" id="btn-whereabouts-toggle-graph" title="Toggle Provincial &amp; Monthly Summary Matrices">
-            <span class="icon">📊</span> <span class="label">Graph</span>
-          </button>
-        </div>
+        ${!isSurveyWhereabouts ? whereaboutsControlsHtml : ''}
       </div>
 
       <div style="padding:8px 16px;background:var(--bg-light);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">

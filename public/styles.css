@@ -3940,6 +3940,34 @@ th:hover .q-toggle-pill {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.survey-monitoring-controls .btn-group {
+  display: inline-flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.survey-monitoring-controls .btn-group .btn {
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+}
+
+.survey-monitoring-controls .btn-group .btn:last-child {
+  border-right: none;
+}
+
+.whereabouts-toolbar-panel {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
 }
 
 .survey-target-year-select {
