@@ -2155,9 +2155,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         name: '1st Group',
         title: '1st Group: With RSS • Ongoing Field Work • Field Work Completed',
         stages: [
-          { key: 'rss', label: 'With RSS', dKey: 'dateRss', benchLhsKey: 'rssLhs', benchAreaKey: 'rssArea' },
-          { key: 'ongoing', label: 'ONGOING FIELD WORK', dKey: 'fieldWorkStartDate', benchLhsKey: 'ongoingLhs', benchAreaKey: 'ongoingArea' },
-          { key: 'completed', label: 'FIELD WORK COMPLETED', dKey: 'fieldWorkCompletionDate', benchLhsKey: 'completedLhs', benchAreaKey: 'completedArea' }
+          { key: 'rss', label: 'With RSS', dKey: 'dateRss' },
+          { key: 'ongoing', label: 'ONGOING FIELD WORK', dKey: 'fieldWorkStartDate' },
+          { key: 'completed', label: 'FIELD WORK COMPLETED', dKey: 'fieldWorkCompletionDate' }
         ]
       },
       {
@@ -2232,17 +2232,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
       for (const st of ALL_SURVEY_STAGES) {
         const liveRows = provRows.filter((r) => Boolean(r.datesMap?.[st.dKey]) || Boolean(r[st.dKey]));
-        const liveLhs = liveRows.length;
-        const liveArea = liveRows.reduce((s, r) => s + r.carpable, 0);
-
-        const benchLhs = st.benchLhsKey ? (b[st.benchLhsKey] || 0) : 0;
-        const benchArea = st.benchAreaKey ? (b[st.benchAreaKey] || 0) : 0;
-
-        const lhs = liveLhs > benchLhs ? liveLhs : benchLhs;
-        const area = liveArea > benchArea ? liveArea : benchArea;
+        const lhs = liveRows.length;
+        const area = Number(liveRows.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0).toFixed(4));
 
         const balLhs = Math.max(0, targetLhs - lhs);
-        const balArea = Math.max(0, targetArea - area);
+        const balArea = Math.max(0, Number((targetArea - area).toFixed(4)));
 
         stages[st.key] = { lhs, area, balLhs, balArea };
       }
