@@ -27,6 +27,7 @@ import {
   LINKED_DB_PROFILE_FIELDS,
   renderMilestoneWhereaboutsView,
   matchesWhereaboutsTargetYear,
+  renderSurveySupportListModalHtml,
   WHEREABOUTS_CONFIGS
 } from '../../public/views.js';
 import {
@@ -2126,7 +2127,8 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
 
   // Test Province x Current Status Matrix Table
   const pMatrix = htmlAll.indexOf('panel-survey-current-status-matrix');
-  assert.ok(pMatrix > pToolbar, 'Matrix table panel should be located below the toolbar');
+  assert.ok(pMatrix > pMonitoring, 'Matrix table panel should be located below the monitoring tables');
+  assert.ok(pToolbar > pMatrix, 'Toolbar is merged inside the matrix table panel as integrated header');
   assert.ok(htmlAll.includes('Survey Current Status by Operating Unit'), 'Matrix panel heading should be rendered');
   assert.ok(htmlAll.includes('Row</strong> = Province • <strong>Column</strong> = Current Status (Column AP)'), 'Matrix subtitle describes row=Province, col=Current Status');
 
@@ -2134,6 +2136,10 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   for (const prov of ['BILIRAN', 'EASTERN SAMAR', 'LEYTE', 'NORTHERN SAMAR', 'SAMAR', 'SOUTHERN LEYTE', 'REGION VIII TOTAL']) {
     assert.ok(htmlAll.includes(prov), `Matrix table must include province row: ${prov}`);
   }
+
+  // Check interactive figure buttons with data-open-survey-support-list
+  assert.ok(htmlAll.includes('data-open-survey-support-list'), 'Figures must be clickable with data-open-survey-support-list attribute');
+  assert.ok(htmlAll.includes('btn-figure-link'), 'Figure buttons use .btn-figure-link styling');
 
   // Check 2025 matrix values
   assert.ok(html2025.includes('panel-survey-current-status-matrix'));
@@ -2164,4 +2170,33 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   const ctxArea = { ...ctxAll, surveyMetricMode: 'area' };
   const htmlArea = renderMilestoneWhereaboutsView(ctxArea, cfg);
   assert.ok(htmlArea.includes('TOTAL (HAS)'), 'Area-only mode header has TOTAL (HAS)');
+
+  // Test renderSurveySupportListModalHtml
+  const mockSupportRows = [
+    {
+      lhid: '8.01011057E8',
+      province: 'LEYTE',
+      municipality: 'MAYORGA',
+      barangay: 'SANTA CRUZ',
+      landOwner: 'REPUBLIC OF THE PHILIPPINES',
+      titleNumber: 'OCT-1234',
+      carpable: 3.0906,
+      currentStatus: '01 - With RSS',
+      stage: '01 - With RSS',
+      target: 'Previous Year',
+      datesMap: { dateRss: '2025-06-15' }
+    }
+  ];
+  const supportModalHtml = renderSurveySupportListModalHtml({
+    rows: mockSupportRows,
+    province: 'LEYTE',
+    status: '01 - With RSS',
+    targetYear: '2025',
+    totalArea: 3.0906
+  });
+  assert.ok(supportModalHtml.includes('survey-support-list-modal'), 'Support list modal wrapper rendered');
+  assert.ok(supportModalHtml.includes('8.01011057E8'), 'LHID present in support list modal');
+  assert.ok(supportModalHtml.includes('MAYORGA'), 'Municipality present in support list modal');
+  assert.ok(supportModalHtml.includes('btn-export-support-list-csv'), 'Export CSV button present in support list modal');
+  assert.ok(supportModalHtml.includes('support-list-search'), 'In-modal search input present in support list modal');
 });

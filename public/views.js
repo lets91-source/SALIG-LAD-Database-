@@ -2209,6 +2209,84 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     `;
   }
 
+  const hasAnyActiveFilter =
+    provFilterVal !== 'ALL' ||
+    ((isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') ||
+    statusFilterVal !== 'ALL' ||
+    Boolean(q) ||
+    Object.values(activeColFilters).some((s) => s && s.value && s.value !== 'ALL');
+
+  const whereaboutsControlsHtml = `
+    <div class="nep-header-controls">
+      <input
+        type="search"
+        class="form-control"
+        id="whereabouts-search"
+        placeholder="Search LHID, Landowner, Title, LGU…"
+        value="${esc(searchVal)}"
+        style="min-width:210px;font-size:13px;"
+      />
+      ${
+        !provinceScope
+          ? `
+        <select class="form-control nep-filter-select" id="whereabouts-province-filter" aria-label="Filter by Province">
+          <option value="ALL" ${provFilterVal === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
+          ${provNodes
+            .map(
+              (p) =>
+                `<option value="${esc(p.provinceName)}" ${provFilterVal.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+            )
+            .join('')}
+        </select>
+      `
+          : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
+      }
+      <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="${isSurveyWhereabouts ? 'Filter by Current Status' : 'Filter by Date Status'}">
+        <option value="ALL" ${statusFilterVal === 'ALL' ? 'selected' : ''}>All Records (${totalCount})</option>
+        ${
+          isSurveyWhereabouts
+            ? (() => {
+                const statusCounts = new Map();
+                for (const r of enrichedRows) {
+                  const st = String(r.currentStatus || r.stage || '').trim() || 'Pending Survey';
+                  statusCounts.set(st, (statusCounts.get(st) || 0) + 1);
+                }
+                return Array.from(statusCounts.entries())
+                  .sort(([a], [b]) => {
+                    if (a.startsWith('Pending')) return 1;
+                    if (b.startsWith('Pending')) return -1;
+                    return a.localeCompare(b);
+                  })
+                  .map(([st, count]) => {
+                    return `<option value="${esc(st)}" ${statusFilterVal === st ? 'selected' : ''}>${esc(st)} (${count})</option>`;
+                  })
+                  .join('');
+              })()
+            : cfg.dates
+                .map((d) => {
+                  const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
+                  return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
+                })
+                .join('') +
+              `<option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
+               <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>`
+        }
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
+        ⬇ Export CSV
+      </button>
+      <button type="button" class="btn btn-primary btn-sm" data-open-optool-tab="${esc(cfg.openTabName)}" title="Switch to Optool ${esc(cfg.openTabName)} worksheet">
+        Open in ${esc(cfg.openTabName)}
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-whereabouts" title="Full Screen Report / Table">
+        <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+      </button>
+      <button type="button" class="btn ${showGraphVal ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-graph-toggle" id="btn-whereabouts-toggle-graph" title="Toggle Provincial &amp; Monthly Summary Matrices">
+        <span class="icon">📊</span> <span class="label">Graph</span>
+      </button>
+    </div>
+  `;
+
   // Top KPI Cards and Monitoring Table for Survey Whereabouts
   let surveyKpiHtml = '';
   let surveyStatusTableHtml = '';
@@ -2604,7 +2682,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${stages.map((st) => {
             const s = r.stages[st.key];
             return `
-              <td class="right">${s.lhs.toLocaleString()}</td>
+              <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
               <td class="right">${s.balLhs.toLocaleString()}</td>
             `;
           }).join('')}
@@ -2617,7 +2695,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${stages.map((st) => {
             const s = r.stages[st.key];
             return `
-              <td class="right">${fmtArea(s.area)}</td>
+              <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
               <td class="right">${fmtArea(s.balArea)}</td>
             `;
           }).join('')}
@@ -2631,8 +2709,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         ${stages.map((st) => {
           const s = r.stages[st.key];
           return `
-            <td class="right">${s.lhs.toLocaleString()}</td>
-            <td class="right">${fmtArea(s.area)}</td>
+            <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
+            <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
             <td class="right">${s.balLhs.toLocaleString()}</td>
             <td class="right">${fmtArea(s.balArea)}</td>
           `;
@@ -2648,7 +2726,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${stages.map((st) => {
             const s = totals.stages[st.key];
             return `
-              <td class="right">${s.lhs.toLocaleString()}</td>
+              <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
               <td class="right">${s.balLhs.toLocaleString()}</td>
             `;
           }).join('')}
@@ -2661,7 +2739,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${stages.map((st) => {
             const s = totals.stages[st.key];
             return `
-              <td class="right">${fmtArea(s.area)}</td>
+              <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
               <td class="right">${fmtArea(s.balArea)}</td>
             `;
           }).join('')}
@@ -2675,8 +2753,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         ${stages.map((st) => {
           const s = totals.stages[st.key];
           return `
-            <td class="right">${s.lhs.toLocaleString()}</td>
-            <td class="right">${fmtArea(s.area)}</td>
+            <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
+            <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
             <td class="right">${s.balLhs.toLocaleString()}</td>
             <td class="right">${fmtArea(s.balArea)}</td>
           `;
@@ -3065,6 +3143,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
 
+        <!-- Merged Integrated Toolbar inside Matrix Panel -->
+        <div class="survey-matrix-toolbar whereabouts-toolbar-panel" style="padding:10px 16px;background:#f9fafb;border-bottom:1px solid var(--border);">
+          ${whereaboutsControlsHtml}
+        </div>
+
         <div class="panel-body" style="padding:14px 16px;">
           <div class="table-wrap survey-table-wrap" style="border: 1px solid #166534; border-radius: 8px; overflow-x: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <table class="survey-monitoring-table" style="margin-bottom: 0;">
@@ -3131,84 +3214,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     </section>
   `;
 
-  const hasAnyActiveFilter =
-    provFilterVal !== 'ALL' ||
-    ((isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') ||
-    statusFilterVal !== 'ALL' ||
-    Boolean(q) ||
-    Object.values(activeColFilters).some((s) => s && s.value && s.value !== 'ALL');
-
-  const whereaboutsControlsHtml = `
-    <div class="nep-header-controls">
-      <input
-        type="search"
-        class="form-control"
-        id="whereabouts-search"
-        placeholder="Search LHID, Landowner, Title, LGU…"
-        value="${esc(searchVal)}"
-        style="min-width:210px;font-size:13px;"
-      />
-      ${
-        !provinceScope
-          ? `
-        <select class="form-control nep-filter-select" id="whereabouts-province-filter" aria-label="Filter by Province">
-          <option value="ALL" ${provFilterVal === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
-          ${provNodes
-            .map(
-              (p) =>
-                `<option value="${esc(p.provinceName)}" ${provFilterVal.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
-            )
-            .join('')}
-        </select>
-      `
-          : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
-      }
-      <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="${isSurveyWhereabouts ? 'Filter by Current Status' : 'Filter by Date Status'}">
-        <option value="ALL" ${statusFilterVal === 'ALL' ? 'selected' : ''}>All Records (${totalCount})</option>
-        ${
-          isSurveyWhereabouts
-            ? (() => {
-                const statusCounts = new Map();
-                for (const r of enrichedRows) {
-                  const st = String(r.currentStatus || r.stage || '').trim() || 'Pending Survey';
-                  statusCounts.set(st, (statusCounts.get(st) || 0) + 1);
-                }
-                return Array.from(statusCounts.entries())
-                  .sort(([a], [b]) => {
-                    if (a.startsWith('Pending')) return 1;
-                    if (b.startsWith('Pending')) return -1;
-                    return a.localeCompare(b);
-                  })
-                  .map(([st, count]) => {
-                    return `<option value="${esc(st)}" ${statusFilterVal === st ? 'selected' : ''}>${esc(st)} (${count})</option>`;
-                  })
-                  .join('');
-              })()
-            : cfg.dates
-                .map((d) => {
-                  const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
-                  return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
-                })
-                .join('') +
-              `<option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
-               <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>`
-        }
-      </select>
-      <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
-        ⬇ Export CSV
-      </button>
-      <button type="button" class="btn btn-primary btn-sm" data-open-optool-tab="${esc(cfg.openTabName)}" title="Switch to Optool ${esc(cfg.openTabName)} worksheet">
-        Open in ${esc(cfg.openTabName)}
-      </button>
-      <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-whereabouts" title="Full Screen Report / Table">
-        <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
-      </button>
-      <button type="button" class="btn ${showGraphVal ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-graph-toggle" id="btn-whereabouts-toggle-graph" title="Toggle Provincial &amp; Monthly Summary Matrices">
-        <span class="icon">📊</span> <span class="label">Graph</span>
-      </button>
-    </div>
-  `;
-
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
@@ -3216,12 +3221,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     ${isSurveyWhereabouts ? surveyStatusTableHtml : ''}
 
-    ${isSurveyWhereabouts ? `
-      <div class="panel whereabouts-toolbar-panel" style="padding:10px 16px;margin-bottom:16px;background:#ffffff;">
-        ${whereaboutsControlsHtml}
-      </div>
-      ${surveyCurrentStatusMatrixHtml}
-    ` : ''}
+    ${isSurveyWhereabouts ? surveyCurrentStatusMatrixHtml : ''}
 
     <!-- Provincial & Monthly Summary Matrices / Graphs -->
     <div id="whereabouts-graph-container" style="display: ${showGraphVal ? 'block' : 'none'}; margin-bottom: 18px;">
@@ -5411,4 +5411,131 @@ export function renderUsersView({ users = [], currentUser = null }) {
     </div>
   `;
 }
+
+export function renderSurveySupportListModalHtml({
+  rows = [],
+  province = 'ALL',
+  status = 'ALL',
+  stageKey = '',
+  stageLabel = '',
+  targetYear = 'ALL',
+  totalArea = 0
+}) {
+  const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
+  const statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
+  const totalCount = rows.length;
+
+  return `
+    <div class="survey-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
+      <!-- Summary Header Banner -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span class="badge badge-green" style="font-size:12px;font-weight:700;padding:4px 10px;">
+            🏛️ ${esc(provLabel)}
+          </span>
+          <span class="badge badge-blue" style="font-size:12px;font-weight:700;padding:4px 10px;">
+            📌 ${esc(statusDisplay)}
+          </span>
+          ${targetYear && targetYear !== 'ALL' ? `
+            <span class="badge badge-gray" style="font-size:12px;font-weight:700;padding:4px 10px;">
+              🗓️ Target Year: ${esc(targetYear)}
+            </span>
+          ` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="font-size:13px;color:#166534;font-weight:700;">
+            <strong>${totalCount.toLocaleString()}</strong> Landholding${totalCount === 1 ? '' : 's'} • <strong>${fmtArea(totalArea)}</strong> HAS
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-export-support-list-csv" style="font-size:12px;padding:4px 10px;" title="Export this Support List to CSV">
+            ⬇ Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter & Search Bar inside modal -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <input
+          type="search"
+          class="form-control"
+          id="support-list-search"
+          placeholder="Search within this support list (LHID, Landowner, Title, Municipality...)"
+          style="font-size:12.5px;min-width:280px;flex:1;max-width:440px;"
+        />
+        <div style="font-size:12px;color:var(--text-muted);" id="support-list-count-label">
+          Showing <strong>${totalCount}</strong> records
+        </div>
+      </div>
+
+      <!-- Scrollable Table -->
+      <div class="table-wrap" style="max-height:52vh;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
+        <table class="nep-milestone-table" id="support-list-table">
+          <thead style="position:sticky;top:0;z-index:2;background:#0f4d2a;color:#ffffff;">
+            <tr>
+              <th style="width:36px;color:#ffffff;" class="center">#</th>
+              <th style="color:#ffffff;">LHID</th>
+              <th style="color:#ffffff;">PROVINCE</th>
+              <th style="color:#ffffff;">MUNICIPALITY</th>
+              <th style="color:#ffffff;">BARANGAY</th>
+              <th style="color:#ffffff;">LANDOWNER / TITLE</th>
+              <th class="right" style="color:#ffffff;">CARPABLE AREA</th>
+              <th style="color:#ffffff;">CURRENT STATUS</th>
+              <th style="color:#ffffff;">DATE RSS</th>
+              <th style="color:#ffffff;">FIELD WORK START</th>
+              <th style="color:#ffffff;">FIELD WORK DONE</th>
+              <th style="color:#ffffff;">ASP DATE</th>
+              <th style="color:#ffffff;">TARGET</th>
+              <th class="right" style="color:#ffffff;">ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              rows.length === 0
+                ? `
+              <tr>
+                <td colspan="14" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
+                  <div style="font-size:14px;font-weight:700;">No landholdings found for this selection</div>
+                </td>
+              </tr>
+            `
+                : rows
+                    .map((r, i) => `
+              <tr>
+                <td class="text-muted center" style="font-size:11px;">${i + 1}</td>
+                <td>
+                  <button type="button" class="link-btn lhid-chip" data-lhid="${esc(r.lhid)}" title="Click to view 360 Landholding Profile">
+                    ${esc(r.lhid)}
+                  </button>
+                </td>
+                <td><strong>${esc(r.province)}</strong></td>
+                <td>${esc(r.municipality)}</td>
+                <td>${esc(r.barangay)}</td>
+                <td>
+                  <div style="font-weight:600;font-size:12px;">${esc(r.landOwner)}</div>
+                  <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber)}</div>
+                </td>
+                <td class="right font-bold">${fmtArea(r.carpable)} HAS</td>
+                <td>
+                  <span class="badge ${r.stageBadge || 'badge-gray'}">${esc(r.currentStatus || r.stage || '—')}</span>
+                </td>
+                <td>${esc(r.datesMap?.dateRss || r.dateRss || '—')}</td>
+                <td>${esc(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || '—')}</td>
+                <td>${esc(r.datesMap?.fieldWorkCompletionDate || r.fieldWorkCompletionDate || '—')}</td>
+                <td>${esc(r.datesMap?.aspDate || r.aspDate || '—')}</td>
+                <td>${esc(r.target || 'Current')}</td>
+                <td class="right">
+                  <button type="button" class="btn btn-xs btn-primary" data-open-optool-tab="Survey" data-filter-lhid="${esc(r.lhid)}" title="Switch to Survey tab for this LHID">
+                    Open in Survey
+                  </button>
+                </td>
+              </tr>
+            `)
+                    .join('')
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 

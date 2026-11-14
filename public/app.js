@@ -20,9 +20,11 @@ import {
   renderRegDistWhereaboutsView,
   renderInstallationWhereaboutsView,
   matchesWhereaboutsTargetYear,
+  matchProvinceName,
   resolveProvinceCode,
   getWhereaboutsColumnFilterValues,
   getWhereaboutsRowDisplayValue,
+  renderSurveySupportListModalHtml,
   WHEREABOUTS_CONFIGS
 } from './views.js';
 import {
@@ -4007,6 +4009,17 @@ function bindWhereaboutsEvents(container, viewKey) {
     btn.addEventListener('click', () => openLandholdingDrawer(btn.dataset.lhid));
   });
 
+  container.querySelectorAll('[data-open-survey-support-list]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const prov = btn.dataset.province || 'ALL';
+      const st = btn.dataset.status || 'ALL';
+      const stageKey = btn.dataset.stageKey || '';
+      const stageLabel = btn.dataset.stageLabel || '';
+      openSurveySupportListModal({ province: prov, status: st, stageKey, stageLabel });
+    });
+  });
+
   container.querySelector('#btn-whereabouts-export-csv')?.addEventListener('click', () => {
     exportWhereaboutsCsv(viewKey);
   });
@@ -4126,6 +4139,192 @@ function exportWhereaboutsCsv(viewKey) {
   a.href = URL.createObjectURL(blob);
   a.download = `${cfg.tabName}_Whereabouts_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
+}
+
+function getSurveySupportRows(appState) {
+  const rawRows = appState.state?.optool?.Survey || [];
+  const dbRows = appState.state?.optool?.Database || [];
+  const dbMap = new Map();
+  for (const db of dbRows) {
+    const k = String(db.lhid || '').trim().toLowerCase();
+    if (k && !dbMap.has(k)) dbMap.set(k, db);
+  }
+
+  return rawRows.map((row) => {
+    const lhidKey = String(row.lhid || '').trim().toLowerCase();
+    const db = dbMap.get(lhidKey) || {};
+    const carpableNum = Number(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const provName = db.province || row.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
+    const muniName = db.municipality || row.municipality || '—';
+    const brgyName = db.barangay || row.barangay || '—';
+    const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
+    const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
+
+    const apStatus = String(row.currentStatus || '').trim();
+    const derived = resolveSurveyCurrentStatus(row).currentStatus;
+    const stage = apStatus || derived || 'Pending Survey';
+
+    return {
+      ...row,
+      lhid: row.lhid || db.lhid || '—',
+      province: provName,
+      municipality: muniName,
+      barangay: brgyName,
+      titleNumber: titleNum,
+      landOwner: landOwner,
+      carpable: carpableNum,
+      currentStatus: row.currentStatus || stage,
+      stage,
+      target: row.target || db.target || 'Current'
+    };
+  });
+}
+
+function openSurveySupportListModal({ province = 'ALL', status = 'ALL', stageKey = '', stageLabel = '' }) {
+  const allRows = getSurveySupportRows(appState);
+  const curYear = new Date().getFullYear();
+  const targetYear = appState.whereaboutsTargetYearFilter?.['survey-whereabouts'] || 'ALL';
+
+  const matchedRows = allRows.filter((r) => {
+    if (targetYear !== 'ALL') {
+      if (!matchesWhereaboutsTargetYear(r, targetYear, curYear)) return false;
+    }
+    if (province && province !== 'ALL') {
+      if (!matchProvinceName(r.province, province)) return false;
+    }
+    if (status && status !== 'ALL') {
+      const rowStatus = String(r.currentStatus || r.stage || '').trim().toLowerCase();
+      const targetStatus = String(status).trim().toLowerCase();
+      if (rowStatus !== targetStatus && !rowStatus.includes(targetStatus)) return false;
+    }
+    if (stageKey) {
+      if (!String(r[stageKey] || r.datesMap?.[stageKey] || '').trim()) return false;
+    }
+    return true;
+  });
+
+  const totalArea = matchedRows.reduce((sum, r) => sum + r.carpable, 0);
+  const provLabel = province === 'ALL' ? 'Region VIII' : province;
+  const statusLabel = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
+  const modalTitle = `Support List: ${provLabel} • ${statusLabel}`;
+
+  const modalHtml = renderSurveySupportListModalHtml({
+    rows: matchedRows,
+    province,
+    status,
+    stageKey,
+    stageLabel,
+    targetYear,
+    totalArea
+  });
+
+  showModal(modalTitle, modalHtml);
+  bindSupportListModalEvents(matchedRows, { province, status, stageKey, targetYear });
+}
+
+function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey, targetYear }) {
+  const modalEl = document.getElementById('modal-body');
+  if (!modalEl) return;
+
+  const searchInput = modalEl.querySelector('#support-list-search');
+  const countLabel = modalEl.querySelector('#support-list-count-label');
+  const tbody = modalEl.querySelector('#support-list-table tbody');
+
+  searchInput?.addEventListener('input', (e) => {
+    const q = (e.target.value || '').trim().toLowerCase();
+    const trs = tbody?.querySelectorAll('tr') || [];
+    let visibleCount = 0;
+    trs.forEach((tr) => {
+      const text = tr.textContent.toLowerCase();
+      const match = !q || text.includes(q);
+      tr.style.display = match ? '' : 'none';
+      if (match) visibleCount++;
+    });
+    if (countLabel) {
+      countLabel.innerHTML = `Showing <strong>${visibleCount}</strong> of <strong>${allMatchedRows.length}</strong> records`;
+    }
+  });
+
+  modalEl.querySelector('#btn-export-support-list-csv')?.addEventListener('click', () => {
+    exportSupportListCsv(allMatchedRows, { province, status, targetYear });
+  });
+
+  modalEl.querySelectorAll('[data-lhid]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openLandholdingDrawer(btn.dataset.lhid);
+    });
+  });
+
+  modalEl.querySelectorAll('[data-open-optool-tab="Survey"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const lhid = btn.dataset.filterLhid;
+      closeModal();
+      appState.activeOptoolTab = 'Survey';
+      if (lhid) {
+        appState.optoolSearch = lhid;
+      }
+      appState.optoolPage = 1;
+      appState.optoolColPage = 1;
+      appState.view = 'optool';
+      renderActiveView();
+    });
+  });
+}
+
+function exportSupportListCsv(rows, { province, status, targetYear }) {
+  const headers = [
+    '#',
+    'LHID',
+    'Province',
+    'Municipality',
+    'Barangay',
+    'Landowner',
+    'Title Number',
+    'Carpable Area (HAS)',
+    'Current Status',
+    'Target',
+    'Date RSS',
+    'Field Work Start',
+    'Field Work Completed',
+    'ASP Date'
+  ];
+
+  const escapeCsv = (val) => {
+    const s = String(val ?? '');
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+
+  const csvLines = [headers.join(',')];
+  rows.forEach((r, idx) => {
+    csvLines.push(
+      [
+        idx + 1,
+        escapeCsv(r.lhid),
+        escapeCsv(r.province),
+        escapeCsv(r.municipality),
+        escapeCsv(r.barangay),
+        escapeCsv(r.landOwner),
+        escapeCsv(r.titleNumber),
+        fmtArea(r.carpable),
+        escapeCsv(r.currentStatus || r.stage || ''),
+        escapeCsv(r.target || 'Current'),
+        escapeCsv(r.datesMap?.dateRss || r.dateRss || ''),
+        escapeCsv(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || ''),
+        escapeCsv(r.datesMap?.fieldWorkCompletionDate || r.fieldWorkCompletionDate || ''),
+        escapeCsv(r.datesMap?.aspDate || r.aspDate || '')
+      ].join(',')
+    );
+  });
+
+  const blob = new Blob([csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const provPart = (province || 'Region_VIII').replace(/\s+/g, '_');
+  const statPart = (status || 'All').replace(/\s+/g, '_');
+  a.download = `Support_List_${provPart}_${statPart}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Load regional workspace bootstrap data after authentication succeeds. */
