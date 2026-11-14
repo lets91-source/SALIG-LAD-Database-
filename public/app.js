@@ -3879,10 +3879,38 @@ function bindWhereaboutsEvents(container, viewKey) {
     renderActiveView();
   });
 
-  container.querySelector('#whereabouts-target-year-filter')?.addEventListener('change', (e) => {
-    appState.whereaboutsTargetYearFilter[viewKey] = e.target.value;
-    appState.whereaboutsPage[viewKey] = 1;
+  container.querySelectorAll('.whereabouts-target-year-select, #whereabouts-target-year-filter').forEach((el) => {
+    el.addEventListener('change', (e) => {
+      appState.whereaboutsTargetYearFilter[viewKey] = e.target.value;
+      appState.whereaboutsPage[viewKey] = 1;
+      renderActiveView();
+    });
+  });
+
+  container.querySelector('#btn-survey-status-refresh')?.addEventListener('click', () => {
     renderActiveView();
+  });
+
+  container.querySelectorAll('[data-survey-filter-province]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const pName = el.dataset.surveyFilterProvince;
+      if (pName) {
+        if (!appState.whereaboutsColFilters[viewKey]) {
+          appState.whereaboutsColFilters[viewKey] = {};
+        }
+        const curProvSpec = appState.whereaboutsColFilters[viewKey].province;
+        const isAlreadyFiltered = curProvSpec && Array.isArray(curProvSpec.values) && curProvSpec.values.includes(pName);
+        if (isAlreadyFiltered) {
+          delete appState.whereaboutsColFilters[viewKey].province;
+          appState.whereaboutsProvinceFilter[viewKey] = 'ALL';
+        } else {
+          appState.whereaboutsColFilters[viewKey].province = { mode: 'exact', values: [pName] };
+          appState.whereaboutsProvinceFilter[viewKey] = pName;
+        }
+        appState.whereaboutsPage[viewKey] = 1;
+        renderActiveView();
+      }
+    });
   });
 
   container.querySelector('#btn-whereabouts-clear-all-filters')?.addEventListener('click', () => {

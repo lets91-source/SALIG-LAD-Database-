@@ -3870,6 +3870,210 @@ th:hover .q-toggle-pill {
   border-color: #0a361d !important;
 }
 
+/* ==========================================================================
+   DAR Survey Status Monitoring Panel & Table
+   ========================================================================== */
+.survey-status-panel {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.survey-monitoring-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1.5px solid var(--border);
+}
+
+.survey-monitoring-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.survey-dar-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+}
+
+.survey-brand-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.survey-status-heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.survey-status-subheading {
+  margin: 2px 0 0 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.survey-monitoring-asof {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.survey-monitoring-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.survey-target-year-select {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f4d2a;
+  border: 1.5px solid #15803d;
+  border-radius: 6px;
+  padding: 5px 12px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.btn-survey-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  color: #15803d;
+  border: 1.5px solid #15803d;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-survey-refresh:hover {
+  background: #15803d;
+  color: #ffffff;
+}
+
+.survey-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.survey-monitoring-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 12.5px;
+}
+
+/* Tier 1 Header */
+.survey-monitoring-table thead tr.survey-th-l1 th {
+  background: #09341b;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.survey-monitoring-table thead th.survey-th-unit {
+  text-align: left;
+  padding-left: 14px;
+  min-width: 130px;
+}
+
+/* Tier 2 Header */
+.survey-monitoring-table thead tr.survey-th-l2 th {
+  background: #0d4424;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  vertical-align: middle;
+}
+
+/* Tier 3 Header */
+.survey-monitoring-table thead tr.survey-th-l3 th {
+  background: #10522c;
+  color: #86efac;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* Table Body */
+.survey-monitoring-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s ease;
+}
+
+.survey-monitoring-table tbody tr:hover {
+  background-color: #f0fdf4;
+}
+
+.survey-monitoring-table tbody tr.survey-row-active {
+  background-color: #dcfce7 !important;
+  border-left: 4px solid #16a34a;
+}
+
+.survey-monitoring-table tbody td {
+  padding: 8px 10px;
+  font-variant-numeric: tabular-nums;
+  color: #1f2937;
+  border: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+
+.survey-monitoring-table td.survey-td-unit {
+  font-weight: 700;
+  color: #111827;
+  padding-left: 14px;
+}
+
+/* Table Footer / REGION VIII Row */
+.survey-monitoring-table tfoot tr.survey-tf-total td {
+  background: #09341b;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.survey-monitoring-table tfoot tr.survey-tf-total td:first-child {
+  padding-left: 14px;
+  letter-spacing: 0.04em;
+}
+
 
 
 

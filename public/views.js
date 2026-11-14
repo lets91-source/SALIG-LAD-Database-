@@ -1176,6 +1176,8 @@ export const WHEREABOUTS_CONFIGS = {
     subtitle: 'Land Survey Milestone Tracking • Field Work Dates • SR Forwarded • DENR-SMD Acceptance • ASP Date • Reported Month',
     openTabName: 'Survey',
     dates: [
+      { key: 'dateRss', label: 'DATE RSS', shortLabel: 'With RSS', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'fieldWorkStartDate', label: 'FIELD WORK STARTED', shortLabel: 'Field Work Started', badgeClass: 'badge-purple', icon: '✔' },
       { key: 'fieldWorkCompletionDate', label: 'FIELD WORK COMPLETED', shortLabel: 'Field Work Done', badgeClass: 'badge-blue', icon: '✔' },
       { key: 'srForwardedToDarro', label: 'SR TO DARRO', shortLabel: 'SR to DARRO', badgeClass: 'badge-purple', icon: '✔' },
       { key: 'dateAcceptedDenrSmd', label: 'DENR-SMD ACCEPTED', shortLabel: 'DENR Accepted', badgeClass: 'badge-amber', icon: '✔' },
@@ -1185,9 +1187,12 @@ export const WHEREABOUTS_CONFIGS = {
     resolveStage: (row) => {
       if (row.aspDate) return { stage: 'ASP Approved', badge: 'badge-green' };
       if (row.dateAcceptedDenrSmd) return { stage: 'Accepted DENR-SMD', badge: 'badge-blue' };
+      if (row.srTransmittedDenrSmdDate) return { stage: 'Transmitted to LMS', badge: 'badge-blue' };
       if (row.srForwardedToDarro) return { stage: 'SR at DARRO', badge: 'badge-purple' };
-      if (row.fieldWorkCompletionDate) return { stage: 'Field Work Done', badge: 'badge-amber' };
-      if (row.fieldWorkStartDate) return { stage: 'Field Work Started', badge: 'badge-blue' };
+      if (row.fieldWorkCompletionDate) return { stage: 'Field Work Completed', badge: 'badge-green' };
+      if (row.fieldWorkStartDate) return { stage: 'Ongoing Field Work', badge: 'badge-amber' };
+      if (row.dateRss) return { stage: 'With RSS', badge: 'badge-blue' };
+      if (row.reportedMonth) return { stage: 'Reported (Pending Dates)', badge: 'badge-purple' };
       return { stage: 'Pending Survey', badge: 'badge-gray' };
     },
     extraColHeader: 'Survey Details',
@@ -1262,6 +1267,15 @@ export const WHEREABOUTS_CONFIGS = {
     extraColValue: (r) => `<span class="badge ${String(r.installedStatus || '').toLowerCase() === 'yes' ? 'badge-green' : 'badge-gray'}">${esc(r.installedStatus ? `Installed: ${r.installedStatus}` : `${r.noOfArbs || 0} ARBs`)}</span>`
   }
 };
+
+export const DEFAULT_SURVEY_STATUS_BENCHMARKS = [
+  { code: 'BIL', name: 'BILIRAN', targetLhs: 71, targetArea: 189.3293, rssLhs: 70, rssArea: 185.4073, ongoingLhs: 61, ongoingArea: 163.6834, completedLhs: 61, completedArea: 163.6834 },
+  { code: 'ESA', name: 'EASTERN SAMAR', targetLhs: 11, targetArea: 1081.0901, rssLhs: 9, rssArea: 422.4387, ongoingLhs: 7, ongoingArea: 393.6630, completedLhs: 7, completedArea: 393.6630 },
+  { code: 'LEY', name: 'LEYTE', targetLhs: 882, targetArea: 8290.8248, rssLhs: 299, rssArea: 3030.3574, ongoingLhs: 298, ongoingArea: 2905.6177, completedLhs: 299, completedArea: 2907.8833 },
+  { code: 'NSA', name: 'NORTHERN SAMAR', targetLhs: 14, targetArea: 311.7347, rssLhs: 11, rssArea: 273.9706, ongoingLhs: 7, ongoingArea: 224.5231, completedLhs: 4, completedArea: 50.1193 },
+  { code: 'SAM', name: 'SAMAR', targetLhs: 38, targetArea: 10627.7120, rssLhs: 26, rssArea: 8551.3883, ongoingLhs: 25, ongoingArea: 7658.3322, completedLhs: 24, completedArea: 6443.2368 },
+  { code: 'SLE', name: 'SOUTHERN LEYTE', targetLhs: 60, targetArea: 399.4011, rssLhs: 49, rssArea: 328.9620, ongoingLhs: 28, ongoingArea: 141.2464, completedLhs: 42, completedArea: 242.4080 }
+];
 
 export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
   if (!selectedYear || selectedYear === 'ALL') return true;
@@ -1620,7 +1634,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const pageVal = whereaboutsPage[viewKey] || 1;
   const targetYearFilterVal = whereaboutsTargetYearFilter[viewKey] || 'ALL';
   const isCfWhereabouts = viewKey === 'cf-whereabouts';
-  const showGraphVal = isCfWhereabouts
+  const isSurveyWhereabouts = viewKey === 'survey-whereabouts';
+  const showGraphVal = isCfWhereabouts || isSurveyWhereabouts
     ? Boolean(whereaboutsShowGraph[viewKey])
     : whereaboutsShowGraph[viewKey] !== false;
   const graphMode = whereaboutsGraphMode[viewKey] || 'graph';
@@ -1826,9 +1841,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     return b.total - a.total;
   });
 
-  // Table rows: filter scopeRows by target year (for CF Whereabouts)
+  // Table rows: filter scopeRows by target year (for CF and Survey Whereabouts)
   let filteredRows = scopeRows;
-  if (isCfWhereabouts && targetYearFilterVal !== 'ALL') {
+  if ((isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') {
     filteredRows = filteredRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
   }
 
@@ -2094,6 +2109,418 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     `;
   }
 
+  // Top KPI Cards and Monitoring Table for Survey Whereabouts
+  let surveyKpiHtml = '';
+  let surveyStatusTableHtml = '';
+  if (isSurveyWhereabouts) {
+    // 1. Available Target Years
+    const targetYearSet = new Set();
+    targetYearSet.add(String(curYear));
+    targetYearSet.add(String(curYear - 1));
+    for (const pData of Object.values(state?.nepMilestoneList?.survey || {})) {
+      if (pData?.year) targetYearSet.add(String(pData.year));
+    }
+    for (const r of enrichedRows) {
+      if (r.targetYear) targetYearSet.add(String(r.targetYear));
+      if (r.target) targetYearSet.add(String(r.target));
+      for (const dt of Object.values(r.datesMap)) {
+        const m = String(dt || '').match(/\b(20\d{2})\b/);
+        if (m) targetYearSet.add(m[1]);
+      }
+    }
+    const numYears = Array.from(targetYearSet)
+      .filter((y) => /^\d{4}$/.test(y))
+      .sort((a, b) => Number(b) - Number(a));
+    const otherYears = Array.from(targetYearSet)
+      .filter((y) => !/^\d{4}$/.test(y))
+      .sort();
+    const allTargetYears = ['ALL', ...numYears, ...otherYears];
+
+    // 2. Table calculations based on DEFAULT_SURVEY_STATUS_BENCHMARKS
+    const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
+      const nepOverride = state?.nepMilestoneList?.survey?.[b.code];
+      const targetLhs = nepOverride?.lhs != null && nepOverride?.lhs !== '' ? Number(nepOverride.lhs) : b.targetLhs;
+      const targetArea = nepOverride?.area != null && nepOverride?.area !== '' ? Number(nepOverride.area) : b.targetArea;
+
+      const provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
+
+      const liveRssRows = provRows.filter((r) => Boolean(r.datesMap?.dateRss) || Boolean(r.dateRss) || (r.stage && r.stage.includes('RSS')));
+      const liveRssLhs = liveRssRows.length;
+      const liveRssArea = liveRssRows.reduce((s, r) => s + r.carpable, 0);
+
+      const liveOngoingRows = provRows.filter((r) => Boolean(r.datesMap?.fieldWorkStartDate) || Boolean(r.fieldWorkStartDate));
+      const liveOngoingLhs = liveOngoingRows.length;
+      const liveOngoingArea = liveOngoingRows.reduce((s, r) => s + r.carpable, 0);
+
+      const liveCompletedRows = provRows.filter((r) => Boolean(r.datesMap?.fieldWorkCompletionDate) || Boolean(r.fieldWorkCompletionDate));
+      const liveCompletedLhs = liveCompletedRows.length;
+      const liveCompletedArea = liveCompletedRows.reduce((s, r) => s + r.carpable, 0);
+
+      const rssLhs = liveRssLhs > b.rssLhs ? liveRssLhs : b.rssLhs;
+      const rssArea = liveRssArea > b.rssArea ? liveRssArea : b.rssArea;
+
+      const ongoingLhs = liveOngoingLhs > b.ongoingLhs ? liveOngoingLhs : b.ongoingLhs;
+      const ongoingArea = liveOngoingArea > b.ongoingArea ? liveOngoingArea : b.ongoingArea;
+
+      const completedLhs = liveCompletedLhs > b.completedLhs ? liveCompletedLhs : b.completedLhs;
+      const completedArea = liveCompletedArea > b.completedArea ? liveCompletedArea : b.completedArea;
+
+      const rssBalLhs = Math.max(0, targetLhs - rssLhs);
+      const rssBalArea = Math.max(0, targetArea - rssArea);
+
+      const ongoingBalLhs = Math.max(0, targetLhs - ongoingLhs);
+      const ongoingBalArea = Math.max(0, targetArea - ongoingArea);
+
+      const completedBalLhs = Math.max(0, targetLhs - completedLhs);
+      const completedBalArea = Math.max(0, targetArea - completedArea);
+
+      const isActive = selectedProvs.some((p) => matchProvinceName(b.name, p) || matchProvinceName(b.code, p));
+
+      return {
+        ...b,
+        targetLhs,
+        targetArea,
+        rssLhs,
+        rssArea,
+        rssBalLhs,
+        rssBalArea,
+        ongoingLhs,
+        ongoingArea,
+        ongoingBalLhs,
+        ongoingBalArea,
+        completedLhs,
+        completedArea,
+        completedBalLhs,
+        completedBalArea,
+        isActive
+      };
+    });
+
+    const surveyTotals = surveyTableRows.reduce(
+      (acc, r) => ({
+        targetLhs: acc.targetLhs + r.targetLhs,
+        targetArea: acc.targetArea + r.targetArea,
+        rssLhs: acc.rssLhs + r.rssLhs,
+        rssArea: acc.rssArea + r.rssArea,
+        rssBalLhs: acc.rssBalLhs + r.rssBalLhs,
+        rssBalArea: acc.rssBalArea + r.rssBalArea,
+        ongoingLhs: acc.ongoingLhs + r.ongoingLhs,
+        ongoingArea: acc.ongoingArea + r.ongoingArea,
+        ongoingBalLhs: acc.ongoingBalLhs + r.ongoingBalLhs,
+        ongoingBalArea: acc.ongoingBalArea + r.ongoingBalArea,
+        completedLhs: acc.completedLhs + r.completedLhs,
+        completedArea: acc.completedArea + r.completedArea,
+        completedBalLhs: acc.completedBalLhs + r.completedBalLhs,
+        completedBalArea: acc.completedBalArea + r.completedBalArea
+      }),
+      {
+        targetLhs: 0,
+        targetArea: 0,
+        rssLhs: 0,
+        rssArea: 0,
+        rssBalLhs: 0,
+        rssBalArea: 0,
+        ongoingLhs: 0,
+        ongoingArea: 0,
+        ongoingBalLhs: 0,
+        ongoingBalArea: 0,
+        completedLhs: 0,
+        completedArea: 0,
+        completedBalLhs: 0,
+        completedBalArea: 0
+      }
+    );
+
+    let targetBadgeText = '';
+    if (selectedProvs.length === 1) {
+      targetBadgeText = selectedProvs[0];
+    } else if (selectedProvs.length > 1) {
+      targetBadgeText = selectedProvs.length <= 2 ? selectedProvs.join(', ') : `${selectedProvs.length} Provinces`;
+    } else {
+      targetBadgeText = provinceScope ? provinceScope.provinceName : 'Region VIII';
+    }
+
+    const activeBenchmarkRows = selectedProvs.length > 0
+      ? surveyTableRows.filter((r) => r.isActive)
+      : surveyTableRows;
+
+    const surveyGlobalTargetLhs = activeBenchmarkRows.reduce((s, r) => s + r.targetLhs, 0);
+    const surveyGlobalTargetArea = activeBenchmarkRows.reduce((s, r) => s + r.targetArea, 0);
+
+    const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + r.completedLhs, 0);
+    const surveyGlobalAccompArea = activeBenchmarkRows.reduce((s, r) => s + r.completedArea, 0);
+
+    const surveyTargetYearLhs = surveyGlobalTargetLhs;
+    const surveyTargetYearArea = surveyGlobalTargetArea;
+
+    const surveyRssLhs = activeBenchmarkRows.reduce((s, r) => s + r.rssLhs, 0);
+    const surveyRssArea = activeBenchmarkRows.reduce((s, r) => s + r.rssArea, 0);
+
+    const surveyCompletedLhs = surveyGlobalAccompLhs;
+    const surveyCompletedArea = surveyGlobalAccompArea;
+
+    // LMS landholdings
+    const lmsRows = scopeRows.filter((r) => {
+      return Boolean(
+        r.datesMap?.srTransmittedDenrSmdDate ||
+        r.datesMap?.dateAcceptedDenrSmd ||
+        r.datesMap?.aspDate ||
+        r.srTransmittedDenrSmdDate ||
+        r.dateAcceptedDenrSmd ||
+        r.aspDate ||
+        (r.stage && r.stage.toLowerCase().includes('lms'))
+      );
+    });
+    const surveyAtLmsLhs = lmsRows.length;
+    const surveyAtLmsArea = lmsRows.reduce((s, r) => s + r.carpable, 0);
+
+    const now = new Date();
+    const curDateFormatted =
+      now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) +
+      ' | ' +
+      now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+    surveyKpiHtml = `
+      <!-- Row 1: Global Target & Global Accomplishment -->
+      <section class="cf-kpi-global-grid">
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Global Target</span>
+            <span class="cf-kpi-badge">${esc(targetBadgeText)}</span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${surveyGlobalTargetLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(surveyGlobalTargetArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Global Accomplishment</span>
+            <span class="cf-kpi-badge">${esc(targetBadgeText)}</span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${surveyGlobalAccompLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(surveyGlobalAccompArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Row 2: Target Year Dropdown Filter -->
+      <div class="cf-target-year-bar">
+        <label for="whereabouts-target-year-filter" class="cf-target-year-label">Target year:</label>
+        <select id="whereabouts-target-year-filter" class="cf-target-year-select whereabouts-target-year-select" aria-label="Select Target Year">
+          ${allTargetYears
+            .map(
+              (yr) =>
+                `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>${esc(yr)}</option>`
+            )
+            .join('')}
+        </select>
+      </div>
+
+      <!-- Row 3: 4 Filtered Cards -->
+      <section class="cf-kpi-year-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Target Year: ${esc(targetYearFilterVal === 'ALL' ? curYear : targetYearFilterVal)}</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${surveyTargetYearLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(surveyTargetYearArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Total With RSS</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${surveyRssLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(surveyRssArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Total Field Work Completed</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${surveyCompletedLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(surveyCompletedArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Total AT LMS</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${surveyAtLmsLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(surveyAtLmsArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    surveyStatusTableHtml = `
+      <!-- DAR Survey Status Monitoring Table -->
+      <div class="panel survey-status-panel" id="panel-survey-status-monitoring" style="margin-bottom: 20px;">
+        <div class="survey-monitoring-header">
+          <div class="survey-monitoring-brand">
+            <div class="survey-dar-emblem">
+              <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="18" fill="#15803d" />
+                <circle cx="20" cy="20" r="14" fill="#facc15" />
+                <path d="M20 14 C14 14 11 23 11 27 C15 27 20 24 20 19 Z" fill="#166534" />
+                <path d="M20 14 C26 14 29 23 29 27 C25 27 20 24 20 19 Z" fill="#15803d" />
+                <path d="M20 16 L20 28" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+            </div>
+            <div class="survey-brand-info">
+              <h3 class="survey-status-heading">Survey status</h3>
+              <p class="survey-status-subheading">Region VIII - Monitoring &amp; accomplishment</p>
+            </div>
+          </div>
+          <div class="survey-monitoring-asof">
+            As of ${curDateFormatted}
+          </div>
+          <div class="survey-monitoring-controls">
+            <select class="form-control whereabouts-target-year-select survey-target-year-select" aria-label="Select Target Year">
+              <option value="ALL">Target Year</option>
+              ${allTargetYears.filter((y) => y !== 'ALL').map((y) => `<option value="${esc(y)}" ${String(targetYearFilterVal) === String(y) ? 'selected' : ''}>Target Year: ${esc(y)}</option>`).join('')}
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-success btn-survey-refresh" id="btn-survey-status-refresh" title="Refresh DAR Survey Status">
+              <span class="refresh-icon">🔄</span> Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap survey-table-wrap">
+          <table class="survey-monitoring-table">
+            <thead>
+              <tr class="survey-th-l1">
+                <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
+                <th colspan="2" class="survey-th-nep">NEP TARGET</th>
+                <th colspan="4" class="survey-th-group-rss">With RSS</th>
+                <th colspan="4" class="survey-th-group-ongoing">ONGOING FIELD WORK</th>
+                <th colspan="4" class="survey-th-group-completed">FIELD WORK COMPLETED</th>
+              </tr>
+              <tr class="survey-th-l2">
+                <th rowspan="2" class="right">LHS</th>
+                <th rowspan="2" class="right">AREA(HAS)</th>
+                <th colspan="2" class="center">ACCOMPLISHMENT</th>
+                <th colspan="2" class="center">BALANCE</th>
+                <th colspan="2" class="center">ACCOMPLISHMENT</th>
+                <th colspan="2" class="center">BALANCE</th>
+                <th colspan="2" class="center">ACCOMPLISHMENT</th>
+                <th colspan="2" class="center">BALANCE</th>
+              </tr>
+              <tr class="survey-th-l3">
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${surveyTableRows
+                .map(
+                  (r) => `
+                <tr class="${r.isActive ? 'survey-row-active' : ''}" data-survey-filter-province="${esc(r.name)}" style="cursor:pointer;" title="Click to filter by ${esc(r.name)}">
+                  <td class="survey-td-unit font-bold">${esc(r.name)}</td>
+                  <td class="right">${r.targetLhs.toLocaleString()}</td>
+                  <td class="right">${fmtArea(r.targetArea)}</td>
+                  <td class="right">${r.rssLhs.toLocaleString()}</td>
+                  <td class="right">${fmtArea(r.rssArea)}</td>
+                  <td class="right">${r.rssBalLhs.toLocaleString()}</td>
+                  <td class="right">${fmtArea(r.rssBalArea)}</td>
+                  <td class="right">${r.ongoingLhs.toLocaleString()}</td>
+                  <td class="right">${fmtArea(r.ongoingArea)}</td>
+                  <td class="right">${r.ongoingBalLhs.toLocaleString()}</td>
+                  <td class="right">${fmtArea(r.ongoingBalArea)}</td>
+                  <td class="right">${r.completedLhs.toLocaleString()}</td>
+                  <td class="right">${fmtArea(r.completedArea)}</td>
+                  <td class="right">${r.completedBalLhs.toLocaleString()}</td>
+                  <td class="right">${fmtArea(r.completedBalArea)}</td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+            <tfoot>
+              <tr class="survey-tf-total">
+                <td>REGION VIII</td>
+                <td class="right">${surveyTotals.targetLhs.toLocaleString()}</td>
+                <td class="right">${fmtArea(surveyTotals.targetArea)}</td>
+                <td class="right">${surveyTotals.rssLhs.toLocaleString()}</td>
+                <td class="right">${fmtArea(surveyTotals.rssArea)}</td>
+                <td class="right">${surveyTotals.rssBalLhs.toLocaleString()}</td>
+                <td class="right">${fmtArea(surveyTotals.rssBalArea)}</td>
+                <td class="right">${surveyTotals.ongoingLhs.toLocaleString()}</td>
+                <td class="right">${fmtArea(surveyTotals.ongoingArea)}</td>
+                <td class="right">${surveyTotals.ongoingBalLhs.toLocaleString()}</td>
+                <td class="right">${fmtArea(surveyTotals.ongoingBalArea)}</td>
+                <td class="right">${surveyTotals.completedLhs.toLocaleString()}</td>
+                <td class="right">${fmtArea(surveyTotals.completedArea)}</td>
+                <td class="right">${surveyTotals.completedBalLhs.toLocaleString()}</td>
+                <td class="right">${fmtArea(surveyTotals.completedBalArea)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   const standardKpiHtml = `
     <!-- KPI Grid -->
     <section class="kpi-grid">
@@ -2134,7 +2561,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
   const hasAnyActiveFilter =
     provFilterVal !== 'ALL' ||
-    (isCfWhereabouts && targetYearFilterVal !== 'ALL') ||
+    ((isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') ||
     statusFilterVal !== 'ALL' ||
     Boolean(q) ||
     Object.values(activeColFilters).some((s) => s && s.value && s.value !== 'ALL');
@@ -2142,7 +2569,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
-    ${isCfWhereabouts ? cfKpiHtml : standardKpiHtml}
+    ${isCfWhereabouts ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
+
+    ${isSurveyWhereabouts ? surveyStatusTableHtml : ''}
 
     <!-- Provincial & Monthly Summary Matrices / Graphs -->
     <div id="whereabouts-graph-container" style="display: ${showGraphVal ? 'block' : 'none'}; margin-bottom: 18px;">
@@ -2348,7 +2777,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       <div style="padding:8px 16px;background:var(--bg-light);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
           <span>Showing <strong>${pagedRows.length}</strong> of <strong>${totalFiltered}</strong> matching ${esc(cfg.tabName)} records</span>
-          ${isCfWhereabouts && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
+          ${(isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
           ${provFilterVal !== 'ALL' ? `<span class="badge badge-green">Province: ${esc(provFilterVal)}</span>` : ''}
           ${Object.entries(activeColFilters)
             .map(([k, s]) => {
