@@ -2129,7 +2129,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const targetYearSet = new Set();
     targetYearSet.add(String(curYear));
     targetYearSet.add(String(curYear - 1));
-    for (const pData of Object.values(state?.nepMilestoneList?.survey || {})) {
+    for (const pData of Object.values(state?.nepMilestoneList?.land_survey || state?.nepMilestoneList?.survey || {})) {
       if (pData?.year) targetYearSet.add(String(pData.year));
     }
     for (const r of enrichedRows) {
@@ -2203,9 +2203,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const groupsToRender = activeGroups.length > 0 ? activeGroups : SURVEY_GROUPS;
 
     const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
-      const nepOverride = state?.nepMilestoneList?.survey?.[b.code];
-      const targetLhs = nepOverride?.lhs != null && nepOverride?.lhs !== '' ? Number(nepOverride.lhs) : b.targetLhs;
-      const targetArea = nepOverride?.area != null && nepOverride?.area !== '' ? Number(nepOverride.area) : b.targetArea;
+      const nepOverride = state?.nepMilestoneList?.land_survey?.[b.code] || state?.nepMilestoneList?.survey?.[b.code];
+      const targetLhs = nepOverride?.lhs != null && nepOverride?.lhs !== '' && Number(nepOverride.lhs) > 0 ? Number(nepOverride.lhs) : b.targetLhs;
+      const targetArea = nepOverride?.area != null && nepOverride?.area !== '' && Number(nepOverride.lhs) > 0 ? Number(nepOverride.area) : b.targetArea;
 
       const provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
       const stages = {};
@@ -2433,7 +2433,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         return `
           <tr class="survey-th-l1">
             <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
-            <th rowspan="2" class="survey-th-nep right">TARGET (LHS)<br><span style="font-size:10px;font-weight:600;opacity:0.85;">BASE ON SUPPORT LIST</span></th>
+            <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
             ${stages.map((st) => `<th colspan="2" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
           </tr>
           <tr class="survey-th-l2">
@@ -2448,7 +2448,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         return `
           <tr class="survey-th-l1">
             <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
-            <th rowspan="2" class="survey-th-nep right">TARGET AREA (HAS)<br><span style="font-size:10px;font-weight:600;opacity:0.85;">BASE ON SUPPORT LIST</span></th>
+            <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
             ${stages.map((st) => `<th colspan="2" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
           </tr>
           <tr class="survey-th-l2">
@@ -2463,7 +2463,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       return `
         <tr class="survey-th-l1">
           <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
-          <th colspan="2" class="survey-th-nep center">TARGET<br><span style="font-size:10px;font-weight:600;opacity:0.85;">BASE ON SUPPORT LIST</span></th>
+          <th colspan="2" class="survey-th-nep center">NEP TARGET</th>
           ${stages.map((st) => `<th colspan="4" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
         </tr>
         <tr class="survey-th-l2">
