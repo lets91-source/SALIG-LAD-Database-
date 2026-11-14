@@ -1070,13 +1070,29 @@ function applyDatabaseValidationRules_(sheet) {
     .setAllowInvalid(true)
     .build();
 
+  let targetYearCol = -1;
+  let yearCol = -1;
   for (let c = 0; c < headers.length; c++) {
     const norm = normalizeHeaderKey_(headers[c]);
     if (norm === 'workability') {
       sheet.getRange(2, c + 1, maxRows, 1).setDataValidation(workabilityRule);
     } else if (norm === 'ladstatus' || norm === 'lad' || norm === 'ladcolumn') {
       sheet.getRange(2, c + 1, maxRows, 1).setDataValidation(ladStatusRule);
+    } else if (norm === 'targetyear') {
+      targetYearCol = c + 1;
+    } else if (norm === 'year') {
+      yearCol = c + 1;
     }
+  }
+
+  // Auto-connect TargetYear formula to reflect Database Year column Z
+  const lastRow = sheet.getLastRow();
+  if (targetYearCol > 0 && yearCol > 0 && lastRow > 1) {
+    const diff = yearCol - targetYearCol;
+    const formulaStr = diff > 0
+      ? '=IF(ISBLANK(RC[' + diff + ']), "", RC[' + diff + '])'
+      : '=IF(ISBLANK(RC' + yearCol + '), "", RC' + yearCol + ')';
+    sheet.getRange(2, targetYearCol, lastRow - 1, 1).setFormulaR1C1(formulaStr);
   }
 }
 
