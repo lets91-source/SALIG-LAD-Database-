@@ -2111,4 +2111,16 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   const htmlAll = renderMilestoneWhereaboutsView(ctxAll, cfg);
   assert.ok(htmlAll.includes('1,610.8163'));
   assert.ok(htmlAll.includes('25.1294')); // Total With RSS area (22.6794 + 2.4500)
+
+  // Test position: toolbar panel is below survey status monitoring panel
+  const pMonitoring = htmlAll.indexOf('panel-survey-status-monitoring');
+  const pToolbar = htmlAll.indexOf('whereabouts-toolbar-panel');
+  assert.ok(pMonitoring > 0, 'Survey status panel should be present');
+  assert.ok(pToolbar > 0, 'Toolbar panel should be present');
+  assert.ok(pToolbar > pMonitoring, 'Toolbar panel should be below Survey Status Monitoring panel');
+
+  // Test column AP Current Status options in status dropdown
+  assert.ok(htmlAll.includes('01 - With RSS'), 'Column AP 01 - With RSS status should be in dropdown');
+  assert.ok(htmlAll.includes('03 - Field Work Completed'), 'Column AP 03 - Field Work Completed should be in dropdown');
+  assert.ok(htmlAll.includes('12 - WITH ASP'), 'Column AP 12 - WITH ASP should be in dropdown');
 });

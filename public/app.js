@@ -4018,7 +4018,14 @@ function exportWhereaboutsCsv(viewKey) {
       if (rawVal) populatedDatesCount++;
     }
     const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
-    const { stage } = cfg.resolveStage({ ...row, ...datesMap });
+    let stage = '';
+    if (viewKey === 'survey-whereabouts') {
+      const apStatus = String(row.currentStatus || '').trim();
+      const derived = resolveSurveyCurrentStatus(row).currentStatus;
+      stage = apStatus || derived || 'Pending Survey';
+    } else {
+      stage = cfg.resolveStage({ ...row, ...datesMap }).stage;
+    }
 
     return {
       lhid: row.lhid || db.lhid || '—',
@@ -4028,6 +4035,7 @@ function exportWhereaboutsCsv(viewKey) {
       titleNumber: titleNum,
       landOwner: landOwner,
       carpable: carpableNum.toFixed(4),
+      currentStatus: row.currentStatus || stage,
       datesMap,
       isAllDatesPopulated,
       stage
@@ -4055,6 +4063,12 @@ function exportWhereaboutsCsv(viewKey) {
     } else if (statusFilterVal.startsWith('with_')) {
       const dKey = statusFilterVal.replace('with_', '');
       rows = rows.filter((r) => Boolean(r.datesMap[dKey]));
+    } else {
+      rows = rows.filter((r) => {
+        const rowStatus = String(r.currentStatus || r.stage || '').trim().toLowerCase();
+        const targetStatus = String(statusFilterVal).trim().toLowerCase();
+        return rowStatus === targetStatus || rowStatus.includes(targetStatus);
+      });
     }
   }
   if (searchVal) {

@@ -4,7 +4,7 @@ import {
   renderWhereaboutsProvincialGraphSvg,
   renderWhereaboutsMonthlyGraphSvg
 } from './charts.js';
-import { getReportedMonthOptions, isReportedMonthKey } from './reportingUtils.js';
+import { getReportedMonthOptions, isReportedMonthKey, resolveSurveyCurrentStatus } from './reportingUtils.js';
 
 export function esc(str) {
   return String(str ?? '')
@@ -36,6 +36,16 @@ function stageBadgeClass(stage) {
   if (s.includes('registered')) return 'badge-blue';
   if (s.includes('generated') || s.includes('approved')) return 'badge-amber';
   return 'badge-gray';
+}
+
+function getSurveyStatusBadgeClass(status) {
+  const s = String(status || '').toLowerCase();
+  if (s.includes('asp') || s.includes('completed')) return 'badge-green';
+  if (s.includes('ongoing') || s.includes('accepted')) return 'badge-purple';
+  if (s.includes('rss') || s.includes('forwarded') || s.includes('transmitted') || s.includes('finalized')) return 'badge-blue';
+  if (s.includes('returned') || s.includes('correction')) return 'badge-amber';
+  if (s.includes('pending')) return 'badge-gray';
+  return 'badge-blue';
 }
 
 function formatMetricsCell(eTitles, areaHas, monitoringLevel) {
@@ -1410,7 +1420,7 @@ export function getWhereaboutsRowDisplayValue(row, colKey, cfg) {
   if (colKey === 'titleNumber') return row.titleNumber || '—';
   if (colKey === 'lhid') return row.lhid || '—';
   if (colKey === 'target') return row.target || 'Current';
-  if (colKey === 'stage') return row.stage || '—';
+  if (colKey === 'stage') return row.currentStatus || row.stage || '—';
   if (row.datesMap && colKey in row.datesMap) {
     const raw = row.datesMap[colKey];
     if (raw && cfg?.dates?.find((d) => d.key === colKey)?.isMonth) {
@@ -1524,7 +1534,18 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       if (rawVal) populatedDatesCount++;
     }
     const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
-    const { stage, badge: stageBadge } = cfg.resolveStage({ ...row, ...datesMap });
+    let stage = '';
+    let stageBadge = '';
+    if (viewKey === 'survey-whereabouts') {
+      const apStatus = String(row.currentStatus || '').trim();
+      const derived = resolveSurveyCurrentStatus(row).currentStatus;
+      stage = apStatus || derived || 'Pending Survey';
+      stageBadge = getSurveyStatusBadgeClass(stage);
+    } else {
+      const resolved = cfg.resolveStage({ ...row, ...datesMap });
+      stage = resolved.stage;
+      stageBadge = resolved.badge;
+    }
 
     return {
       ...row,
@@ -1535,6 +1556,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       titleNumber: titleNum,
       landOwner: landOwner,
       carpable: carpableNum,
+      currentStatus: row.currentStatus || stage,
       datesMap,
       populatedDatesCount,
       isAllDatesPopulated,
@@ -1580,6 +1602,10 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       if (statusFilterVal.startsWith('with_')) {
         const dKey = statusFilterVal.replace('with_', '');
         if (!r.datesMap[dKey]) return false;
+      } else {
+        const rowStatus = String(r.currentStatus || r.stage || '').trim().toLowerCase();
+        const targetStatus = String(statusFilterVal).trim().toLowerCase();
+        if (rowStatus !== targetStatus && !rowStatus.includes(targetStatus)) return false;
       }
     }
     if (searchVal) {
@@ -1727,7 +1753,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       if (rawVal) populatedDatesCount++;
     }
     const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
-    const { stage, badge: stageBadge } = cfg.resolveStage({ ...row, ...datesMap });
+    let stage = '';
+    let stageBadge = '';
+    if (viewKey === 'survey-whereabouts') {
+      const apStatus = String(row.currentStatus || '').trim();
+      const derived = resolveSurveyCurrentStatus(row).currentStatus;
+      stage = apStatus || derived || 'Pending Survey';
+      stageBadge = getSurveyStatusBadgeClass(stage);
+    } else {
+      const resolved = cfg.resolveStage({ ...row, ...datesMap });
+      stage = resolved.stage;
+      stageBadge = resolved.badge;
+    }
 
     return {
       ...row,
@@ -1738,6 +1775,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       titleNumber: titleNum,
       landOwner: landOwner,
       carpable: carpableNum,
+      currentStatus: row.currentStatus || stage,
       datesMap,
       populatedDatesCount,
       isAllDatesPopulated,
@@ -1782,6 +1820,12 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     } else if (statusFilterVal.startsWith('with_')) {
       const dKey = statusFilterVal.replace('with_', '');
       scopeRows = scopeRows.filter((r) => Boolean(r.datesMap[dKey]));
+    } else {
+      scopeRows = scopeRows.filter((r) => {
+        const rowStatus = String(r.currentStatus || r.stage || '').trim().toLowerCase();
+        const targetStatus = String(statusFilterVal).trim().toLowerCase();
+        return rowStatus === targetStatus || rowStatus.includes(targetStatus);
+      });
     }
   }
 
@@ -2802,16 +2846,36 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       `
           : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
       }
-      <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="Filter by Date Status">
+      <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="${isSurveyWhereabouts ? 'Filter by Current Status' : 'Filter by Date Status'}">
         <option value="ALL" ${statusFilterVal === 'ALL' ? 'selected' : ''}>All Records (${totalCount})</option>
-        ${cfg.dates
-          .map((d) => {
-            const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
-            return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
-          })
-          .join('')}
-        <option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
-        <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>
+        ${
+          isSurveyWhereabouts
+            ? (() => {
+                const statusCounts = new Map();
+                for (const r of enrichedRows) {
+                  const st = String(r.currentStatus || r.stage || '').trim() || 'Pending Survey';
+                  statusCounts.set(st, (statusCounts.get(st) || 0) + 1);
+                }
+                return Array.from(statusCounts.entries())
+                  .sort(([a], [b]) => {
+                    if (a.startsWith('Pending')) return 1;
+                    if (b.startsWith('Pending')) return -1;
+                    return a.localeCompare(b);
+                  })
+                  .map(([st, count]) => {
+                    return `<option value="${esc(st)}" ${statusFilterVal === st ? 'selected' : ''}>${esc(st)} (${count})</option>`;
+                  })
+                  .join('');
+              })()
+            : cfg.dates
+                .map((d) => {
+                  const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
+                  return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
+                })
+                .join('') +
+              `<option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
+               <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>`
+        }
       </select>
       <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
         ⬇ Export CSV
@@ -2833,13 +2897,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     ${isCfWhereabouts ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
 
+    ${isSurveyWhereabouts ? surveyStatusTableHtml : ''}
+
     ${isSurveyWhereabouts ? `
       <div class="panel whereabouts-toolbar-panel" style="padding:10px 16px;margin-bottom:16px;background:#ffffff;">
         ${whereaboutsControlsHtml}
       </div>
     ` : ''}
-
-    ${isSurveyWhereabouts ? surveyStatusTableHtml : ''}
 
     <!-- Provincial & Monthly Summary Matrices / Graphs -->
     <div id="whereabouts-graph-container" style="display: ${showGraphVal ? 'block' : 'none'}; margin-bottom: 18px;">
