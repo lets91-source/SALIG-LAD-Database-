@@ -4074,6 +4074,37 @@ th:hover .q-toggle-pill {
   letter-spacing: 0.04em;
 }
 
+/* Sticky Operating Unit Column during horizontal scroll */
+.survey-monitoring-table th.survey-th-unit,
+.survey-monitoring-table td.survey-td-unit {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.08);
+}
+
+.survey-monitoring-table thead th.survey-th-unit {
+  z-index: 5;
+  background: #09341b !important;
+}
+
+.survey-monitoring-table tbody td.survey-td-unit {
+  background: #ffffff;
+}
+
+.survey-monitoring-table tbody tr:hover td.survey-td-unit {
+  background: #f0fdf4 !important;
+}
+
+.survey-monitoring-table tbody tr.survey-row-active td.survey-td-unit {
+  background: #dcfce7 !important;
+}
+
+.survey-monitoring-table tfoot td.survey-td-unit {
+  z-index: 5;
+  background: #09341b !important;
+}
+
 
 
 

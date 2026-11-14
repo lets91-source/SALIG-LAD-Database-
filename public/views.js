@@ -1177,18 +1177,28 @@ export const WHEREABOUTS_CONFIGS = {
     openTabName: 'Survey',
     dates: [
       { key: 'dateRss', label: 'DATE RSS', shortLabel: 'With RSS', badgeClass: 'badge-blue', icon: '✔' },
-      { key: 'fieldWorkStartDate', label: 'FIELD WORK STARTED', shortLabel: 'Field Work Started', badgeClass: 'badge-purple', icon: '✔' },
-      { key: 'fieldWorkCompletionDate', label: 'FIELD WORK COMPLETED', shortLabel: 'Field Work Done', badgeClass: 'badge-blue', icon: '✔' },
-      { key: 'srForwardedToDarro', label: 'SR TO DARRO', shortLabel: 'SR to DARRO', badgeClass: 'badge-purple', icon: '✔' },
-      { key: 'dateAcceptedDenrSmd', label: 'DENR-SMD ACCEPTED', shortLabel: 'DENR Accepted', badgeClass: 'badge-amber', icon: '✔' },
-      { key: 'aspDate', label: 'ASP DATE', shortLabel: 'ASP Approved', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
+      { key: 'fieldWorkStartDate', label: 'FIELD WORK STARTED', shortLabel: 'Ongoing FW', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'fieldWorkCompletionDate', label: 'FIELD WORK COMPLETED', shortLabel: 'FW Completed', badgeClass: 'badge-green', icon: '✔' },
+      { key: 'finalizedSrDate', label: 'FINALIZED SR', shortLabel: 'Finalized SR', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'srForwardedToDarro', label: 'SR FORWARDED TO DARRO', shortLabel: 'SR to DARRO', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'srAcceptedByDarro', label: 'SR ACCEPTED BY DARRO', shortLabel: 'SR Accepted DARRO', badgeClass: 'badge-green', icon: '✔' },
+      { key: 'srReturnedDarroToDarpoDate', label: 'SR RETURNED DARRO TO DARPO', shortLabel: 'Returned DARRO->DARPO', badgeClass: 'badge-amber', icon: '↩' },
+      { key: 'srResubmittedDarroDate', label: 'SR RE-SUBMITTED TO DARRO', shortLabel: 'Re-submitted DARRO', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'dateAcceptedDenrSmd', label: 'ACCEPTED BY DENR-SMD', shortLabel: 'Accepted DENR-SMD', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'srReturnedDenrToDarroDate', label: 'SR RETURNED DENR TO DARRO', shortLabel: 'Returned DENR->DARRO', badgeClass: 'badge-amber', icon: '↩' },
+      { key: 'aspDate', label: 'ASP DATE', shortLabel: 'ASP Date', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
       { key: 'reportedMonth', label: 'REPORTED MONTH', shortLabel: 'Reported Month', badgeClass: 'badge-amber', isMonth: true }
     ],
     resolveStage: (row) => {
       if (row.aspDate) return { stage: 'ASP Approved', badge: 'badge-green' };
-      if (row.dateAcceptedDenrSmd) return { stage: 'Accepted DENR-SMD', badge: 'badge-blue' };
-      if (row.srTransmittedDenrSmdDate) return { stage: 'Transmitted to LMS', badge: 'badge-blue' };
-      if (row.srForwardedToDarro) return { stage: 'SR at DARRO', badge: 'badge-purple' };
+      if (row.srReturnedDenrToDarroDate) return { stage: 'Returned by DENR-SMD', badge: 'badge-amber' };
+      if (row.dateAcceptedDenrSmd) return { stage: 'Accepted by DENR-SMD', badge: 'badge-purple' };
+      if (row.srTransmittedDenrSmdDate) return { stage: 'Transmitted to DENR-SMD', badge: 'badge-blue' };
+      if (row.srResubmittedDarroDate) return { stage: 'Re-submitted to DARRO', badge: 'badge-blue' };
+      if (row.srReturnedDarroToDarpoDate) return { stage: 'Returned to DARPO', badge: 'badge-amber' };
+      if (row.srAcceptedByDarro) return { stage: 'SR Accepted by DARRO', badge: 'badge-green' };
+      if (row.srForwardedToDarro) return { stage: 'SR Forwarded to DARRO', badge: 'badge-purple' };
+      if (row.finalizedSrDate) return { stage: 'Finalized SR', badge: 'badge-blue' };
       if (row.fieldWorkCompletionDate) return { stage: 'Field Work Completed', badge: 'badge-green' };
       if (row.fieldWorkStartDate) return { stage: 'Ongoing Field Work', badge: 'badge-amber' };
       if (row.dateRss) return { stage: 'With RSS', badge: 'badge-blue' };
@@ -2136,43 +2146,45 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       .sort();
     const allTargetYears = ['ALL', ...numYears, ...otherYears];
 
-    // 2. Table calculations based on DEFAULT_SURVEY_STATUS_BENCHMARKS
+    // 2. Stage definitions and table calculations based on DEFAULT_SURVEY_STATUS_BENCHMARKS
+    const SURVEY_MONITORING_STAGES = [
+      { key: 'rss', label: 'With RSS', dKey: 'dateRss', benchLhsKey: 'rssLhs', benchAreaKey: 'rssArea' },
+      { key: 'ongoing', label: 'ONGOING FIELD WORK', dKey: 'fieldWorkStartDate', benchLhsKey: 'ongoingLhs', benchAreaKey: 'ongoingArea' },
+      { key: 'completed', label: 'FIELD WORK COMPLETED', dKey: 'fieldWorkCompletionDate', benchLhsKey: 'completedLhs', benchAreaKey: 'completedArea' },
+      { key: 'finalizedSr', label: 'FINALIZED SR', dKey: 'finalizedSrDate' },
+      { key: 'srForwarded', label: 'SR FORWARDED TO DARRO', dKey: 'srForwardedToDarro' },
+      { key: 'srAcceptedDarro', label: 'SR ACCEPTED BY DARRO', dKey: 'srAcceptedByDarro' },
+      { key: 'srReturnedDarro', label: 'SURVEY RETURNS RETURNED DARRO TO DARPO', dKey: 'srReturnedDarroToDarpoDate' },
+      { key: 'srResubmitted', label: 'SR RE-SUBMITTED TO DARRO', dKey: 'srResubmittedDarroDate' },
+      { key: 'acceptedDenr', label: 'ACCEPTED BY DENR-SMD', dKey: 'dateAcceptedDenrSmd' },
+      { key: 'srReturnedDenr', label: 'SR RETURNED BY DENR-SMD TO DARRO', dKey: 'srReturnedDenrToDarroDate' },
+      { key: 'asp', label: 'ASP DATE', dKey: 'aspDate' }
+    ];
+
     const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
       const nepOverride = state?.nepMilestoneList?.survey?.[b.code];
       const targetLhs = nepOverride?.lhs != null && nepOverride?.lhs !== '' ? Number(nepOverride.lhs) : b.targetLhs;
       const targetArea = nepOverride?.area != null && nepOverride?.area !== '' ? Number(nepOverride.area) : b.targetArea;
 
       const provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
+      const stages = {};
 
-      const liveRssRows = provRows.filter((r) => Boolean(r.datesMap?.dateRss) || Boolean(r.dateRss) || (r.stage && r.stage.includes('RSS')));
-      const liveRssLhs = liveRssRows.length;
-      const liveRssArea = liveRssRows.reduce((s, r) => s + r.carpable, 0);
+      for (const st of SURVEY_MONITORING_STAGES) {
+        const liveRows = provRows.filter((r) => Boolean(r.datesMap?.[st.dKey]) || Boolean(r[st.dKey]));
+        const liveLhs = liveRows.length;
+        const liveArea = liveRows.reduce((s, r) => s + r.carpable, 0);
 
-      const liveOngoingRows = provRows.filter((r) => Boolean(r.datesMap?.fieldWorkStartDate) || Boolean(r.fieldWorkStartDate));
-      const liveOngoingLhs = liveOngoingRows.length;
-      const liveOngoingArea = liveOngoingRows.reduce((s, r) => s + r.carpable, 0);
+        const benchLhs = st.benchLhsKey ? (b[st.benchLhsKey] || 0) : 0;
+        const benchArea = st.benchAreaKey ? (b[st.benchAreaKey] || 0) : 0;
 
-      const liveCompletedRows = provRows.filter((r) => Boolean(r.datesMap?.fieldWorkCompletionDate) || Boolean(r.fieldWorkCompletionDate));
-      const liveCompletedLhs = liveCompletedRows.length;
-      const liveCompletedArea = liveCompletedRows.reduce((s, r) => s + r.carpable, 0);
+        const lhs = liveLhs > benchLhs ? liveLhs : benchLhs;
+        const area = liveArea > benchArea ? liveArea : benchArea;
 
-      const rssLhs = liveRssLhs > b.rssLhs ? liveRssLhs : b.rssLhs;
-      const rssArea = liveRssArea > b.rssArea ? liveRssArea : b.rssArea;
+        const balLhs = Math.max(0, targetLhs - lhs);
+        const balArea = Math.max(0, targetArea - area);
 
-      const ongoingLhs = liveOngoingLhs > b.ongoingLhs ? liveOngoingLhs : b.ongoingLhs;
-      const ongoingArea = liveOngoingArea > b.ongoingArea ? liveOngoingArea : b.ongoingArea;
-
-      const completedLhs = liveCompletedLhs > b.completedLhs ? liveCompletedLhs : b.completedLhs;
-      const completedArea = liveCompletedArea > b.completedArea ? liveCompletedArea : b.completedArea;
-
-      const rssBalLhs = Math.max(0, targetLhs - rssLhs);
-      const rssBalArea = Math.max(0, targetArea - rssArea);
-
-      const ongoingBalLhs = Math.max(0, targetLhs - ongoingLhs);
-      const ongoingBalArea = Math.max(0, targetArea - ongoingArea);
-
-      const completedBalLhs = Math.max(0, targetLhs - completedLhs);
-      const completedBalArea = Math.max(0, targetArea - completedArea);
+        stages[st.key] = { lhs, area, balLhs, balArea };
+      }
 
       const isActive = selectedProvs.some((p) => matchProvinceName(b.name, p) || matchProvinceName(b.code, p));
 
@@ -2180,56 +2192,25 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         ...b,
         targetLhs,
         targetArea,
-        rssLhs,
-        rssArea,
-        rssBalLhs,
-        rssBalArea,
-        ongoingLhs,
-        ongoingArea,
-        ongoingBalLhs,
-        ongoingBalArea,
-        completedLhs,
-        completedArea,
-        completedBalLhs,
-        completedBalArea,
+        stages,
         isActive
       };
     });
 
-    const surveyTotals = surveyTableRows.reduce(
-      (acc, r) => ({
-        targetLhs: acc.targetLhs + r.targetLhs,
-        targetArea: acc.targetArea + r.targetArea,
-        rssLhs: acc.rssLhs + r.rssLhs,
-        rssArea: acc.rssArea + r.rssArea,
-        rssBalLhs: acc.rssBalLhs + r.rssBalLhs,
-        rssBalArea: acc.rssBalArea + r.rssBalArea,
-        ongoingLhs: acc.ongoingLhs + r.ongoingLhs,
-        ongoingArea: acc.ongoingArea + r.ongoingArea,
-        ongoingBalLhs: acc.ongoingBalLhs + r.ongoingBalLhs,
-        ongoingBalArea: acc.ongoingBalArea + r.ongoingBalArea,
-        completedLhs: acc.completedLhs + r.completedLhs,
-        completedArea: acc.completedArea + r.completedArea,
-        completedBalLhs: acc.completedBalLhs + r.completedBalLhs,
-        completedBalArea: acc.completedBalArea + r.completedBalArea
-      }),
-      {
-        targetLhs: 0,
-        targetArea: 0,
-        rssLhs: 0,
-        rssArea: 0,
-        rssBalLhs: 0,
-        rssBalArea: 0,
-        ongoingLhs: 0,
-        ongoingArea: 0,
-        ongoingBalLhs: 0,
-        ongoingBalArea: 0,
-        completedLhs: 0,
-        completedArea: 0,
-        completedBalLhs: 0,
-        completedBalArea: 0
-      }
-    );
+    const surveyTotals = {
+      targetLhs: surveyTableRows.reduce((s, r) => s + r.targetLhs, 0),
+      targetArea: surveyTableRows.reduce((s, r) => s + r.targetArea, 0),
+      stages: {}
+    };
+
+    for (const st of SURVEY_MONITORING_STAGES) {
+      surveyTotals.stages[st.key] = {
+        lhs: surveyTableRows.reduce((s, r) => s + r.stages[st.key].lhs, 0),
+        area: surveyTableRows.reduce((s, r) => s + r.stages[st.key].area, 0),
+        balLhs: surveyTableRows.reduce((s, r) => s + r.stages[st.key].balLhs, 0),
+        balArea: surveyTableRows.reduce((s, r) => s + r.stages[st.key].balArea, 0)
+      };
+    }
 
     let targetBadgeText = '';
     if (selectedProvs.length === 1) {
@@ -2247,14 +2228,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const surveyGlobalTargetLhs = activeBenchmarkRows.reduce((s, r) => s + r.targetLhs, 0);
     const surveyGlobalTargetArea = activeBenchmarkRows.reduce((s, r) => s + r.targetArea, 0);
 
-    const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + r.completedLhs, 0);
-    const surveyGlobalAccompArea = activeBenchmarkRows.reduce((s, r) => s + r.completedArea, 0);
+    const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.lhs, 0);
+    const surveyGlobalAccompArea = activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.area, 0);
 
     const surveyTargetYearLhs = surveyGlobalTargetLhs;
     const surveyTargetYearArea = surveyGlobalTargetArea;
 
-    const surveyRssLhs = activeBenchmarkRows.reduce((s, r) => s + r.rssLhs, 0);
-    const surveyRssArea = activeBenchmarkRows.reduce((s, r) => s + r.rssArea, 0);
+    const surveyRssLhs = activeBenchmarkRows.reduce((s, r) => s + r.stages.rss.lhs, 0);
+    const surveyRssArea = activeBenchmarkRows.reduce((s, r) => s + r.stages.rss.area, 0);
 
     const surveyCompletedLhs = surveyGlobalAccompLhs;
     const surveyCompletedArea = surveyGlobalAccompArea;
@@ -2262,13 +2243,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     // LMS landholdings
     const lmsRows = scopeRows.filter((r) => {
       return Boolean(
-        r.datesMap?.srTransmittedDenrSmdDate ||
         r.datesMap?.dateAcceptedDenrSmd ||
+        r.datesMap?.srReturnedDenrToDarroDate ||
         r.datesMap?.aspDate ||
-        r.srTransmittedDenrSmdDate ||
+        r.datesMap?.srTransmittedDenrSmdDate ||
         r.dateAcceptedDenrSmd ||
+        r.srReturnedDenrToDarroDate ||
         r.aspDate ||
-        (r.stage && r.stage.toLowerCase().includes('lms'))
+        r.srTransmittedDenrSmdDate ||
+        (r.stage && r.stage.toLowerCase().includes('denr')) ||
+        (r.stage && r.stage.toLowerCase().includes('asp'))
       );
     });
     const surveyAtLmsLhs = lmsRows.length;
@@ -2442,33 +2426,23 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <tr class="survey-th-l1">
                 <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
                 <th colspan="2" class="survey-th-nep">NEP TARGET</th>
-                <th colspan="4" class="survey-th-group-rss">With RSS</th>
-                <th colspan="4" class="survey-th-group-ongoing">ONGOING FIELD WORK</th>
-                <th colspan="4" class="survey-th-group-completed">FIELD WORK COMPLETED</th>
+                ${SURVEY_MONITORING_STAGES.map((st) => `<th colspan="4" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
               </tr>
               <tr class="survey-th-l2">
                 <th rowspan="2" class="right">LHS</th>
                 <th rowspan="2" class="right">AREA(HAS)</th>
-                <th colspan="2" class="center">ACCOMPLISHMENT</th>
-                <th colspan="2" class="center">BALANCE</th>
-                <th colspan="2" class="center">ACCOMPLISHMENT</th>
-                <th colspan="2" class="center">BALANCE</th>
-                <th colspan="2" class="center">ACCOMPLISHMENT</th>
-                <th colspan="2" class="center">BALANCE</th>
+                ${SURVEY_MONITORING_STAGES.map(() => `
+                  <th colspan="2" class="center">ACCOMPLISHMENT</th>
+                  <th colspan="2" class="center">BALANCE</th>
+                `).join('')}
               </tr>
               <tr class="survey-th-l3">
-                <th class="right">LHS</th>
-                <th class="right">AREA(HAS)</th>
-                <th class="right">LHS</th>
-                <th class="right">AREA(HAS)</th>
-                <th class="right">LHS</th>
-                <th class="right">AREA(HAS)</th>
-                <th class="right">LHS</th>
-                <th class="right">AREA(HAS)</th>
-                <th class="right">LHS</th>
-                <th class="right">AREA(HAS)</th>
-                <th class="right">LHS</th>
-                <th class="right">AREA(HAS)</th>
+                ${SURVEY_MONITORING_STAGES.map(() => `
+                  <th class="right">LHS</th>
+                  <th class="right">AREA(HAS)</th>
+                  <th class="right">LHS</th>
+                  <th class="right">AREA(HAS)</th>
+                `).join('')}
               </tr>
             </thead>
             <tbody>
@@ -2479,18 +2453,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   <td class="survey-td-unit font-bold">${esc(r.name)}</td>
                   <td class="right">${r.targetLhs.toLocaleString()}</td>
                   <td class="right">${fmtArea(r.targetArea)}</td>
-                  <td class="right">${r.rssLhs.toLocaleString()}</td>
-                  <td class="right">${fmtArea(r.rssArea)}</td>
-                  <td class="right">${r.rssBalLhs.toLocaleString()}</td>
-                  <td class="right">${fmtArea(r.rssBalArea)}</td>
-                  <td class="right">${r.ongoingLhs.toLocaleString()}</td>
-                  <td class="right">${fmtArea(r.ongoingArea)}</td>
-                  <td class="right">${r.ongoingBalLhs.toLocaleString()}</td>
-                  <td class="right">${fmtArea(r.ongoingBalArea)}</td>
-                  <td class="right">${r.completedLhs.toLocaleString()}</td>
-                  <td class="right">${fmtArea(r.completedArea)}</td>
-                  <td class="right">${r.completedBalLhs.toLocaleString()}</td>
-                  <td class="right">${fmtArea(r.completedBalArea)}</td>
+                  ${SURVEY_MONITORING_STAGES.map((st) => {
+                    const s = r.stages[st.key];
+                    return `
+                      <td class="right">${s.lhs.toLocaleString()}</td>
+                      <td class="right">${fmtArea(s.area)}</td>
+                      <td class="right">${s.balLhs.toLocaleString()}</td>
+                      <td class="right">${fmtArea(s.balArea)}</td>
+                    `;
+                  }).join('')}
                 </tr>
               `
                 )
@@ -2498,21 +2469,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             </tbody>
             <tfoot>
               <tr class="survey-tf-total">
-                <td>REGION VIII</td>
+                <td class="survey-td-unit">REGION VIII</td>
                 <td class="right">${surveyTotals.targetLhs.toLocaleString()}</td>
                 <td class="right">${fmtArea(surveyTotals.targetArea)}</td>
-                <td class="right">${surveyTotals.rssLhs.toLocaleString()}</td>
-                <td class="right">${fmtArea(surveyTotals.rssArea)}</td>
-                <td class="right">${surveyTotals.rssBalLhs.toLocaleString()}</td>
-                <td class="right">${fmtArea(surveyTotals.rssBalArea)}</td>
-                <td class="right">${surveyTotals.ongoingLhs.toLocaleString()}</td>
-                <td class="right">${fmtArea(surveyTotals.ongoingArea)}</td>
-                <td class="right">${surveyTotals.ongoingBalLhs.toLocaleString()}</td>
-                <td class="right">${fmtArea(surveyTotals.ongoingBalArea)}</td>
-                <td class="right">${surveyTotals.completedLhs.toLocaleString()}</td>
-                <td class="right">${fmtArea(surveyTotals.completedArea)}</td>
-                <td class="right">${surveyTotals.completedBalLhs.toLocaleString()}</td>
-                <td class="right">${fmtArea(surveyTotals.completedBalArea)}</td>
+                ${SURVEY_MONITORING_STAGES.map((st) => {
+                  const s = surveyTotals.stages[st.key];
+                  return `
+                    <td class="right">${s.lhs.toLocaleString()}</td>
+                    <td class="right">${fmtArea(s.area)}</td>
+                    <td class="right">${s.balLhs.toLocaleString()}</td>
+                    <td class="right">${fmtArea(s.balArea)}</td>
+                  `;
+                }).join('')}
               </tr>
             </tfoot>
           </table>
