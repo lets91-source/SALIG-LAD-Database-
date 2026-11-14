@@ -2919,6 +2919,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     </section>
     </div>
 
+    ${
+      !isSurveyWhereabouts
+        ? `
     <!-- Master Ledger Panel -->
     <div class="panel" id="panel-whereabouts-master">
       <div class="panel-header nep-panel-header">
@@ -2926,7 +2929,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <h3 class="panel-title">${esc(cfg.tabName)} Whereabouts Master Ledger</h3>
           <p class="panel-subtitle">Individual landholdings showing ${esc(cfg.dates.map((d) => d.label).join(' • '))}</p>
         </div>
-        ${!isSurveyWhereabouts ? whereaboutsControlsHtml : ''}
+        ${whereaboutsControlsHtml}
       </div>
 
       <div style="padding:8px 16px;background:var(--bg-light);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">
@@ -3186,6 +3189,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </table>
       </div>
     </div>
+    `
+        : ''
+    }
   `;
 }
 
