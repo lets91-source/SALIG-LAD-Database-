@@ -51,7 +51,7 @@ const appState = {
   measurementLogic: 'both', // 'both' | 'incremental' | 'cumulative'
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
   surveyMetricMode: 'both', // 'both' | 'lhs' | 'area'
-  surveyIndicatorTab: 'core', // 'core' (3 indicators) | 'compliance' (Milestones Summary)
+  surveyIndicatorTab: 'all', // 'all' (all 4 groups stacked) | 'group1' | 'group2' | 'group3' | 'group4'
   nepYearFilter: 'ALL', // 'ALL' | '2026' | '2025' | ...
   nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
   nepMilestoneTableFilter: 'ALL', // 'ALL' | 'cf_doc' | 'land_survey' | ...
@@ -896,7 +896,7 @@ function renderActiveView() {
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
       surveyMetricMode: appState.surveyMetricMode || 'both',
-      surveyIndicatorTab: appState.surveyIndicatorTab || 'core'
+      surveyIndicatorTab: appState.surveyIndicatorTab || 'all'
     });
     bindWhereaboutsEvents(container, 'survey-whereabouts');
   } else if (appState.view === 'mov-whereabouts') {

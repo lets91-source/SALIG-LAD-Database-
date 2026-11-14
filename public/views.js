@@ -1635,7 +1635,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     whereaboutsGraphMode = {},
     whereaboutsPage = {},
     surveyMetricMode = 'both',
-    surveyIndicatorTab = 'core'
+    surveyIndicatorTab = 'all'
   } = ctx;
 
   const viewKey = cfg.viewKey;
@@ -2149,25 +2149,58 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const allTargetYears = ['ALL', ...numYears, ...otherYears];
 
     // 2. Stage definitions and table calculations based on DEFAULT_SURVEY_STATUS_BENCHMARKS
-    const SURVEY_CORE_STAGES = [
-      { key: 'rss', label: 'With RSS', dKey: 'dateRss', benchLhsKey: 'rssLhs', benchAreaKey: 'rssArea' },
-      { key: 'ongoing', label: 'ONGOING FIELD WORK', dKey: 'fieldWorkStartDate', benchLhsKey: 'ongoingLhs', benchAreaKey: 'ongoingArea' },
-      { key: 'completed', label: 'FIELD WORK COMPLETED', dKey: 'fieldWorkCompletionDate', benchLhsKey: 'completedLhs', benchAreaKey: 'completedArea' }
+    const SURVEY_GROUPS = [
+      {
+        id: 'group1',
+        name: '1st Group',
+        title: '1st Group: With RSS • Ongoing Field Work • Field Work Completed',
+        stages: [
+          { key: 'rss', label: 'With RSS', dKey: 'dateRss', benchLhsKey: 'rssLhs', benchAreaKey: 'rssArea' },
+          { key: 'ongoing', label: 'ONGOING FIELD WORK', dKey: 'fieldWorkStartDate', benchLhsKey: 'ongoingLhs', benchAreaKey: 'ongoingArea' },
+          { key: 'completed', label: 'FIELD WORK COMPLETED', dKey: 'fieldWorkCompletionDate', benchLhsKey: 'completedLhs', benchAreaKey: 'completedArea' }
+        ]
+      },
+      {
+        id: 'group2',
+        name: '2nd Group',
+        title: '2nd Group: Finalized SR • SR Forwarded to DARRO • SR Accepted by DARRO',
+        stages: [
+          { key: 'finalizedSr', label: 'FINALIZED SR', dKey: 'finalizedSrDate' },
+          { key: 'srForwarded', label: 'SR FORWARDED TO DARRO', dKey: 'srForwardedToDarro' },
+          { key: 'srAcceptedDarro', label: 'SR ACCEPTED BY DARRO', dKey: 'srAcceptedByDarro' }
+        ]
+      },
+      {
+        id: 'group3',
+        name: '3rd Group',
+        title: '3rd Group: Survey Returns Returned DARRO to DARPO • SR Re-submitted to DARRO • Accepted by DENR-SMD',
+        stages: [
+          { key: 'srReturnedDarro', label: 'SURVEY RETURNS RETURNED DARRO TO DARPO', dKey: 'srReturnedDarroToDarpoDate' },
+          { key: 'srResubmitted', label: 'SR RE-SUBMITTED TO DARRO', dKey: 'srResubmittedDarroDate' },
+          { key: 'acceptedDenr', label: 'ACCEPTED BY DENR-SMD', dKey: 'dateAcceptedDenrSmd' }
+        ]
+      },
+      {
+        id: 'group4',
+        name: '4th Group',
+        title: '4th Group: SR Returned by DENR-SMD to DARRO • ASP Date',
+        stages: [
+          { key: 'srReturnedDenr', label: 'SR RETURNED BY DENR-SMD TO DARRO', dKey: 'srReturnedDenrToDarroDate' },
+          { key: 'asp', label: 'ASP DATE', dKey: 'aspDate' }
+        ]
+      }
     ];
 
-    const SURVEY_COMPLIANCE_STAGES = [
-      { key: 'finalizedSr', label: 'FINALIZED SR', dKey: 'finalizedSrDate' },
-      { key: 'srForwarded', label: 'SR FORWARDED TO DARRO', dKey: 'srForwardedToDarro' },
-      { key: 'srAcceptedDarro', label: 'SR ACCEPTED BY DARRO', dKey: 'srAcceptedByDarro' },
-      { key: 'srReturnedDarro', label: 'SURVEY RETURNS RETURNED DARRO TO DARPO', dKey: 'srReturnedDarroToDarpoDate' },
-      { key: 'srResubmitted', label: 'SR RE-SUBMITTED TO DARRO', dKey: 'srResubmittedDarroDate' },
-      { key: 'acceptedDenr', label: 'ACCEPTED BY DENR-SMD', dKey: 'dateAcceptedDenrSmd' },
-      { key: 'srReturnedDenr', label: 'SR RETURNED BY DENR-SMD TO DARRO', dKey: 'srReturnedDenrToDarroDate' },
-      { key: 'asp', label: 'ASP DATE', dKey: 'aspDate' }
-    ];
-
-    const ALL_SURVEY_STAGES = [...SURVEY_CORE_STAGES, ...SURVEY_COMPLIANCE_STAGES];
-    const activeStages = surveyIndicatorTab === 'compliance' ? SURVEY_COMPLIANCE_STAGES : SURVEY_CORE_STAGES;
+    const ALL_SURVEY_STAGES = SURVEY_GROUPS.flatMap((g) => g.stages);
+    const activeGroups =
+      surveyIndicatorTab === 'all' || !surveyIndicatorTab
+        ? SURVEY_GROUPS
+        : SURVEY_GROUPS.filter(
+            (g) =>
+              g.id === surveyIndicatorTab ||
+              g.name.toLowerCase().replace(/\s+/g, '') === String(surveyIndicatorTab).toLowerCase().replace(/\s+/g, '')
+          );
+    const groupsToRender = activeGroups.length > 0 ? activeGroups : SURVEY_GROUPS;
 
     const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
       const nepOverride = state?.nepMilestoneList?.survey?.[b.code];
@@ -2395,100 +2428,54 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       </section>
     `;
 
-    let surveyTheadHtml = '';
-    let renderSurveyRowCells = null;
-    let renderSurveyTotalCells = null;
-
-    if (surveyMetricMode === 'lhs') {
-      surveyTheadHtml = `
-        <tr class="survey-th-l1">
-          <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
-          <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
-          ${activeStages.map((st) => `<th colspan="2" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
-        </tr>
-        <tr class="survey-th-l2">
-          ${activeStages.map(() => `
-            <th class="right">ACCOMPLISHMENT</th>
-            <th class="right">BALANCE</th>
-          `).join('')}
-        </tr>
-      `;
-      renderSurveyRowCells = (r) => `
-        <td class="survey-td-unit font-bold">${esc(r.name)}</td>
-        <td class="right">${r.targetLhs.toLocaleString()}</td>
-        ${activeStages.map((st) => {
-          const s = r.stages[st.key];
-          return `
-            <td class="right">${s.lhs.toLocaleString()}</td>
-            <td class="right">${s.balLhs.toLocaleString()}</td>
-          `;
-        }).join('')}
-      `;
-      renderSurveyTotalCells = () => `
-        <td class="survey-td-unit">REGION VIII</td>
-        <td class="right">${surveyTotals.targetLhs.toLocaleString()}</td>
-        ${activeStages.map((st) => {
-          const s = surveyTotals.stages[st.key];
-          return `
-            <td class="right">${s.lhs.toLocaleString()}</td>
-            <td class="right">${s.balLhs.toLocaleString()}</td>
-          `;
-        }).join('')}
-      `;
-    } else if (surveyMetricMode === 'area') {
-      surveyTheadHtml = `
-        <tr class="survey-th-l1">
-          <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
-          <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
-          ${activeStages.map((st) => `<th colspan="2" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
-        </tr>
-        <tr class="survey-th-l2">
-          ${activeStages.map(() => `
-            <th class="right">ACCOMPLISHMENT (HAS)</th>
-            <th class="right">BALANCE (HAS)</th>
-          `).join('')}
-        </tr>
-      `;
-      renderSurveyRowCells = (r) => `
-        <td class="survey-td-unit font-bold">${esc(r.name)}</td>
-        <td class="right">${fmtArea(r.targetArea)}</td>
-        ${activeStages.map((st) => {
-          const s = r.stages[st.key];
-          return `
-            <td class="right">${fmtArea(s.area)}</td>
-            <td class="right">${fmtArea(s.balArea)}</td>
-          `;
-        }).join('')}
-      `;
-      renderSurveyTotalCells = () => `
-        <td class="survey-td-unit">REGION VIII</td>
-        <td class="right">${fmtArea(surveyTotals.targetArea)}</td>
-        ${activeStages.map((st) => {
-          const s = surveyTotals.stages[st.key];
-          return `
-            <td class="right">${fmtArea(s.area)}</td>
-            <td class="right">${fmtArea(s.balArea)}</td>
-          `;
-        }).join('')}
-      `;
-    } else {
+    function renderGroupThead(stages, metricMode) {
+      if (metricMode === 'lhs') {
+        return `
+          <tr class="survey-th-l1">
+            <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+            <th rowspan="2" class="survey-th-nep right">TARGET (LHS)<br><span style="font-size:10px;font-weight:600;opacity:0.85;">BASE ON SUPPORT LIST</span></th>
+            ${stages.map((st) => `<th colspan="2" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
+          </tr>
+          <tr class="survey-th-l2">
+            ${stages.map(() => `
+              <th class="right">ACCOMPLISHMENT</th>
+              <th class="right">BALANCE</th>
+            `).join('')}
+          </tr>
+        `;
+      }
+      if (metricMode === 'area') {
+        return `
+          <tr class="survey-th-l1">
+            <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+            <th rowspan="2" class="survey-th-nep right">TARGET AREA (HAS)<br><span style="font-size:10px;font-weight:600;opacity:0.85;">BASE ON SUPPORT LIST</span></th>
+            ${stages.map((st) => `<th colspan="2" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
+          </tr>
+          <tr class="survey-th-l2">
+            ${stages.map(() => `
+              <th class="right">ACCOMPLISHMENT (HAS)</th>
+              <th class="right">BALANCE (HAS)</th>
+            `).join('')}
+          </tr>
+        `;
+      }
       // Default: 'both'
-      surveyTheadHtml = `
+      return `
         <tr class="survey-th-l1">
           <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
-          <th colspan="2" class="survey-th-nep">NEP TARGET</th>
-          ${activeStages.map((st) => `<th colspan="4" class="survey-th-stage">${esc(st.label)}</th>`).join('')}
+          <th colspan="2" class="survey-th-nep center">TARGET<br><span style="font-size:10px;font-weight:600;opacity:0.85;">BASE ON SUPPORT LIST</span></th>
+          ${stages.map((st) => `<th colspan="4" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
         </tr>
         <tr class="survey-th-l2">
           <th rowspan="2" class="right">LHS</th>
           <th rowspan="2" class="right">AREA(HAS)</th>
-          ${activeStages.map(() => `
+          ${stages.map(() => `
             <th colspan="2" class="center">ACCOMPLISHMENT</th>
             <th colspan="2" class="center">BALANCE</th>
           `).join('')}
         </tr>
         <tr class="survey-th-l3">
-          ${activeStages.map(() => `
+          ${stages.map(() => `
             <th class="right">LHS</th>
             <th class="right">AREA(HAS)</th>
             <th class="right">LHS</th>
@@ -2496,11 +2483,41 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           `).join('')}
         </tr>
       `;
-      renderSurveyRowCells = (r) => `
+    }
+
+    function renderGroupRowCells(r, stages, metricMode) {
+      if (metricMode === 'lhs') {
+        return `
+          <td class="survey-td-unit font-bold">${esc(r.name)}</td>
+          <td class="right">${r.targetLhs.toLocaleString()}</td>
+          ${stages.map((st) => {
+            const s = r.stages[st.key];
+            return `
+              <td class="right">${s.lhs.toLocaleString()}</td>
+              <td class="right">${s.balLhs.toLocaleString()}</td>
+            `;
+          }).join('')}
+        `;
+      }
+      if (metricMode === 'area') {
+        return `
+          <td class="survey-td-unit font-bold">${esc(r.name)}</td>
+          <td class="right">${fmtArea(r.targetArea)}</td>
+          ${stages.map((st) => {
+            const s = r.stages[st.key];
+            return `
+              <td class="right">${fmtArea(s.area)}</td>
+              <td class="right">${fmtArea(s.balArea)}</td>
+            `;
+          }).join('')}
+        `;
+      }
+      // Both:
+      return `
         <td class="survey-td-unit font-bold">${esc(r.name)}</td>
         <td class="right">${r.targetLhs.toLocaleString()}</td>
         <td class="right">${fmtArea(r.targetArea)}</td>
-        ${activeStages.map((st) => {
+        ${stages.map((st) => {
           const s = r.stages[st.key];
           return `
             <td class="right">${s.lhs.toLocaleString()}</td>
@@ -2510,12 +2527,42 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           `;
         }).join('')}
       `;
-      renderSurveyTotalCells = () => `
+    }
+
+    function renderGroupTotalCells(totals, stages, metricMode) {
+      if (metricMode === 'lhs') {
+        return `
+          <td class="survey-td-unit">REGION VIII</td>
+          <td class="right">${totals.targetLhs.toLocaleString()}</td>
+          ${stages.map((st) => {
+            const s = totals.stages[st.key];
+            return `
+              <td class="right">${s.lhs.toLocaleString()}</td>
+              <td class="right">${s.balLhs.toLocaleString()}</td>
+            `;
+          }).join('')}
+        `;
+      }
+      if (metricMode === 'area') {
+        return `
+          <td class="survey-td-unit">REGION VIII</td>
+          <td class="right">${fmtArea(totals.targetArea)}</td>
+          ${stages.map((st) => {
+            const s = totals.stages[st.key];
+            return `
+              <td class="right">${fmtArea(s.area)}</td>
+              <td class="right">${fmtArea(s.balArea)}</td>
+            `;
+          }).join('')}
+        `;
+      }
+      // Both:
+      return `
         <td class="survey-td-unit">REGION VIII</td>
-        <td class="right">${surveyTotals.targetLhs.toLocaleString()}</td>
-        <td class="right">${fmtArea(surveyTotals.targetArea)}</td>
-        ${activeStages.map((st) => {
-          const s = surveyTotals.stages[st.key];
+        <td class="right">${totals.targetLhs.toLocaleString()}</td>
+        <td class="right">${fmtArea(totals.targetArea)}</td>
+        ${stages.map((st) => {
+          const s = totals.stages[st.key];
           return `
             <td class="right">${s.lhs.toLocaleString()}</td>
             <td class="right">${fmtArea(s.area)}</td>
@@ -2527,7 +2574,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     }
 
     surveyStatusTableHtml = `
-      <!-- DAR Survey Status Monitoring Table -->
+      <!-- DAR Survey Status Monitoring Tables Grouped -->
       <div class="panel survey-status-panel" id="panel-survey-status-monitoring" style="margin-bottom: 20px;">
         <div class="survey-monitoring-header">
           <div class="survey-monitoring-brand">
@@ -2542,7 +2589,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             </div>
             <div class="survey-brand-info">
               <h3 class="survey-status-heading">Survey status</h3>
-              <p class="survey-status-subheading">Region VIII - Monitoring &amp; accomplishment</p>
+              <p class="survey-status-subheading">Region VIII - Monitoring &amp; accomplishment per indicator group</p>
             </div>
           </div>
           <div class="survey-monitoring-asof">
@@ -2556,10 +2603,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <button type="button" class="btn btn-sm ${surveyMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-survey-metric="area" title="Display Area (HAS) Only">Area (HAS)</button>
             </div>
 
-            <!-- Indicator Stage Switcher: 3 Indicators vs Milestones Summary -->
-            <div class="btn-group" role="group" aria-label="Survey Stages View">
-              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'core' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="core" title="3 Core Indicators: With RSS, Ongoing Field Work, Field Work Completed">3 Indicators</button>
-              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'compliance' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="compliance" title="Milestones Summary: Finalized SR, Forwarded to DARRO, Accepted by DARRO, Returned DARRO->DARPO, Re-Submitted to DARRO, Accepted DENR-SMD, Returned DENR->DARRO, ASP Date">Milestones Summary</button>
+            <!-- Group Selector Tabs: All Groups | 1st Group | 2nd Group | 3rd Group | 4th Group -->
+            <div class="btn-group" role="group" aria-label="Survey Indicator Groups">
+              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'all' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="all" title="Show All 4 Indicator Groups Stacked">All Groups</button>
+              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'group1' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="group1" title="1st Group: With RSS, Ongoing Field Work, Field Work Completed">1st Group</button>
+              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'group2' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="group2" title="2nd Group: Finalized SR, SR Forwarded to DARRO, SR Accepted by DARRO">2nd Group</button>
+              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'group3' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="group3" title="3rd Group: Returns DARRO->DARPO, Re-submitted to DARRO, Accepted DENR-SMD">3rd Group</button>
+              <button type="button" class="btn btn-sm ${surveyIndicatorTab === 'group4' ? 'btn-primary' : 'btn-secondary'}" data-survey-indicator-tab="group4" title="4th Group: Returns DENR->DARRO, ASP Date">4th Group</button>
             </div>
 
             <select class="form-control whereabouts-target-year-select survey-target-year-select" aria-label="Select Target Year">
@@ -2572,28 +2622,45 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
 
-        <div class="table-wrap survey-table-wrap">
-          <table class="survey-monitoring-table">
-            <thead>
-              ${surveyTheadHtml}
-            </thead>
-            <tbody>
-              ${surveyTableRows
-                .map(
-                  (r) => `
-                <tr class="${r.isActive ? 'survey-row-active' : ''}" data-survey-filter-province="${esc(r.name)}" style="cursor:pointer;" title="Click to filter by ${esc(r.name)}">
-                  ${renderSurveyRowCells(r)}
-                </tr>
-              `
-                )
-                .join('')}
-            </tbody>
-            <tfoot>
-              <tr class="survey-tf-total">
-                ${renderSurveyTotalCells()}
-              </tr>
-            </tfoot>
-          </table>
+        <div class="survey-monitoring-body" style="padding: 16px;">
+          ${groupsToRender
+            .map(
+              (group, gIdx) => `
+            <div class="survey-group-card" id="survey-group-${esc(group.id)}" style="margin-bottom: ${gIdx === groupsToRender.length - 1 ? '0' : '20px'};">
+              <div class="survey-group-titlebar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #0f4d2a; color: #ffffff; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 13px; letter-spacing: 0.02em;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="badge" style="background: rgba(255,255,255,0.22); color: #ffffff; font-weight: 800; padding: 2px 8px; border-radius: 4px; font-size: 11px;">${esc(group.name)}</span>
+                  <span>${esc(group.title)}</span>
+                </div>
+                <span style="font-size: 11.5px; opacity: 0.85; font-weight: 500;">${group.stages.length} Indicator${group.stages.length > 1 ? 's' : ''}</span>
+              </div>
+              <div class="table-wrap survey-table-wrap" style="border: 1px solid #166534; border-top: none; border-radius: 0 0 8px 8px; overflow-x: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+                <table class="survey-monitoring-table" style="margin-bottom: 0;">
+                  <thead>
+                    ${renderGroupThead(group.stages, surveyMetricMode)}
+                  </thead>
+                  <tbody>
+                    ${surveyTableRows
+                      .map(
+                        (r) => `
+                      <tr class="${r.isActive ? 'survey-row-active' : ''}" data-survey-filter-province="${esc(r.name)}" style="cursor:pointer;" title="Click to filter by ${esc(r.name)}">
+                        ${renderGroupRowCells(r, group.stages, surveyMetricMode)}
+                      </tr>
+                    `
+                      )
+                      .join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr class="survey-tf-total">
+                      ${renderGroupTotalCells(surveyTotals, group.stages, surveyMetricMode)}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          `
+            )
+            .join('')}
         </div>
       </div>
     `;
