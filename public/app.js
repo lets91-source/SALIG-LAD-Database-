@@ -52,6 +52,7 @@ const appState = {
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
   surveyMetricMode: 'both', // 'both' | 'lhs' | 'area'
   surveyIndicatorTab: 'all', // 'all' (all 4 groups stacked) | 'group1' | 'group2' | 'group3' | 'group4'
+  surveyMatrixMode: 'active', // 'active' (statuses with data) | 'all' (all 12 workflow stages)
   nepYearFilter: 'ALL', // 'ALL' | '2026' | '2025' | ...
   nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
   nepMilestoneTableFilter: 'ALL', // 'ALL' | 'cf_doc' | 'land_survey' | ...
@@ -896,7 +897,8 @@ function renderActiveView() {
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
       surveyMetricMode: appState.surveyMetricMode || 'both',
-      surveyIndicatorTab: appState.surveyIndicatorTab || 'all'
+      surveyIndicatorTab: appState.surveyIndicatorTab || 'all',
+      surveyMatrixMode: appState.surveyMatrixMode || 'active'
     });
     bindWhereaboutsEvents(container, 'survey-whereabouts');
   } else if (appState.view === 'mov-whereabouts') {
@@ -3906,6 +3908,28 @@ function bindWhereaboutsEvents(container, viewKey) {
     btn.addEventListener('click', () => {
       appState.surveyIndicatorTab = btn.dataset.surveyIndicatorTab;
       renderActiveView();
+    });
+  });
+
+  container.querySelectorAll('[data-survey-matrix-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.surveyMatrixMode = btn.dataset.surveyMatrixMode;
+      renderActiveView();
+    });
+  });
+
+  container.querySelectorAll('[data-survey-matrix-filter-status]').forEach((th) => {
+    th.addEventListener('click', () => {
+      const st = th.dataset.surveyMatrixFilterStatus;
+      if (st) {
+        if (appState.whereaboutsStatusFilter[viewKey] === st) {
+          appState.whereaboutsStatusFilter[viewKey] = 'ALL';
+        } else {
+          appState.whereaboutsStatusFilter[viewKey] = st;
+        }
+        appState.whereaboutsPage[viewKey] = 1;
+        renderActiveView();
+      }
     });
   });
 

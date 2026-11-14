@@ -4,7 +4,7 @@ import {
   renderWhereaboutsProvincialGraphSvg,
   renderWhereaboutsMonthlyGraphSvg
 } from './charts.js';
-import { getReportedMonthOptions, isReportedMonthKey, resolveSurveyCurrentStatus } from './reportingUtils.js';
+import { getReportedMonthOptions, isReportedMonthKey, resolveSurveyCurrentStatus, SURVEY_STATUS_STAGES } from './reportingUtils.js';
 
 export function esc(str) {
   return String(str ?? '')
@@ -2212,6 +2212,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   // Top KPI Cards and Monitoring Table for Survey Whereabouts
   let surveyKpiHtml = '';
   let surveyStatusTableHtml = '';
+  let surveyCurrentStatusMatrixHtml = '';
   if (isSurveyWhereabouts) {
     // 1. Available Target Years
     const targetYearSet = new Set();
@@ -2774,6 +2775,322 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
       </div>
     `;
+
+    // 3. Survey Current Status by Province (Column AP) Cross-Tabulation Matrix Table
+    const matrixMode = ctx.surveyMatrixMode || 'active'; // 'active' | 'all'
+
+    // Status columns to include
+    let statusCols = [];
+    if (matrixMode === 'all') {
+      const set = new Set(SURVEY_STATUS_STAGES.map((s) => s.status));
+      for (const r of enrichedRows) {
+        const st = String(r.currentStatus || r.stage || '').trim();
+        if (st) set.add(st);
+      }
+      set.add('Pending Survey');
+      statusCols = Array.from(set);
+    } else {
+      const set = new Set();
+      for (const r of enrichedRows) {
+        const st = String(r.currentStatus || r.stage || '').trim();
+        if (st) set.add(st);
+      }
+      if (set.size === 0) set.add('Pending Survey');
+      statusCols = Array.from(set);
+    }
+
+    // Sort statusCols: numbered stages (01..12), custom ones, then Pending Survey
+    statusCols.sort((a, b) => {
+      const aPending = a.toLowerCase().includes('pending');
+      const bPending = b.toLowerCase().includes('pending');
+      if (aPending && !bPending) return 1;
+      if (!aPending && bPending) return -1;
+      const numA = parseInt(a, 10);
+      const numB = parseInt(b, 10);
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+        return numA - numB;
+      }
+      return a.localeCompare(b);
+    });
+
+    // Scope rows for matrix (respects Target Year and search query, showing all 6 provinces)
+    let matrixScopeRows = enrichedRows;
+    if (targetYearFilterVal !== 'ALL') {
+      matrixScopeRows = matrixScopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
+    }
+    if (q) {
+      matrixScopeRows = matrixScopeRows.filter((r) => {
+        const dateText = Object.values(r.datesMap || {}).join(' ');
+        const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    // Initialize aggregation matrix
+    const matrixData = {};
+    for (const b of DEFAULT_SURVEY_STATUS_BENCHMARKS) {
+      matrixData[b.name] = { totalLhs: 0, totalArea: 0, byStatus: {} };
+      for (const st of statusCols) {
+        matrixData[b.name].byStatus[st] = { lhs: 0, area: 0 };
+      }
+    }
+
+    const colTotals = {};
+    for (const st of statusCols) {
+      colTotals[st] = { lhs: 0, area: 0 };
+    }
+    let grandTotalLhs = 0;
+    let grandTotalArea = 0;
+
+    for (const r of matrixScopeRows) {
+      const rowProv = r.province || '';
+      const rowStatus = String(r.currentStatus || r.stage || '').trim() || 'Pending Survey';
+      const carp = parseNumericValue(r.carpable || 0);
+
+      for (const b of DEFAULT_SURVEY_STATUS_BENCHMARKS) {
+        if (matchProvinceName(rowProv, b.name)) {
+          if (!matrixData[b.name].byStatus[rowStatus]) {
+            matrixData[b.name].byStatus[rowStatus] = { lhs: 0, area: 0 };
+          }
+          matrixData[b.name].byStatus[rowStatus].lhs += 1;
+          matrixData[b.name].byStatus[rowStatus].area += carp;
+          matrixData[b.name].totalLhs += 1;
+          matrixData[b.name].totalArea += carp;
+
+          if (!colTotals[rowStatus]) {
+            colTotals[rowStatus] = { lhs: 0, area: 0 };
+          }
+          colTotals[rowStatus].lhs += 1;
+          colTotals[rowStatus].area += carp;
+          grandTotalLhs += 1;
+          grandTotalArea += carp;
+          break;
+        }
+      }
+    }
+
+    function renderMatrixThead(cols, metricMode) {
+      if (metricMode === 'lhs') {
+        return `
+          <tr class="survey-th-l1">
+            <th class="survey-th-unit" style="min-width:140px;">PROVINCE</th>
+            ${cols
+              .map(
+                (st) => `
+              <th class="right survey-th-stage ${statusFilterVal === st ? 'survey-col-highlight' : ''}" data-survey-matrix-filter-status="${esc(st)}" style="min-width:110px;cursor:pointer;" title="Click to filter by ${esc(st)}">
+                ${esc(st)} (LHS)
+              </th>
+            `
+              )
+              .join('')}
+            <th class="right survey-th-nep" style="min-width:90px;">TOTAL (LHS)</th>
+          </tr>
+        `;
+      }
+      if (metricMode === 'area') {
+        return `
+          <tr class="survey-th-l1">
+            <th class="survey-th-unit" style="min-width:140px;">PROVINCE</th>
+            ${cols
+              .map(
+                (st) => `
+              <th class="right survey-th-stage ${statusFilterVal === st ? 'survey-col-highlight' : ''}" data-survey-matrix-filter-status="${esc(st)}" style="min-width:120px;cursor:pointer;" title="Click to filter by ${esc(st)}">
+                ${esc(st)} (HAS)
+              </th>
+            `
+              )
+              .join('')}
+            <th class="right survey-th-nep" style="min-width:110px;">TOTAL (HAS)</th>
+          </tr>
+        `;
+      }
+      // 'both'
+      return `
+        <tr class="survey-th-l1">
+          <th rowspan="2" class="survey-th-unit" style="min-width:140px;vertical-align:middle;">PROVINCE</th>
+          ${cols
+            .map(
+              (st) => `
+            <th colspan="2" class="center survey-th-stage ${statusFilterVal === st ? 'survey-col-highlight' : ''}" data-survey-matrix-filter-status="${esc(st)}" style="cursor:pointer;" title="Click to filter by ${esc(st)}">
+              ${esc(st)}
+            </th>
+          `
+            )
+            .join('')}
+          <th colspan="2" class="center survey-th-nep">TOTAL</th>
+        </tr>
+        <tr class="survey-th-l2">
+          ${cols
+            .map(
+              () => `
+            <th class="right" style="min-width:55px;">LHS</th>
+            <th class="right" style="min-width:95px;">AREA(HAS)</th>
+          `
+            )
+            .join('')}
+          <th class="right" style="min-width:55px;">LHS</th>
+          <th class="right" style="min-width:95px;">AREA(HAS)</th>
+        </tr>
+      `;
+    }
+
+    function renderMatrixRowCells(b, cols, metricMode) {
+      const d = matrixData[b.name] || { totalLhs: 0, totalArea: 0, byStatus: {} };
+      if (metricMode === 'lhs') {
+        return `
+          <td class="survey-td-unit font-bold">${esc(b.name)}</td>
+          ${cols
+            .map((st) => {
+              const cell = d.byStatus[st] || { lhs: 0, area: 0 };
+              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.lhs > 0 ? `<strong>${cell.lhs.toLocaleString()}</strong>` : `<span class="text-muted">0</span>`}</td>`;
+            })
+            .join('')}
+          <td class="right font-bold" style="background:#f0fdf4;">${d.totalLhs.toLocaleString()}</td>
+        `;
+      }
+      if (metricMode === 'area') {
+        return `
+          <td class="survey-td-unit font-bold">${esc(b.name)}</td>
+          ${cols
+            .map((st) => {
+              const cell = d.byStatus[st] || { lhs: 0, area: 0 };
+              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.area > 0 ? `<strong>${fmtArea(cell.area)}</strong>` : `<span class="text-muted">0.0000</span>`}</td>`;
+            })
+            .join('')}
+          <td class="right font-bold" style="background:#f0fdf4;">${fmtArea(d.totalArea)}</td>
+        `;
+      }
+      // 'both'
+      return `
+        <td class="survey-td-unit font-bold">${esc(b.name)}</td>
+        ${cols
+          .map((st) => {
+            const cell = d.byStatus[st] || { lhs: 0, area: 0 };
+            return `
+              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.lhs > 0 ? `<strong>${cell.lhs.toLocaleString()}</strong>` : `<span class="text-muted">0</span>`}</td>
+              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.area > 0 ? `<strong>${fmtArea(cell.area)}</strong>` : `<span class="text-muted">0.0000</span>`}</td>
+            `;
+          })
+          .join('')}
+        <td class="right font-bold" style="background:#f0fdf4;">${d.totalLhs.toLocaleString()}</td>
+        <td class="right font-bold" style="background:#f0fdf4;">${fmtArea(d.totalArea)}</td>
+      `;
+    }
+
+    function renderMatrixTotalCells(cols, metricMode) {
+      if (metricMode === 'lhs') {
+        return `
+          <td class="survey-td-unit">REGION VIII TOTAL</td>
+          ${cols
+            .map((st) => {
+              const tot = colTotals[st]?.lhs || 0;
+              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${tot.toLocaleString()}</td>`;
+            })
+            .join('')}
+          <td class="right font-bold" style="background:#052e16;">${grandTotalLhs.toLocaleString()}</td>
+        `;
+      }
+      if (metricMode === 'area') {
+        return `
+          <td class="survey-td-unit">REGION VIII TOTAL</td>
+          ${cols
+            .map((st) => {
+              const tot = colTotals[st]?.area || 0;
+              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${fmtArea(tot)}</td>`;
+            })
+            .join('')}
+          <td class="right font-bold" style="background:#052e16;">${fmtArea(grandTotalArea)}</td>
+        `;
+      }
+      // 'both'
+      return `
+        <td class="survey-td-unit">REGION VIII TOTAL</td>
+        ${cols
+          .map((st) => {
+            const lhsTot = colTotals[st]?.lhs || 0;
+            const areaTot = colTotals[st]?.area || 0;
+            return `
+              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${lhsTot.toLocaleString()}</td>
+              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${fmtArea(areaTot)}</td>
+            `;
+          })
+          .join('')}
+        <td class="right font-bold" style="background:#052e16;">${grandTotalLhs.toLocaleString()}</td>
+        <td class="right font-bold" style="background:#052e16;">${fmtArea(grandTotalArea)}</td>
+      `;
+    }
+
+    surveyCurrentStatusMatrixHtml = `
+      <!-- Survey Current Status by Province Cross-Tabulation Matrix -->
+      <div class="panel survey-matrix-panel" id="panel-survey-current-status-matrix" style="margin-bottom: 20px;">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 16px;background:#ffffff;border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:6px;background:#0f4d2a;color:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">
+              📊
+            </div>
+            <div>
+              <h3 class="panel-title" style="margin:0;font-size:15px;font-weight:800;color:#0f4d2a;letter-spacing:-0.01em;">
+                Survey Current Status by Operating Unit
+              </h3>
+              <p class="panel-subtitle" style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">
+                Cross-tabulation matrix: <strong>Row</strong> = Province • <strong>Column</strong> = Current Status (Column AP)
+                ${targetYearFilterVal !== 'ALL' ? ` • <span class="badge badge-gray" style="font-size:11px;">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
+              </p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="btn-group" role="group" aria-label="Toggle Active vs All Statuses">
+              <button
+                type="button"
+                class="btn btn-xs ${matrixMode === 'active' ? 'btn-primary' : 'btn-secondary'}"
+                data-survey-matrix-mode="active"
+                title="Show only statuses present in the dataset"
+                style="font-size:11.5px;padding:3px 9px;"
+              >
+                Active Statuses (${statusCols.length})
+              </button>
+              <button
+                type="button"
+                class="btn btn-xs ${matrixMode === 'all' ? 'btn-primary' : 'btn-secondary'}"
+                data-survey-matrix-mode="all"
+                title="Show all 12 workflow stages across the region"
+                style="font-size:11.5px;padding:3px 9px;"
+              >
+                All 12 Stages
+              </button>
+            </div>
+            <span class="badge ${surveyMetricMode === 'both' ? 'badge-green' : surveyMetricMode === 'lhs' ? 'badge-blue' : 'badge-amber'}" style="font-size:11px;padding:3px 8px;">
+              ${surveyMetricMode === 'both' ? 'LHS & Area (HAS)' : surveyMetricMode === 'lhs' ? 'LHS Only' : 'Area (HAS) Only'}
+            </span>
+          </div>
+        </div>
+
+        <div class="panel-body" style="padding:14px 16px;">
+          <div class="table-wrap survey-table-wrap" style="border: 1px solid #166534; border-radius: 8px; overflow-x: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+            <table class="survey-monitoring-table" style="margin-bottom: 0;">
+              <thead>
+                ${renderMatrixThead(statusCols, surveyMetricMode)}
+              </thead>
+              <tbody>
+                ${DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
+                  const isRowActive = provFilterVal !== 'ALL' && matchProvinceName(b.name, provFilterVal);
+                  return `
+                    <tr class="${isRowActive ? 'survey-row-active' : ''}" data-survey-filter-province="${esc(b.name)}" style="cursor:pointer;" title="Click to filter by ${esc(b.name)}">
+                      ${renderMatrixRowCells(b, statusCols, surveyMetricMode)}
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="survey-tf-total">
+                  ${renderMatrixTotalCells(statusCols, surveyMetricMode)}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   const standardKpiHtml = `
@@ -2903,6 +3220,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       <div class="panel whereabouts-toolbar-panel" style="padding:10px 16px;margin-bottom:16px;background:#ffffff;">
         ${whereaboutsControlsHtml}
       </div>
+      ${surveyCurrentStatusMatrixHtml}
     ` : ''}
 
     <!-- Provincial & Monthly Summary Matrices / Graphs -->

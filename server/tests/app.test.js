@@ -2123,4 +2123,45 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   assert.ok(htmlAll.includes('01 - With RSS'), 'Column AP 01 - With RSS status should be in dropdown');
   assert.ok(htmlAll.includes('03 - Field Work Completed'), 'Column AP 03 - Field Work Completed should be in dropdown');
   assert.ok(htmlAll.includes('12 - WITH ASP'), 'Column AP 12 - WITH ASP should be in dropdown');
+
+  // Test Province x Current Status Matrix Table
+  const pMatrix = htmlAll.indexOf('panel-survey-current-status-matrix');
+  assert.ok(pMatrix > pToolbar, 'Matrix table panel should be located below the toolbar');
+  assert.ok(htmlAll.includes('Survey Current Status by Operating Unit'), 'Matrix panel heading should be rendered');
+  assert.ok(htmlAll.includes('Row</strong> = Province • <strong>Column</strong> = Current Status (Column AP)'), 'Matrix subtitle describes row=Province, col=Current Status');
+
+  // Check all 6 Region VIII provinces and Regional Total row are present
+  for (const prov of ['BILIRAN', 'EASTERN SAMAR', 'LEYTE', 'NORTHERN SAMAR', 'SAMAR', 'SOUTHERN LEYTE', 'REGION VIII TOTAL']) {
+    assert.ok(htmlAll.includes(prov), `Matrix table must include province row: ${prov}`);
+  }
+
+  // Check 2025 matrix values
+  assert.ok(html2025.includes('panel-survey-current-status-matrix'));
+  assert.ok(html2025.includes('6.1812'), 'Leyte 01 - With RSS area (6.1812) in 2025 matrix');
+  assert.ok(html2025.includes('16.4982'), 'Samar 03 - Field Work Completed area (16.4982) in 2025 matrix');
+  assert.ok(html2025.includes('6.1527'), 'Northern Samar Pending Survey area (6.1527) in 2025 matrix');
+  assert.ok(html2025.includes('28.8321'), 'Region VIII Total area (28.8321) in 2025 matrix');
+
+  // Check 2026 matrix values
+  assert.ok(html2026.includes('panel-survey-current-status-matrix'));
+  assert.ok(html2026.includes('2.4500'), 'Leyte 12 - WITH ASP area (2.4500) in 2026 matrix');
+
+  // Check All 12 Stages toggle mode
+  const ctxAllStages = {
+    ...ctxAll,
+    surveyMatrixMode: 'all'
+  };
+  const htmlAllStages = renderMilestoneWhereaboutsView(ctxAllStages, cfg);
+  assert.ok(htmlAllStages.includes('02 - Field Work Started'), 'All stages mode should include 02 - Field Work Started');
+  assert.ok(htmlAllStages.includes('04 - Finalized SR'), 'All stages mode should include 04 - Finalized SR');
+  assert.ok(htmlAllStages.includes('10 - SR Accepted by LMS'), 'All stages mode should include 10 - SR Accepted by LMS');
+
+  // Check LHS-only and Area-only metric modes
+  const ctxLhs = { ...ctxAll, surveyMetricMode: 'lhs' };
+  const htmlLhs = renderMilestoneWhereaboutsView(ctxLhs, cfg);
+  assert.ok(htmlLhs.includes('TOTAL (LHS)'), 'LHS-only mode header has TOTAL (LHS)');
+
+  const ctxArea = { ...ctxAll, surveyMetricMode: 'area' };
+  const htmlArea = renderMilestoneWhereaboutsView(ctxArea, cfg);
+  assert.ok(htmlArea.includes('TOTAL (HAS)'), 'Area-only mode header has TOTAL (HAS)');
 });

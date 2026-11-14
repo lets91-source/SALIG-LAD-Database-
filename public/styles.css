@@ -4133,6 +4133,25 @@ th:hover .q-toggle-pill {
   background: #09341b !important;
 }
 
+.survey-col-highlight {
+  background: #166534 !important;
+  color: #fef08a !important;
+}
+
+.survey-cell-highlight {
+  background: #f0fdf4 !important;
+  font-weight: 700;
+}
+
+.survey-matrix-panel {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+
 
 
 
