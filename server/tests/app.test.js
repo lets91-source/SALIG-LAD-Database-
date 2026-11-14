@@ -2200,3 +2200,49 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   assert.ok(supportModalHtml.includes('btn-export-support-list-csv'), 'Export CSV button present in support list modal');
   assert.ok(supportModalHtml.includes('support-list-search'), 'In-modal search input present in support list modal');
 });
+
+test('CF Whereabouts Target Year filter in toolbar after All Records, removed standalone bar', () => {
+  const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
+  const cfg = WHEREABOUTS_CONFIGS['cf-whereabouts'];
+
+  const ctxAll = {
+    state: store,
+    schemas: { registry: [] },
+    provinceScope: null,
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': 'ALL' },
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {}
+  };
+
+  const htmlAll = renderMilestoneWhereaboutsView(ctxAll, cfg);
+
+  // 1. Standalone bar must be removed
+  assert.equal(htmlAll.includes('class="cf-target-year-bar"'), false, 'Standalone cf-target-year-bar must not exist');
+  assert.equal(htmlAll.includes('class="cf-target-year-label"'), false, 'Standalone cf-target-year-label must not exist');
+
+  // 2. Target Year filter must exist in toolbar and be positioned after whereabouts-status-filter
+  assert.ok(htmlAll.includes('id="whereabouts-status-filter"'), 'Status filter exists');
+  assert.ok(htmlAll.includes('id="whereabouts-target-year-filter"'), 'Target year filter exists in toolbar');
+
+  const pStatus = htmlAll.indexOf('id="whereabouts-status-filter"');
+  const pTargetYear = htmlAll.indexOf('id="whereabouts-target-year-filter"');
+  const pExportCsv = htmlAll.indexOf('id="btn-whereabouts-export-csv"');
+
+  assert.ok(pStatus < pTargetYear, 'whereabouts-target-year-filter must come after whereabouts-status-filter');
+  assert.ok(pTargetYear < pExportCsv, 'whereabouts-target-year-filter must come before btn-whereabouts-export-csv');
+
+  // 3. Check options in dropdown
+  assert.ok(htmlAll.includes('value="ALL" selected>Target Year: ALL</option>'), 'Target Year: ALL selected by default');
+
+  // 4. Test selecting specific year (e.g. 2026)
+  const ctx2026 = {
+    ...ctxAll,
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': '2026' }
+  };
+  const html2026 = renderMilestoneWhereaboutsView(ctx2026, cfg);
+  assert.ok(html2026.includes('value="2026" selected>Target Year: 2026</option>'), 'Target Year: 2026 selected when filter set to 2026');
+  assert.equal(html2026.includes('class="cf-target-year-bar"'), false, 'Standalone bar still absent in 2026 view');
+});

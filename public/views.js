@@ -1956,6 +1956,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
   // Top KPI Cards for CF Whereabouts (Dynamically filtered by Province & Column Filters!)
   let cfKpiHtml = '';
+  let cfTargetYears = ['ALL'];
   if (isCfWhereabouts) {
     // 1. Available Target Years
     const targetYearSet = new Set();
@@ -1978,7 +1979,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const otherYears = Array.from(targetYearSet)
       .filter((y) => !/^\d{4}$/.test(y))
       .sort();
-    const allTargetYears = ['ALL', ...numYears, ...otherYears];
+    cfTargetYears = ['ALL', ...numYears, ...otherYears];
+    const allTargetYears = cfTargetYears;
 
     // 2. Global Target: based on the Database worksheet per province
     let dbScopeRows = dbRows;
@@ -2123,20 +2125,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
       </section>
 
-      <!-- Row 2: Target Year Dropdown Filter -->
-      <div class="cf-target-year-bar">
-        <label for="whereabouts-target-year-filter" class="cf-target-year-label">Target year:</label>
-        <select id="whereabouts-target-year-filter" class="cf-target-year-select" aria-label="Select Target Year">
-          ${allTargetYears
-            .map(
-              (yr) =>
-                `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>${esc(yr)}</option>`
-            )
-            .join('')}
-        </select>
-      </div>
-
-      <!-- Row 3: 4 Target Year Filtered Cards -->
+      <!-- Row 2: 4 Target Year Filtered Cards -->
       <section class="cf-kpi-year-grid">
         <div class="cf-kpi-card">
           <div class="cf-kpi-header">
@@ -2272,6 +2261,22 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>`
         }
       </select>
+      ${
+        isCfWhereabouts
+          ? `
+      <select class="form-control nep-filter-select whereabouts-target-year-select" id="whereabouts-target-year-filter" aria-label="Filter by Target Year">
+        <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
+        ${cfTargetYears
+          .filter((yr) => yr !== 'ALL')
+          .map(
+            (yr) =>
+              `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>Target Year: ${esc(yr)}</option>`
+          )
+          .join('')}
+      </select>
+      `
+          : ''
+      }
       <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
         ⬇ Export CSV
       </button>
