@@ -1,8 +1,1408 @@
 {
   "dataSourceMode": "live",
   "gasWebAppUrl": "https://script.google.com/macros/s/AKfycbzYXupSXeIQs96kubb7VJwMF1v3Fp0lZ-3rHEu4X_rNv7YLeNmxI4nl3_lVS8Z37YMO/exec",
-  "lastSyncAt": "2026-11-14T05:34:31.257Z",
+  "lastSyncAt": "2026-11-14T07:30:23.706Z",
   "syncLogs": [
+    {
+      "id": "sync-1794642117493-3g1bk",
+      "timestamp": "2026-11-14T07:41:57.493Z",
+      "source": "GAS Web App Auto-Push",
+      "status": "success",
+      "message": "Updated Regional Hub NEP Sheet (land_survey).",
+      "details": null
+    },
+    {
+      "id": "sync-1794641423706-uso5j",
+      "timestamp": "2026-11-14T07:30:23.706Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:30:15.262Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:30:16.171Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:30:17.986Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:30:19.969Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:30:21.287Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:30:22.407Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:30:23.706Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794641248720-6ngh9",
+      "timestamp": "2026-11-14T07:27:28.720Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:27:17.459Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:27:18.591Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:27:19.781Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:27:22.553Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:27:24.729Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:27:26.812Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:27:28.720Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794640907665-5fcsm",
+      "timestamp": "2026-11-14T07:21:47.665Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:21:37.389Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:21:38.407Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:21:39.553Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:21:42.400Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:21:44.262Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:21:45.884Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:21:47.665Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794640603574-5t0wn",
+      "timestamp": "2026-11-14T07:16:43.574Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:16:32.647Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:16:33.771Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:16:35.152Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:16:38.334Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:16:39.868Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:16:41.342Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:16:43.574Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794640304639-ey4ot",
+      "timestamp": "2026-11-14T07:11:44.639Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:11:33.451Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:11:34.784Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:11:36.116Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:11:38.919Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:11:40.403Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:11:42.849Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T07:11:44.639Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794639437044-da782",
+      "timestamp": "2026-11-14T06:57:17.044Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:57:03.974Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:57:05.356Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:57:06.862Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:57:10.921Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:57:12.763Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:57:15.005Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:57:17.044Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794638922284-wbsjg",
+      "timestamp": "2026-11-14T06:48:42.284Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:48:30.048Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:48:31.060Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:48:32.202Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:48:34.765Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:48:36.715Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:48:38.411Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:48:42.284Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794638324104-csvud",
+      "timestamp": "2026-11-14T06:38:44.104Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:38:32.721Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:38:33.859Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:38:34.806Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:38:37.557Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:38:39.740Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:38:42.339Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:38:44.104Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794637368008-w51mv",
+      "timestamp": "2026-11-14T06:22:48.008Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:22:37.028Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:22:38.252Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:22:39.607Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:22:42.572Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:22:44.578Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:22:46.027Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:22:48.007Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794637065484-052pt",
+      "timestamp": "2026-11-14T06:17:45.484Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:17:38.482Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:17:39.266Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:17:40.379Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:17:42.028Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:17:43.447Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:17:44.521Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T06:17:45.484Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794634780364-81fv4",
+      "timestamp": "2026-11-14T05:39:40.365Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:32.665Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:33.788Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:34.620Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:36.184Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:37.592Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:39.244Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:40.364Z"
+        }
+      ]
+    },
+    {
+      "id": "sync-1794634771140-8pbtp",
+      "timestamp": "2026-11-14T05:39:31.140Z",
+      "source": "Multi-Node Registry Sync",
+      "status": "success",
+      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
+      "details": [
+        {
+          "code": "HUB",
+          "jurisdiction": "Regional Account (Hub)",
+          "status": "synced",
+          "importedRows": 16,
+          "tabRowCounts": {
+            "Database": 5,
+            "NEP": 42,
+            "User_Accounts": 2,
+            "CF(DOC)": 3,
+            "Survey": 7,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:19.900Z"
+        },
+        {
+          "code": "BIL",
+          "jurisdiction": "Biliran Province",
+          "status": "synced",
+          "importedRows": 1,
+          "tabRowCounts": {
+            "Database": 0,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:21.092Z"
+        },
+        {
+          "code": "ESA",
+          "jurisdiction": "Eastern Samar",
+          "status": "synced",
+          "importedRows": 41,
+          "tabRowCounts": {
+            "Database": 40,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:23.041Z"
+        },
+        {
+          "code": "LEY",
+          "jurisdiction": "Leyte",
+          "status": "synced",
+          "importedRows": 2232,
+          "tabRowCounts": {
+            "Database": 2226,
+            "CF(DOC)": 0,
+            "Survey": 5,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:26.093Z"
+        },
+        {
+          "code": "NSA",
+          "jurisdiction": "Northern Samar",
+          "status": "synced",
+          "importedRows": 484,
+          "tabRowCounts": {
+            "Database": 481,
+            "CF(DOC)": 1,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:27.831Z"
+        },
+        {
+          "code": "SAM",
+          "jurisdiction": "Samar (Western Samar)",
+          "status": "synced",
+          "importedRows": 252,
+          "tabRowCounts": {
+            "Database": 248,
+            "CF(DOC)": 2,
+            "Survey": 1,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:29.311Z"
+        },
+        {
+          "code": "SLE",
+          "jurisdiction": "Southern Leyte",
+          "status": "synced",
+          "importedRows": 122,
+          "tabRowCounts": {
+            "Database": 121,
+            "CF(DOC)": 0,
+            "Survey": 0,
+            "MOV": 1,
+            "RegistrationDistribution": 0,
+            "Installation": 0
+          },
+          "checkedAt": "2026-11-14T05:39:31.140Z"
+        }
+      ]
+    },
     {
       "id": "sync-1794634471257-9ixqb",
       "timestamp": "2026-11-14T05:34:31.257Z",
@@ -3646,1185 +5046,10 @@
           "checkedAt": "2026-11-14T02:03:04.843Z"
         }
       ]
-    },
-    {
-      "id": "sync-1794621784628-j517f",
-      "timestamp": "2026-11-14T02:03:04.629Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3148 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 16,
-          "tabRowCounts": {
-            "Database": 5,
-            "NEP": 42,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 7,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-14T02:02:56.635Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-14T02:02:57.414Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-14T02:02:58.245Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2232,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-14T02:03:00.005Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-14T02:03:01.693Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-14T02:03:03.172Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-14T02:03:04.628Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794552063348-yon8j",
-      "timestamp": "2026-11-13T06:41:03.348Z",
-      "source": "Hub NEP Sync",
-      "status": "success",
-      "message": "Synced Regional Hub NEP targets from Google Sheet.",
-      "details": null
-    },
-    {
-      "id": "sync-1794551569082-zm8ev",
-      "timestamp": "2026-11-13T06:32:49.082Z",
-      "source": "Hub NEP Sheet Sync",
-      "status": "success",
-      "message": "Synced Regional Hub NEP sheet (LHS, AREA, ARBs, Year).",
-      "details": null
-    },
-    {
-      "id": "sync-1794495949764-7a4wq",
-      "timestamp": "2026-11-12T15:05:49.764Z",
-      "source": "Hub NEP Sheet Sync",
-      "status": "success",
-      "message": "Synced Regional Hub NEP sheet (LHS, AREA, ARBs).",
-      "details": null
-    },
-    {
-      "id": "sync-1794495835263-piszv",
-      "timestamp": "2026-11-12T15:03:55.263Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T15:03:46.183Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T15:03:47.473Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T15:03:48.848Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T15:03:51.171Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T15:03:53.144Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T15:03:54.187Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T15:03:55.263Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794495565174-p6z2e",
-      "timestamp": "2026-11-12T14:59:25.174Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:59:18.825Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:59:19.712Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:59:20.595Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:59:22.222Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:59:23.314Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:59:24.270Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:59:25.173Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794495325102-cdss6",
-      "timestamp": "2026-11-12T14:55:25.102Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:55:18.027Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:55:19.396Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:55:20.187Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:55:21.853Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:55:23.184Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:55:24.281Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:55:25.101Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794495122221-alimo",
-      "timestamp": "2026-11-12T14:52:02.221Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:51:51.420Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:51:53.168Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:51:54.711Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:51:57.389Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:51:59.340Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:52:00.684Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:52:02.221Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794494823733-kyyuk",
-      "timestamp": "2026-11-12T14:47:03.733Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:46:53.593Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:46:55.263Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:46:56.515Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:46:58.755Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:47:00.494Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:47:02.074Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:47:03.732Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794494542688-6v8cp",
-      "timestamp": "2026-11-12T14:42:22.688Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:42:15.832Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:42:16.782Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:42:17.869Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:42:19.565Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:42:20.675Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:42:21.680Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:42:22.688Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794494408997-luqn2",
-      "timestamp": "2026-11-12T14:40:08.997Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:39:57.327Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:40:00.594Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:40:01.916Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:40:04.696Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:40:06.213Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:40:07.591Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:40:08.997Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794493984609-11qhc",
-      "timestamp": "2026-11-12T14:33:04.609Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:32:54.798Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:32:55.599Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:32:59.589Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:33:01.387Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:33:02.753Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:33:03.665Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:33:04.609Z"
-        }
-      ]
-    },
-    {
-      "id": "sync-1794493849883-2v3gk",
-      "timestamp": "2026-11-12T14:30:49.883Z",
-      "source": "Multi-Node Registry Sync",
-      "status": "success",
-      "message": "Checked 7 sheets: 7 reachable (3144 rows imported), 0 private/unauthorized (requires link sharing or GAS ETL).",
-      "details": [
-        {
-          "code": "HUB",
-          "jurisdiction": "Regional Account (Hub)",
-          "status": "synced",
-          "importedRows": 14,
-          "tabRowCounts": {
-            "Database": 5,
-            "User_Accounts": 2,
-            "CF(DOC)": 3,
-            "Survey": 5,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:30:41.565Z"
-        },
-        {
-          "code": "BIL",
-          "jurisdiction": "Biliran Province",
-          "status": "synced",
-          "importedRows": 1,
-          "tabRowCounts": {
-            "Database": 0,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:30:42.650Z"
-        },
-        {
-          "code": "ESA",
-          "jurisdiction": "Eastern Samar",
-          "status": "synced",
-          "importedRows": 41,
-          "tabRowCounts": {
-            "Database": 40,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:30:44.056Z"
-        },
-        {
-          "code": "LEY",
-          "jurisdiction": "Leyte",
-          "status": "synced",
-          "importedRows": 2230,
-          "tabRowCounts": {
-            "Database": 2226,
-            "CF(DOC)": 0,
-            "Survey": 3,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:30:45.945Z"
-        },
-        {
-          "code": "NSA",
-          "jurisdiction": "Northern Samar",
-          "status": "synced",
-          "importedRows": 484,
-          "tabRowCounts": {
-            "Database": 481,
-            "CF(DOC)": 1,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:30:47.207Z"
-        },
-        {
-          "code": "SAM",
-          "jurisdiction": "Samar (Western Samar)",
-          "status": "synced",
-          "importedRows": 252,
-          "tabRowCounts": {
-            "Database": 248,
-            "CF(DOC)": 2,
-            "Survey": 1,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:30:48.563Z"
-        },
-        {
-          "code": "SLE",
-          "jurisdiction": "Southern Leyte",
-          "status": "synced",
-          "importedRows": 122,
-          "tabRowCounts": {
-            "Database": 121,
-            "CF(DOC)": 0,
-            "Survey": 0,
-            "MOV": 1,
-            "RegistrationDistribution": 0,
-            "Installation": 0
-          },
-          "checkedAt": "2026-11-12T14:30:49.883Z"
-        }
-      ]
     }
   ],
   "liveHubSnapshot": {
-    "checkedAt": "2026-11-14T05:34:21.141Z",
+    "checkedAt": "2026-11-14T07:30:15.262Z",
     "reachable": true,
     "sheetNames": [
       "Database",
@@ -5513,7 +5738,7 @@
         "problematic": "",
         "totalArea": "10.0846",
         "computedArea": "10.0846",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1959.0",
         "carpable": "10.0846",
@@ -5600,7 +5825,7 @@
         "problematic": "",
         "totalArea": "12.0270",
         "computedArea": "12.0270",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "826.0",
         "carpable": "12.0270",
@@ -5629,7 +5854,7 @@
         "problematic": "",
         "totalArea": "6.9190",
         "computedArea": "6.9190",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "397.0",
         "carpable": "6.9190",
@@ -5658,7 +5883,7 @@
         "problematic": "",
         "totalArea": "7.0002",
         "computedArea": "7.0002",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1546.0",
         "carpable": "7.0002",
@@ -5803,7 +6028,7 @@
         "problematic": "",
         "totalArea": "18.1371",
         "computedArea": "18.1371",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "2761.0",
         "carpable": "18.1371",
@@ -6035,7 +6260,7 @@
         "problematic": "",
         "totalArea": "4.2641",
         "computedArea": "4.2641",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1264-B-8",
         "carpable": "4.2641",
@@ -6209,7 +6434,7 @@
         "problematic": "",
         "totalArea": "20.2369",
         "computedArea": "20.2369",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "20.2369",
         "carpable": "",
@@ -6238,7 +6463,7 @@
         "problematic": "1.0",
         "totalArea": "5.1178",
         "computedArea": "5.1178",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "5.1178",
         "carpable": "",
@@ -6412,7 +6637,7 @@
         "problematic": "",
         "totalArea": "9.6726",
         "computedArea": "9.6726",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1098.0",
         "carpable": "9.6726",
@@ -6470,7 +6695,7 @@
         "problematic": "",
         "totalArea": "17.4826",
         "computedArea": "17.4826",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1425-A",
         "carpable": "17.4826",
@@ -6499,7 +6724,7 @@
         "problematic": "",
         "totalArea": "3.6000",
         "computedArea": "3.6000",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1307.0",
         "carpable": "3.6000",
@@ -7166,7 +7391,7 @@
         "problematic": "",
         "totalArea": "20.3875",
         "computedArea": "20.3875",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "2362.0",
         "carpable": "20.3875",
@@ -7282,7 +7507,7 @@
         "problematic": "0.0",
         "totalArea": "9.5738",
         "computedArea": "9.5738",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "3203.0",
         "carpable": "9.5738",
@@ -7340,7 +7565,7 @@
         "problematic": "",
         "totalArea": "21.8750",
         "computedArea": "21.8750",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "3758.0",
         "carpable": "21.8750",
@@ -7427,7 +7652,7 @@
         "problematic": "",
         "totalArea": "0.2269",
         "computedArea": "0.2269",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "523-F",
         "carpable": "0.2269",
@@ -7456,7 +7681,7 @@
         "problematic": "1.0",
         "totalArea": "8.6522",
         "computedArea": "8.6522",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "8.6522",
         "carpable": "",
@@ -8616,7 +8841,7 @@
         "problematic": "",
         "totalArea": "4.0232",
         "computedArea": "4.0232",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "3258.0",
         "carpable": "4.0232",
@@ -11719,7 +11944,7 @@
         "problematic": "0.0",
         "totalArea": "7.2454",
         "computedArea": "7.2454",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1355.0",
         "carpable": "7.2454",
@@ -12763,7 +12988,7 @@
         "problematic": "",
         "totalArea": "6.4186",
         "computedArea": "6.4186",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1702.0",
         "carpable": "6.4186",
@@ -13474,7 +13699,7 @@
       },
       {
         "lhid": "8.04000593E8",
-        "titleNumber": "772",
+        "titleNumber": "734",
         "landOwner": "",
         "moa": "CA",
         "phase": "Phase 3B",
@@ -13503,7 +13728,7 @@
       },
       {
         "lhid": "8.040006E8",
-        "titleNumber": "771",
+        "titleNumber": "733",
         "landOwner": "",
         "moa": "CA",
         "phase": "Phase 3B",
@@ -14199,7 +14424,7 @@
       },
       {
         "lhid": "8.04000716E8",
-        "titleNumber": "691",
+        "titleNumber": "672",
         "landOwner": "",
         "moa": "CA",
         "phase": "Phase 3B",
@@ -14228,7 +14453,7 @@
       },
       {
         "lhid": "8.0400072E8",
-        "titleNumber": "686",
+        "titleNumber": "667",
         "landOwner": "",
         "moa": "VOS",
         "phase": "Phase 1",
@@ -14242,7 +14467,7 @@
         "problematic": "",
         "totalArea": "5.3078",
         "computedArea": "5.3078",
-        "distributedArea": "681.0000",
+        "distributedArea": "662.0000",
         "surveyNumber": "",
         "lotNumber": "1-PSU-08-001964",
         "carpable": "5.3078",
@@ -14257,7 +14482,7 @@
       },
       {
         "lhid": "8.04000721E8",
-        "titleNumber": "686",
+        "titleNumber": "667",
         "landOwner": "",
         "moa": "VOS",
         "phase": "Phase 1",
@@ -14271,7 +14496,7 @@
         "problematic": "",
         "totalArea": "8.5593",
         "computedArea": "8.5593",
-        "distributedArea": "681.0000",
+        "distributedArea": "662.0000",
         "surveyNumber": "",
         "lotNumber": "2-PSU-08-001960",
         "carpable": "8.5593",
@@ -14286,7 +14511,7 @@
       },
       {
         "lhid": "8.04000722E8",
-        "titleNumber": "683",
+        "titleNumber": "664",
         "landOwner": "",
         "moa": "VOS",
         "phase": "Phase 1",
@@ -14300,7 +14525,7 @@
         "problematic": "",
         "totalArea": "17.9197",
         "computedArea": "17.9197",
-        "distributedArea": "681.0000",
+        "distributedArea": "662.0000",
         "surveyNumber": "",
         "lotNumber": "1.0",
         "carpable": "17.9197",
@@ -14315,7 +14540,7 @@
       },
       {
         "lhid": "8.04000726E8",
-        "titleNumber": "678",
+        "titleNumber": "659",
         "landOwner": "",
         "moa": "KKK/GOL",
         "phase": "Phase 1",
@@ -14445,7 +14670,7 @@
         "problematic": "",
         "totalArea": "5.9396",
         "computedArea": "5.9396",
-        "distributedArea": "667.0000",
+        "distributedArea": "648.0000",
         "surveyNumber": "",
         "lotNumber": "287.0",
         "carpable": "5.9396",
@@ -14474,7 +14699,7 @@
         "problematic": "",
         "totalArea": "1.3892",
         "computedArea": "1.3892",
-        "distributedArea": "667.0000",
+        "distributedArea": "648.0000",
         "surveyNumber": "",
         "lotNumber": "3419.0",
         "carpable": "1.3892",
@@ -17519,7 +17744,7 @@
         "problematic": "",
         "totalArea": "1.7292",
         "computedArea": "1.7292",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1934-N",
         "carpable": "1.7292",
@@ -18726,7 +18951,7 @@
         "titleNumber": "OCT-16910",
         "landOwner": "SINGZON, MISAEL A",
         "moa": "VOS",
-        "phase": "100",
+        "phase": "98",
         "regionName": "",
         "province": "NORTHERN SAMAR",
         "municipality": "CATARMAN",
@@ -18755,7 +18980,7 @@
         "titleNumber": "OCT-16751",
         "landOwner": "SINGZON, DENNIS M",
         "moa": "VOS",
-        "phase": "100",
+        "phase": "98",
         "regionName": "",
         "province": "NORTHERN SAMAR",
         "municipality": "CATARMAN",
@@ -18784,7 +19009,7 @@
         "titleNumber": "OCT-16907",
         "landOwner": "CORTES, ANTONIA S",
         "moa": "CA",
-        "phase": "100",
+        "phase": "98",
         "regionName": "",
         "province": "NORTHERN SAMAR",
         "municipality": "CATARMAN",
@@ -18813,7 +19038,7 @@
         "titleNumber": "OCT-13603",
         "landOwner": "DE SILVA, LETECIA",
         "moa": "CA",
-        "phase": "100",
+        "phase": "98",
         "regionName": "",
         "province": "NORTHERN SAMAR",
         "municipality": "LOPE DE VEGA",
@@ -18842,7 +19067,7 @@
         "titleNumber": "(7961)6221",
         "landOwner": "ADRIATICO, MIGUEL C",
         "moa": "CA",
-        "phase": "100",
+        "phase": "98",
         "regionName": "",
         "province": "NORTHERN SAMAR",
         "municipality": "LAVEZARES",
@@ -18871,7 +19096,7 @@
         "titleNumber": "TCT-3482",
         "landOwner": "DBP/BEATRIZ BELLO,; RP represented by Department of Agrarian Reform",
         "moa": "OLT/PD 27",
-        "phase": "100",
+        "phase": "98",
         "regionName": "",
         "province": "NORTHERN SAMAR",
         "municipality": "MONDRAGON",
@@ -18882,11 +19107,11 @@
         "problematic": "",
         "totalArea": "13.0338",
         "computedArea": "13.0338",
-        "distributedArea": "112.0000",
+        "distributedArea": "111.0000",
         "surveyNumber": "",
         "lotNumber": "",
         "carpable": "13.0338",
-        "nonCarpable": "113.0000",
+        "nonCarpable": "112.0000",
         "optoolStatus": "",
         "currentStatusDesc": "2.b Projected Landholding on LC Map, 4.b.2 Prepared & Served Preliminary List of ARBs",
         "newLandSize": "",
@@ -18900,7 +19125,7 @@
         "titleNumber": "T-2418",
         "landOwner": "FINCALERO, FRANCISCO E",
         "moa": "CA",
-        "phase": "100",
+        "phase": "98",
         "regionName": "",
         "province": "NORTHERN SAMAR",
         "municipality": "CATUBIG",
@@ -18911,7 +19136,7 @@
         "problematic": "",
         "totalArea": "7.2227",
         "computedArea": "7.2227",
-        "distributedArea": "104.0000",
+        "distributedArea": "103.0000",
         "surveyNumber": "",
         "lotNumber": "1467.0",
         "carpable": "5.9152",
@@ -27437,7 +27662,7 @@
         "problematic": "",
         "totalArea": "1.5504",
         "computedArea": "1.5504",
-        "distributedArea": "201.0000",
+        "distributedArea": "131.0000",
         "surveyNumber": "",
         "lotNumber": "3262.0",
         "carpable": "0.5504",
@@ -27553,7 +27778,7 @@
         "problematic": "",
         "totalArea": "1.5396",
         "computedArea": "1.5396",
-        "distributedArea": "318.0000",
+        "distributedArea": "310.0000",
         "surveyNumber": "",
         "lotNumber": "13234.0",
         "carpable": "1.5396",
@@ -27611,7 +27836,7 @@
         "problematic": "",
         "totalArea": "1.2767",
         "computedArea": "1.2767",
-        "distributedArea": "188.0000",
+        "distributedArea": "118.0000",
         "surveyNumber": "",
         "lotNumber": "1842.0",
         "carpable": "1.2767",
@@ -27640,7 +27865,7 @@
         "problematic": "",
         "totalArea": "0.1452",
         "computedArea": "0.1452",
-        "distributedArea": "188.0000",
+        "distributedArea": "118.0000",
         "surveyNumber": "",
         "lotNumber": "1700.0",
         "carpable": "0.1452",
@@ -27669,7 +27894,7 @@
         "problematic": "",
         "totalArea": "0.9400",
         "computedArea": "0.9400",
-        "distributedArea": "188.0000",
+        "distributedArea": "118.0000",
         "surveyNumber": "",
         "lotNumber": "1866.0",
         "carpable": "0.9400",
@@ -27727,7 +27952,7 @@
         "problematic": "",
         "totalArea": "0.2239",
         "computedArea": "0.2239",
-        "distributedArea": "201.0000",
+        "distributedArea": "131.0000",
         "surveyNumber": "",
         "lotNumber": "3100.0",
         "carpable": "0.2239",
@@ -27756,7 +27981,7 @@
         "problematic": "",
         "totalArea": "2.4358",
         "computedArea": "2.4358",
-        "distributedArea": "318.0000",
+        "distributedArea": "310.0000",
         "surveyNumber": "",
         "lotNumber": "13220.0",
         "carpable": "1.9074",
@@ -27814,7 +28039,7 @@
         "problematic": "",
         "totalArea": "3.1406",
         "computedArea": "3.1406",
-        "distributedArea": "181.0000",
+        "distributedArea": "111.0000",
         "surveyNumber": "",
         "lotNumber": "13165.0",
         "carpable": "0.1406",
@@ -27872,7 +28097,7 @@
         "problematic": "",
         "totalArea": "2.0199",
         "computedArea": "2.0199",
-        "distributedArea": "226.0000",
+        "distributedArea": "207.0000",
         "surveyNumber": "",
         "lotNumber": "6005.0",
         "carpable": "2.0199",
@@ -28017,7 +28242,7 @@
         "problematic": "",
         "totalArea": "5.9225",
         "computedArea": "5.9225",
-        "distributedArea": "359.0000",
+        "distributedArea": "358.0000",
         "surveyNumber": "",
         "lotNumber": "2976.0",
         "carpable": "0.9225",
@@ -28075,7 +28300,7 @@
         "problematic": "",
         "totalArea": "2.4333",
         "computedArea": "2.4333",
-        "distributedArea": "351.0000",
+        "distributedArea": "350.0000",
         "surveyNumber": "",
         "lotNumber": "376.0",
         "carpable": "1.6176",
@@ -28104,7 +28329,7 @@
         "problematic": "",
         "totalArea": "2.2910",
         "computedArea": "2.2910",
-        "distributedArea": "181.0000",
+        "distributedArea": "111.0000",
         "surveyNumber": "",
         "lotNumber": "12978.0",
         "carpable": "0.2910",
@@ -28133,7 +28358,7 @@
         "problematic": "",
         "totalArea": "2.3409",
         "computedArea": "2.3409",
-        "distributedArea": "337.0000",
+        "distributedArea": "329.0000",
         "surveyNumber": "",
         "lotNumber": "900.0",
         "carpable": "2.3409",
@@ -28162,7 +28387,7 @@
         "problematic": "",
         "totalArea": "5.3848",
         "computedArea": "5.3848",
-        "distributedArea": "177.0000",
+        "distributedArea": "107.0000",
         "surveyNumber": "",
         "lotNumber": "12151.0",
         "carpable": "0.3848",
@@ -28220,7 +28445,7 @@
         "problematic": "",
         "totalArea": "5.2392",
         "computedArea": "5.2392",
-        "distributedArea": "201.0000",
+        "distributedArea": "131.0000",
         "surveyNumber": "",
         "lotNumber": "2235.0",
         "carpable": "0.2392",
@@ -28249,7 +28474,7 @@
         "problematic": "",
         "totalArea": "2.1774",
         "computedArea": "2.1774",
-        "distributedArea": "337.0000",
+        "distributedArea": "329.0000",
         "surveyNumber": "",
         "lotNumber": "893.0",
         "carpable": "2.1774",
@@ -28278,7 +28503,7 @@
         "problematic": "",
         "totalArea": "3.0597",
         "computedArea": "3.0597",
-        "distributedArea": "333.0000",
+        "distributedArea": "325.0000",
         "surveyNumber": "",
         "lotNumber": "10136.0",
         "carpable": "2.9152",
@@ -28307,7 +28532,7 @@
         "problematic": "",
         "totalArea": "4.5434",
         "computedArea": "4.5434",
-        "distributedArea": "185.0000",
+        "distributedArea": "115.0000",
         "surveyNumber": "",
         "lotNumber": "10837.0",
         "carpable": "1.5263",
@@ -28336,7 +28561,7 @@
         "problematic": "",
         "totalArea": "0.7809",
         "computedArea": "0.7809",
-        "distributedArea": "329.0000",
+        "distributedArea": "321.0000",
         "surveyNumber": "",
         "lotNumber": "1.0",
         "carpable": "0.7809",
@@ -28423,7 +28648,7 @@
         "problematic": "",
         "totalArea": "0.8990",
         "computedArea": "0.8990",
-        "distributedArea": "322.0000",
+        "distributedArea": "314.0000",
         "surveyNumber": "",
         "lotNumber": "1.0",
         "carpable": "0.8990",
@@ -28452,7 +28677,7 @@
         "problematic": "",
         "totalArea": "1.7420",
         "computedArea": "1.7420",
-        "distributedArea": "322.0000",
+        "distributedArea": "314.0000",
         "surveyNumber": "",
         "lotNumber": "2.0",
         "carpable": "1.7420",
@@ -28481,7 +28706,7 @@
         "problematic": "",
         "totalArea": "3.4477",
         "computedArea": "3.4477",
-        "distributedArea": "318.0000",
+        "distributedArea": "310.0000",
         "surveyNumber": "",
         "lotNumber": "13370.0",
         "carpable": "0.3101",
@@ -28510,7 +28735,7 @@
         "problematic": "",
         "totalArea": "1.8521",
         "computedArea": "1.8521",
-        "distributedArea": "314.0000",
+        "distributedArea": "306.0000",
         "surveyNumber": "",
         "lotNumber": "0.386",
         "carpable": "",
@@ -28539,7 +28764,7 @@
         "problematic": "",
         "totalArea": "4.8107",
         "computedArea": "4.8107",
-        "distributedArea": "310.0000",
+        "distributedArea": "302.0000",
         "surveyNumber": "",
         "lotNumber": "1.0",
         "carpable": "0.6019",
@@ -28568,7 +28793,7 @@
         "problematic": "",
         "totalArea": "0.0054",
         "computedArea": "0.0054",
-        "distributedArea": "305.0000",
+        "distributedArea": "297.0000",
         "surveyNumber": "",
         "lotNumber": "4844-B-1-A",
         "carpable": "0.0054",
@@ -28597,7 +28822,7 @@
         "problematic": "",
         "totalArea": "0.6104",
         "computedArea": "0.6104",
-        "distributedArea": "201.0000",
+        "distributedArea": "131.0000",
         "surveyNumber": "",
         "lotNumber": "1561.0",
         "carpable": "0.6104",
@@ -28626,7 +28851,7 @@
         "problematic": "",
         "totalArea": "6.0872",
         "computedArea": "6.0872",
-        "distributedArea": "201.0000",
+        "distributedArea": "131.0000",
         "surveyNumber": "",
         "lotNumber": "1725.0",
         "carpable": "1.0872",
@@ -28655,7 +28880,7 @@
         "problematic": "",
         "totalArea": "2.0425",
         "computedArea": "2.0425",
-        "distributedArea": "201.0000",
+        "distributedArea": "131.0000",
         "surveyNumber": "",
         "lotNumber": "1653.0",
         "carpable": "2.0425",
@@ -28684,7 +28909,7 @@
         "problematic": "",
         "totalArea": "0.2558",
         "computedArea": "0.2558",
-        "distributedArea": "293.0000",
+        "distributedArea": "285.0000",
         "surveyNumber": "",
         "lotNumber": "5283.0",
         "carpable": "0.2558",
@@ -28713,7 +28938,7 @@
         "problematic": "",
         "totalArea": "0.4567",
         "computedArea": "0.4567",
-        "distributedArea": "293.0000",
+        "distributedArea": "285.0000",
         "surveyNumber": "",
         "lotNumber": "5281.0",
         "carpable": "0.4567",
@@ -28728,7 +28953,7 @@
       },
       {
         "lhid": "8.02000753E8",
-        "titleNumber": "247",
+        "titleNumber": "238",
         "landOwner": "",
         "moa": "VOS",
         "phase": "Phase 1",
@@ -28757,7 +28982,7 @@
       },
       {
         "lhid": "8.02000756E8",
-        "titleNumber": "289",
+        "titleNumber": "281",
         "landOwner": "",
         "moa": "KKK/GOL",
         "phase": "Phase 1",
@@ -28771,7 +28996,7 @@
         "problematic": "",
         "totalArea": "5.2574",
         "computedArea": "5.2574",
-        "distributedArea": "185.0000",
+        "distributedArea": "115.0000",
         "surveyNumber": "",
         "lotNumber": "4959.0",
         "carpable": "5.2574",
@@ -28786,7 +29011,7 @@
       },
       {
         "lhid": "8.0200076E8",
-        "titleNumber": "150",
+        "titleNumber": "80",
         "landOwner": "",
         "moa": "CA",
         "phase": "Phase 3A",
@@ -28829,7 +29054,7 @@
         "problematic": "",
         "totalArea": "2.6100",
         "computedArea": "2.6100",
-        "distributedArea": "285.0000",
+        "distributedArea": "277.0000",
         "surveyNumber": "",
         "lotNumber": "2.61",
         "carpable": "",
@@ -28873,7 +29098,7 @@
       },
       {
         "lhid": "8.0200095E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -28916,7 +29141,7 @@
         "problematic": "",
         "totalArea": "7.2871",
         "computedArea": "7.2871",
-        "distributedArea": "276.0000",
+        "distributedArea": "267.0000",
         "surveyNumber": "",
         "lotNumber": "2026-01-29",
         "carpable": "7.2871",
@@ -28945,7 +29170,7 @@
         "problematic": "",
         "totalArea": "3.5424",
         "computedArea": "3.5424",
-        "distributedArea": "171.0000",
+        "distributedArea": "101.0000",
         "surveyNumber": "",
         "lotNumber": "1596.0",
         "carpable": "2.2924",
@@ -28974,7 +29199,7 @@
         "problematic": "",
         "totalArea": "14.9351",
         "computedArea": "14.9351",
-        "distributedArea": "268.0000",
+        "distributedArea": "259.0000",
         "surveyNumber": "",
         "lotNumber": "9.9351",
         "carpable": "",
@@ -28989,7 +29214,7 @@
       },
       {
         "lhid": "8.02000849E8",
-        "titleNumber": "259",
+        "titleNumber": "250",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29018,7 +29243,7 @@
       },
       {
         "lhid": "8.02000856E8",
-        "titleNumber": "253",
+        "titleNumber": "244",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29090,7 +29315,7 @@
         "problematic": "",
         "totalArea": "0.4999",
         "computedArea": "0.4999",
-        "distributedArea": "249.0000",
+        "distributedArea": "240.0000",
         "surveyNumber": "",
         "lotNumber": "9426-B",
         "carpable": "0.4999",
@@ -29105,7 +29330,7 @@
       },
       {
         "lhid": "8.02000886E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29134,7 +29359,7 @@
       },
       {
         "lhid": "8.02000888E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29163,7 +29388,7 @@
       },
       {
         "lhid": "8.02000889E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29192,7 +29417,7 @@
       },
       {
         "lhid": "8.0200089E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29221,7 +29446,7 @@
       },
       {
         "lhid": "8.02000891E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29250,7 +29475,7 @@
       },
       {
         "lhid": "8.02000892E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29279,7 +29504,7 @@
       },
       {
         "lhid": "8.02000893E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29308,7 +29533,7 @@
       },
       {
         "lhid": "8.02000894E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29337,7 +29562,7 @@
       },
       {
         "lhid": "8.02000896E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29366,7 +29591,7 @@
       },
       {
         "lhid": "8.02000897E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29395,7 +29620,7 @@
       },
       {
         "lhid": "8.02000898E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29424,7 +29649,7 @@
       },
       {
         "lhid": "8.020009E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29453,7 +29678,7 @@
       },
       {
         "lhid": "8.02000901E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29482,7 +29707,7 @@
       },
       {
         "lhid": "8.02000902E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29511,7 +29736,7 @@
       },
       {
         "lhid": "8.02000903E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29540,7 +29765,7 @@
       },
       {
         "lhid": "8.02000905E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29569,7 +29794,7 @@
       },
       {
         "lhid": "8.02000907E8",
-        "titleNumber": "242",
+        "titleNumber": "233",
         "landOwner": "",
         "moa": "OLT/PD 27",
         "phase": "Phase 1",
@@ -29612,7 +29837,7 @@
         "problematic": "",
         "totalArea": "6.5798",
         "computedArea": "6.5798",
-        "distributedArea": "241.0000",
+        "distributedArea": "232.0000",
         "surveyNumber": "",
         "lotNumber": "1.5798",
         "carpable": "",
@@ -29699,7 +29924,7 @@
         "problematic": "",
         "totalArea": "3.5835",
         "computedArea": "3.5835",
-        "distributedArea": "226.0000",
+        "distributedArea": "207.0000",
         "surveyNumber": "",
         "lotNumber": "5972.0",
         "carpable": "3.5835",
@@ -29728,7 +29953,7 @@
         "problematic": "",
         "totalArea": "0.9719",
         "computedArea": "0.9719",
-        "distributedArea": "205.0000",
+        "distributedArea": "135.0000",
         "surveyNumber": "",
         "lotNumber": "1380.0",
         "carpable": "0.9719",
@@ -29757,7 +29982,7 @@
         "problematic": "",
         "totalArea": "2.8579",
         "computedArea": "2.8579",
-        "distributedArea": "171.0000",
+        "distributedArea": "101.0000",
         "surveyNumber": "",
         "lotNumber": "564.0",
         "carpable": "1.4270",
@@ -29786,7 +30011,7 @@
         "problematic": "",
         "totalArea": "0.8175",
         "computedArea": "0.8175",
-        "distributedArea": "205.0000",
+        "distributedArea": "135.0000",
         "surveyNumber": "",
         "lotNumber": "1400.0",
         "carpable": "0.8175",
@@ -29815,7 +30040,7 @@
         "problematic": "",
         "totalArea": "0.4822",
         "computedArea": "0.4822",
-        "distributedArea": "205.0000",
+        "distributedArea": "135.0000",
         "surveyNumber": "",
         "lotNumber": "1310.0",
         "carpable": "0.4822",
@@ -29844,7 +30069,7 @@
         "problematic": "",
         "totalArea": "0.5861",
         "computedArea": "0.5861",
-        "distributedArea": "205.0000",
+        "distributedArea": "135.0000",
         "surveyNumber": "",
         "lotNumber": "1408.0",
         "carpable": "0.5861",
@@ -29873,7 +30098,7 @@
         "problematic": "",
         "totalArea": "1.9880",
         "computedArea": "1.9880",
-        "distributedArea": "205.0000",
+        "distributedArea": "135.0000",
         "surveyNumber": "",
         "lotNumber": "1317.0",
         "carpable": "1.9880",
@@ -29902,7 +30127,7 @@
         "problematic": "",
         "totalArea": "0.4392",
         "computedArea": "0.4392",
-        "distributedArea": "205.0000",
+        "distributedArea": "135.0000",
         "surveyNumber": "",
         "lotNumber": "1370.0",
         "carpable": "0.4392",
@@ -29931,7 +30156,7 @@
         "problematic": "",
         "totalArea": "0.2586",
         "computedArea": "0.2586",
-        "distributedArea": "217.0000",
+        "distributedArea": "147.0000",
         "surveyNumber": "",
         "lotNumber": "721.0",
         "carpable": "0.2586",
@@ -29960,7 +30185,7 @@
         "problematic": "",
         "totalArea": "0.2883",
         "computedArea": "0.2883",
-        "distributedArea": "208.0000",
+        "distributedArea": "138.0000",
         "surveyNumber": "",
         "lotNumber": "4875.0",
         "carpable": "0.2883",
@@ -30018,7 +30243,7 @@
         "problematic": "",
         "totalArea": "0.5430",
         "computedArea": "0.5430",
-        "distributedArea": "208.0000",
+        "distributedArea": "138.0000",
         "surveyNumber": "",
         "lotNumber": "4957.0",
         "carpable": "0.5430",
@@ -30076,7 +30301,7 @@
         "problematic": "",
         "totalArea": "0.6589",
         "computedArea": "0.6589",
-        "distributedArea": "205.0000",
+        "distributedArea": "135.0000",
         "surveyNumber": "",
         "lotNumber": "1346.0",
         "carpable": "0.6589",
@@ -30105,7 +30330,7 @@
         "problematic": "",
         "totalArea": "3.5684",
         "computedArea": "3.5684",
-        "distributedArea": "201.0000",
+        "distributedArea": "131.0000",
         "surveyNumber": "",
         "lotNumber": "2311.0",
         "carpable": "0.8363",
@@ -30163,7 +30388,7 @@
         "problematic": "",
         "totalArea": "0.7124",
         "computedArea": "0.7124",
-        "distributedArea": "195.0000",
+        "distributedArea": "125.0000",
         "surveyNumber": "",
         "lotNumber": "4751.0",
         "carpable": "0.7124",
@@ -30192,7 +30417,7 @@
         "problematic": "",
         "totalArea": "2.8877",
         "computedArea": "2.8877",
-        "distributedArea": "191.0000",
+        "distributedArea": "121.0000",
         "surveyNumber": "",
         "lotNumber": "1134.0",
         "carpable": "2.8877",
@@ -30221,7 +30446,7 @@
         "problematic": "",
         "totalArea": "0.4110",
         "computedArea": "0.4110",
-        "distributedArea": "188.0000",
+        "distributedArea": "118.0000",
         "surveyNumber": "",
         "lotNumber": "1830.0",
         "carpable": "0.4110",
@@ -30250,7 +30475,7 @@
         "problematic": "",
         "totalArea": "3.8743",
         "computedArea": "3.8743",
-        "distributedArea": "185.0000",
+        "distributedArea": "115.0000",
         "surveyNumber": "",
         "lotNumber": "11034.0",
         "carpable": "1.0347",
@@ -30279,7 +30504,7 @@
         "problematic": "",
         "totalArea": "1.0895",
         "computedArea": "1.0895",
-        "distributedArea": "181.0000",
+        "distributedArea": "111.0000",
         "surveyNumber": "",
         "lotNumber": "12289.0",
         "carpable": "1.0895",
@@ -30308,7 +30533,7 @@
         "problematic": "",
         "totalArea": "2.6499",
         "computedArea": "2.6499",
-        "distributedArea": "177.0000",
+        "distributedArea": "107.0000",
         "surveyNumber": "",
         "lotNumber": "11476.0",
         "carpable": "2.6499",
@@ -30337,7 +30562,7 @@
         "problematic": "",
         "totalArea": "2.5794",
         "computedArea": "2.5794",
-        "distributedArea": "171.0000",
+        "distributedArea": "101.0000",
         "surveyNumber": "",
         "lotNumber": "3163.0",
         "carpable": "2.3307",
@@ -30366,7 +30591,7 @@
         "problematic": "",
         "totalArea": "0.8225",
         "computedArea": "0.8225",
-        "distributedArea": "160.0000",
+        "distributedArea": "90.0000",
         "surveyNumber": "",
         "lotNumber": "G (208- Cad. Lot # equivalent)",
         "carpable": "0.8225",
@@ -30395,7 +30620,7 @@
         "problematic": "",
         "totalArea": "0.6507",
         "computedArea": "0.6507",
-        "distributedArea": "160.0000",
+        "distributedArea": "90.0000",
         "surveyNumber": "",
         "lotNumber": "I (82-Cad. Lot # equivalent)",
         "carpable": "0.6507",
@@ -30410,7 +30635,7 @@
       },
       {
         "lhid": "8.02000776E8",
-        "titleNumber": "116",
+        "titleNumber": "46",
         "landOwner": "",
         "moa": "KKK/GOL",
         "phase": "Phase 1",
@@ -30439,7 +30664,7 @@
       },
       {
         "lhid": "8.02000782E8",
-        "titleNumber": "150",
+        "titleNumber": "80",
         "landOwner": "",
         "moa": "CA",
         "phase": "Phase 3A",
@@ -30468,7 +30693,7 @@
       },
       {
         "lhid": "8.02000783E8",
-        "titleNumber": "150",
+        "titleNumber": "80",
         "landOwner": "",
         "moa": "CA",
         "phase": "Phase 3A",
@@ -30482,7 +30707,7 @@
         "problematic": "",
         "totalArea": "9.4950",
         "computedArea": "9.4950",
-        "distributedArea": "120.0000",
+        "distributedArea": "50.0000",
         "surveyNumber": "",
         "lotNumber": "5919.0",
         "carpable": "9.4950",
@@ -30529,7 +30754,7 @@
         "titleNumber": "10633.0",
         "landOwner": "LASTIMOSA, GERARDO",
         "moa": "CA",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "MAASIN CITY",
@@ -30544,7 +30769,7 @@
         "surveyNumber": "Case 8, Cad-440-D",
         "lotNumber": "10690.0",
         "carpable": "1.0919",
-        "nonCarpable": "141.0000",
+        "nonCarpable": "71.0000",
         "optoolStatus": "",
         "currentStatusDesc": "12 Received COD, transmitted to ROD and requested for RP Title",
         "newLandSize": "",
@@ -30558,7 +30783,7 @@
         "titleNumber": "10636.0",
         "landOwner": "LASTIMOSA, GERARDO",
         "moa": "CA",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "MAASIN CITY",
@@ -30569,11 +30794,11 @@
         "problematic": "",
         "totalArea": "1.1130",
         "computedArea": "1.1130",
-        "distributedArea": "138.0000",
+        "distributedArea": "68.0000",
         "surveyNumber": "",
         "lotNumber": "10681.0",
         "carpable": "1.1130",
-        "nonCarpable": "139.0000",
+        "nonCarpable": "69.0000",
         "optoolStatus": "",
         "currentStatusDesc": "12 Received COD, transmitted to ROD and requested for RP Title",
         "newLandSize": "5 and below",
@@ -30587,7 +30812,7 @@
         "titleNumber": "26055.0",
         "landOwner": "SUMBRADO, PETRONIO",
         "moa": "CA",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "SAN FRANCISCO",
@@ -30598,7 +30823,7 @@
         "problematic": "",
         "totalArea": "0.6311",
         "computedArea": "0.6311",
-        "distributedArea": "133.0000",
+        "distributedArea": "63.0000",
         "surveyNumber": "",
         "lotNumber": "19.0",
         "carpable": "0.6311",
@@ -30616,7 +30841,7 @@
         "titleNumber": "0.0",
         "landOwner": "GACES, FRANCISCO",
         "moa": "CA",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "SAINT BERNARD",
@@ -30627,11 +30852,11 @@
         "problematic": "",
         "totalArea": "0.6163",
         "computedArea": "0.6163",
-        "distributedArea": "127.0000",
+        "distributedArea": "57.0000",
         "surveyNumber": "",
         "lotNumber": "3631.0",
         "carpable": "0.6163",
-        "nonCarpable": "128.0000",
+        "nonCarpable": "58.0000",
         "optoolStatus": "",
         "currentStatusDesc": "15 Forwarded EP/CLOA to ROD for Registration",
         "newLandSize": "",
@@ -30645,7 +30870,7 @@
         "titleNumber": "0.0",
         "landOwner": "JAVIER, ROSA",
         "moa": "KKK/GOL",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "SOGOD",
@@ -30656,11 +30881,11 @@
         "problematic": "",
         "totalArea": "10.9402",
         "computedArea": "10.5251",
-        "distributedArea": "120.0000",
+        "distributedArea": "50.0000",
         "surveyNumber": "",
         "lotNumber": "2876.0",
         "carpable": "10.5251",
-        "nonCarpable": "121.0000",
+        "nonCarpable": "51.0000",
         "optoolStatus": "",
         "currentStatusDesc": "4.b.4 Prepared Masterlist of ARBs",
         "newLandSize": "> 10 to 24",
@@ -30685,11 +30910,11 @@
         "problematic": "",
         "totalArea": "0.6104",
         "computedArea": "0.6104",
-        "distributedArea": "114.0000",
+        "distributedArea": "44.0000",
         "surveyNumber": "",
         "lotNumber": "3718.0",
         "carpable": "0.6104",
-        "nonCarpable": "115.0000",
+        "nonCarpable": "45.0000",
         "optoolStatus": "",
         "currentStatusDesc": "11 Received MOV, served copy to LO and posted Notice on NLVA",
         "newLandSize": "5 and below",
@@ -30703,7 +30928,7 @@
         "titleNumber": "20133.0",
         "landOwner": "TAN, DEMOCRITA",
         "moa": "CA",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "TOMAS OPPUS",
@@ -30714,11 +30939,11 @@
         "problematic": "",
         "totalArea": "0.3035",
         "computedArea": "0.3035",
-        "distributedArea": "109.0000",
+        "distributedArea": "39.0000",
         "surveyNumber": "",
         "lotNumber": "3358.0",
         "carpable": "0.3035",
-        "nonCarpable": "110.0000",
+        "nonCarpable": "40.0000",
         "optoolStatus": "",
         "currentStatusDesc": "11 Received MOV, served copy to LO and posted Notice on NLVA",
         "newLandSize": "5 and below",
@@ -30732,7 +30957,7 @@
         "titleNumber": "11535.0",
         "landOwner": "DELIMA, JUANITO",
         "moa": "CA",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "MAASIN CITY",
@@ -30743,11 +30968,11 @@
         "problematic": "",
         "totalArea": "2.6623",
         "computedArea": "2.6623",
-        "distributedArea": "102.0000",
+        "distributedArea": "32.0000",
         "surveyNumber": "",
         "lotNumber": "9079.0",
         "carpable": "2.6623",
-        "nonCarpable": "103.0000",
+        "nonCarpable": "33.0000",
         "optoolStatus": "",
         "currentStatusDesc": "4.b.7 Posted Masterlist of ARBs , 4.b.7 Posted Masterlist of ARBs",
         "newLandSize": "5 and below",
@@ -30761,7 +30986,7 @@
         "titleNumber": "11534.0",
         "landOwner": "DELIMA, JUANITO",
         "moa": "CA",
-        "phase": "98",
+        "phase": "28",
         "regionName": "",
         "province": "SOUTHERN LEYTE",
         "municipality": "MAASIN CITY",
@@ -30772,11 +30997,11 @@
         "problematic": "",
         "totalArea": "1.0286",
         "computedArea": "1.0286",
-        "distributedArea": "102.0000",
+        "distributedArea": "32.0000",
         "surveyNumber": "",
         "lotNumber": "9081.0",
         "carpable": "1.0286",
-        "nonCarpable": "103.0000",
+        "nonCarpable": "33.0000",
         "optoolStatus": "",
         "currentStatusDesc": "4.b.7 Posted Masterlist of ARBs , 4.b.7 Posted Masterlist of ARBs",
         "newLandSize": "5 and below",
@@ -95631,6 +95856,636 @@
     ],
     "Survey": [
       {
+        "lhid": "8.01011057E8",
+        "kindOfSurvey": "59",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.01011079E8",
+        "kindOfSurvey": "59",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.04001508E8",
+        "kindOfSurvey": "132",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.04001508E8",
+        "kindOfSurvey": "74",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.04001508E8",
+        "kindOfSurvey": "104",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.01011057E8",
+        "kindOfSurvey": "104",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.01011079E8",
+        "kindOfSurvey": "104",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.01011057E8",
+        "kindOfSurvey": "189",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.01011079E8",
+        "kindOfSurvey": "189",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.04001508E8",
+        "kindOfSurvey": "126",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.04001508E8",
+        "kindOfSurvey": "98",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.04001508E8",
+        "kindOfSurvey": "94",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.01011057E8",
+        "kindOfSurvey": "94",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
+        "lhid": "8.01011079E8",
+        "kindOfSurvey": "94",
+        "dateRss": "",
+        "fieldWorkStartDate": "",
+        "fieldWorkCompletionDate": "",
+        "finalizedSrDate": "",
+        "srForwardedToDarro": "",
+        "srAcceptedByDarro": "",
+        "plan": "",
+        "fieldNotes": "",
+        "traverseComputation": "",
+        "lotDataComputation": "",
+        "dlsdFile": "",
+        "transmittalSrPdf": "",
+        "refBoundaryComp": "",
+        "noticeOfCoverage": "",
+        "taxDeclaration": "",
+        "certifiedCopyTitle": "",
+        "marpoCert": "",
+        "surveyAuthority": "",
+        "cenroCert": "",
+        "orderOfCancellation": "",
+        "orderOfCorrection": "",
+        "remarksDarroToDarpo": "",
+        "srReturnedDarroToDarpoDate": "",
+        "srResubmittedDarroDate": "",
+        "srTransmittedDenrSmdDate": "",
+        "transactionNumber": "",
+        "dateAcceptedDenrSmd": "",
+        "withSubmittedDlsd": "",
+        "srReturnedDenrToDarroDate": "",
+        "srReturnedDenrDarroToDarpoDate": "",
+        "remarksReturnedDenr": "",
+        "srReturnedDarpoToDarroDate": "",
+        "darroResubmittedDenrDate": "",
+        "aspDate": "",
+        "aspNo": "",
+        "receivedBy": "",
+        "target": "",
+        "reportedMonth": "2026-11-01",
+        "pdfFile": "",
+        "currentStatus": "",
+        "currentDate": ""
+      },
+      {
         "lhid": "8.04001508E8",
         "kindOfSurvey": "78",
         "dateRss": "",
@@ -103105,6 +103960,118 @@
       {
         "lhid": "",
         "ppuDate": "",
+        "ppuReviewResult": "361",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
+        "ppuReviewResult": "81",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
+        "ppuReviewResult": "144",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
+        "ppuReviewResult": "147",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
+        "ppuReviewResult": "175",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
+        "ppuReviewResult": "202",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
+        "ppuReviewResult": "170",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
+        "ppuReviewResult": "154",
+        "dateReceivedDarpo": "",
+        "compensationAmount": "",
+        "dateOfMov": "",
+        "dateTransLbpAoc": "",
+        "lbpClaimNumber": "",
+        "aocNumber": "",
+        "target": "",
+        "reportedMonth": "",
+        "pdfFile": ""
+      },
+      {
+        "lhid": "",
+        "ppuDate": "",
         "ppuReviewResult": "139",
         "dateReceivedDarpo": "",
         "compensationAmount": "",
@@ -104672,7 +105639,7 @@
         "RegistrationDistribution": 0,
         "Installation": 0
       },
-      "checkedAt": "2026-11-14T05:34:21.141Z"
+      "checkedAt": "2026-11-14T07:30:15.262Z"
     },
     "BIL": {
       "code": "BIL",
@@ -104687,7 +105654,7 @@
         "RegistrationDistribution": 0,
         "Installation": 0
       },
-      "checkedAt": "2026-11-14T05:34:22.380Z"
+      "checkedAt": "2026-11-14T07:30:16.171Z"
     },
     "LEY": {
       "code": "LEY",
@@ -104702,7 +105669,7 @@
         "RegistrationDistribution": 0,
         "Installation": 0
       },
-      "checkedAt": "2026-11-14T05:34:25.646Z"
+      "checkedAt": "2026-11-14T07:30:19.969Z"
     },
     "NSA": {
       "code": "NSA",
@@ -104717,7 +105684,7 @@
         "RegistrationDistribution": 0,
         "Installation": 0
       },
-      "checkedAt": "2026-11-14T05:34:27.966Z"
+      "checkedAt": "2026-11-14T07:30:21.287Z"
     },
     "SLE": {
       "code": "SLE",
@@ -104732,7 +105699,7 @@
         "RegistrationDistribution": 0,
         "Installation": 0
       },
-      "checkedAt": "2026-11-14T05:34:31.257Z"
+      "checkedAt": "2026-11-14T07:30:23.706Z"
     },
     "SAM": {
       "code": "SAM",
@@ -104747,7 +105714,7 @@
         "RegistrationDistribution": 0,
         "Installation": 0
       },
-      "checkedAt": "2026-11-14T05:34:29.509Z"
+      "checkedAt": "2026-11-14T07:30:22.407Z"
     },
     "ESA": {
       "code": "ESA",
@@ -104762,7 +105729,7 @@
         "RegistrationDistribution": 0,
         "Installation": 0
       },
-      "checkedAt": "2026-11-14T05:34:23.241Z"
+      "checkedAt": "2026-11-14T07:30:17.986Z"
     }
   },
   "authSecret": "22668033564d7de7f31fba9a11efcc994f52de51aa3dd79a9b5598ffd65bcb6d",
@@ -104805,8 +105772,8 @@
       "targetAreaHas": 120.5
     },
     "land_survey": {
-      "targetCount": 0,
-      "targetAreaHas": 1610.8163
+      "targetCount": 1076,
+      "targetAreaHas": 20900.092
     },
     "land_valuation": {
       "targetCount": 151,
@@ -104976,75 +105943,75 @@
     },
     "land_survey": {
       "BIL": {
-        "lhs": 0,
-        "area": 0,
+        "lhs": 71,
+        "area": 189.3293,
         "arbs": 0,
-        "year": 2025,
-        "sem1Lhs": 0,
-        "sem1Area": 0,
+        "year": 2026,
+        "sem1Lhs": 36,
+        "sem1Area": 94.6647,
         "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 0,
+        "sem2Lhs": 35,
+        "sem2Area": 94.6646,
         "sem2Arbs": 0
       },
       "ESA": {
-        "lhs": 0,
-        "area": 23.5124,
+        "lhs": 11,
+        "area": 1081.0901,
         "arbs": 0,
-        "year": 2025,
-        "sem1Lhs": 0,
-        "sem1Area": 11.7562,
+        "year": 2026,
+        "sem1Lhs": 6,
+        "sem1Area": 540.5451,
         "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 11.7562,
+        "sem2Lhs": 5,
+        "sem2Area": 540.545,
         "sem2Arbs": 0
       },
       "LEY": {
-        "lhs": 0,
-        "area": 1056.74,
+        "lhs": 882,
+        "area": 8290.8248,
         "arbs": 0,
-        "year": 2025,
-        "sem1Lhs": 0,
-        "sem1Area": 528.37,
+        "year": 2026,
+        "sem1Lhs": 441,
+        "sem1Area": 4145.4124,
         "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 528.37,
+        "sem2Lhs": 441,
+        "sem2Area": 4145.4124,
         "sem2Arbs": 0
       },
       "NSA": {
-        "lhs": 0,
-        "area": 358.5037,
+        "lhs": 14,
+        "area": 311.7347,
         "arbs": 0,
-        "year": 2025,
-        "sem1Lhs": 0,
-        "sem1Area": 179.2518,
+        "year": 2026,
+        "sem1Lhs": 7,
+        "sem1Area": 155.8674,
         "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 179.2519,
+        "sem2Lhs": 7,
+        "sem2Area": 155.8673,
         "sem2Arbs": 0
       },
       "SAM": {
-        "lhs": 0,
-        "area": 165.3974,
+        "lhs": 38,
+        "area": 10627.712,
         "arbs": 0,
-        "year": 2025,
-        "sem1Lhs": 0,
-        "sem1Area": 82.6987,
+        "year": 2026,
+        "sem1Lhs": 19,
+        "sem1Area": 5313.856,
         "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 82.6987,
+        "sem2Lhs": 19,
+        "sem2Area": 5313.856,
         "sem2Arbs": 0
       },
       "SLE": {
-        "lhs": 0,
-        "area": 6.6628,
+        "lhs": 60,
+        "area": 399.4011,
         "arbs": 0,
-        "year": 2025,
-        "sem1Lhs": 0,
-        "sem1Area": 3.3314,
+        "year": 2026,
+        "sem1Lhs": 30,
+        "sem1Area": 199.7006,
         "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 3.3314,
+        "sem2Lhs": 30,
+        "sem2Area": 199.7005,
         "sem2Arbs": 0
       }
     },

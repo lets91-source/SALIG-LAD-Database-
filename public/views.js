@@ -2204,8 +2204,31 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
       const nepOverride = state?.nepMilestoneList?.land_survey?.[b.code] || state?.nepMilestoneList?.survey?.[b.code];
-      const targetLhs = nepOverride?.lhs != null && nepOverride?.lhs !== '' && Number(nepOverride.lhs) > 0 ? Number(nepOverride.lhs) : b.targetLhs;
-      const targetArea = nepOverride?.area != null && nepOverride?.area !== '' && Number(nepOverride.lhs) > 0 ? Number(nepOverride.area) : b.targetArea;
+      const hasNep = Boolean(
+        nepOverride &&
+        ((nepOverride.lhs != null && nepOverride.lhs !== '' && Number(nepOverride.lhs) > 0) ||
+         (nepOverride.area != null && nepOverride.area !== '' && Number(nepOverride.area) > 0))
+      );
+
+      let targetLhs = 0;
+      let targetArea = 0;
+
+      if (hasNep) {
+        targetLhs = Number(nepOverride.lhs) || 0;
+        targetArea = Number(nepOverride.area) || 0;
+      } else {
+        // Fallback to Database worksheet per province
+        const provDbRows = dbRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
+        const dbLhs = provDbRows.length;
+        const dbArea = provDbRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0), 0);
+        if (dbLhs > 0 || dbArea > 0) {
+          targetLhs = dbLhs;
+          targetArea = dbArea;
+        } else {
+          targetLhs = b.targetLhs;
+          targetArea = b.targetArea;
+        }
+      }
 
       const provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
       const stages = {};
