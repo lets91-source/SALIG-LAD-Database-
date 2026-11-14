@@ -1290,17 +1290,61 @@ export const DEFAULT_SURVEY_STATUS_BENCHMARKS = [
 export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
   if (!selectedYear || selectedYear === 'ALL') return true;
   const s = String(selectedYear).trim().toLowerCase();
-  const rYear = String(r.targetYear || r.year || '').trim().toLowerCase();
-  if (rYear && (rYear === s || rYear.startsWith(s))) return true;
+  const curStr = String(currentYear);
+  const prevStr = String(currentYear - 1);
+
+  const isCurrentSelected = (s === curStr || s === 'current' || s === 'current year');
+  const isPreviousSelected = (s === prevStr || s === 'previous' || s === 'previous year' || s.includes('prev'));
+
+  // 1. Check survey database TARGET column (takes highest priority for Current vs Previous Year)
   const rTarget = String(r.target || '').trim().toLowerCase();
-  if (rTarget === s) return true;
-  if (s === String(currentYear)) {
-    if (rTarget === 'current' || rTarget === 'current year') return true;
+  if (rTarget) {
+    const isRowCurrent = (rTarget === 'current' || rTarget === 'current year' || rTarget === curStr);
+    const isRowPrevious = (rTarget === 'previous' || rTarget === 'previous year' || rTarget.includes('prev') || rTarget === prevStr);
+
+    if (isCurrentSelected) {
+      return isRowCurrent;
+    }
+    if (isPreviousSelected) {
+      return isRowPrevious;
+    }
+    if (rTarget === s) return true;
+    if (isRowCurrent || isRowPrevious) return false;
   }
-  if (s.includes('prev') || s === 'previous year') {
-    if (rTarget.includes('prev')) return true;
+
+  // 2. Check targetYear or year column if present
+  const rYear = String(r.targetYear || r.year || '').trim().toLowerCase();
+  if (rYear) {
+    if (isCurrentSelected && (rYear === curStr || rYear === 'current' || rYear === 'current year')) return true;
+    if (isPreviousSelected && (rYear === prevStr || rYear === 'previous' || rYear === 'previous year' || rYear.includes('prev'))) return true;
+    if (rYear === s || rYear.startsWith(s)) return true;
+    return false;
   }
-  const dates = [r.dateFiConducted, r.datePreparedSigned, r.reportedMonth, ...(r.datesMap ? Object.values(r.datesMap) : [])].filter(Boolean);
+
+  // 3. Fallback to record dates if neither target nor targetYear is explicitly set on the row
+  const dates = [
+    r.dateFiConducted,
+    r.datePreparedSigned,
+    r.reportedMonth,
+    ...(r.datesMap ? Object.values(r.datesMap) : [])
+  ].filter(Boolean);
+
+  if (isCurrentSelected) {
+    for (const dt of dates) {
+      const str = String(dt || '').toLowerCase();
+      if (str.includes(curStr) || str.includes('current')) return true;
+    }
+    return false;
+  }
+
+  if (isPreviousSelected) {
+    for (const dt of dates) {
+      const str = String(dt || '').toLowerCase();
+      if (str.includes(prevStr) || str.includes('prev')) return true;
+    }
+    return false;
+  }
+
   for (const dt of dates) {
     if (String(dt || '').toLowerCase().includes(s)) return true;
   }
@@ -1523,7 +1567,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     if (selectedProvs.length > 0) {
       if (!selectedProvs.some((p) => matchProvinceName(r.province, p))) return false;
     }
-    if (viewKey === 'cf-whereabouts' && targetYearFilterVal !== 'ALL') {
+    if ((viewKey === 'cf-whereabouts' || viewKey === 'survey-whereabouts') && targetYearFilterVal !== 'ALL') {
       if (!matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear)) return false;
     }
     for (const [k, spec] of Object.entries(activeColFilters)) {
@@ -2133,9 +2177,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       if (pData?.year) targetYearSet.add(String(pData.year));
     }
     for (const r of enrichedRows) {
-      if (r.targetYear) targetYearSet.add(String(r.targetYear));
-      if (r.target) targetYearSet.add(String(r.target));
-      for (const dt of Object.values(r.datesMap)) {
+      if (r.targetYear && String(r.targetYear).trim()) targetYearSet.add(String(r.targetYear).trim());
+      if (r.target && String(r.target).trim()) targetYearSet.add(String(r.target).trim());
+      for (const dt of Object.values(r.datesMap || {})) {
         const m = String(dt || '').match(/\b(20\d{2})\b/);
         if (m) targetYearSet.add(m[1]);
       }
@@ -2144,7 +2188,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       .filter((y) => /^\d{4}$/.test(y))
       .sort((a, b) => Number(b) - Number(a));
     const otherYears = Array.from(targetYearSet)
-      .filter((y) => !/^\d{4}$/.test(y))
+      .filter((y) => y && !/^\d{4}$/.test(y))
       .sort();
     const allTargetYears = ['ALL', ...numYears, ...otherYears];
 
@@ -2202,32 +2246,48 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           );
     const groupsToRender = activeGroups.length > 0 ? activeGroups : SURVEY_GROUPS;
 
+    const isTargetYearAll = !targetYearFilterVal || targetYearFilterVal === 'ALL';
+    const isTargetYearPrev = targetYearFilterVal === '2025' || targetYearFilterVal === String(curYear - 1) || String(targetYearFilterVal).toLowerCase().includes('prev');
+    const isTargetYearCurr = targetYearFilterVal === String(curYear) || String(targetYearFilterVal).toLowerCase().includes('curr');
+
     const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
       const nepOverride = state?.nepMilestoneList?.land_survey?.[b.code] || state?.nepMilestoneList?.survey?.[b.code];
+      const nepYear = String(nepOverride?.year || '2025');
+
+      let isNepYearMatch = false;
+      if (isTargetYearAll) {
+        isNepYearMatch = true;
+      } else if (String(nepYear) === String(targetYearFilterVal)) {
+        isNepYearMatch = true;
+      } else if (isTargetYearPrev && (nepYear === '2025' || nepYear === String(curYear - 1) || nepYear.toLowerCase().includes('prev'))) {
+        isNepYearMatch = true;
+      } else if (isTargetYearCurr && (nepYear === String(curYear) || nepYear.toLowerCase().includes('curr'))) {
+        isNepYearMatch = true;
+      }
+
       const hasNep = Boolean(
+        isNepYearMatch &&
         nepOverride &&
         ((nepOverride.lhs !== undefined && nepOverride.lhs !== null && nepOverride.lhs !== '') ||
          (nepOverride.area !== undefined && nepOverride.area !== null && nepOverride.area !== ''))
       );
 
-      let targetLhs = b.targetLhs;
-      let targetArea = b.targetArea;
+      let targetLhs = 0;
+      let targetArea = 0;
 
       if (hasNep) {
         targetLhs = Math.max(0, Number(nepOverride.lhs) || 0);
         targetArea = Math.max(0, Number(nepOverride.area) || 0);
-      } else {
-        // Fallback to Database worksheet per province if no NEP record
-        const provDbRows = dbRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
-        const dbLhs = provDbRows.length;
-        const dbArea = provDbRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0), 0);
-        if (dbLhs > 0 || dbArea > 0) {
-          targetLhs = dbLhs;
-          targetArea = dbArea;
-        }
+      } else if (isNepYearMatch && (b.targetLhs || b.targetArea)) {
+        targetLhs = b.targetLhs || 0;
+        targetArea = b.targetArea || 0;
       }
 
-      const provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
+      let provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
+      if (!isTargetYearAll) {
+        provRows = provRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
+      }
+
       const stages = {};
 
       for (const st of ALL_SURVEY_STAGES) {
@@ -2254,16 +2314,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     const surveyTotals = {
       targetLhs: surveyTableRows.reduce((s, r) => s + r.targetLhs, 0),
-      targetArea: surveyTableRows.reduce((s, r) => s + r.targetArea, 0),
+      targetArea: Number(surveyTableRows.reduce((s, r) => s + r.targetArea, 0).toFixed(4)),
       stages: {}
     };
 
     for (const st of ALL_SURVEY_STAGES) {
       surveyTotals.stages[st.key] = {
         lhs: surveyTableRows.reduce((s, r) => s + r.stages[st.key].lhs, 0),
-        area: surveyTableRows.reduce((s, r) => s + r.stages[st.key].area, 0),
+        area: Number(surveyTableRows.reduce((s, r) => s + r.stages[st.key].area, 0).toFixed(4)),
         balLhs: surveyTableRows.reduce((s, r) => s + r.stages[st.key].balLhs, 0),
-        balArea: surveyTableRows.reduce((s, r) => s + r.stages[st.key].balArea, 0)
+        balArea: Number(surveyTableRows.reduce((s, r) => s + r.stages[st.key].balArea, 0).toFixed(4))
       };
     }
 
@@ -2281,22 +2341,27 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       : surveyTableRows;
 
     const surveyGlobalTargetLhs = activeBenchmarkRows.reduce((s, r) => s + r.targetLhs, 0);
-    const surveyGlobalTargetArea = activeBenchmarkRows.reduce((s, r) => s + r.targetArea, 0);
+    const surveyGlobalTargetArea = Number(activeBenchmarkRows.reduce((s, r) => s + r.targetArea, 0).toFixed(4));
 
     const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.lhs, 0);
-    const surveyGlobalAccompArea = activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.area, 0);
+    const surveyGlobalAccompArea = Number(activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.area, 0).toFixed(4));
 
     const surveyTargetYearLhs = surveyGlobalTargetLhs;
     const surveyTargetYearArea = surveyGlobalTargetArea;
 
     const surveyRssLhs = activeBenchmarkRows.reduce((s, r) => s + r.stages.rss.lhs, 0);
-    const surveyRssArea = activeBenchmarkRows.reduce((s, r) => s + r.stages.rss.area, 0);
+    const surveyRssArea = Number(activeBenchmarkRows.reduce((s, r) => s + r.stages.rss.area, 0).toFixed(4));
 
     const surveyCompletedLhs = surveyGlobalAccompLhs;
     const surveyCompletedArea = surveyGlobalAccompArea;
 
+    let surveyScopeRows = scopeRows;
+    if (!isTargetYearAll) {
+      surveyScopeRows = surveyScopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
+    }
+
     // LMS landholdings
-    const lmsRows = scopeRows.filter((r) => {
+    const lmsRows = surveyScopeRows.filter((r) => {
       return Boolean(
         r.datesMap?.dateAcceptedDenrSmd ||
         r.datesMap?.srReturnedDenrToDarroDate ||
@@ -2311,7 +2376,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       );
     });
     const surveyAtLmsLhs = lmsRows.length;
-    const surveyAtLmsArea = lmsRows.reduce((s, r) => s + r.carpable, 0);
+    const surveyAtLmsArea = Number(lmsRows.reduce((s, r) => s + r.carpable, 0).toFixed(4));
 
     const now = new Date();
     const curDateFormatted =
@@ -2374,7 +2439,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       <section class="cf-kpi-year-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
         <div class="cf-kpi-card">
           <div class="cf-kpi-header">
-            <span class="cf-kpi-title">Target Year: ${esc(targetYearFilterVal === 'ALL' ? curYear : targetYearFilterVal)}</span>
+            <span class="cf-kpi-title">Target Year: ${esc(targetYearFilterVal)}</span>
             ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
           </div>
           <div class="cf-kpi-body">
@@ -2627,7 +2692,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             </div>
 
             <select class="form-control whereabouts-target-year-select survey-target-year-select" aria-label="Select Target Year">
-              <option value="ALL">Target Year</option>
+              <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year</option>
               ${allTargetYears.filter((y) => y !== 'ALL').map((y) => `<option value="${esc(y)}" ${String(targetYearFilterVal) === String(y) ? 'selected' : ''}>Target Year: ${esc(y)}</option>`).join('')}
             </select>
             <button type="button" class="btn btn-sm btn-outline-success btn-survey-refresh" id="btn-survey-status-refresh" title="Refresh DAR Survey Status">

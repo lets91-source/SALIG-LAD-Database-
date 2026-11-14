@@ -24,7 +24,10 @@ import {
   renderOptoolView,
   getColumnFilterValues,
   isChecklistChecked,
-  LINKED_DB_PROFILE_FIELDS
+  LINKED_DB_PROFILE_FIELDS,
+  renderMilestoneWhereaboutsView,
+  matchesWhereaboutsTargetYear,
+  WHEREABOUTS_CONFIGS
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -2035,4 +2038,77 @@ test('Regional Hub NEP Sheet (per province LHS, AREA, ARBs) XLSX round-trip, edi
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomplishment from database', () => {
+  const curYear = 2026;
+  const prevRow = { target: 'Previous Year', dateRss: '2026-11-12' };
+  const currRow = { target: 'Current', dateRss: '2026-02-10', fieldWorkCompletionDate: '2026-03-04', aspDate: '2026-06-15' };
+
+  // 1. matchesWhereaboutsTargetYear unit assertions
+  assert.equal(matchesWhereaboutsTargetYear(prevRow, '2025', curYear), true);
+  assert.equal(matchesWhereaboutsTargetYear(prevRow, '2026', curYear), false);
+  assert.equal(matchesWhereaboutsTargetYear(prevRow, 'ALL', curYear), true);
+
+  assert.equal(matchesWhereaboutsTargetYear(currRow, '2025', curYear), false);
+  assert.equal(matchesWhereaboutsTargetYear(currRow, '2026', curYear), true);
+  assert.equal(matchesWhereaboutsTargetYear(currRow, 'ALL', curYear), true);
+
+  // 2. Integration with store.json data
+  const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
+  const cfg = WHEREABOUTS_CONFIGS['survey-whereabouts'];
+
+  // Test 2025 (Previous Year)
+  const ctx2025 = {
+    state: store,
+    schemas: { registry: [] },
+    provinceScope: null,
+    whereaboutsTargetYearFilter: { 'survey-whereabouts': '2025' },
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {},
+    surveyMetricMode: 'both',
+    surveyIndicatorTab: 'all'
+  };
+  const html2025 = renderMilestoneWhereaboutsView(ctx2025, cfg);
+  assert.ok(html2025.includes('1,610.8163')); // NEP Target 2025 present
+  assert.ok(html2025.includes('Total With RSS'));
+  assert.ok(html2025.includes('22.6794')); // With RSS accomplishment area for 2025
+
+  // Test 2026 (Current Year)
+  const ctx2026 = {
+    state: store,
+    schemas: { registry: [] },
+    provinceScope: null,
+    whereaboutsTargetYearFilter: { 'survey-whereabouts': '2026' },
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {},
+    surveyMetricMode: 'both',
+    surveyIndicatorTab: 'all'
+  };
+  const html2026 = renderMilestoneWhereaboutsView(ctx2026, cfg);
+  assert.ok(html2026.includes('2.4500')); // Current year LH accomplishment area present
+
+  // Test ALL
+  const ctxAll = {
+    state: store,
+    schemas: { registry: [] },
+    provinceScope: null,
+    whereaboutsTargetYearFilter: { 'survey-whereabouts': 'ALL' },
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {},
+    surveyMetricMode: 'both',
+    surveyIndicatorTab: 'all'
+  };
+  const htmlAll = renderMilestoneWhereaboutsView(ctxAll, cfg);
+  assert.ok(htmlAll.includes('1,610.8163'));
+  assert.ok(htmlAll.includes('25.1294')); // Total With RSS area (22.6794 + 2.4500)
 });
