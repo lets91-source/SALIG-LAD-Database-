@@ -57,23 +57,23 @@ test('Schema & Region VIII Registry integrity', () => {
   const workCol = OPTOOL_SHEET_SCHEMAS.Database.find((c) => c.key === 'workability');
   assert.equal(workCol?.type, 'select');
   assert.deepEqual(workCol?.options, ['Workable', 'For Replacement', 'Replacement']);
-  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 23);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.Survey.length, 43);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 12);
+  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 24);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.Survey.length, 44);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 13);
   assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.some((c) => c.key === 'currentStatus' || c.key === 'currentDate'), false);
   const ppuCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'ppuReviewResult');
   assert.equal(ppuCol?.type, 'select');
   assert.deepEqual(ppuCol?.options, ['PASSED', 'FAILED']);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 21);
-  const regReporting = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.slice(-7);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 22);
+  const regReporting = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.slice(-8);
   assert.deepEqual(
     regReporting.map((c) => c.key),
-    ['noOfArbs', 'maleArbs', 'femaleArbs', 'noOfTitles', 'target', 'monthReported', 'remarks']
+    ['noOfArbs', 'maleArbs', 'femaleArbs', 'noOfTitles', 'target', 'monthReported', 'remarks', 'targetYear']
   );
   assert.ok(regReporting.every((c) => c.group === 'Reporting'));
   assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.some((c) => c.key === 'gender'), false);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.Installation.length, 30);
-  const instReporting = OPTOOL_SHEET_SCHEMAS.Installation.slice(-2);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.Installation.length, 31);
+  const instReporting = OPTOOL_SHEET_SCHEMAS.Installation.slice(-3, -1);
   assert.deepEqual(
     instReporting.map((c) => c.key),
     ['target', 'monthReported']
@@ -84,12 +84,17 @@ test('Schema & Region VIII Registry integrity', () => {
   assert.deepEqual(instReporting[1].options, getReportedMonthOptions());
 
   const surveyCols = OPTOOL_SHEET_SCHEMAS.Survey;
-  const lastThreeKeys = surveyCols.slice(-3).map((c) => c.key);
-  assert.deepEqual(lastThreeKeys, ['pdfFile', 'currentStatus', 'currentDate']);
-  assert.equal(surveyCols.at(-2)?.group, 'Reporting');
-  assert.equal(surveyCols.at(-2)?.type, 'text');
-  assert.equal(surveyCols.at(-1)?.group, 'Reporting');
-  assert.equal(surveyCols.at(-1)?.type, 'date');
+  const lastFourKeys = surveyCols.slice(-4).map((c) => c.key);
+  assert.deepEqual(lastFourKeys, ['pdfFile', 'currentStatus', 'currentDate', 'targetYear']);
+  const curStatusCol = surveyCols.find((c) => c.key === 'currentStatus');
+  assert.equal(curStatusCol?.group, 'Reporting');
+  assert.equal(curStatusCol?.type, 'text');
+  const curDateCol = surveyCols.find((c) => c.key === 'currentDate');
+  assert.equal(curDateCol?.group, 'Reporting');
+  assert.equal(curDateCol?.type, 'date');
+  const tgtYearCol = surveyCols.find((c) => c.key === 'targetYear');
+  assert.equal(tgtYearCol?.group, 'Reporting');
+  assert.equal(tgtYearCol?.type, 'text');
   const kindCol = surveyCols.find((c) => c.key === 'kindOfSurvey');
   assert.equal(kindCol?.type, 'select');
   assert.deepEqual(kindCol?.options, ['By Admin', 'By Contract']);
@@ -540,7 +545,7 @@ test('OPTool table displays linked Database columns right after LHID for CF(DOC)
       { span: 7, label: 'DARRO Compliance' },
       { span: 1, label: 'DARPO Compliance' },
       { span: 3, label: 'DARRO Compliance' },
-      { span: 6, label: 'Reporting' }
+      { span: 7, label: 'Reporting' }
     ]);
     assert.ok(surveyAllHtml.includes('data-optool-select-key="kindOfSurvey"'));
     assert.ok(surveyAllHtml.includes('>By Admin</option>'));

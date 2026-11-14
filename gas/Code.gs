@@ -86,7 +86,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'Carper LAD No. 37/oathe of ARB', 'Carper LAD form 47',
     'Approved Subdivision/Segregation Plan', 'DATE FI CONDUCTED',
     'DATE PREPARED & SIGNED', 'TARGET\n (Current/ Previous)',
-    'Reported Month', 'REMARKS', 'PDF File'
+    'Reported Month', 'REMARKS', 'PDF File', 'Target Year'
   ],
   Survey: [
     'LHID', 'Kind of Survey', 'Date RSS', 'Field Work Start Date',
@@ -111,13 +111,13 @@ const OPTOOL_SCHEMA_HEADERS = {
     'DARRO Re-submitted survey to DENR-SMD\nDATE',
     'ASP Date', 'ASP No.', 'Received By',
     'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File',
-    'Current Status', 'Current Date'
+    'Current Status', 'Current Date', 'Target Year'
   ],
   MOV: [
     'LHID', 'PPU Date', 'PPU Review Result\n(PASSED/FAILED)',
     'Date Received at DARPO', 'Compensation Amount', 'Date of MOV',
     'Date Trans to LBP/AOC', 'LBP Claim Number', 'AOC Number',
-    'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File'
+    'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File', 'Target Year'
   ],
   RegistrationDistribution: [
     'LHID/ Sequence No.', 'Origin/\nSource:\n(New Land, REDOC & DNYD)',
@@ -126,7 +126,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'EP or CLOA \nSERIAL No.', 'AREA\n(HAs)', 'MOA', 'ROD TITLE NO.',
     'DATE REGISTERED', 'DATE OF DISTRIBUTION (mm/dd/yyyy)',
     'Total Number of ARB', 'Male', 'Female', 'NO. OF TITLES',
-    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'REMARKS'
+    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'REMARKS', 'Target Year'
   ],
   Installation: [
     'LHID \n (From OPTool, \n if New Land)', 'REGION', 'PROVINCE',
@@ -137,7 +137,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'AREA\n (HAs) 2', 'DATE REGISTERED', 'DATE DISTRIBUTED',
     'DATE OF INSTALLATION (mm/dd/yyyy)', 'REMARKS (Installed - Yes/No)',
     'No. OF ARBs', 'No. OF TITLES', 'REMARKS', 'YEAR ACCOMP',
-    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED'
+    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'Target Year'
   ]
 };
 
@@ -1043,6 +1043,8 @@ function syncOptoolTabHeaders_(ss, tabName, headersSpec) {
 
   if (tabName === 'Database') {
     applyDatabaseValidationRules_(sheet);
+  } else {
+    applyMilestoneTargetYearFormula_(sheet, tabName);
   }
 
   return { sheet: sheet, added: added, renamed: renamed, removedEmpty: removedEmpty };
@@ -1094,6 +1096,49 @@ function applyDatabaseValidationRules_(sheet) {
       : '=IF(ISBLANK(RC' + yearCol + '), "", RC' + yearCol + ')';
     sheet.getRange(2, targetYearCol, lastRow - 1, 1).setFormulaR1C1(formulaStr);
   }
+}
+
+/**
+ * Auto-connect Target Year formula on Milestone sheets (CF(DOC), Survey, MOV, Registration/Distribution, Installation)
+ * to look up LHID in Database!$A:$Z:
+ * - Checks Milestone Target in Database Column Y (col 25) matches this milestone (or is blank)
+ * - Returns Year from Database Column Z (col 26)
+ */
+function applyMilestoneTargetYearFormula_(sheet, tabName) {
+  if (!sheet) return;
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  if (lastCol === 0 || lastRow <= 1) return;
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  let targetYearCol = -1;
+  for (let c = 0; c < headers.length; c++) {
+    const norm = normalizeHeaderKey_(headers[c]);
+    if (norm === 'targetyear') {
+      targetYearCol = c + 1;
+      break;
+    }
+  }
+  if (targetYearCol <= 0) return;
+
+  let targetCriteria = '';
+  const normTab = normalizeHeaderKey_(tabName);
+  if (normTab === 'cfdoc') {
+    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="CF(DOC)", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
+  } else if (normTab === 'survey') {
+    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Survey", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
+  } else if (normTab === 'mov') {
+    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="MOV", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
+  } else if (normTab === 'registrationdistribution') {
+    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Registration/Distribution", VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="RegistrationDistribution", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
+  } else if (normTab === 'installation') {
+    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Installation", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
+  } else {
+    return;
+  }
+
+  const baseFormula = '=IF(ISBLANK(A2), "", IFERROR(IF(' + targetCriteria + ', VLOOKUP(A2, Database!$A:$Z, 26, FALSE), ""), ""))';
+  sheet.getRange(2, targetYearCol, lastRow - 1, 1).setFormula(baseFormula);
 }
 
 function applyDatabaseValidationAcrossSheets() {

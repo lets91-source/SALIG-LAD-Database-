@@ -358,7 +358,8 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Dates & Reporting', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Dates & Reporting', type: 'select', options: getReportedMonthOptions() },
     { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Dates & Reporting', type: 'text' },
-    { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Dates & Reporting', type: 'text' }
+    { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Dates & Reporting', type: 'text' },
+    { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Reporting', type: 'text' }
   ],
   Survey: [
     { key: 'lhid', header: 'LHID', label: 'LHID', group: 'Identification', type: 'text' },
@@ -410,7 +411,8 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Reporting', type: 'select', options: getReportedMonthOptions() },
     { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
     { key: 'currentStatus', header: 'Current Status', label: 'Current Status', group: 'Reporting', type: 'text' },
-    { key: 'currentDate', header: 'Current Date', label: 'Current Date', group: 'Reporting', type: 'date' }
+    { key: 'currentDate', header: 'Current Date', label: 'Current Date', group: 'Reporting', type: 'date' },
+    { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
   ],
   MOV: [
     { key: 'lhid', header: 'LHID', label: 'LHID', group: 'Valuation & PPU', type: 'text' },
@@ -431,7 +433,8 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'aocNumber', header: 'AOC Number', label: 'AOC Number', group: 'Compensation & LBP', type: 'text' },
     { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Reporting', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Reporting', type: 'select', options: getReportedMonthOptions() },
-    { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' }
+    { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
+    { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
   ],
   RegistrationDistribution: [
     { key: 'lhid', header: 'LHID/ Sequence No.', label: 'LHID / Sequence No.', group: 'Identification', type: 'text' },
@@ -454,7 +457,8 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'noOfTitles', header: 'NO. OF TITLES', label: 'No. of Titles', group: 'Reporting', type: 'integer' },
     { key: 'target', header: 'TARGET YEAR\n (Current/ Previous)', label: 'Target Year', group: 'Reporting', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'monthReported', header: 'MONTH REPORTED', label: 'Month Reported', group: 'Reporting', type: 'select', options: getReportedMonthOptions() },
-    { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Reporting', type: 'text' }
+    { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Reporting', type: 'text' },
+    { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
   ],
   Installation: [
     { key: 'lhid', header: 'LHID \n (From OPTool, \n if New Land)', label: 'LHID (From OPTool)', group: 'Location & Cross-Ref', type: 'text' },
@@ -486,7 +490,8 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Dates & Accomplishment', type: 'text' },
     { key: 'yearAccomp', header: 'YEAR ACCOMP', label: 'Year Accomplished', group: 'Dates & Accomplishment', type: 'text' },
     { key: 'target', header: 'TARGET YEAR\n (Current/ Previous)', label: 'Target Year', group: 'Dates & Accomplishment', type: 'select', options: TARGET_PERIOD_OPTIONS },
-    { key: 'monthReported', header: 'MONTH REPORTED', label: 'Month Reported', group: 'Dates & Accomplishment', type: 'select', options: getReportedMonthOptions() }
+    { key: 'monthReported', header: 'MONTH REPORTED', label: 'Month Reported', group: 'Dates & Accomplishment', type: 'select', options: getReportedMonthOptions() },
+    { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Accomplishment', type: 'text' }
   ]
 };
 
