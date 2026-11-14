@@ -1279,12 +1279,12 @@ export const WHEREABOUTS_CONFIGS = {
 };
 
 export const DEFAULT_SURVEY_STATUS_BENCHMARKS = [
-  { code: 'BIL', name: 'BILIRAN', targetLhs: 71, targetArea: 189.3293, rssLhs: 70, rssArea: 185.4073, ongoingLhs: 61, ongoingArea: 163.6834, completedLhs: 61, completedArea: 163.6834 },
-  { code: 'ESA', name: 'EASTERN SAMAR', targetLhs: 11, targetArea: 1081.0901, rssLhs: 9, rssArea: 422.4387, ongoingLhs: 7, ongoingArea: 393.6630, completedLhs: 7, completedArea: 393.6630 },
-  { code: 'LEY', name: 'LEYTE', targetLhs: 882, targetArea: 8290.8248, rssLhs: 299, rssArea: 3030.3574, ongoingLhs: 298, ongoingArea: 2905.6177, completedLhs: 299, completedArea: 2907.8833 },
-  { code: 'NSA', name: 'NORTHERN SAMAR', targetLhs: 14, targetArea: 311.7347, rssLhs: 11, rssArea: 273.9706, ongoingLhs: 7, ongoingArea: 224.5231, completedLhs: 4, completedArea: 50.1193 },
-  { code: 'SAM', name: 'SAMAR', targetLhs: 38, targetArea: 10627.7120, rssLhs: 26, rssArea: 8551.3883, ongoingLhs: 25, ongoingArea: 7658.3322, completedLhs: 24, completedArea: 6443.2368 },
-  { code: 'SLE', name: 'SOUTHERN LEYTE', targetLhs: 60, targetArea: 399.4011, rssLhs: 49, rssArea: 328.9620, ongoingLhs: 28, ongoingArea: 141.2464, completedLhs: 42, completedArea: 242.4080 }
+  { code: 'BIL', name: 'BILIRAN', targetLhs: 0, targetArea: 0, rssLhs: 70, rssArea: 185.4073, ongoingLhs: 61, ongoingArea: 163.6834, completedLhs: 61, completedArea: 163.6834 },
+  { code: 'ESA', name: 'EASTERN SAMAR', targetLhs: 0, targetArea: 23.5124, rssLhs: 9, rssArea: 422.4387, ongoingLhs: 7, ongoingArea: 393.6630, completedLhs: 7, completedArea: 393.6630 },
+  { code: 'LEY', name: 'LEYTE', targetLhs: 0, targetArea: 1056.7400, rssLhs: 299, rssArea: 3030.3574, ongoingLhs: 298, ongoingArea: 2905.6177, completedLhs: 299, completedArea: 2907.8833 },
+  { code: 'NSA', name: 'NORTHERN SAMAR', targetLhs: 0, targetArea: 358.5037, rssLhs: 11, rssArea: 273.9706, ongoingLhs: 7, ongoingArea: 224.5231, completedLhs: 4, completedArea: 50.1193 },
+  { code: 'SAM', name: 'SAMAR', targetLhs: 0, targetArea: 165.3974, rssLhs: 26, rssArea: 8551.3883, ongoingLhs: 25, ongoingArea: 7658.3322, completedLhs: 24, completedArea: 6443.2368 },
+  { code: 'SLE', name: 'SOUTHERN LEYTE', targetLhs: 0, targetArea: 6.6628, rssLhs: 49, rssArea: 328.9620, ongoingLhs: 28, ongoingArea: 141.2464, completedLhs: 42, completedArea: 242.4080 }
 ];
 
 export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
@@ -2206,27 +2206,24 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       const nepOverride = state?.nepMilestoneList?.land_survey?.[b.code] || state?.nepMilestoneList?.survey?.[b.code];
       const hasNep = Boolean(
         nepOverride &&
-        ((nepOverride.lhs != null && nepOverride.lhs !== '' && Number(nepOverride.lhs) > 0) ||
-         (nepOverride.area != null && nepOverride.area !== '' && Number(nepOverride.area) > 0))
+        ((nepOverride.lhs !== undefined && nepOverride.lhs !== null && nepOverride.lhs !== '') ||
+         (nepOverride.area !== undefined && nepOverride.area !== null && nepOverride.area !== ''))
       );
 
-      let targetLhs = 0;
-      let targetArea = 0;
+      let targetLhs = b.targetLhs;
+      let targetArea = b.targetArea;
 
       if (hasNep) {
-        targetLhs = Number(nepOverride.lhs) || 0;
-        targetArea = Number(nepOverride.area) || 0;
+        targetLhs = Math.max(0, Number(nepOverride.lhs) || 0);
+        targetArea = Math.max(0, Number(nepOverride.area) || 0);
       } else {
-        // Fallback to Database worksheet per province
+        // Fallback to Database worksheet per province if no NEP record
         const provDbRows = dbRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
         const dbLhs = provDbRows.length;
         const dbArea = provDbRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0), 0);
         if (dbLhs > 0 || dbArea > 0) {
           targetLhs = dbLhs;
           targetArea = dbArea;
-        } else {
-          targetLhs = b.targetLhs;
-          targetArea = b.targetArea;
         }
       }
 
