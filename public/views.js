@@ -2422,20 +2422,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
       </section>
 
-      <!-- Row 2: Target Year Dropdown Filter -->
-      <div class="cf-target-year-bar">
-        <label for="whereabouts-target-year-filter" class="cf-target-year-label">Target year:</label>
-        <select id="whereabouts-target-year-filter" class="cf-target-year-select whereabouts-target-year-select" aria-label="Select Target Year">
-          ${allTargetYears
-            .map(
-              (yr) =>
-                `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>${esc(yr)}</option>`
-            )
-            .join('')}
-        </select>
-      </div>
-
-      <!-- Row 3: 4 Filtered Cards -->
+      <!-- Row 2: 4 Filtered Cards -->
       <section class="cf-kpi-year-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
         <div class="cf-kpi-card">
           <div class="cf-kpi-header">
