@@ -36,7 +36,10 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
       matchedIdx = schemaCols.findIndex(
         (col, idx) =>
           !usedSchemaIndices.has(idx) &&
-          (normalizeHeader(col.label) === norm || normalizeHeader(col.key) === norm)
+          (normalizeHeader(col.label) === norm ||
+            normalizeHeader(col.key) === norm ||
+            (col.key === 'ladStatus' && (norm === 'lad' || norm === 'ladcolumn' || norm === 'ladstatus')) ||
+            (col.key === 'workability' && norm === 'workability'))
       );
     }
 

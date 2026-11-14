@@ -867,9 +867,22 @@ textarea.form-control {
   position: sticky;
   top: 0;
   height: 38px;
-  padding: 5px 6px;
+  padding: 4px 6px;
   z-index: 3;
-  box-shadow: inset 0 -1px 0 var(--border-strong);
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nep-milestone-table thead th:has(.col-filter-btn),
+.nep-milestone-table thead th.th-col-filter {
+  padding: 2px 4px;
+  vertical-align: middle;
+}
+
+.nep-milestone-table thead th .col-filter-btn {
+  text-shadow: none;
 }
 
 .table-scroll-xy table.has-col-groups thead tr.optool-head-groups th {
@@ -879,11 +892,12 @@ textarea.form-control {
   padding: 4px 10px;
   z-index: 3;
   text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.06em;
-  border-right: 1px solid var(--border-strong);
-  box-shadow: inset 0 -2px 0 var(--border-strong);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.25);
 }
 
 .table-scroll-xy table.has-col-groups thead tr.optool-head-titles th {
@@ -894,47 +908,48 @@ textarea.form-control {
   top: 0;
   right: 0;
   height: auto;
-  background: var(--surface-alt);
-  color: var(--text-muted);
+  background: #072915 !important;
+  color: #ffffff !important;
   z-index: 6;
   border-right: 0;
-  box-shadow: -4px 0 8px -2px rgba(10, 54, 29, 0.08), inset 1px 0 0 var(--border-strong), inset 0 -1px 0 var(--border-strong);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.35), inset 1px 0 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .col-group-th.group-darpo-compliance {
-  background: #dcfce7;
-  color: #14532d;
-  box-shadow: inset 0 -2px 0 #16a34a;
+  background: #14532d;
+  color: #dcfce7;
+  box-shadow: inset 0 -2px 0 #22c55e;
 }
 
 .col-group-th.group-darpo {
-  background: #fef3c7;
-  color: #92400e;
-  box-shadow: inset 0 -2px 0 #d97706;
+  background: #78350f;
+  color: #fef3c7;
+  box-shadow: inset 0 -2px 0 #f59e0b;
 }
 
 .col-group-th.group-darro {
-  background: #dbeafe;
-  color: #1e3a8a;
-  box-shadow: inset 0 -2px 0 #2563eb;
+  background: #1e3a8a;
+  color: #dbeafe;
+  box-shadow: inset 0 -2px 0 #3b82f6;
 }
 
 .col-group-th.group-linked {
-  background: #e2f2e8;
-  color: #0f4c29;
-  box-shadow: inset 0 -2px 0 #15803d;
+  background: #0f4c29;
+  color: #e2f2e8;
+  box-shadow: inset 0 -2px 0 #22c55e;
 }
 
 .col-group-th.group-reporting {
-  background: #f1f5f9;
-  color: #334155;
-  box-shadow: inset 0 -2px 0 #64748b;
+  background: #1e293b;
+  color: #f1f5f9;
+  box-shadow: inset 0 -2px 0 #94a3b8;
 }
 
 .col-group-th.group-neutral {
-  background: var(--surface-alt);
-  color: var(--text-muted);
-  box-shadow: inset 0 -2px 0 var(--border-strong);
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.2);
 }
 
 .col-filter-btn {
@@ -944,12 +959,15 @@ textarea.form-control {
   border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 11px;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -960,15 +978,16 @@ textarea.form-control {
 }
 
 .col-filter-btn:hover {
-  background: var(--surface);
-  border-color: var(--border-strong);
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .col-filter-btn.active-filter {
-  border-color: var(--dar-green);
-  background: #e8f7ee;
-  color: var(--dar-green-dark);
+  border-color: #86efac;
+  background: #15803d;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .col-filter-col-title {
@@ -976,14 +995,14 @@ textarea.form-control {
 }
 
 .col-filter-btn-text {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: none;
   letter-spacing: normal;
   padding: 1px 6px;
   border-radius: 999px;
-  background: var(--dar-green);
-  color: #ffffff;
+  background: #ffffff;
+  color: var(--dar-green-dark, #0a361d);
   max-width: 95px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1001,25 +1020,32 @@ textarea.form-control {
   width: 16px;
   height: 16px;
   border-radius: 3px;
-  background: rgba(15, 76, 41, 0.08);
+  background: rgba(255, 255, 255, 0.2);
   font-size: 10px;
   line-height: 1;
-  color: var(--dar-green-dark);
+  color: #ffffff;
   flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.col-filter-btn:hover .col-filter-caret {
+  background: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
 }
 
 .col-filter-btn.active-filter .col-filter-caret {
-  background: rgba(15, 76, 41, 0.18);
+  background: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
 }
 
 .col-filter-popover {
   position: fixed;
-  width: 260px;
+  width: 290px;
   max-width: calc(100vw - 24px);
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
-  box-shadow: 0 12px 30px rgba(10, 54, 29, 0.2);
+  box-shadow: 0 12px 30px rgba(10, 54, 29, 0.22);
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -1046,6 +1072,17 @@ textarea.form-control {
   align-items: center;
 }
 
+.col-dd-summary-pill {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dar-green-dark);
+  background: var(--dar-emerald-soft);
+  padding: 1px 6px;
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .col-dd-search {
   width: 100%;
   height: 29px;
@@ -1064,7 +1101,7 @@ textarea.form-control {
 }
 
 .col-dd-list {
-  max-height: 240px;
+  max-height: 250px;
   overflow-y: auto;
   padding: 4px;
 }
@@ -1074,7 +1111,7 @@ textarea.form-control {
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border-radius: 5px;
   font-family: inherit;
   font-size: 12px;
@@ -1084,6 +1121,9 @@ textarea.form-control {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  user-select: none;
+  position: relative;
+  box-sizing: border-box;
 }
 
 .col-dd-item:hover {
@@ -1093,7 +1133,48 @@ textarea.form-control {
 .col-dd-item.selected {
   background: var(--dar-emerald-soft);
   color: var(--dar-green-dark);
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.col-dd-select-all {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 3px;
+  background: #fafcfb;
+}
+
+.col-dd-check {
+  margin: 0;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--dar-green);
+  flex-shrink: 0;
+}
+
+.col-dd-only-btn {
+  display: none;
+  border: 1px solid var(--border-strong);
+  background: #ffffff;
+  color: var(--dar-green);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1.2;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
+.col-dd-only-btn:hover {
+  background: var(--dar-green);
+  color: #ffffff;
+  border-color: var(--dar-green);
+}
+
+.col-dd-item:hover .col-dd-only-btn {
+  display: inline-block;
 }
 
 .col-dd-item.contains-opt {
@@ -1124,6 +1205,22 @@ textarea.form-control {
   color: var(--text-muted);
   border-top: 1px solid var(--border);
   background: var(--surface-alt);
+}
+
+.col-dd-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  background: #f8faf9;
+}
+
+.col-dd-footer-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .pagination-bar {
@@ -1199,12 +1296,16 @@ td {
 }
 
 th {
-  background: var(--surface-alt);
-  color: var(--text-muted);
-  font-size: 11px;
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
 }
 
@@ -1228,17 +1329,22 @@ th.center {
 }
 
 th.col-actions-sticky {
-  background: var(--surface-alt);
+  background: #072915 !important;
+  color: #ffffff !important;
   z-index: 4;
   text-align: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .table-scroll-xy thead tr.optool-head-titles th.col-actions-sticky {
   top: 0;
   right: 0;
-  background: var(--surface-alt);
+  background: #072915 !important;
+  color: #ffffff !important;
   z-index: 5;
   text-align: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.35), inset 1px 0 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.2);
 }
 
 td.col-actions-sticky .btn,
@@ -1259,20 +1365,23 @@ tbody tr:hover td.col-actions-sticky {
   background-color: #e6f4ea;
 }
 
-.link-btn {
+.link-btn,
+.lhid-chip {
   background: none;
   border: 0;
   padding: 0;
-  color: var(--dar-blue);
+  color: var(--dar-blue, #1e40af);
   font-weight: 700;
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
+  transition: color 0.15s ease;
 }
 
-.link-btn:hover {
-  color: var(--dar-green);
+.link-btn:hover,
+.lhid-chip:hover {
+  color: var(--dar-green, #15803d);
 }
 
 /* Sub-tabs for OPTool 6-Tab Hub */
@@ -1457,6 +1566,280 @@ tbody tr:hover td.col-actions-sticky {
   flex-direction: column;
   box-shadow: var(--shadow-md);
   overflow: hidden;
+}
+
+.modal-card:has(#nep-targets-form) {
+  width: min(1020px, 98vw);
+}
+
+.modal-card:has(#nep-sheet-form) {
+  width: min(1200px, 98vw);
+}
+
+/* Frozen / Sticky Province & Milestone Column across NEP Tables & Modals */
+.sticky-col-province {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 5 !important;
+  background: var(--surface, #ffffff);
+  box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.12), inset -1px 0 0 var(--border-strong, #cbdcd0);
+}
+
+thead th.sticky-col-province,
+.nep-sheet-table thead th.sticky-col-province,
+.nep-targets-table thead th.sticky-col-province,
+.nep-modal-table thead th.sticky-col-province {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 30 !important;
+  background: var(--surface-alt, #f4f8f5) !important;
+  box-shadow: 3px 2px 8px -1px rgba(0, 0, 0, 0.15), inset -1px -1px 0 var(--border-strong, #cbdcd0) !important;
+}
+
+tbody tr:hover .sticky-col-province,
+tbody tr:hover td.sticky-col-province {
+  background: var(--hover-row, #e6f4ea) !important;
+}
+
+tbody tr:nth-child(even) .sticky-col-province {
+  background: var(--surface-alt, #fafbfc);
+}
+
+tr.nep-prov-subrow .sticky-col-province {
+  background: #fdfdfd;
+}
+
+tr.nep-prov-subrow:hover .sticky-col-province {
+  background: #f0f7f2 !important;
+}
+
+tr[style*="font-weight:700"] td.sticky-col-province {
+  background: var(--surface-alt, #f8faf9) !important;
+  z-index: 6 !important;
+}
+
+/* =========================================================================
+   Dual-Axis Freeze Panes for Target Summary, Provincial & Modal Tables
+   ========================================================================= */
+
+/* 1. Target Summary: Physical Accomplishment per Milestone Table */
+.nep-milestone-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: clamp(380px, 72vh, 820px);
+  position: relative;
+  scrollbar-gutter: stable;
+  border-bottom: 1px solid var(--border);
+}
+
+.nep-milestone-table thead th {
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nep-milestone-table thead th:has(.col-filter-btn),
+.nep-milestone-table thead th.th-col-filter {
+  padding: 2px 4px;
+  vertical-align: middle;
+}
+
+.nep-milestone-table thead th .col-filter-btn {
+  text-shadow: none;
+}
+
+.nep-milestone-table thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 38px;
+}
+
+.nep-milestone-table thead tr:nth-child(2) th {
+  position: sticky;
+  top: 38px;
+  z-index: 9;
+  height: 34px;
+}
+
+.nep-milestone-table thead tr:nth-child(3) th {
+  position: sticky;
+  top: 72px;
+  z-index: 8;
+  height: 30px;
+}
+
+.nep-milestone-table thead th.nep-th-milestone-col.sticky-col-province {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 35 !important;
+  min-width: 230px !important;
+  max-width: 270px !important;
+  background: #072915 !important;
+  color: #ffffff !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 4px 2px 10px rgba(0, 0, 0, 0.35), inset -1px -1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.nep-milestone-table thead th.nep-th-milestone-col.sticky-col-province .nep-th-milestone-flex span {
+  color: #ffffff !important;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.nep-milestone-table td.sticky-col-province {
+  min-width: 230px !important;
+  max-width: 270px !important;
+  background: #ffffff;
+}
+
+/* 2. Provincial Allocation Table (NEP Targets View) */
+.nep-prov-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: clamp(340px, 60vh, 700px);
+  position: relative;
+  scrollbar-gutter: stable;
+  border-bottom: 1px solid var(--border);
+}
+
+.nep-sheet-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nep-milestone-table thead th:has(.col-filter-btn),
+.nep-milestone-table thead th.th-col-filter {
+  padding: 2px 4px;
+  vertical-align: middle;
+}
+
+.nep-milestone-table thead th .col-filter-btn {
+  text-shadow: none;
+}
+
+.nep-sheet-table thead th.sticky-col-province {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 25 !important;
+  min-width: 190px !important;
+  background: #072915 !important;
+  color: #ffffff !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 4px 2px 10px rgba(0, 0, 0, 0.35), inset -1px -1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.nep-sheet-table td.sticky-col-province {
+  min-width: 190px !important;
+  background: #ffffff;
+}
+
+/* 3. NEP Sheet Put Data / Allocation Modal Table */
+.nep-modal-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 52vh;
+  position: relative;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.nep-modal-table thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 36px;
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nep-milestone-table thead th:has(.col-filter-btn),
+.nep-milestone-table thead th.th-col-filter {
+  padding: 2px 4px;
+  vertical-align: middle;
+}
+
+.nep-milestone-table thead th .col-filter-btn {
+  text-shadow: none;
+}
+
+.nep-modal-table thead tr:nth-child(2) th {
+  position: sticky;
+  top: 36px;
+  z-index: 9;
+  height: 32px;
+  background: #0d4324;
+  color: #e6f4ea;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nep-milestone-table thead th:has(.col-filter-btn),
+.nep-milestone-table thead th.th-col-filter {
+  padding: 2px 4px;
+  vertical-align: middle;
+}
+
+.nep-milestone-table thead th .col-filter-btn {
+  text-shadow: none;
+}
+
+.nep-modal-table thead th.sticky-col-province {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 30 !important;
+  min-width: 180px !important;
+  background: #072915 !important;
+  color: #ffffff !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 4px 2px 10px rgba(0, 0, 0, 0.35), inset -1px -1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.nep-modal-table td.sticky-col-province {
+  min-width: 180px !important;
+  background: #ffffff;
 }
 
 .modal-header {
@@ -2618,8 +3001,9 @@ td.cell-check {
 }
 
 .nep-quarter-group {
-  border-bottom: 1px solid var(--border-strong);
-  background: #eff6f1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: var(--dar-green-dark, #0a361d) !important;
+  color: #ffffff !important;
 }
 
 .nep-milestone-link {
@@ -2796,82 +3180,99 @@ body.has-fullscreen-panel #loading-overlay,
 
 .q-toggle-pill {
   font-size: 9.5px;
-  font-weight: 600;
-  padding: 1px 5px;
+  font-weight: 700;
+  padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(15, 76, 41, 0.1);
-  color: var(--dar-green-dark);
-  margin-left: 4px;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  margin-left: 5px;
   display: inline-block;
   vertical-align: middle;
+  text-shadow: none;
+  transition: all 0.15s ease;
+}
+
+.q-toggle-pill:hover,
+th:hover .q-toggle-pill {
+  background: rgba(255, 255, 255, 0.32) !important;
+  color: #ffffff !important;
 }
 
 .nep-q-header {
   cursor: pointer;
   user-select: none;
+  background: #0d4324 !important;
+  color: #ffffff !important;
   transition: background-color 0.15s ease;
 }
 
 .nep-q-header:hover {
-  background: #e0eee4 !important;
+  background: #12542e !important;
 }
 
 .nep-q-col-header {
   cursor: pointer;
   user-select: none;
+  background: #0d4324 !important;
+  color: #ffffff !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
   transition: background-color 0.15s ease;
 }
 
 .nep-q-col-header:hover {
-  background: #e6f4ea !important;
+  background: #12542e !important;
 }
 
 /* Milestone NEP Semestral (1st Sem & 2nd Sem) Headers and Cells */
 .nep-sem-header {
-  border-bottom: 1px solid var(--border-strong) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
   font-weight: 700 !important;
   text-align: center;
   padding: 7px 10px !important;
 }
 
 .nep-sem1-header {
-  background: #e2f1e6 !important;
-  color: var(--dar-green-dark) !important;
-  border-right: 1px solid var(--border-strong) !important;
+  background: #0f4b29 !important;
+  color: #ffffff !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
 .nep-sem2-header {
-  background: #d8ece0 !important;
-  color: var(--dar-green-dark) !important;
-  border-right: 1px solid var(--border-strong) !important;
+  background: #135830 !important;
+  color: #ffffff !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
 .nep-annual-header {
-  background: #cfe5d6 !important;
-  color: var(--dar-green-dark) !important;
+  background: #18683a !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
 }
 
 .nep-sem-col-header {
-  background: #edf6f0 !important;
+  background: #0f4b29 !important;
   font-size: 11px !important;
   font-weight: 700 !important;
-  color: var(--dar-green-dark) !important;
-  border-bottom: 1px solid var(--border-strong) !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
   padding: 6px 8px !important;
   white-space: nowrap;
 }
 
 .nep-sem1-col-th {
-  background: #eaf5ee !important;
+  background: #0f4b29 !important;
+  color: #ffffff !important;
 }
 
 .nep-sem2-col-th {
-  background: #e1efe6 !important;
+  background: #135830 !important;
+  color: #ffffff !important;
 }
 
 .nep-annual-total-th {
-  background: #dcece1 !important;
+  background: #18683a !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
 }
 
@@ -2887,48 +3288,88 @@ body.has-fullscreen-panel #loading-overlay,
   background: rgba(228, 244, 233, 0.55);
 }
 
+/* Milestone NEP Semester Accomplishment Headers and Cells */
+.nep-sem-accomp-th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+  padding: 6px 8px !important;
+  white-space: nowrap;
+  text-align: center !important;
+  letter-spacing: 0.03em;
+}
+
+.nep-sem1-accomp-th {
+  background: #153b6b !important;
+  color: #e0f2fe !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.nep-sem2-accomp-th {
+  background: #5b390b !important;
+  color: #fef3c7 !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.nep-sem-cell.nep-sem1-cell {
+  background: rgba(224, 242, 254, 0.4) !important;
+  border-left: 1px solid #bfdbfe;
+  border-right: 1px solid #bfdbfe;
+}
+
+.nep-sem-cell.nep-sem2-cell {
+  background: rgba(254, 243, 199, 0.4) !important;
+  border-left: 1px solid #fde68a;
+  border-right: 1px solid #fde68a;
+}
+
 /* Milestone NEP Target Header, Cells & Semester Breakdown */
 .nep-target-header {
+  background: #0d4324 !important;
+  color: #ffffff !important;
   cursor: pointer;
   user-select: none;
   transition: background-color 0.15s ease;
 }
 
 .nep-target-header:hover {
-  background: #e6f4ea !important;
+  background: #12542e !important;
 }
 
 .nep-target-group-header {
-  background: #d8ece0 !important;
-  color: var(--dar-green-dark) !important;
+  background: #0d4324 !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
-  border-bottom: 1px solid var(--border-strong) !important;
-  border-right: 1px solid var(--border-strong) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
   cursor: pointer;
   user-select: none;
   transition: background-color 0.15s ease;
 }
 
 .nep-target-group-header:hover {
-  background: #cbe3d4 !important;
+  background: #12542e !important;
 }
 
 .nep-target-sem-th {
-  background: #eaf5ee !important;
+  background: #0f4b29 !important;
   font-size: 11px !important;
   font-weight: 700 !important;
-  color: var(--dar-green-dark) !important;
-  border-bottom: 1px solid var(--border-strong) !important;
+  color: #e6f4ea !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
   padding: 6px 8px !important;
   white-space: nowrap;
 }
 
 .nep-target-annual-th {
-  background: #dcece1 !important;
+  background: #145b33 !important;
   font-size: 11px !important;
   font-weight: 700 !important;
-  color: var(--dar-green-dark) !important;
-  border-bottom: 1px solid var(--border-strong) !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
   padding: 6px 8px !important;
   white-space: nowrap;
 }
@@ -2998,17 +3439,19 @@ body.has-fullscreen-panel #loading-overlay,
 
 .nep-th-milestone-select {
   height: 26px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif !important;
   font-size: 11.5px !important;
   padding: 0 6px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   border-radius: 5px !important;
   background-color: #ffffff !important;
-  border: 1px solid var(--border-strong) !important;
-  color: var(--dar-green-dark) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  color: var(--dar-green-dark, #0a361d) !important;
   cursor: pointer;
   min-width: 135px;
   width: auto !important;
   max-width: 180px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .nep-th-milestone-select:focus {
@@ -3232,6 +3675,201 @@ body.has-fullscreen-panel #loading-overlay,
   font-size: 10px !important;
   padding: 1px 5px !important;
 }
+
+.nep-sheet-input,
+.nep-target-c,
+.nep-target-s1c,
+.nep-target-s2c,
+.nep-target-a,
+.nep-target-s1a,
+.nep-target-s2a {
+  text-align: center;
+}
+
+/* ==========================================================================
+   CF Whereabouts Specialized Layout & KPI Cards
+   ========================================================================== */
+.cf-kpi-global-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.cf-kpi-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 992px) {
+  .cf-kpi-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 576px) {
+  .cf-kpi-global-grid,
+  .cf-kpi-year-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cf-kpi-card {
+  background: linear-gradient(135deg, #0a361d 0%, #0d4a27 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 14px rgba(10, 54, 29, 0.18);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cf-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(10, 54, 29, 0.28);
+}
+
+.cf-kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.cf-kpi-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cf-kpi-global-grid .cf-kpi-title {
+  font-size: 16.5px;
+}
+
+.cf-kpi-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #86efac;
+  letter-spacing: 0.02em;
+}
+
+.cf-kpi-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cf-kpi-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 100px;
+}
+
+.cf-kpi-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #86efac;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+}
+
+.cf-kpi-val {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.cf-kpi-val.area {
+  font-size: 19px;
+}
+
+.cf-kpi-unit {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #bbf7d0;
+  margin-left: 4px;
+}
+
+/* Target Year Filter Bar */
+.cf-target-year-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #0a361d 0%, #0d4a27 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  box-shadow: 0 3px 10px rgba(10, 54, 29, 0.16);
+  color: #ffffff;
+}
+
+.cf-target-year-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cf-target-year-select {
+  background: #ffffff;
+  color: #0a361d;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border: 1.5px solid #16a34a;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  min-width: 140px;
+}
+
+.cf-target-year-select:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+
+/* Graph toggle button in Master Ledger toolbar */
+.btn-graph-toggle {
+  font-weight: 700 !important;
+  border-color: #0a361d !important;
+  color: #0a361d !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-graph-toggle:hover,
+.btn-graph-toggle.active {
+  background: #0a361d !important;
+  color: #ffffff !important;
+  border-color: #0a361d !important;
+}
+
 
 
 

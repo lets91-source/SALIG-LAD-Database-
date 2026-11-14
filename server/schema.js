@@ -177,31 +177,71 @@ export function normalizeNepTargets(raw = {}) {
   for (const m of DASHBOARD_MILESTONES) {
     if (hasFlatKeys) {
       const item = src[m.key] && typeof src[m.key] === 'object' ? src[m.key] : {};
+      const targetCount = Math.max(0, Number(item.targetCount) || 0);
+      const targetAreaHas = Math.max(0, Number((Number(item.targetAreaHas) || 0).toFixed(4)));
+
+      const hasExplicitSem1Count = item.sem1TargetCount !== undefined && item.sem1TargetCount !== null && item.sem1TargetCount !== '';
+      const hasExplicitSem1Area = item.sem1TargetAreaHas !== undefined && item.sem1TargetAreaHas !== null && item.sem1TargetAreaHas !== '';
+
+      const sem1TargetCount = hasExplicitSem1Count
+        ? Math.max(0, Math.min(targetCount, Number(item.sem1TargetCount) || 0))
+        : (targetCount > 0 ? targetCount / 2 : 0);
+      const sem1TargetAreaHas = hasExplicitSem1Area
+        ? Math.max(0, Math.min(targetAreaHas, Number((Number(item.sem1TargetAreaHas) || 0).toFixed(4))))
+        : Number((targetAreaHas / 2).toFixed(4));
+
+      const sem2TargetCount = Math.max(0, targetCount - sem1TargetCount);
+      const sem2TargetAreaHas = Math.max(0, Number((targetAreaHas - sem1TargetAreaHas).toFixed(4)));
+
       out[m.key] = {
-        targetCount: Math.max(0, Number(item.targetCount) || 0),
-        targetAreaHas: Math.max(0, Number((Number(item.targetAreaHas) || 0).toFixed(4)))
+        targetCount,
+        targetAreaHas,
+        sem1TargetCount,
+        sem1TargetAreaHas,
+        sem2TargetCount,
+        sem2TargetAreaHas
       };
     } else {
       // Migrate legacy per-province shape by summing provinces into the Regional List
       let sumCount = 0;
       let sumArea = 0;
+      let sumSem1Count = 0;
+      let sumSem1Area = 0;
       for (const code of PROVINCE_CODES) {
         const item = src[code]?.[m.key];
         if (item && typeof item === 'object') {
-          sumCount += Math.max(0, Number(item.targetCount) || 0);
-          sumArea += Math.max(0, Number(item.targetAreaHas) || 0);
+          const c = Math.max(0, Number(item.targetCount) || 0);
+          const a = Math.max(0, Number(item.targetAreaHas) || 0);
+          sumCount += c;
+          sumArea += a;
+          const s1c = item.sem1TargetCount !== undefined && item.sem1TargetCount !== null && item.sem1TargetCount !== ''
+            ? Math.max(0, Math.min(c, Number(item.sem1TargetCount) || 0))
+            : (c > 0 ? c / 2 : 0);
+          const s1a = item.sem1TargetAreaHas !== undefined && item.sem1TargetAreaHas !== null && item.sem1TargetAreaHas !== ''
+            ? Math.max(0, Math.min(a, Number(item.sem1TargetAreaHas) || 0))
+            : a / 2;
+          sumSem1Count += s1c;
+          sumSem1Area += s1a;
         }
       }
+      const totalCount = sumCount;
+      const totalArea = Number(sumArea.toFixed(4));
+      const s1Count = Math.max(0, Math.min(totalCount, sumSem1Count));
+      const s1Area = Math.max(0, Math.min(totalArea, Number(sumSem1Area.toFixed(4))));
       out[m.key] = {
-        targetCount: sumCount,
-        targetAreaHas: Number(sumArea.toFixed(4))
+        targetCount: totalCount,
+        targetAreaHas: totalArea,
+        sem1TargetCount: s1Count,
+        sem1TargetAreaHas: s1Area,
+        sem2TargetCount: Math.max(0, totalCount - s1Count),
+        sem2TargetAreaHas: Math.max(0, Number((totalArea - s1Area).toFixed(4)))
       };
     }
   }
   return out;
 }
 
-/** Create or normalize per-province Regional Hub NEP Sheet entries (LHS, AREA, ARBs). */
+/** Create or normalize per-province Regional Hub NEP Sheet entries (LHS, AREA, ARBs) with 1st Sem & auto 2nd Sem. */
 export function normalizeNepProvinceList(raw = {}) {
   const currentYear = new Date().getFullYear();
   const out = {};
@@ -209,11 +249,39 @@ export function normalizeNepProvinceList(raw = {}) {
   for (const code of PROVINCE_CODES) {
     const item = src[code] && typeof src[code] === 'object' ? src[code] : {};
     const parsedYear = parseInt(item.year, 10);
+    const lhs = Math.max(0, Math.round(Number(item.lhs) || 0));
+    const area = Math.max(0, Number((Number(item.area) || 0).toFixed(4)));
+    const arbs = Math.max(0, Math.round(Number(item.arbs) || 0));
+
+    const hasExplicitSem1Lhs = item.sem1Lhs !== undefined && item.sem1Lhs !== null && item.sem1Lhs !== '';
+    const hasExplicitSem1Area = item.sem1Area !== undefined && item.sem1Area !== null && item.sem1Area !== '';
+    const hasExplicitSem1Arbs = item.sem1Arbs !== undefined && item.sem1Arbs !== null && item.sem1Arbs !== '';
+
+    const sem1Lhs = hasExplicitSem1Lhs
+      ? Math.max(0, Math.min(lhs, Math.round(Number(item.sem1Lhs) || 0)))
+      : (lhs > 0 ? lhs / 2 : 0);
+    const sem1Area = hasExplicitSem1Area
+      ? Math.max(0, Math.min(area, Number((Number(item.sem1Area) || 0).toFixed(4))))
+      : Number((area / 2).toFixed(4));
+    const sem1Arbs = hasExplicitSem1Arbs
+      ? Math.max(0, Math.min(arbs, Math.round(Number(item.sem1Arbs) || 0)))
+      : (arbs > 0 ? Math.round(arbs / 2) : 0);
+
+    const sem2Lhs = Math.max(0, lhs - sem1Lhs);
+    const sem2Area = Math.max(0, Number((area - sem1Area).toFixed(4)));
+    const sem2Arbs = Math.max(0, arbs - sem1Arbs);
+
     out[code] = {
-      lhs: Math.max(0, Math.round(Number(item.lhs) || 0)),
-      area: Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
-      arbs: Math.max(0, Math.round(Number(item.arbs) || 0)),
-      year: Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear
+      lhs,
+      area,
+      arbs,
+      year: Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear,
+      sem1Lhs,
+      sem1Area,
+      sem1Arbs,
+      sem2Lhs,
+      sem2Area,
+      sem2Arbs
     };
   }
   return out;
@@ -232,6 +300,9 @@ export const MILESTONE_DATA_COLUMNS = [
   { key: 'Batch_Category', header: 'Batch_Category', label: 'Batch Category', type: 'select', options: BATCH_CATEGORIES, required: true },
   { key: 'LHID', header: 'LHID', label: 'Linked LHID (Optional)', type: 'text' }
 ];
+
+export const WORKABILITY_OPTIONS = ['Workable', 'For Replacement', 'Replacement'];
+export const LAD_STATUS_OPTIONS = ['LAD Balance', 'Temp. Park', 'For Inclusion'];
 
 // Exact 6 tabs and exact headers from the Regional Account (Hub) Google Sheet
 export const OPTOOL_SHEET_SCHEMAS = {
@@ -259,7 +330,8 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'optoolStatus', header: 'Optool Status', label: 'Optool Status', group: 'Status & Pipeline', type: 'text' },
     { key: 'currentStatusDesc', header: 'CurrentStatusDesc', label: 'Current Status Description', group: 'Status & Pipeline', type: 'text' },
     { key: 'newLandSize', header: 'NewLandSize', label: 'New Land Size', group: 'Parcel Details', type: 'text' },
-    { key: 'ladStatus', header: 'Lad Status', label: 'LAD Status', group: 'Status & Pipeline', type: 'text' },
+    { key: 'ladStatus', header: 'Lad Status', label: 'LAD Status', group: 'Status & Pipeline', type: 'select', options: LAD_STATUS_OPTIONS },
+    { key: 'workability', header: 'Workability', label: 'Workability', group: 'Status & Pipeline', type: 'select', options: WORKABILITY_OPTIONS },
     { key: 'milestoneTarget', header: 'Milestone Target', label: 'Milestone Target', group: 'Status & Pipeline', type: 'select', options: MILESTONE_TARGET_TABS },
     { key: 'year', header: 'Year', label: 'Year', group: 'Status & Pipeline', type: 'text' }
   ],
@@ -431,7 +503,9 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'totalArea',
     'computedArea',
     'lotNumber',
-    'carpable'
+    'carpable',
+    'ladStatus',
+    'workability'
   ],
   'CF(DOC)': [
     'lhid',

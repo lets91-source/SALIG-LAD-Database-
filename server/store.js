@@ -1169,33 +1169,46 @@ export class ConsolidatedStore {
         const pd = provData[node.code] || { count: 0, areaHas: 0, q: { 1: { count: 0, areaHas: 0 }, 2: { count: 0, areaHas: 0 }, 3: { count: 0, areaHas: 0 }, 4: { count: 0, areaHas: 0 } } };
         const pTotalCount = pd.count;
         const pTotalArea = roundArea(pd.areaHas);
+        const hasAccomp = pTotalCount > 0 || pTotalArea > 0;
+        if (hasAccomp) activeProvinces.push(node.code);
+        else zeroAccompProvinces.push(node.code);
+        const pSem1Count = (pd.q[1]?.count || 0) + (pd.q[2]?.count || 0);
+        const pSem1Area = roundArea((pd.q[1]?.areaHas || 0) + (pd.q[2]?.areaHas || 0));
+        const pSem2Count = (pd.q[3]?.count || 0) + (pd.q[4]?.count || 0);
+        const pSem2Area = roundArea((pd.q[3]?.areaHas || 0) + (pd.q[4]?.areaHas || 0));
         let pTargetCount = 0;
         let pTargetArea = 0;
+        let pSem1TargetCount = 0;
+        let pSem1TargetArea = 0;
+        let pSem2TargetCount = 0;
+        let pSem2TargetArea = 0;
+
         if (msProvMap && msProvMap[node.code]) {
           const pt = msProvMap[node.code];
           const pYear = Math.round(Number(pt?.year) || currentYear);
           if (!filterYear || pYear === filterYear) {
             pTargetCount = Math.max(0, Math.round(Number(pt?.lhs) || 0));
             pTargetArea = Math.max(0, Number(pt?.area) || 0);
+
+            const hasExplicitSem1Lhs = pt.sem1Lhs !== undefined && pt.sem1Lhs !== null && pt.sem1Lhs !== '';
+            const hasExplicitSem1Area = pt.sem1Area !== undefined && pt.sem1Area !== null && pt.sem1Area !== '';
+
+            pSem1TargetCount = hasExplicitSem1Lhs
+              ? Math.max(0, Math.min(pTargetCount, Math.round(Number(pt.sem1Lhs) || 0)))
+              : (pTargetCount > 0 ? pTargetCount / 2 : 0);
+            pSem1TargetArea = hasExplicitSem1Area
+              ? Math.max(0, Math.min(pTargetArea, roundArea(Number(pt.sem1Area) || 0)))
+              : roundArea(pTargetArea / 2);
+
+            pSem2TargetCount = Math.max(0, pTargetCount - pSem1TargetCount);
+            pSem2TargetArea = roundArea(Math.max(0, pTargetArea - pSem1TargetArea));
           }
-        }
-
-        const hasAccomp = (pTotalCount > 0 || pTotalArea > 0);
-        if (hasAccomp) {
-          activeProvinces.push(node.code);
         } else {
-          zeroAccompProvinces.push(node.code);
+          pSem1TargetCount = pTargetCount > 0 ? pTargetCount / 2 : 0;
+          pSem1TargetArea = roundArea(pTargetArea / 2);
+          pSem2TargetCount = pTargetCount > 0 ? pTargetCount / 2 : 0;
+          pSem2TargetArea = roundArea(pTargetArea / 2);
         }
-
-        const pSem1Count = (pd.q[1]?.count || 0) + (pd.q[2]?.count || 0);
-        const pSem1Area = roundArea((pd.q[1]?.areaHas || 0) + (pd.q[2]?.areaHas || 0));
-        const pSem2Count = (pd.q[3]?.count || 0) + (pd.q[4]?.count || 0);
-        const pSem2Area = roundArea((pd.q[3]?.areaHas || 0) + (pd.q[4]?.areaHas || 0));
-
-        const pSem1TargetCount = pTargetCount > 0 ? pTargetCount / 2 : 0;
-        const pSem1TargetArea = roundArea(pTargetArea / 2);
-        const pSem2TargetCount = pTargetCount > 0 ? pTargetCount / 2 : 0;
-        const pSem2TargetArea = roundArea(pTargetArea / 2);
 
         const pSem1RateCount = pSem1TargetCount > 0 ? Number(((pSem1Count / pSem1TargetCount) * 100).toFixed(2)) : 0;
         const pSem1RateArea = pSem1TargetArea > 0 ? Number(((pSem1Area / pSem1TargetArea) * 100).toFixed(2)) : 0;
@@ -1269,10 +1282,27 @@ export class ConsolidatedStore {
       const sem2Count = q[3].count + q[4].count;
       const sem2Area = roundArea(q[3].areaHas + q[4].areaHas);
 
-      const sem1TargetCount = nepTargetCount > 0 ? nepTargetCount / 2 : 0;
-      const sem1TargetAreaHas = roundArea(nepTargetAreaHas / 2);
-      const sem2TargetCount = nepTargetCount > 0 ? nepTargetCount / 2 : 0;
-      const sem2TargetAreaHas = roundArea(nepTargetAreaHas / 2);
+      let sem1TargetCount = nepTargetCount > 0 ? nepTargetCount / 2 : 0;
+      let sem1TargetAreaHas = roundArea(nepTargetAreaHas / 2);
+
+      const hasProvBreakdownTargets = Object.values(provinceBreakdown).some(
+        (p) => (p.targetCount || 0) > 0 || (p.targetAreaHas || 0) > 0
+      );
+
+      if (regTarget.sem1TargetCount !== undefined && regTarget.sem1TargetCount !== null && regTarget.sem1TargetCount !== '') {
+        sem1TargetCount = Math.max(0, Math.min(nepTargetCount, Number(regTarget.sem1TargetCount) || 0));
+      } else if (hasProvBreakdownTargets) {
+        sem1TargetCount = Object.values(provinceBreakdown).reduce((s, p) => s + (p.targetSem1Count || 0), 0);
+      }
+
+      if (regTarget.sem1TargetAreaHas !== undefined && regTarget.sem1TargetAreaHas !== null && regTarget.sem1TargetAreaHas !== '') {
+        sem1TargetAreaHas = Math.max(0, Math.min(nepTargetAreaHas, roundArea(Number(regTarget.sem1TargetAreaHas) || 0)));
+      } else if (hasProvBreakdownTargets) {
+        sem1TargetAreaHas = roundArea(Object.values(provinceBreakdown).reduce((s, p) => s + (p.targetSem1AreaHas || 0), 0));
+      }
+
+      const sem2TargetCount = Math.max(0, nepTargetCount - sem1TargetCount);
+      const sem2TargetAreaHas = roundArea(Math.max(0, nepTargetAreaHas - sem1TargetAreaHas));
 
       const sem1RateCountPct = sem1TargetCount > 0 ? Number(((sem1Count / sem1TargetCount) * 100).toFixed(2)) : 0;
       const sem1RateAreaPct = sem1TargetAreaHas > 0 ? Number(((sem1Area / sem1TargetAreaHas) * 100).toFixed(2)) : 0;
@@ -1602,15 +1632,27 @@ export class ConsolidatedStore {
         jurisdiction: node.jurisdiction,
         provinceName: node.provinceName,
         lhs: entry.lhs,
+        sem1Lhs: entry.sem1Lhs,
+        sem2Lhs: entry.sem2Lhs,
         area: entry.area,
+        sem1Area: entry.sem1Area,
+        sem2Area: entry.sem2Area,
         arbs: entry.arbs,
+        sem1Arbs: entry.sem1Arbs,
+        sem2Arbs: entry.sem2Arbs,
         year: entry.year || new Date().getFullYear()
       };
     });
     const nepProvinceTotals = {
       lhs: nepProvinceBreakdown.reduce((s, r) => s + r.lhs, 0),
+      sem1Lhs: nepProvinceBreakdown.reduce((s, r) => s + (r.sem1Lhs || 0), 0),
+      sem2Lhs: nepProvinceBreakdown.reduce((s, r) => s + (r.sem2Lhs || 0), 0),
       area: Number(nepProvinceBreakdown.reduce((s, r) => s + r.area, 0).toFixed(4)),
-      arbs: nepProvinceBreakdown.reduce((s, r) => s + r.arbs, 0)
+      sem1Area: Number(nepProvinceBreakdown.reduce((s, r) => s + (r.sem1Area || 0), 0).toFixed(4)),
+      sem2Area: Number(nepProvinceBreakdown.reduce((s, r) => s + (r.sem2Area || 0), 0).toFixed(4)),
+      arbs: nepProvinceBreakdown.reduce((s, r) => s + r.arbs, 0),
+      sem1Arbs: nepProvinceBreakdown.reduce((s, r) => s + (r.sem1Arbs || 0), 0),
+      sem2Arbs: nepProvinceBreakdown.reduce((s, r) => s + (r.sem2Arbs || 0), 0)
     };
 
     return {

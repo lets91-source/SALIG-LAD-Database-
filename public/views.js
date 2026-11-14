@@ -1,4 +1,9 @@
-import { renderTrendChartSvg, renderProvincialComparisonSvg } from './charts.js';
+import {
+  renderTrendChartSvg,
+  renderProvincialComparisonSvg,
+  renderWhereaboutsProvincialGraphSvg,
+  renderWhereaboutsMonthlyGraphSvg
+} from './charts.js';
 import { getReportedMonthOptions, isReportedMonthKey } from './reportingUtils.js';
 
 export function esc(str) {
@@ -165,6 +170,7 @@ function renderMilestoneNepSection(ctx) {
     nepShowMonths = false,
     nepExpandedQuarters = {},
     nepExpandedTargetSems = false,
+    nepExpandedAccompSems = true,
     nepShowProvinces = false,
     nepExpandedMilestones = {},
     nepMilestoneTableFilter = 'ALL'
@@ -250,7 +256,9 @@ function renderMilestoneNepSection(ctx) {
   const q4Cols = isQExpanded(4) ? 4 : 1;
   const totalQuarterCols = q1Cols + q2Cols + q3Cols + q4Cols;
   const targetCols = nepExpandedTargetSems ? 3 : 1;
-  const totalTableCols = 1 + targetCols + totalQuarterCols + 3;
+  const accompSemCols = nepExpandedAccompSems ? 2 : 0;
+  const totalAccompCols = totalQuarterCols + accompSemCols;
+  const totalTableCols = 1 + targetCols + totalAccompCols + 3;
 
   const formatNepTargetSmall = (count, areaHas, mode = 'both') => {
     const c = Math.round(count || 0);
@@ -265,14 +273,14 @@ function renderMilestoneNepSection(ctx) {
     const tArea = dataObj.targetAreaHas ?? dataObj.nepTargetAreaHas ?? 0;
     const s1Count = dataObj.sem1?.targetCount ?? (tCount > 0 ? tCount / 2 : 0);
     const s1Area = dataObj.sem1?.targetAreaHas ?? (tArea > 0 ? tArea / 2 : 0);
-    const s2Count = dataObj.sem2?.targetCount ?? (tCount > 0 ? tCount / 2 : 0);
-    const s2Area = dataObj.sem2?.targetAreaHas ?? (tArea > 0 ? tArea / 2 : 0);
+    const s2Count = dataObj.sem2?.targetCount ?? Math.max(0, tCount - s1Count);
+    const s2Area = dataObj.sem2?.targetAreaHas ?? Math.max(0, Number((tArea - s1Area).toFixed(4)));
 
     if (!nepExpandedTargetSems) {
       return `
         <td class="right nep-target-cell">
           <div class="nep-target-main">${formatNepMetricCell(tCount, tArea, nepMetricMode)}</div>
-          <div class="nep-target-sem-breakdown" title="1st Sem Target: ${formatNepTargetSmall(s1Count, s1Area, 'both')} | 2nd Sem Target: ${formatNepTargetSmall(s2Count, s2Area, 'both')}">
+          <div class="nep-target-sem-breakdown" title="1st Sem Target: ${formatNepTargetSmall(s1Count, s1Area, 'both')} | 2nd Sem Target (Auto: NEP − 1st Sem): ${formatNepTargetSmall(s2Count, s2Area, 'both')}">
             <span class="nep-target-sem-tag sem1">1st Sem: ${formatNepTargetSmall(s1Count, s1Area, nepMetricMode)}</span>
             <span class="nep-target-sem-tag sem2">2nd Sem: ${formatNepTargetSmall(s2Count, s2Area, nepMetricMode)}</span>
           </div>
@@ -281,10 +289,10 @@ function renderMilestoneNepSection(ctx) {
     }
 
     return `
-      <td class="right nep-target-sem-cell nep-sem1-target-cell" title="1st Semester NEP Target (50%)">
+      <td class="right nep-target-sem-cell nep-sem1-target-cell" title="1st Semester NEP Target">
         ${formatNepMetricCell(s1Count, s1Area, nepMetricMode)}
       </td>
-      <td class="right nep-target-sem-cell nep-sem2-target-cell" title="2nd Semester NEP Target (50%)">
+      <td class="right nep-target-sem-cell nep-sem2-target-cell" title="2nd Semester NEP Target (Auto: NEP − 1st Sem)">
         ${formatNepMetricCell(s2Count, s2Area, nepMetricMode)}
       </td>
       <td class="right nep-target-annual-cell font-semibold" title="Full Year NEP Target">
@@ -307,6 +315,39 @@ function renderMilestoneNepSection(ctx) {
       <td class="right nep-month-cell">${formatNepMetricCell(m2.count, m2.areaHas, nepMetricMode)}</td>
       <td class="right nep-month-cell">${formatNepMetricCell(m3.count, m3.areaHas, nepMetricMode)}</td>
       <td class="right nep-q-total-cell">${formatNepMetricCell(qData.count, qData.areaHas, nepMetricMode)}</td>
+    `;
+  };
+
+  const renderSemAccompCell = (dataObj, semNum) => {
+    let semData = semNum === 1 ? dataObj.sem1 : dataObj.sem2;
+    if (!semData) {
+      const qA = semNum === 1 ? dataObj.q1 : dataObj.q3;
+      const qB = semNum === 1 ? dataObj.q2 : dataObj.q4;
+      const c = (qA?.count || 0) + (qB?.count || 0);
+      const a = Number(((qA?.areaHas || 0) + (qB?.areaHas || 0)).toFixed(4));
+      semData = { count: c, areaHas: a, rateAreaPct: 0, rateCountPct: 0 };
+    }
+
+    const c = semData.count || 0;
+    const a = semData.areaHas || 0;
+    const tc = semData.targetCount ?? (semNum === 1 ? dataObj.targetSem1Count : dataObj.targetSem2Count) ?? 0;
+    const ta = semData.targetAreaHas ?? (semNum === 1 ? dataObj.targetSem1AreaHas : dataObj.targetSem2AreaHas) ?? 0;
+    const rateVal = nepMetricMode === 'count'
+      ? (tc > 0 ? (semData.rateCountPct ?? Number(((c / tc) * 100).toFixed(2))) : null)
+      : (ta > 0 ? (semData.rateAreaPct ?? Number(((a / ta) * 100).toFixed(2))) : (tc > 0 ? (semData.rateCountPct ?? Number(((c / tc) * 100).toFixed(2))) : null));
+
+    const cls = semNum === 1 ? 'nep-sem1-cell' : 'nep-sem2-cell';
+    const tagCls = semNum === 1 ? 'sem1' : 'sem2';
+    const semName = semNum === 1 ? '1st Sem' : '2nd Sem';
+
+    return `
+      <td class="right nep-sem-cell ${cls}" title="${semName} Accomp (Q${semNum === 1 ? '1+Q2' : '3+Q4'}): ${formatNepTargetSmall(c, a, 'both')}${rateVal !== null ? ` (${rateVal}% of ${semName} Target)` : ''}">
+        <div class="nep-sem-main font-semibold">${formatNepMetricCell(c, a, nepMetricMode)}</div>
+        <div class="nep-sem-sub" style="font-size:10.5px;display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px;">
+          <span class="nep-target-sem-tag ${tagCls}" style="font-size:9px;padding:0 3px;border-radius:2px;font-weight:700;">${semName}</span>
+          ${rateVal !== null ? `<span style="font-weight:700;color:${semNum === 1 ? 'var(--dar-blue,#1d4ed8)' : 'var(--dar-amber,#b45309)'};">${rateVal}%</span>` : ''}
+        </div>
+      </td>
     `;
   };
 
@@ -363,19 +404,22 @@ function renderMilestoneNepSection(ctx) {
           <button type="button" class="btn btn-sm ${nepExpandedTargetSems ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-target-sems" title="Toggle 1st Sem &amp; 2nd Sem Target columns">
             <span class="fs-icon">🎯</span> <span>${nepExpandedTargetSems ? 'Hide Target Sems' : '1st &amp; 2nd Target'}</span>
           </button>
+          <button type="button" class="btn btn-sm ${nepExpandedAccompSems ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-accomp-sems" title="Toggle 1st Sem &amp; 2nd Sem Accomplishment columns">
+            <span class="fs-icon">📊</span> <span>${nepExpandedAccompSems ? 'Hide Sem Accomp' : 'Semester Accomp'}</span>
+          </button>
           <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-nep" title="Full Screen Report / Table">
             <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
           </button>
         </div>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap nep-milestone-table-wrap" id="nep-milestone-table-wrap">
         <table class="nep-milestone-table">
           <thead>
             ${
               !hasAnyMonthExpanded
                 ? `
             <tr>
-              <th rowspan="2" class="nep-th-milestone-col">
+              <th rowspan="2" class="nep-th-milestone-col sticky-col-province">
                 <div class="nep-th-milestone-flex">
                   <span>Milestone</span>
                   <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter" title="Filter by Milestone" aria-label="Filter by Milestone">
@@ -393,7 +437,9 @@ function renderMilestoneNepSection(ctx) {
                   ? `<th rowspan="2" class="right nep-target-header" data-toggle-target-sems title="Click to show 1st &amp; 2nd Sem Target columns">NEP Target <span class="q-toggle-pill">+</span></th>`
                   : `<th colspan="3" class="center nep-target-group-header" data-toggle-target-sems title="Click to collapse Target columns">NEP Target <span class="q-toggle-pill">Hide Sems ▴</span></th>`
               }
-              <th colspan="4" class="center nep-quarter-group">Accomp. per Quarter</th>
+              <th colspan="${4 + (nepExpandedAccompSems ? 2 : 0)}" class="center nep-quarter-group" data-toggle-accomp-sems title="Click to toggle Semester Accomplishment columns" style="cursor:pointer;">
+                Accomp. per Quarter ${nepExpandedAccompSems ? '&amp; Semester' : ''} <span class="q-toggle-pill">${nepExpandedAccompSems ? 'Hide Sems ▴' : '+ Sems'}</span>
+              </th>
               <th rowspan="2" class="right">Total</th>
               <th rowspan="2" class="right">Rate of Accomp.</th>
               <th rowspan="2" class="right">Variance</th>
@@ -402,21 +448,23 @@ function renderMilestoneNepSection(ctx) {
               ${
                 nepExpandedTargetSems
                   ? `
-                <th class="right nep-target-sem-th" title="1st Semester NEP Target (50%)">1st Sem Target</th>
-                <th class="right nep-target-sem-th" title="2nd Semester NEP Target (50%)">2nd Sem Target</th>
-                <th class="right nep-target-annual-th" title="Full Year NEP Target">Annual Target</th>
+                <th class="center nep-target-sem-th" title="1st Semester NEP Target">1st Sem Target</th>
+                <th class="center nep-target-sem-th" title="2nd Semester NEP Target (Auto: NEP − 1st Sem)">2nd Sem Target</th>
+                <th class="center nep-target-annual-th" title="Full Year NEP Target">Annual Target</th>
               `
                   : ''
               }
               <th class="right nep-q-col-header" data-toggle-q="1" title="Click to show months for Q1">Q1 <span class="q-toggle-pill">+</span></th>
               <th class="right nep-q-col-header" data-toggle-q="2" title="Click to show months for Q2">Q2 <span class="q-toggle-pill">+</span></th>
+              ${nepExpandedAccompSems ? `<th class="center nep-sem-accomp-th nep-sem1-accomp-th" title="1st Semester Accomplishment (Q1 + Q2)">1st Sem Accomp</th>` : ''}
               <th class="right nep-q-col-header" data-toggle-q="3" title="Click to show months for Q3">Q3 <span class="q-toggle-pill">+</span></th>
               <th class="right nep-q-col-header" data-toggle-q="4" title="Click to show months for Q4">Q4 <span class="q-toggle-pill">+</span></th>
+              ${nepExpandedAccompSems ? `<th class="center nep-sem-accomp-th nep-sem2-accomp-th" title="2nd Semester Accomplishment (Q3 + Q4)">2nd Sem Accomp</th>` : ''}
             </tr>
             `
                 : `
             <tr>
-              <th rowspan="3" class="nep-th-milestone-col">
+              <th rowspan="3" class="nep-th-milestone-col sticky-col-province">
                 <div class="nep-th-milestone-flex">
                   <span>Milestone</span>
                   <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter-m" title="Filter by Milestone" aria-label="Filter by Milestone">
@@ -434,7 +482,9 @@ function renderMilestoneNepSection(ctx) {
                   ? `<th rowspan="3" class="right nep-target-header" data-toggle-target-sems title="Click to show 1st &amp; 2nd Sem Target columns">NEP Target <span class="q-toggle-pill">+</span></th>`
                   : `<th colspan="3" class="center nep-target-group-header" data-toggle-target-sems title="Click to collapse Target columns">NEP Target <span class="q-toggle-pill">Hide Sems ▴</span></th>`
               }
-              <th colspan="${totalQuarterCols}" class="center nep-quarter-group">Accomp. per Quarter &amp; Monthly</th>
+              <th colspan="${totalQuarterCols + (nepExpandedAccompSems ? 2 : 0)}" class="center nep-quarter-group" data-toggle-accomp-sems title="Click to toggle Semester Accomplishment columns" style="cursor:pointer;">
+                Accomp. per Quarter, Monthly &amp; Semester <span class="q-toggle-pill">${nepExpandedAccompSems ? 'Hide Sems ▴' : '+ Sems'}</span>
+              </th>
               <th rowspan="3" class="right">Total</th>
               <th rowspan="3" class="right">Rate of Accomp.</th>
               <th rowspan="3" class="right">Variance</th>
@@ -443,13 +493,14 @@ function renderMilestoneNepSection(ctx) {
               ${
                 nepExpandedTargetSems
                   ? `
-                <th class="right nep-target-sem-th" rowspan="2" title="1st Semester NEP Target (50%)">1st Sem Target</th>
-                <th class="right nep-target-sem-th" rowspan="2" title="2nd Semester NEP Target (50%)">2nd Sem Target</th>
-                <th class="right nep-target-annual-th" rowspan="2" title="Full Year NEP Target">Annual Target</th>
+                <th class="center nep-target-sem-th" rowspan="2" title="1st Semester NEP Target">1st Sem Target</th>
+                <th class="center nep-target-sem-th" rowspan="2" title="2nd Semester NEP Target (Auto: NEP − 1st Sem)">2nd Sem Target</th>
+                <th class="center nep-target-annual-th" rowspan="2" title="Full Year NEP Target">Annual Target</th>
               `
                   : ''
               }
               ${quartersConfig
+                .slice(0, 2)
                 .map((q) => {
                   if (isQExpanded(q.q)) {
                     return `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="${q.q}" title="Click to hide Q${q.q} months">Q${q.q} <span class="q-toggle-pill">Hide Months ▴</span></th>`;
@@ -457,6 +508,17 @@ function renderMilestoneNepSection(ctx) {
                   return `<th rowspan="2" class="right nep-quarter-group nep-q-header collapsed" data-toggle-q="${q.q}" title="Click to show Q${q.q} months">Q${q.q} <span class="q-toggle-pill">+ Months ▾</span></th>`;
                 })
                 .join('')}
+              ${nepExpandedAccompSems ? `<th rowspan="2" class="center nep-sem-accomp-th nep-sem1-accomp-th" title="1st Semester Accomplishment (Q1 + Q2)">1st Sem Accomp</th>` : ''}
+              ${quartersConfig
+                .slice(2, 4)
+                .map((q) => {
+                  if (isQExpanded(q.q)) {
+                    return `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="${q.q}" title="Click to hide Q${q.q} months">Q${q.q} <span class="q-toggle-pill">Hide Months ▴</span></th>`;
+                  }
+                  return `<th rowspan="2" class="right nep-quarter-group nep-q-header collapsed" data-toggle-q="${q.q}" title="Click to show Q${q.q} months">Q${q.q} <span class="q-toggle-pill">+ Months ▾</span></th>`;
+                })
+                .join('')}
+              ${nepExpandedAccompSems ? `<th rowspan="2" class="center nep-sem-accomp-th nep-sem2-accomp-th" title="2nd Semester Accomplishment (Q3 + Q4)">2nd Sem Accomp</th>` : ''}
             </tr>
             <tr>
               ${quartersConfig
@@ -488,12 +550,12 @@ function renderMilestoneNepSection(ctx) {
 
                 return `
               <tr class="nep-milestone-main-row ${isMsExpanded ? 'nep-expanded-row' : ''}">
-                <td>
+                <td class="sticky-col-province">
                   <button
                     type="button"
                     class="nep-milestone-link"
                     data-open-optool-tab="${esc(r.sourceTab)}"
-                    title="Open ${esc(r.label)} in Optool Supportlist"
+                    title="Open ${esc(r.label)} in Optool Support List"
                   >
                     ${esc(r.label)}
                   </button>
@@ -514,8 +576,10 @@ function renderMilestoneNepSection(ctx) {
                 ${renderTargetCells(r)}
                 ${renderQuarterCells(r, 1)}
                 ${renderQuarterCells(r, 2)}
+                ${nepExpandedAccompSems ? renderSemAccompCell(r, 1) : ''}
                 ${renderQuarterCells(r, 3)}
                 ${renderQuarterCells(r, 4)}
+                ${nepExpandedAccompSems ? renderSemAccompCell(r, 2) : ''}
                 <td class="right">
                   ${formatNepMetricCell(r.total.count, r.total.areaHas, nepMetricMode)}
                   ${
@@ -534,7 +598,7 @@ function renderMilestoneNepSection(ctx) {
                   .map(
                     (pd) => `
                 <tr class="nep-prov-subrow ${pd.hasAccomp ? 'has-accomp' : 'no-accomp'}">
-                  <td class="nep-prov-subcell">
+                  <td class="nep-prov-subcell sticky-col-province">
                     <div class="nep-prov-indent">
                       <span class="nep-prov-tree">└─</span>
                       <strong class="nep-prov-code-tag">${esc(pd.code)}</strong>
@@ -549,8 +613,10 @@ function renderMilestoneNepSection(ctx) {
                   ${renderTargetCells(pd)}
                   ${renderQuarterCells(pd, 1)}
                   ${renderQuarterCells(pd, 2)}
+                  ${nepExpandedAccompSems ? renderSemAccompCell(pd, 1) : ''}
                   ${renderQuarterCells(pd, 3)}
                   ${renderQuarterCells(pd, 4)}
+                  ${nepExpandedAccompSems ? renderSemAccompCell(pd, 2) : ''}
                   <td class="right font-semibold">${formatNepMetricCell(pd.count, pd.areaHas, nepMetricMode)}</td>
                   <td class="right">${formatNepRateCell(pd.rateCountPct, pd.rateAreaPct, nepMetricMode)}</td>
                   <td class="right">${formatNepVarianceCell(pd.varianceCount, pd.varianceAreaHas, nepMetricMode)}</td>
@@ -611,7 +677,11 @@ function renderProvincialNepSheetSection(ctx) {
         jurisdiction: n.jurisdiction,
         provinceName: n.provinceName,
         lhs: item.lhs || 0,
+        sem1Lhs: item.sem1Lhs,
+        sem2Lhs: item.sem2Lhs,
         area: item.area || 0,
+        sem1Area: item.sem1Area,
+        sem2Area: item.sem2Area,
         arbs: item.arbs || 0,
         year: item.year || 2026
       };
@@ -658,7 +728,7 @@ function renderProvincialNepSheetSection(ctx) {
         <table class="nep-sheet-table">
           <thead>
             <tr>
-              <th>Province</th>
+              <th class="sticky-col-province">Province</th>
               <th class="right">LHS</th>
               <th class="right">AREA (HAS)</th>
               <th class="right">ARBs</th>
@@ -670,13 +740,22 @@ function renderProvincialNepSheetSection(ctx) {
               .map(
                 (r) => `
               <tr>
-                <td>
+                <td class="sticky-col-province">
                   <strong>${esc(r.provinceName)}</strong>
                   <div class="nep-sub-metric">${esc(r.code)}</div>
                 </td>
-                <td class="right">${(Number(r.lhs) || 0).toLocaleString('en-US')}</td>
-                <td class="right">${fmtArea(r.area || 0)}</td>
-                <td class="right">${(Number(r.arbs) || 0).toLocaleString('en-US')}</td>
+                <td class="right">
+                  <div>${(Number(r.lhs) || 0).toLocaleString('en-US')}</div>
+                  ${r.sem1Lhs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</div>` : ''}
+                </td>
+                <td class="right">
+                  <div>${fmtArea(r.area || 0)}</div>
+                  ${r.sem1Area !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);font-weight:normal;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</div>` : ''}
+                </td>
+                <td class="right">
+                  <div>${(Number(r.arbs) || 0).toLocaleString('en-US')}</div>
+                  ${r.sem1Arbs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</div>` : ''}
+                </td>
                 <td class="center"><span class="badge badge-gray">${esc(String(r.year || 2026))}</span></td>
               </tr>
             `
@@ -686,7 +765,7 @@ function renderProvincialNepSheetSection(ctx) {
               rows.length > 1
                 ? `
               <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);">
-                <td>Region VIII Total</td>
+                <td class="sticky-col-province">Region VIII Total</td>
                 <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>
                 <td class="right">${fmtArea(totals.area || 0)}</td>
                 <td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>
@@ -703,7 +782,7 @@ function renderProvincialNepSheetSection(ctx) {
 }
 
 export function renderNepView(ctx) {
-  const { analytics, currentUser, provinceScope, nepYearFilter = '2026', nepMilestoneFilter = 'overall', nepDisplayMode = 'table', schemas } = ctx;
+  const { analytics, currentUser, provinceScope, nepYearFilter = 'ALL', nepMilestoneFilter = 'overall', nepDisplayMode = 'table', nepColVisibility = { lhs: true, area: true, arbs: true }, schemas } = ctx;
   const activeMilestone = String(nepMilestoneFilter || 'overall');
   const milestoneOptions = schemas?.nepMilestoneOptions || [
     { key: 'overall', label: 'Overall NEP (All Milestones)' },
@@ -730,8 +809,14 @@ export function renderNepView(ctx) {
         jurisdiction: n.jurisdiction,
         provinceName: n.provinceName,
         lhs: item.lhs || 0,
+        sem1Lhs: item.sem1Lhs,
+        sem2Lhs: item.sem2Lhs,
         area: item.area || 0,
+        sem1Area: item.sem1Area,
+        sem2Area: item.sem2Area,
         arbs: item.arbs || 0,
+        sem1Arbs: item.sem1Arbs,
+        sem2Arbs: item.sem2Arbs,
         year: item.year || 2026
       };
     });
@@ -762,17 +847,24 @@ export function renderNepView(ctx) {
   }
   const availableYears = Array.from(availableYearsSet).sort((a, b) => b - a);
 
-  const activeFilter = String(nepYearFilter || '2026');
-  const filteredRows =
+  const activeFilter = String(nepYearFilter || 'ALL');
+  let filteredRows =
     activeFilter === 'ALL'
       ? rawRows
       : rawRows.filter((r) => String(r.year || 2026) === activeFilter);
+
+  // If year filter resulted in 0 rows but rawRows has data, fallback to rawRows so the table is never empty/hidden
+  if (filteredRows.length === 0 && rawRows.length > 0) {
+    filteredRows = rawRows;
+  }
 
   const totals = {
     lhs: filteredRows.reduce((s, r) => s + (Number(r.lhs) || 0), 0),
     area: Number(filteredRows.reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4)),
     arbs: filteredRows.reduce((s, r) => s + (Number(r.arbs) || 0), 0)
   };
+
+  const visibleColCount = 1 + (nepColVisibility.lhs ? 1 : 0) + (nepColVisibility.area ? 1 : 0) + (nepColVisibility.arbs ? 1 : 0) + 1 + (canEditNep ? 1 : 0);
 
   const yearText = activeFilter === 'ALL' ? (availableYears.join(', ') || 'All Years') : activeFilter;
 
@@ -873,6 +965,20 @@ export function renderNepView(ctx) {
             </button>
           </div>
 
+          <!-- Column Hide / Unhide Pills for LHS, AREA, ARBs -->
+          <div class="nep-metric-pills nep-column-toggles" role="group" aria-label="Toggle Metric Columns" style="display:flex;align-items:center;gap:4px;background:var(--surface);padding:3px 6px;border-radius:6px;border:1px solid var(--border);">
+            <span style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-right:2px;">Columns:</span>
+            <button type="button" class="btn btn-xs ${nepColVisibility.lhs ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="lhs" title="${nepColVisibility.lhs ? 'Click to hide LHS' : 'Click to show LHS'}">
+              ${nepColVisibility.lhs ? '✓ LHS' : '+ LHS'}
+            </button>
+            <button type="button" class="btn btn-xs ${nepColVisibility.area ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="area" title="${nepColVisibility.area ? 'Click to hide AREA' : 'Click to show AREA'}">
+              ${nepColVisibility.area ? '✓ AREA' : '+ AREA'}
+            </button>
+            <button type="button" class="btn btn-xs ${nepColVisibility.arbs ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="arbs" title="${nepColVisibility.arbs ? 'Click to hide ARBs' : 'Click to show ARBs'}">
+              ${nepColVisibility.arbs ? '✓ ARBs' : '+ ARBs'}
+            </button>
+          </div>
+
           ${
             canEditNep
               ? `<button type="button" class="btn btn-primary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;">
@@ -900,18 +1006,24 @@ export function renderNepView(ctx) {
                 <span class="nep-province-code">${esc(r.code)}</span>
               </div>
               <div class="nep-stats-row">
+                ${nepColVisibility.lhs ? `
                 <div class="nep-stat-box">
                   <span class="nep-stat-label">LHS</span>
                   <span class="nep-stat-val">${(Number(r.lhs) || 0).toLocaleString('en-US')}</span>
-                </div>
+                  ${r.sem1Lhs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</span>` : ''}
+                </div>` : ''}
+                ${nepColVisibility.area ? `
                 <div class="nep-stat-box">
                   <span class="nep-stat-label">AREA (HAS)</span>
                   <span class="nep-stat-val">${fmtArea(r.area || 0)}</span>
-                </div>
+                  ${r.sem1Area !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</span>` : ''}
+                </div>` : ''}
+                ${nepColVisibility.arbs ? `
                 <div class="nep-stat-box">
                   <span class="nep-stat-label">ARBs</span>
                   <span class="nep-stat-val">${(Number(r.arbs) || 0).toLocaleString('en-US')}</span>
-                </div>
+                  ${r.sem1Arbs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</span>` : ''}
+                </div>` : ''}
               </div>
               <div class="nep-card-footer">
                 <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
@@ -928,30 +1040,48 @@ export function renderNepView(ctx) {
         </div>
       `
           : `
-        <div class="table-wrap">
+        <div class="table-wrap nep-prov-table-wrap">
           <table class="nep-sheet-table">
             <thead>
               <tr>
-                <th style="min-width:180px;">Province</th>
-                <th class="right" style="width:130px;">LHS</th>
-                <th class="right" style="width:160px;">AREA (HAS)</th>
-                <th class="right" style="width:130px;">ARBs</th>
+                <th class="sticky-col-province" style="min-width:180px;">Province</th>
+                ${nepColVisibility.lhs ? '<th class="right" style="width:130px;">LHS</th>' : ''}
+                ${nepColVisibility.area ? '<th class="right" style="width:160px;">AREA (HAS)</th>' : ''}
+                ${nepColVisibility.arbs ? '<th class="right" style="width:130px;">ARBs</th>' : ''}
                 <th class="center" style="width:120px;">Target Year</th>
                 ${canEditNep ? '<th class="center" style="width:130px;">Action</th>' : ''}
               </tr>
             </thead>
             <tbody>
-              ${filteredRows
+              ${filteredRows.length === 0 ? `
+                <tr>
+                  <td colspan="${visibleColCount}" class="center" style="padding:28px 16px;color:var(--text-muted);">
+                    No provincial records found. Click <strong>Put Data / Edit Figures</strong> to set targets.
+                  </td>
+                </tr>
+              ` : filteredRows
                 .map(
                   (r) => `
                 <tr>
-                  <td>
+                  <td class="sticky-col-province">
                     <strong>${esc(r.provinceName)}</strong>
                     <div class="nep-sub-metric">${esc(r.code)}</div>
                   </td>
-                  <td class="right" style="font-weight:600;">${(Number(r.lhs) || 0).toLocaleString('en-US')}</td>
-                  <td class="right" style="font-weight:700;color:var(--dar-green-dark);">${fmtArea(r.area || 0)}</td>
-                  <td class="right" style="font-weight:600;">${(Number(r.arbs) || 0).toLocaleString('en-US')}</td>
+                  ${nepColVisibility.lhs ? `
+                  <td class="right" style="font-weight:600;">
+                    <div>${(Number(r.lhs) || 0).toLocaleString('en-US')}</div>
+                    ${r.sem1Lhs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</div>` : ''}
+                  </td>` : ''}
+                  ${nepColVisibility.area ? `
+                  <td class="right" style="font-weight:700;color:var(--dar-green-dark);">
+                    <div>${fmtArea(r.area || 0)}</div>
+                    ${r.sem1Area !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);font-weight:normal;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</div>` : ''}
+                  </td>` : ''}
+                  ${nepColVisibility.arbs ? `
+                  <td class="right" style="font-weight:600;">
+                    <div>${(Number(r.arbs) || 0).toLocaleString('en-US')}</div>
+                    ${r.sem1Arbs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</div>` : ''}
+                  </td>` : ''}
                   <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
                   ${
                     canEditNep
@@ -970,10 +1100,10 @@ export function renderNepView(ctx) {
                 filteredRows.length > 1
                   ? `
                 <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
-                  <td>Region VIII Total</td>
-                  <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>
-                  <td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)}</td>
-                  <td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>
+                  <td class="sticky-col-province">Region VIII Total</td>
+                  ${nepColVisibility.lhs ? `<td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>` : ''}
+                  ${nepColVisibility.area ? `<td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)}</td>` : ''}
+                  ${nepColVisibility.arbs ? `<td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>` : ''}
                   <td class="center"><span class="badge badge-green" style="font-weight:700;">${esc(yearText)}</span></td>
                   ${canEditNep ? '<td class="center">-</td>' : ''}
                 </tr>
@@ -1133,6 +1263,340 @@ export const WHEREABOUTS_CONFIGS = {
   }
 };
 
+export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
+  if (!selectedYear || selectedYear === 'ALL') return true;
+  const s = String(selectedYear).trim().toLowerCase();
+  const rYear = String(r.targetYear || r.year || '').trim().toLowerCase();
+  if (rYear && (rYear === s || rYear.startsWith(s))) return true;
+  const rTarget = String(r.target || '').trim().toLowerCase();
+  if (rTarget === s) return true;
+  if (s === String(currentYear)) {
+    if (rTarget === 'current' || rTarget === 'current year') return true;
+  }
+  if (s.includes('prev') || s === 'previous year') {
+    if (rTarget.includes('prev')) return true;
+  }
+  const dates = [r.dateFiConducted, r.datePreparedSigned, r.reportedMonth, ...(r.datesMap ? Object.values(r.datesMap) : [])].filter(Boolean);
+  for (const dt of dates) {
+    if (String(dt || '').toLowerCase().includes(s)) return true;
+  }
+  return false;
+}
+
+export function matchProvinceName(rowProv, targetProv) {
+  const p = String(rowProv || '').trim().toUpperCase();
+  const t = String(targetProv || '').trim().toUpperCase();
+  if (!p || !t || t === 'ALL') return true;
+  if (p === t) return true;
+
+  const isTargetSouthern = t.includes('SOUTHERN') || t === 'SLE';
+  const isTargetNorthern = t.includes('NORTHERN') || t === 'NSA';
+  const isTargetEastern = t.includes('EASTERN') || t === 'ESA';
+  const isTargetWesternOrSamar = (t.includes('WESTERN') || t.includes('SAMAR')) && !isTargetNorthern && !isTargetEastern;
+  const isTargetLeyte = t.includes('LEYTE') && !isTargetSouthern;
+  const isTargetBiliran = t.includes('BILIRAN') || t === 'BIL';
+
+  const isRowSouthern = p.includes('SOUTHERN') || p === 'SLE';
+  const isRowNorthern = p.includes('NORTHERN') || p === 'NSA';
+  const isRowEastern = p.includes('EASTERN') || p === 'ESA';
+  const isRowWesternOrSamar = (p.includes('WESTERN') || p.includes('SAMAR')) && !isRowNorthern && !isRowEastern;
+  const isRowLeyte = p.includes('LEYTE') && !isRowSouthern;
+  const isRowBiliran = p.includes('BILIRAN') || p === 'BIL';
+
+  if (isTargetSouthern) return isRowSouthern;
+  if (isTargetLeyte) return isRowLeyte;
+  if (isTargetNorthern) return isRowNorthern;
+  if (isTargetEastern) return isRowEastern;
+  if (isTargetWesternOrSamar) return isRowWesternOrSamar;
+  if (isTargetBiliran) return isRowBiliran;
+
+  return p.includes(t) || t.includes(p);
+}
+
+export function resolveProvinceCode(provNameOrCode, schemas) {
+  if (!provNameOrCode || provNameOrCode === 'ALL') return null;
+  const pUpper = String(provNameOrCode).trim().toUpperCase();
+  const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  for (const n of provNodes) {
+    if (n.code.toUpperCase() === pUpper) return n.code;
+    const nName = n.provinceName.toUpperCase();
+    if (pUpper === nName || pUpper.includes(nName) || nName.includes(pUpper)) {
+      return n.code;
+    }
+  }
+  if (pUpper.includes('SOUTHERN LEYTE') || pUpper.includes('SLE')) return 'SLE';
+  if (pUpper.includes('LEYTE')) return 'LEY';
+  if (pUpper.includes('BILIRAN') || pUpper.includes('BIL')) return 'BIL';
+  if (pUpper.includes('EASTERN') || pUpper.includes('ESA')) return 'ESA';
+  if (pUpper.includes('NORTHERN') || pUpper.includes('NSA')) return 'NSA';
+  if (pUpper.includes('SAMAR') || pUpper.includes('SAM') || pUpper.includes('WSAM')) return 'SAM';
+  return null;
+}
+
+export function getWhereaboutsRowDisplayValue(row, colKey, cfg) {
+  if (!row) return '';
+  if (colKey === 'province') return row.province || 'Unknown';
+  if (colKey === 'municipality') return row.municipality || '—';
+  if (colKey === 'barangay') return row.barangay || '—';
+  if (colKey === 'landOwner') return row.landOwner || '—';
+  if (colKey === 'titleNumber') return row.titleNumber || '—';
+  if (colKey === 'lhid') return row.lhid || '—';
+  if (colKey === 'target') return row.target || 'Current';
+  if (colKey === 'stage') return row.stage || '—';
+  if (row.datesMap && colKey in row.datesMap) {
+    const raw = row.datesMap[colKey];
+    if (raw && cfg?.dates?.find((d) => d.key === colKey)?.isMonth) {
+      return formatReportedMonthDisplay(raw);
+    }
+    return raw || '';
+  }
+  return String(row[colKey] || '');
+}
+
+export function canonicalizeProvinceName(prov, schemas) {
+  const p = String(prov || '').trim();
+  if (!p) return '';
+  const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  for (const node of provNodes) {
+    if (matchProvinceName(p, node.provinceName)) {
+      return node.provinceName;
+    }
+  }
+  return p;
+}
+
+export function getWhereaboutsColFilterLabel(filterSpec, fallback = '') {
+  if (!filterSpec) return fallback;
+  if (Array.isArray(filterSpec.values)) {
+    const valid = filterSpec.values.filter((v) => v && v !== 'ALL');
+    if (valid.length === 0) return fallback;
+    if (valid.length === 1) return valid[0] === '__BLANK__' ? '(Blank)' : valid[0];
+    if (valid.length === 2) return valid.map((v) => (v === '__BLANK__' ? '(Blank)' : v)).join(', ');
+    return `${valid.length} selected`;
+  }
+  const val = String(filterSpec.value ?? '').trim();
+  if (!val || val === 'ALL') return fallback;
+  if (val === '__BLANK__') return '(Blank)';
+  return val;
+}
+
+export function matchesWhereaboutsColFilter(row, colKey, spec, cfg) {
+  if (!spec) return true;
+  if (Array.isArray(spec.values)) {
+    if (spec.values.length === 0) return true;
+    return spec.values.some((v) => matchesSingleWhereaboutsColVal(row, colKey, v, spec.mode || 'exact', cfg));
+  }
+  if (!spec.value || spec.value === 'ALL') return true;
+  return matchesSingleWhereaboutsColVal(row, colKey, spec.value, spec.mode || 'exact', cfg);
+}
+
+function matchesSingleWhereaboutsColVal(row, colKey, val, mode = 'exact', cfg) {
+  const v = String(val ?? '').trim();
+  if (!v || v === 'ALL') return true;
+  const rawCell = getWhereaboutsRowDisplayValue(row, colKey, cfg);
+  const cellVal = String(rawCell ?? '').trim();
+
+  if (v === '__BLANK__') {
+    return !cellVal || cellVal === '—' || cellVal === 'Undated / Pending';
+  }
+
+  if (colKey === 'province') {
+    return matchProvinceName(cellVal, v);
+  }
+
+  if (colKey === 'landOwner') {
+    const combined = `${row.landOwner || ''} ${row.titleNumber || ''}`.toLowerCase();
+    return combined.includes(v.toLowerCase());
+  }
+
+  if (mode === 'exact') {
+    return cellVal.toLowerCase() === v.toLowerCase();
+  }
+  return cellVal.toLowerCase().includes(v.toLowerCase());
+}
+
+export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
+  const cfg = WHEREABOUTS_CONFIGS[viewKey];
+  if (!cfg) return { col: null, blankCount: 0, totalRows: 0, values: [] };
+
+  const {
+    state,
+    schemas,
+    provinceScope,
+    whereaboutsColFilters = {},
+    whereaboutsProvinceFilter = {},
+    whereaboutsStatusFilter = {},
+    whereaboutsTargetYearFilter = {},
+    whereaboutsSearch = {}
+  } = ctx;
+
+  const rawRows = (state?.optool?.[cfg.tabName] || []).map((r, i) => ({ ...r, __originalIndex: i }));
+  const dbRows = state?.optool?.Database || [];
+  const dbMap = new Map();
+  for (const db of dbRows) {
+    const k = String(db.lhid || '').trim().toLowerCase();
+    if (k && !dbMap.has(k)) dbMap.set(k, db);
+  }
+
+  const enrichedRows = rawRows.map((row) => {
+    const lhidKey = String(row.lhid || '').trim().toLowerCase();
+    const db = dbMap.get(lhidKey) || {};
+    const carpableNum = parseNumericValue(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
+    const provName = db.province || row.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
+    const muniName = db.municipality || row.municipality || '—';
+    const brgyName = db.barangay || row.barangay || '—';
+    const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
+    const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
+
+    const datesMap = {};
+    let populatedDatesCount = 0;
+    for (const d of cfg.dates) {
+      const rawVal = String(row[d.key] || '').trim();
+      datesMap[d.key] = rawVal;
+      if (rawVal) populatedDatesCount++;
+    }
+    const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
+    const { stage, badge: stageBadge } = cfg.resolveStage({ ...row, ...datesMap });
+
+    return {
+      ...row,
+      lhid: row.lhid || db.lhid || '—',
+      province: provName,
+      municipality: muniName,
+      barangay: brgyName,
+      titleNumber: titleNum,
+      landOwner: landOwner,
+      carpable: carpableNum,
+      datesMap,
+      populatedDatesCount,
+      isAllDatesPopulated,
+      stage,
+      stageBadge
+    };
+  });
+
+  const activeColFilters = { ...(whereaboutsColFilters[viewKey] || {}) };
+  delete activeColFilters[colKey];
+
+  const curYear = new Date().getFullYear();
+  const searchVal = whereaboutsSearch[viewKey] || '';
+  const provFilterSpec = colKey === 'province' ? null : activeColFilters.province;
+  const provFilterVal = provFilterSpec?.value || whereaboutsProvinceFilter[viewKey] || 'ALL';
+  let selectedProvs = [];
+  if (provFilterSpec && Array.isArray(provFilterSpec.values) && provFilterSpec.values.length > 0) {
+    selectedProvs = provFilterSpec.values.filter((v) => v && v !== 'ALL');
+  } else if (provFilterVal && provFilterVal !== 'ALL') {
+    selectedProvs = [provFilterVal];
+  }
+  const statusFilterVal = colKey === 'stage' ? 'ALL' : (activeColFilters.stage?.value || whereaboutsStatusFilter[viewKey] || 'ALL');
+  const targetYearFilterVal = whereaboutsTargetYearFilter[viewKey] || 'ALL';
+
+  let matching = enrichedRows.filter((r) => {
+    if (provinceScope && r.province && !r.province.toUpperCase().includes(provinceScope.code)) {
+      const pNorm = r.province.toUpperCase();
+      if (!pNorm.includes(provinceScope.provinceName.toUpperCase())) return false;
+    }
+    if (selectedProvs.length > 0) {
+      if (!selectedProvs.some((p) => matchProvinceName(r.province, p))) return false;
+    }
+    if (viewKey === 'cf-whereabouts' && targetYearFilterVal !== 'ALL') {
+      if (!matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear)) return false;
+    }
+    for (const [k, spec] of Object.entries(activeColFilters)) {
+      if (k === colKey || k === 'province') continue;
+      if (!matchesWhereaboutsColFilter(r, k, spec, cfg)) return false;
+    }
+    if (statusFilterVal !== 'ALL') {
+      if (statusFilterVal === 'all_complete' && !r.isAllDatesPopulated) return false;
+      if (statusFilterVal === 'pending' && r.isAllDatesPopulated) return false;
+      if (statusFilterVal.startsWith('with_')) {
+        const dKey = statusFilterVal.replace('with_', '');
+        if (!r.datesMap[dKey]) return false;
+      }
+    }
+    if (searchVal) {
+      const dateText = Object.values(r.datesMap).join(' ');
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
+      if (!hay.includes(searchVal.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  let colLabel = colKey;
+  let colType = 'text';
+  if (colKey === 'province') colLabel = 'Province';
+  else if (colKey === 'municipality') colLabel = 'Municipality';
+  else if (colKey === 'landOwner') colLabel = 'Landowner / Title';
+  else if (colKey === 'lhid') colLabel = 'LHID';
+  else if (colKey === 'target') colLabel = cfg.extraColHeader || 'Target';
+  else if (colKey === 'stage') colLabel = 'Whereabouts Status';
+  else {
+    const dObj = cfg.dates.find((d) => d.key === colKey);
+    if (dObj) {
+      colLabel = dObj.label;
+      colType = dObj.isMonth ? 'month' : 'date';
+    }
+  }
+
+  const counts = new Map();
+  let blankCount = 0;
+
+  for (const r of matching) {
+    let rawVal = '';
+    if (colKey === 'province') {
+      rawVal = canonicalizeProvinceName(r.province, schemas);
+    } else if (colKey === 'municipality') {
+      rawVal = r.municipality;
+    } else if (colKey === 'landOwner') {
+      rawVal = r.landOwner;
+    } else if (colKey === 'lhid') {
+      rawVal = r.lhid;
+    } else if (colKey === 'target') {
+      rawVal = r.target || 'Current';
+    } else if (colKey === 'stage') {
+      rawVal = r.stage;
+    } else if (r.datesMap && colKey in r.datesMap) {
+      rawVal = r.datesMap[colKey];
+      if (rawVal && cfg.dates.find((d) => d.key === colKey)?.isMonth) {
+        rawVal = formatReportedMonthDisplay(rawVal);
+      }
+    } else {
+      rawVal = String(r[colKey] || '');
+    }
+
+    const val = String(rawVal ?? '').trim();
+    if (!val || val === '—' || val === 'Undated / Pending') {
+      blankCount++;
+    } else {
+      counts.set(val, (counts.get(val) || 0) + 1);
+    }
+  }
+
+  if (colKey === 'province') {
+    const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+    for (const p of provNodes) {
+      if (!counts.has(p.provinceName)) {
+        counts.set(p.provinceName, 0);
+      }
+    }
+  }
+
+  const values = Array.from(counts.entries())
+    .sort((a, b) => {
+      if (a[1] > 0 && b[1] === 0) return -1;
+      if (a[1] === 0 && b[1] > 0) return 1;
+      return a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' });
+    })
+    .map(([value, count]) => ({ value, count }));
+
+  return {
+    col: { key: colKey, label: colLabel, type: colType },
+    blankCount,
+    totalRows: matching.length,
+    values
+  };
+}
+
 export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const {
     state,
@@ -1141,14 +1605,25 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     whereaboutsSearch = {},
     whereaboutsProvinceFilter = {},
     whereaboutsStatusFilter = {},
+    whereaboutsTargetYearFilter = {},
+    whereaboutsColFilters = {},
+    whereaboutsShowGraph = {},
+    whereaboutsGraphMode = {},
     whereaboutsPage = {}
   } = ctx;
 
   const viewKey = cfg.viewKey;
+  const activeColFilters = whereaboutsColFilters[viewKey] || {};
   const searchVal = whereaboutsSearch[viewKey] || '';
-  const provFilterVal = whereaboutsProvinceFilter[viewKey] || 'ALL';
-  const statusFilterVal = whereaboutsStatusFilter[viewKey] || 'ALL';
+  const provFilterVal = activeColFilters.province?.value || whereaboutsProvinceFilter[viewKey] || 'ALL';
+  const statusFilterVal = activeColFilters.stage?.value || whereaboutsStatusFilter[viewKey] || 'ALL';
   const pageVal = whereaboutsPage[viewKey] || 1;
+  const targetYearFilterVal = whereaboutsTargetYearFilter[viewKey] || 'ALL';
+  const isCfWhereabouts = viewKey === 'cf-whereabouts';
+  const showGraphVal = isCfWhereabouts
+    ? Boolean(whereaboutsShowGraph[viewKey])
+    : whereaboutsShowGraph[viewKey] !== false;
+  const graphMode = whereaboutsGraphMode[viewKey] || 'graph';
 
   const rawRows = (state?.optool?.[cfg.tabName] || []).map((r, originalIndex) => ({
     ...r,
@@ -1204,7 +1679,69 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const totalArea = enrichedRows.reduce((sum, r) => sum + r.carpable, 0);
   const pct = (part, whole) => (whole > 0 ? ((part / whole) * 100).toFixed(1) : '0.0');
 
-  // Compute summary count & area for each configured date
+  // Filter scope rows by active province, search, status, and column filters
+  const curYear = new Date().getFullYear();
+  let scopeRows = enrichedRows;
+
+  // 1. Province filter (from column dropdown or toolbar)
+  const provFilterSpec = activeColFilters.province;
+  let selectedProvs = [];
+  if (provFilterSpec && Array.isArray(provFilterSpec.values) && provFilterSpec.values.length > 0) {
+    selectedProvs = provFilterSpec.values.filter((v) => v && v !== 'ALL');
+  } else if (provFilterVal && provFilterVal !== 'ALL') {
+    selectedProvs = [provFilterVal];
+  }
+
+  if (selectedProvs.length > 0) {
+    scopeRows = scopeRows.filter((r) => selectedProvs.some((p) => matchProvinceName(r.province, p)));
+  }
+
+  // 2. Additional column filters (municipality, landowner, dates, target, stage, lhid)
+  for (const [k, spec] of Object.entries(activeColFilters)) {
+    if (k === 'province') continue; // Handled above
+    scopeRows = scopeRows.filter((r) => matchesWhereaboutsColFilter(r, k, spec, cfg));
+  }
+
+  // 3. Status filter (if set from toolbar and not overridden by column filter)
+  if (statusFilterVal !== 'ALL' && !activeColFilters.stage) {
+    if (statusFilterVal === 'all_complete') {
+      scopeRows = scopeRows.filter((r) => r.isAllDatesPopulated);
+    } else if (statusFilterVal === 'pending') {
+      scopeRows = scopeRows.filter((r) => !r.isAllDatesPopulated);
+    } else if (statusFilterVal.startsWith('with_')) {
+      const dKey = statusFilterVal.replace('with_', '');
+      scopeRows = scopeRows.filter((r) => Boolean(r.datesMap[dKey]));
+    }
+  }
+
+  // 4. Search query
+  const q = (searchVal || '').trim().toLowerCase();
+  if (q) {
+    scopeRows = scopeRows.filter((r) => {
+      const dateText = Object.values(r.datesMap).join(' ');
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  // Scope summary metrics (Filtered by Province & Column Filters!)
+  const scopeCount = scopeRows.length;
+  const scopeArea = scopeRows.reduce((s, r) => s + r.carpable, 0);
+  const scopeDateMetrics = cfg.dates.map((d) => {
+    const matched = scopeRows.filter((r) => Boolean(r.datesMap[d.key]));
+    return {
+      ...d,
+      count: matched.length,
+      area: matched.reduce((s, r) => s + r.carpable, 0),
+      rate: pct(matched.length, scopeCount)
+    };
+  });
+  const scopeAllCompleteRows = scopeRows.filter((r) => r.isAllDatesPopulated);
+  const scopeAllCompleteCount = scopeAllCompleteRows.length;
+  const scopeAllCompleteArea = scopeAllCompleteRows.reduce((s, r) => s + r.carpable, 0);
+  const scopePendingCount = scopeCount - scopeAllCompleteCount;
+
+  // Compute summary count & area for each configured date across all enrichedRows (for matrix)
   const dateMetrics = cfg.dates.map((d) => {
     const matched = enrichedRows.filter((r) => Boolean(r.datesMap[d.key]));
     return {
@@ -1289,34 +1826,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     return b.total - a.total;
   });
 
-  // Filter rows for Master Table
-  let filteredRows = enrichedRows;
-  if (provFilterVal && provFilterVal !== 'ALL') {
-    const fNorm = provFilterVal.trim().toUpperCase();
-    filteredRows = filteredRows.filter((r) => {
-      const pNorm = String(r.province || '').trim().toUpperCase();
-      return pNorm === fNorm || pNorm.includes(fNorm) || fNorm.includes(pNorm);
-    });
-  }
-
-  if (statusFilterVal !== 'ALL') {
-    if (statusFilterVal === 'all_complete') {
-      filteredRows = filteredRows.filter((r) => r.isAllDatesPopulated);
-    } else if (statusFilterVal === 'pending') {
-      filteredRows = filteredRows.filter((r) => !r.isAllDatesPopulated);
-    } else if (statusFilterVal.startsWith('with_')) {
-      const dKey = statusFilterVal.replace('with_', '');
-      filteredRows = filteredRows.filter((r) => Boolean(r.datesMap[dKey]));
-    }
-  }
-
-  const q = (searchVal || '').trim().toLowerCase();
-  if (q) {
-    filteredRows = filteredRows.filter((r) => {
-      const dateText = Object.values(r.datesMap).join(' ');
-      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
-      return hay.includes(q);
-    });
+  // Table rows: filter scopeRows by target year (for CF Whereabouts)
+  let filteredRows = scopeRows;
+  if (isCfWhereabouts && targetYearFilterVal !== 'ALL') {
+    filteredRows = filteredRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
   }
 
   // Pagination
@@ -1326,22 +1839,272 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const currentPage = Math.min(Math.max(1, Number(pageVal) || 1), totalPages);
   const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // Top KPI Cards (Show up to 5 metrics)
-  const topDateMetrics = dateMetrics.slice(0, 3);
+  // Top KPI Cards for CF Whereabouts (Dynamically filtered by Province & Column Filters!)
+  let cfKpiHtml = '';
+  if (isCfWhereabouts) {
+    // 1. Available Target Years
+    const targetYearSet = new Set();
+    targetYearSet.add(String(curYear));
+    targetYearSet.add(String(curYear - 1));
+    for (const pData of Object.values(state?.nepMilestoneList?.cf_doc || {})) {
+      if (pData?.year) targetYearSet.add(String(pData.year));
+    }
+    for (const r of enrichedRows) {
+      if (r.targetYear) targetYearSet.add(String(r.targetYear));
+      if (r.target) targetYearSet.add(String(r.target));
+      for (const dt of Object.values(r.datesMap)) {
+        const m = String(dt || '').match(/\b(20\d{2})\b/);
+        if (m) targetYearSet.add(m[1]);
+      }
+    }
+    const numYears = Array.from(targetYearSet)
+      .filter((y) => /^\d{4}$/.test(y))
+      .sort((a, b) => Number(b) - Number(a));
+    const otherYears = Array.from(targetYearSet)
+      .filter((y) => !/^\d{4}$/.test(y))
+      .sort();
+    const allTargetYears = ['ALL', ...numYears, ...otherYears];
 
-  return `
-    ${renderEmptyWorkspaceCallout(state)}
+    // 2. Global Target: based on the Database worksheet per province
+    let dbScopeRows = dbRows;
+    if (provinceScope) {
+      dbScopeRows = dbScopeRows.filter((r) => matchProvinceName(r.province, provinceScope.provinceName));
+    }
+    if (selectedProvs.length > 0) {
+      dbScopeRows = dbScopeRows.filter((r) => selectedProvs.some((p) => matchProvinceName(r.province, p)));
+    }
 
+    let globalTargetLhs = dbScopeRows.length;
+    let globalTargetArea = dbScopeRows.reduce((sum, r) => {
+      return sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0);
+    }, 0);
+
+    // Fallback to nepMilestoneList / nepTargets if Database worksheet has no records
+    const targetProvCodes = selectedProvs.map((p) => resolveProvinceCode(p, schemas)).filter(Boolean);
+    const msMap = state?.nepMilestoneList?.cf_doc || {};
+    if (globalTargetLhs === 0 && globalTargetArea === 0) {
+      if (targetProvCodes.length > 0) {
+        for (const pCode of targetProvCodes) {
+          const pData = msMap[pCode];
+          globalTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
+          globalTargetArea += Math.max(0, Number(pData?.area) || 0);
+        }
+      } else {
+        for (const [pCode, pData] of Object.entries(msMap)) {
+          if (provinceScope && pCode !== provinceScope.code) continue;
+          globalTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
+          globalTargetArea += Math.max(0, Number(pData?.area) || 0);
+        }
+        if (globalTargetLhs === 0 && globalTargetArea === 0) {
+          const regTarget = state?.nepTargets?.cf_doc || {};
+          globalTargetLhs = Math.max(0, Math.round(Number(regTarget.targetCount) || 0));
+          globalTargetArea = Math.max(0, Number(regTarget.targetAreaHas) || 0);
+        }
+      }
+    }
+
+    let targetBadgeText = '';
+    if (selectedProvs.length === 1) {
+      targetBadgeText = selectedProvs[0];
+    } else if (selectedProvs.length > 1) {
+      targetBadgeText = selectedProvs.length <= 2 ? selectedProvs.join(', ') : `${selectedProvs.length} Provinces`;
+    } else {
+      targetBadgeText = provinceScope ? provinceScope.provinceName : 'Region VIII';
+    }
+
+    // 3. Global Accomplishment (Dynamic based on filtered scopeRows!)
+    const globalAccompLhs = scopeCount;
+    const globalAccompArea = scopeArea;
+    const accompBadgeText = targetBadgeText;
+
+    // 4. Selected Year Target (Dynamic based on selected province & year)
+    let selectedYearTargetLhs = 0;
+    let selectedYearTargetArea = 0;
+    if (targetProvCodes.length > 0) {
+      for (const pCode of targetProvCodes) {
+        const pData = msMap[pCode];
+        const pYear = String(pData?.year || curYear);
+        if (targetYearFilterVal === 'ALL' || pYear === String(targetYearFilterVal)) {
+          selectedYearTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
+          selectedYearTargetArea += Math.max(0, Number(pData?.area) || 0);
+        }
+      }
+    } else {
+      for (const [pCode, pData] of Object.entries(msMap)) {
+        if (provinceScope && pCode !== provinceScope.code) continue;
+        const pYear = String(pData?.year || curYear);
+        if (targetYearFilterVal === 'ALL' || pYear === String(targetYearFilterVal)) {
+          selectedYearTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
+          selectedYearTargetArea += Math.max(0, Number(pData?.area) || 0);
+        }
+      }
+    }
+
+    // If no milestone target entered in nepMilestoneList for this year/province, fallback to Database target
+    if (selectedYearTargetLhs === 0 && selectedYearTargetArea === 0) {
+      if (targetYearFilterVal === 'ALL' || targetYearFilterVal === String(curYear)) {
+        selectedYearTargetLhs = globalTargetLhs;
+        selectedYearTargetArea = globalTargetArea;
+      } else {
+        const yearDbRows = dbScopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
+        selectedYearTargetLhs = yearDbRows.length;
+        selectedYearTargetArea = yearDbRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0), 0);
+        if (selectedYearTargetLhs === 0 && selectedYearTargetArea === 0) {
+          selectedYearTargetLhs = globalTargetLhs;
+          selectedYearTargetArea = globalTargetArea;
+        }
+      }
+    }
+
+    // 5. Selected Year Actual Milestones (FI, Prepared & Signed, Reported Month)
+    // Filtered by both Target Year AND the active scope (Province, Municipality, etc.)!
+    const yearMatchingRows = scopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
+    const fiRows = yearMatchingRows.filter((r) => Boolean(r.datesMap.dateFiConducted));
+    const prepRows = yearMatchingRows.filter((r) => Boolean(r.datesMap.datePreparedSigned));
+    const repRows = yearMatchingRows.filter((r) => Boolean(r.datesMap.reportedMonth));
+
+    const fiLhs = fiRows.length;
+    const fiArea = fiRows.reduce((s, r) => s + r.carpable, 0);
+    const prepLhs = prepRows.length;
+    const prepArea = prepRows.reduce((s, r) => s + r.carpable, 0);
+    const repLhs = repRows.length;
+    const repArea = repRows.reduce((s, r) => s + r.carpable, 0);
+
+    cfKpiHtml = `
+      <!-- Row 1: Global Target & Global Accomplishment -->
+      <section class="cf-kpi-global-grid">
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Global Target</span>
+            <span class="cf-kpi-badge">${esc(targetBadgeText)}</span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${globalTargetLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(globalTargetArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Global Accomplishment</span>
+            <span class="cf-kpi-badge">${esc(accompBadgeText)}</span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${globalAccompLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(globalAccompArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Row 2: Target Year Dropdown Filter -->
+      <div class="cf-target-year-bar">
+        <label for="whereabouts-target-year-filter" class="cf-target-year-label">Target year:</label>
+        <select id="whereabouts-target-year-filter" class="cf-target-year-select" aria-label="Select Target Year">
+          ${allTargetYears
+            .map(
+              (yr) =>
+                `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>${esc(yr)}</option>`
+            )
+            .join('')}
+        </select>
+      </div>
+
+      <!-- Row 3: 4 Target Year Filtered Cards -->
+      <section class="cf-kpi-year-grid">
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Target Year: ${esc(targetYearFilterVal)}</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${selectedYearTargetLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(selectedYearTargetArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Total with Conducted FI</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${fiLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(fiArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Total with Prepared &amp; Signed</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${prepLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(prepArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cf-kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Total with Reported Month</span>
+            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${repLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(repArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  const standardKpiHtml = `
     <!-- KPI Grid -->
     <section class="kpi-grid">
       <div class="kpi-card highlight">
         <div class="kpi-label">Total ${esc(cfg.tabName)} Parcels</div>
-        <div class="kpi-primary">${totalCount.toLocaleString()} Parcels</div>
-        <div class="kpi-secondary">${fmtArea(totalArea)} CARPable HAS</div>
-        <div class="kpi-meta">Active records in ${esc(cfg.tabName)}</div>
+        <div class="kpi-primary">${scopeCount.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary">${fmtArea(scopeArea)} CARPable HAS</div>
+        <div class="kpi-meta">Active records in ${esc(cfg.tabName)}${provFilterVal !== 'ALL' ? ` (${esc(provFilterVal)})` : ''}</div>
       </div>
 
-      ${topDateMetrics
+      ${scopeDateMetrics
         .map(
           (d) => `
         <div class="kpi-card ${d.badgeClass.replace('badge-', '')}">
@@ -1359,132 +2122,171 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
       <div class="kpi-card">
         <div class="kpi-label">All Milestone Dates Complete</div>
-        <div class="kpi-primary">${allCompleteCount.toLocaleString()} Parcels</div>
-        <div class="kpi-secondary">${fmtArea(allCompleteArea)} HAS (${pct(allCompleteCount, totalCount)}%)</div>
+        <div class="kpi-primary">${scopeAllCompleteCount.toLocaleString()} Parcels</div>
+        <div class="kpi-secondary">${fmtArea(scopeAllCompleteArea)} HAS (${pct(scopeAllCompleteCount, scopeCount)}%)</div>
         <div class="progress-track">
-          <div class="progress-fill" style="width:${pct(allCompleteCount, totalCount)}%;"></div>
+          <div class="progress-fill" style="width:${pct(scopeAllCompleteCount, scopeCount)}%;"></div>
         </div>
-        <div class="kpi-meta">${pendingCount} Parcels with pending dates</div>
+        <div class="kpi-meta">${scopePendingCount} Parcels with pending dates</div>
       </div>
     </section>
+  `;
 
-    <!-- Provincial & Monthly Summary Matrices -->
-    <section class="grid-2" style="margin-bottom: 18px;">
-      <!-- Panel 1: Provincial Summary Matrix -->
+  const hasAnyActiveFilter =
+    provFilterVal !== 'ALL' ||
+    (isCfWhereabouts && targetYearFilterVal !== 'ALL') ||
+    statusFilterVal !== 'ALL' ||
+    Boolean(q) ||
+    Object.values(activeColFilters).some((s) => s && s.value && s.value !== 'ALL');
+
+  return `
+    ${renderEmptyWorkspaceCallout(state)}
+
+    ${isCfWhereabouts ? cfKpiHtml : standardKpiHtml}
+
+    <!-- Provincial & Monthly Summary Matrices / Graphs -->
+    <div id="whereabouts-graph-container" style="display: ${showGraphVal ? 'block' : 'none'}; margin-bottom: 18px;">
+    <section class="grid-2">
+      <!-- Panel 1: Provincial Summary Matrix / Graph -->
       <div class="panel">
-        <div class="panel-header">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div>
-            <h3 class="panel-title">${esc(cfg.tabName)} Whereabouts by Province</h3>
+            <h3 class="panel-title">${esc(cfg.tabName)} Whereabouts by Province ${graphMode === 'graph' ? '(Graph)' : ''}</h3>
             <p class="panel-subtitle">Regional breakdown of ${esc(cfg.dates.map((d) => d.shortLabel).join(', '))}</p>
           </div>
+          <div class="btn-group" role="group" aria-label="Toggle Graph or Table view for Province">
+            <button type="button" class="btn btn-xs ${graphMode === 'graph' ? 'btn-primary' : 'btn-secondary'}" data-whereabouts-view-mode="graph" title="Show visual comparison graph">📊 Graph</button>
+            <button type="button" class="btn btn-xs ${graphMode === 'table' ? 'btn-primary' : 'btn-secondary'}" data-whereabouts-view-mode="table" title="Show data table">▦ Table</button>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table class="nep-milestone-table">
-            <thead>
-              <tr>
-                <th>Province</th>
-                <th class="right">Total</th>
-                <th class="right">Area (HAS)</th>
-                ${cfg.dates.map((d) => `<th class="right">${esc(d.shortLabel)}</th>`).join('')}
-                <th class="right">Complete</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                provSummaryList.length === 0
-                  ? `<tr><td colspan="${4 + cfg.dates.length}" class="text-center" style="padding:16px;color:var(--text-muted)">No provincial records found</td></tr>`
-                  : provSummaryList
-                      .map(
-                        (p) => `
-                    <tr>
-                      <td style="font-weight:700;">
-                        <span class="badge badge-gray" style="margin-right:6px;">${esc(p.code)}</span>
-                        ${esc(p.name)}
-                      </td>
-                      <td class="right"><strong>${p.total}</strong></td>
-                      <td class="right">${fmtArea(p.area)} HAS</td>
-                      ${cfg.dates
-                        .map((d) => {
-                          const cnt = p.dateCounts[d.key] || 0;
-                          return `<td class="right">${cnt > 0 ? `<span class="badge ${d.badgeClass}">${cnt}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>`;
-                        })
-                        .join('')}
-                      <td class="right">
-                        <span class="badge ${p.completeCount === p.total && p.total > 0 ? 'badge-green' : 'badge-gray'}">
-                          ${p.completeCount} (${pct(p.completeCount, p.total)}%)
-                        </span>
-                      </td>
-                    </tr>
-                  `
-                      )
-                      .join('')
-              }
-            </tbody>
-            <tfoot>
-              <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
-                <td>Region VIII Total</td>
-                <td class="right">${totalCount}</td>
-                <td class="right">${fmtArea(totalArea)} HAS</td>
-                ${dateMetrics.map((d) => `<td class="right"><span class="badge ${d.badgeClass}">${d.count}</span></td>`).join('')}
-                <td class="right"><span class="badge badge-green">${allCompleteCount} (${pct(allCompleteCount, totalCount)}%)</span></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="panel-body" style="padding:14px 16px;">
+          ${
+            graphMode === 'graph'
+              ? renderWhereaboutsProvincialGraphSvg(provSummaryList, cfg)
+              : `
+            <div class="table-wrap">
+              <table class="nep-milestone-table">
+                <thead>
+                  <tr>
+                    <th>Province</th>
+                    <th class="right">Total</th>
+                    <th class="right">Area (HAS)</th>
+                    ${cfg.dates.map((d) => `<th class="right">${esc(d.shortLabel)}</th>`).join('')}
+                    <th class="right">Complete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${
+                    provSummaryList.length === 0
+                      ? `<tr><td colspan="${4 + cfg.dates.length}" class="text-center" style="padding:16px;color:var(--text-muted)">No provincial records found</td></tr>`
+                      : provSummaryList
+                          .map(
+                            (p) => `
+                        <tr>
+                          <td style="font-weight:700;">
+                            <span class="badge badge-gray" style="margin-right:6px;">${esc(p.code)}</span>
+                            ${esc(p.name)}
+                          </td>
+                          <td class="right"><strong>${p.total}</strong></td>
+                          <td class="right">${fmtArea(p.area)} HAS</td>
+                          ${cfg.dates
+                            .map((d) => {
+                              const cnt = p.dateCounts[d.key] || 0;
+                              return `<td class="right">${cnt > 0 ? `<span class="badge ${d.badgeClass}">${cnt}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>`;
+                            })
+                            .join('')}
+                          <td class="right">
+                            <span class="badge ${p.completeCount === p.total && p.total > 0 ? 'badge-green' : 'badge-gray'}">
+                              ${p.completeCount} (${pct(p.completeCount, p.total)}%)
+                            </span>
+                          </td>
+                        </tr>
+                      `
+                          )
+                          .join('')
+                  }
+                </tbody>
+                <tfoot>
+                  <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
+                    <td>Region VIII Total</td>
+                    <td class="right">${totalCount}</td>
+                    <td class="right">${fmtArea(totalArea)} HAS</td>
+                    ${dateMetrics.map((d) => `<td class="right"><span class="badge ${d.badgeClass}">${d.count}</span></td>`).join('')}
+                    <td class="right"><span class="badge badge-green">${allCompleteCount} (${pct(allCompleteCount, totalCount)}%)</span></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          `
+          }
         </div>
       </div>
 
-      <!-- Panel 2: Monthly / Timeline Summary Matrix -->
+      <!-- Panel 2: Monthly / Timeline Summary Matrix / Graph -->
       <div class="panel">
-        <div class="panel-header">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div>
-            <h3 class="panel-title">${esc(cfg.tabName)} Summary by Reporting Month</h3>
+            <h3 class="panel-title">${esc(cfg.tabName)} Summary by Reporting Month ${graphMode === 'graph' ? '(Graph)' : ''}</h3>
             <p class="panel-subtitle">Distribution of landholdings across monthly reporting cycles</p>
           </div>
+          <div class="btn-group" role="group" aria-label="Toggle Graph or Table view for Month">
+            <button type="button" class="btn btn-xs ${graphMode === 'graph' ? 'btn-primary' : 'btn-secondary'}" data-whereabouts-view-mode="graph" title="Show visual trend graph">📊 Graph</button>
+            <button type="button" class="btn btn-xs ${graphMode === 'table' ? 'btn-primary' : 'btn-secondary'}" data-whereabouts-view-mode="table" title="Show data table">▦ Table</button>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table class="nep-milestone-table">
-            <thead>
-              <tr>
-                <th>Reporting Month</th>
-                <th class="right">Parcels</th>
-                <th class="right">Area (HAS)</th>
-                <th class="right">Dates Populated</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                monthSummaryList.length === 0
-                  ? `<tr><td colspan="4" class="text-center" style="padding:16px;color:var(--text-muted)">No monthly records</td></tr>`
-                  : monthSummaryList
-                      .map(
-                        (m) => `
-                    <tr>
-                      <td style="font-weight:700;">
-                        <span class="badge ${m.label.includes('Undated') ? 'badge-gray' : 'badge-amber'}">
-                          ${esc(m.label)}
-                        </span>
-                      </td>
-                      <td class="right"><strong>${m.total}</strong></td>
-                      <td class="right">${fmtArea(m.area)} HAS</td>
-                      <td class="right"><span class="badge ${m.completeCount > 0 ? 'badge-green' : 'badge-gray'}">${m.completeCount} (${pct(m.completeCount, m.total)}%)</span></td>
-                    </tr>
-                  `
-                      )
-                      .join('')
-              }
-            </tbody>
-            <tfoot>
-              <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
-                <td>Total Monthly Cycles</td>
-                <td class="right">${totalCount}</td>
-                <td class="right">${fmtArea(totalArea)} HAS</td>
-                <td class="right">${allCompleteCount}</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="panel-body" style="padding:14px 16px;">
+          ${
+            graphMode === 'graph'
+              ? renderWhereaboutsMonthlyGraphSvg(monthSummaryList, cfg)
+              : `
+            <div class="table-wrap">
+              <table class="nep-milestone-table">
+                <thead>
+                  <tr>
+                    <th>Reporting Month</th>
+                    <th class="right">Parcels</th>
+                    <th class="right">Area (HAS)</th>
+                    <th class="right">Dates Populated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${
+                    monthSummaryList.length === 0
+                      ? `<tr><td colspan="4" class="text-center" style="padding:16px;color:var(--text-muted)">No monthly records</td></tr>`
+                      : monthSummaryList
+                          .map(
+                            (m) => `
+                        <tr>
+                          <td style="font-weight:700;">
+                            <span class="badge ${m.label.includes('Undated') ? 'badge-gray' : 'badge-amber'}">
+                              ${esc(m.label)}
+                            </span>
+                          </td>
+                          <td class="right"><strong>${m.total}</strong></td>
+                          <td class="right">${fmtArea(m.area)} HAS</td>
+                          <td class="right"><span class="badge ${m.completeCount > 0 ? 'badge-green' : 'badge-gray'}">${m.completeCount} (${pct(m.completeCount, m.total)}%)</span></td>
+                        </tr>
+                      `
+                          )
+                          .join('')
+                  }
+                </tbody>
+                <tfoot>
+                  <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
+                    <td>Total Monthly Cycles</td>
+                    <td class="right">${totalCount}</td>
+                    <td class="right">${fmtArea(totalArea)} HAS</td>
+                    <td class="right">${allCompleteCount}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          `
+          }
         </div>
       </div>
     </section>
+    </div>
 
     <!-- Master Ledger Panel -->
     <div class="panel" id="panel-whereabouts-master">
@@ -1537,15 +2339,34 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-whereabouts" title="Full Screen Report / Table">
             <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
           </button>
+          <button type="button" class="btn ${showGraphVal ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-graph-toggle" id="btn-whereabouts-toggle-graph" title="Toggle Provincial &amp; Monthly Summary Matrices">
+            <span class="icon">📊</span> <span class="label">Graph</span>
+          </button>
         </div>
       </div>
 
       <div style="padding:8px 16px;background:var(--bg-light);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">
-        <div>
-          Showing <strong>${pagedRows.length}</strong> of <strong>${totalFiltered}</strong> matching ${esc(cfg.tabName)} records
-          ${provFilterVal !== 'ALL' ? `• Province: <strong>${esc(provFilterVal)}</strong>` : ''}
-          ${statusFilterVal !== 'ALL' ? `• Filter: <strong>${esc(statusFilterVal)}</strong>` : ''}
-          ${q ? `• Search: "<em>${esc(q)}</em>"` : ''}
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span>Showing <strong>${pagedRows.length}</strong> of <strong>${totalFiltered}</strong> matching ${esc(cfg.tabName)} records</span>
+          ${isCfWhereabouts && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
+          ${provFilterVal !== 'ALL' ? `<span class="badge badge-green">Province: ${esc(provFilterVal)}</span>` : ''}
+          ${Object.entries(activeColFilters)
+            .map(([k, s]) => {
+              if (k === 'province' || !s || !s.value || s.value === 'ALL') return '';
+              return `<span class="badge badge-blue">${esc(k)}: ${esc(s.value)}</span>`;
+            })
+            .join(' ')}
+          ${statusFilterVal !== 'ALL' && !activeColFilters.stage ? `<span class="badge badge-amber">Filter: ${esc(statusFilterVal)}</span>` : ''}
+          ${q ? `<span class="badge badge-gray">Search: "${esc(q)}"</span>` : ''}
+          ${
+            hasAnyActiveFilter
+              ? `
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-whereabouts-clear-all-filters" style="font-size:11.5px;padding:2px 8px;margin-left:4px;" title="Reset all column and toolbar filters">
+              ✕ Clear Filters
+            </button>
+          `
+              : ''
+          }
         </div>
         ${
           totalPages > 1
@@ -1564,15 +2385,146 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <table class="nep-milestone-table">
           <thead>
             <tr>
-              <th style="width:36px;">#</th>
-              <th>LHID</th>
-              <th>Province</th>
-              <th>Municipality / Barangay</th>
-              <th>Landowner / Title</th>
+              <th style="width:36px;" class="center">#</th>
+              ${(() => {
+                const lhidLabel = getWhereaboutsColFilterLabel(activeColFilters.lhid);
+                const provLabel = getWhereaboutsColFilterLabel(
+                  activeColFilters.province,
+                  selectedProvs.length > 0
+                    ? (selectedProvs.length <= 2 ? selectedProvs.join(', ') : `${selectedProvs.length} selected`)
+                    : ''
+                );
+                const muniLabel = getWhereaboutsColFilterLabel(activeColFilters.municipality);
+                const loLabel = getWhereaboutsColFilterLabel(activeColFilters.landOwner);
+                const targetColLabel = getWhereaboutsColFilterLabel(activeColFilters.target);
+                const stageLabel = getWhereaboutsColFilterLabel(
+                  activeColFilters.stage,
+                  statusFilterVal !== 'ALL' && !statusFilterVal.startsWith('with_') && statusFilterVal !== 'all_complete' && statusFilterVal !== 'pending'
+                    ? statusFilterVal
+                    : ''
+                );
+                return `
+              <th>
+                <button
+                  type="button"
+                  class="col-filter-btn ${lhidLabel ? 'active-filter' : ''}"
+                  data-whereabouts-col-dropdown="lhid"
+                  data-col-label="LHID"
+                  aria-haspopup="listbox"
+                  aria-label="Filter LHID"
+                  title="${lhidLabel ? `LHID: ${esc(lhidLabel)}` : 'Filter LHID'}"
+                >
+                  <span class="col-filter-col-title">LHID</span>
+                  <span class="col-filter-btn-text" ${lhidLabel ? '' : 'hidden'}>${lhidLabel ? esc(lhidLabel) : ''}</span>
+                  <span class="col-filter-caret">▾</span>
+                </button>
+              </th>
+              <th>
+                <button
+                  type="button"
+                  class="col-filter-btn ${provLabel ? 'active-filter' : ''}"
+                  data-whereabouts-col-dropdown="province"
+                  data-col-label="Province"
+                  aria-haspopup="listbox"
+                  aria-label="Filter Province"
+                  title="${provLabel ? `Province: ${esc(provLabel)}` : 'Filter Province'}"
+                >
+                  <span class="col-filter-col-title">PROVINCE</span>
+                  <span class="col-filter-btn-text" ${provLabel ? '' : 'hidden'}>${provLabel ? esc(provLabel) : ''}</span>
+                  <span class="col-filter-caret">▾</span>
+                </button>
+              </th>
+              <th>
+                <button
+                  type="button"
+                  class="col-filter-btn ${muniLabel ? 'active-filter' : ''}"
+                  data-whereabouts-col-dropdown="municipality"
+                  data-col-label="Municipality"
+                  aria-haspopup="listbox"
+                  aria-label="Filter Municipality"
+                  title="${muniLabel ? `Municipality: ${esc(muniLabel)}` : 'Filter Municipality'}"
+                >
+                  <span class="col-filter-col-title">MUNICIPALITY</span>
+                  <span class="col-filter-btn-text" ${muniLabel ? '' : 'hidden'}>${muniLabel ? esc(muniLabel) : ''}</span>
+                  <span class="col-filter-caret">▾</span>
+                </button>
+              </th>
+              <th>
+                <button
+                  type="button"
+                  class="col-filter-btn ${loLabel ? 'active-filter' : ''}"
+                  data-whereabouts-col-dropdown="landOwner"
+                  data-col-label="Landowner / Title"
+                  aria-haspopup="listbox"
+                  aria-label="Filter Landowner / Title"
+                  title="${loLabel ? `Landowner: ${esc(loLabel)}` : 'Filter Landowner / Title'}"
+                >
+                  <span class="col-filter-col-title">LANDOWNER / TITLE</span>
+                  <span class="col-filter-btn-text" ${loLabel ? '' : 'hidden'}>${loLabel ? esc(loLabel) : ''}</span>
+                  <span class="col-filter-caret">▾</span>
+                </button>
+              </th>
               <th class="right">CARPable Area</th>
-              ${cfg.dates.map((d) => `<th>${esc(d.label)}</th>`).join('')}
-              ${cfg.extraColHeader ? `<th>${esc(cfg.extraColHeader)}</th>` : ''}
-              <th>Whereabouts Status</th>
+              ${cfg.dates
+                .map((d) => {
+                  const dLabel = getWhereaboutsColFilterLabel(activeColFilters[d.key]);
+                  return `
+                    <th>
+                      <button
+                        type="button"
+                        class="col-filter-btn ${dLabel ? 'active-filter' : ''}"
+                        data-whereabouts-col-dropdown="${esc(d.key)}"
+                        data-col-label="${esc(d.label)}"
+                        aria-haspopup="listbox"
+                        aria-label="Filter ${esc(d.label)}"
+                        title="${dLabel ? `${esc(d.label)}: ${esc(dLabel)}` : `Filter ${esc(d.label)}`}"
+                      >
+                        <span class="col-filter-col-title">${esc(d.label)}</span>
+                        <span class="col-filter-btn-text" ${dLabel ? '' : 'hidden'}>${dLabel ? esc(dLabel) : ''}</span>
+                        <span class="col-filter-caret">▾</span>
+                      </button>
+                    </th>
+                  `;
+                })
+                .join('')}
+              ${
+                cfg.extraColHeader
+                  ? `
+                <th>
+                  <button
+                    type="button"
+                    class="col-filter-btn ${targetColLabel ? 'active-filter' : ''}"
+                    data-whereabouts-col-dropdown="target"
+                    data-col-label="${esc(cfg.extraColHeader)}"
+                    aria-haspopup="listbox"
+                    aria-label="Filter ${esc(cfg.extraColHeader)}"
+                    title="${targetColLabel ? `${esc(cfg.extraColHeader)}: ${esc(targetColLabel)}` : `Filter ${esc(cfg.extraColHeader)}`}"
+                  >
+                    <span class="col-filter-col-title">${esc(cfg.extraColHeader.toUpperCase())}</span>
+                    <span class="col-filter-btn-text" ${targetColLabel ? '' : 'hidden'}>${targetColLabel ? esc(targetColLabel) : ''}</span>
+                    <span class="col-filter-caret">▾</span>
+                  </button>
+                </th>
+              `
+                  : ''
+              }
+              <th>
+                <button
+                  type="button"
+                  class="col-filter-btn ${stageLabel ? 'active-filter' : ''}"
+                  data-whereabouts-col-dropdown="stage"
+                  data-col-label="Whereabouts Status"
+                  aria-haspopup="listbox"
+                  aria-label="Filter Whereabouts Status"
+                  title="${stageLabel ? `Status: ${esc(stageLabel)}` : 'Filter Whereabouts Status'}"
+                >
+                  <span class="col-filter-col-title">WHEREABOUTS STATUS</span>
+                  <span class="col-filter-btn-text" ${stageLabel ? '' : 'hidden'}>${stageLabel ? esc(stageLabel) : ''}</span>
+                  <span class="col-filter-caret">▾</span>
+                </button>
+              </th>
+                `;
+              })()}
               <th class="right" style="width:110px;">Action</th>
             </tr>
           </thead>
@@ -1596,10 +2548,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                     <td>
                       <button
                         type="button"
-                        class="btn btn-ghost-light btn-xs lhid-chip"
+                        class="link-btn lhid-chip"
                         data-lhid="${esc(r.lhid)}"
                         title="Click to view Landholding Profile &amp; Milestones"
-                        style="font-family:var(--font-mono);font-weight:700;letter-spacing:0.3px;"
                       >
                         ${esc(r.lhid)}
                       </button>
@@ -1899,7 +2850,7 @@ export function renderDashboardView(ctx) {
             Installation: <strong>${optoolSummary.Installation}</strong>
           </p>
         </div>
-        <button class="btn btn-secondary btn-sm" data-nav="optool">Open Optool Supportlist</button>
+        <button class="btn btn-secondary btn-sm" data-nav="optool">Open Optool Support List</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -2126,32 +3077,57 @@ export function isChecklistChecked(value) {
   return !UNCHECKED_CHECKLIST_VALUES.has(String(value).trim().toLowerCase());
 }
 
-function normalizeFilterSpec(filterSpec) {
-  if (filterSpec === null || filterSpec === undefined) return { mode: 'auto', value: '' };
+export function normalizeFilterSpec(filterSpec) {
+  if (filterSpec === null || filterSpec === undefined) return { mode: 'auto', value: '', values: [] };
   if (typeof filterSpec === 'object') {
+    const values = Array.isArray(filterSpec.values) ? filterSpec.values : [];
+    let value = String(filterSpec.value ?? '').trim();
+    if (!value && values.length > 0) {
+      value = values.join(', ');
+    }
     return {
-      mode: filterSpec.mode || 'auto',
-      value: String(filterSpec.value ?? '').trim()
+      mode: filterSpec.mode || (values.length > 0 ? 'multi' : 'auto'),
+      value,
+      values
     };
   }
-  return { mode: 'auto', value: String(filterSpec).trim() };
+  return { mode: 'auto', value: String(filterSpec).trim(), values: [] };
 }
 
 export function getColumnFilterLabel(filterSpec, colType = 'text') {
-  const { mode, value } = normalizeFilterSpec(filterSpec);
+  const spec = normalizeFilterSpec(filterSpec);
+  if (spec.values && spec.values.length > 0) {
+    const valid = spec.values.filter((v) => v !== '' && v !== 'ALL');
+    if (valid.length === 0) return 'All';
+    if (valid.length === 1) {
+      const v = valid[0];
+      return v === BLANK_FILTER_TOKEN || v === '__BLANK__' ? (colType === 'checkbox' ? '(Unchecked)' : '(Blank)') : v;
+    }
+    if (valid.length === 2) {
+      return valid.map((v) => (v === BLANK_FILTER_TOKEN || v === '__BLANK__' ? '(Blank)' : v)).join(', ');
+    }
+    return `${valid.length} selected`;
+  }
+  const { mode, value } = spec;
   if (!value) return 'All';
-  if (value === BLANK_FILTER_TOKEN) return colType === 'checkbox' ? '(Unchecked)' : '(Blank)';
+  if (value === BLANK_FILTER_TOKEN || value === '__BLANK__') return colType === 'checkbox' ? '(Unchecked)' : '(Blank)';
   return mode === 'contains' ? `~ ${value}` : value;
 }
 
 function matchesColumnFilter(cellValue, filterSpec, colType) {
-  const { mode, value: q } = normalizeFilterSpec(filterSpec);
-  if (!q) return true;
+  const spec = normalizeFilterSpec(filterSpec);
+  if (spec.values && spec.values.length > 0) {
+    return spec.values.some((v) => matchesSingleOptoolColVal(cellValue, v, spec.mode || 'exact', colType));
+  }
+  if (!spec.value) return true;
+  return matchesSingleOptoolColVal(cellValue, spec.value, spec.mode, colType);
+}
 
+function matchesSingleOptoolColVal(cellValue, q, mode, colType) {
   if (colType === 'checkbox') {
     const checked = isChecklistChecked(cellValue);
-    if (q === BLANK_FILTER_TOKEN) return !checked;
-    const qLower = q.toLowerCase();
+    if (q === BLANK_FILTER_TOKEN || q === '__BLANK__') return !checked;
+    const qLower = String(q).toLowerCase();
     if (mode === 'exact') {
       if (qLower === 'checked' || qLower === 'yes' || qLower === 'true' || qLower === '1') return checked;
       if (qLower === 'unchecked' || qLower === 'no' || qLower === 'false' || qLower === '0') return !checked;
@@ -2163,12 +3139,12 @@ function matchesColumnFilter(cellValue, filterSpec, colType) {
 
   const raw = String(cellValue ?? '').trim();
 
-  if (q === BLANK_FILTER_TOKEN) return raw === '';
-  if (mode === 'exact') return raw.toLowerCase() === q.toLowerCase();
+  if (q === BLANK_FILTER_TOKEN || q === '__BLANK__') return raw === '';
+  if (mode === 'exact') return raw.toLowerCase() === String(q).toLowerCase();
 
   // Support optional numeric comparisons (>10, >=5, <20, <=5) on decimal/integer columns
   if (colType === 'decimal' || colType === 'integer') {
-    const numMatch = q.match(/^(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)$/);
+    const numMatch = String(q).match(/^(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)$/);
     if (numMatch) {
       const numVal = Number(raw);
       const targetNum = Number(numMatch[2]);
@@ -2182,7 +3158,7 @@ function matchesColumnFilter(cellValue, filterSpec, colType) {
     }
   }
 
-  return raw.toLowerCase().includes(q.toLowerCase());
+  return raw.toLowerCase().includes(String(q).toLowerCase());
 }
 
 export const LINKED_DB_PROFILE_FIELDS = [

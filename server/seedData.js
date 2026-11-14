@@ -200,7 +200,8 @@ export function createSeedState() {
         optoolStatus: 'Active - SPLIT',
         currentStatusDesc: 'eTitle Registered at ROD Ormoc',
         newLandSize: '2.4500',
-        ladStatus: 'Registered',
+        ladStatus: 'LAD Balance',
+        workability: 'Workable',
         milestoneTarget: '2026-11',
         year: '2026'
       },
@@ -228,7 +229,8 @@ export function createSeedState() {
         optoolStatus: 'Active - SPLIT',
         currentStatusDesc: 'eTitle Registered',
         newLandSize: '1.5250',
-        ladStatus: 'Registered',
+        ladStatus: 'LAD Balance',
+        workability: 'Workable',
         milestoneTarget: '2026-11',
         year: '2026'
       },
@@ -256,7 +258,8 @@ export function createSeedState() {
         optoolStatus: 'Active - SPLIT',
         currentStatusDesc: 'Distributed to 3 ARBs',
         newLandSize: '3.4000',
-        ladStatus: 'Distributed',
+        ladStatus: 'For Inclusion',
+        workability: 'Workable',
         milestoneTarget: '2026-11',
         year: '2026'
       },
@@ -284,7 +287,8 @@ export function createSeedState() {
         optoolStatus: 'Active - SPLIT',
         currentStatusDesc: 'eTitle Generated - Pending ROD Transmittal',
         newLandSize: '4.1875',
-        ladStatus: 'eTitle Generated',
+        ladStatus: 'Temp. Park',
+        workability: 'For Replacement',
         milestoneTarget: '2026-11',
         year: '2026'
       },
@@ -312,7 +316,8 @@ export function createSeedState() {
         optoolStatus: 'Active - SPLIT',
         currentStatusDesc: 'For Registration at ROD Calbayog',
         newLandSize: '3.8000',
-        ladStatus: 'eTitle Generated',
+        ladStatus: 'LAD Balance',
+        workability: 'Workable',
         milestoneTarget: '2026-10',
         year: '2026'
       },
@@ -340,7 +345,8 @@ export function createSeedState() {
         optoolStatus: 'Completed',
         currentStatusDesc: 'ARB Installed on Parcel',
         newLandSize: '2.2100',
-        ladStatus: 'Installed',
+        ladStatus: 'LAD Balance',
+        workability: 'Workable',
         milestoneTarget: '2026-11',
         year: '2026'
       }

@@ -19,6 +19,10 @@ import {
   renderMovWhereaboutsView,
   renderRegDistWhereaboutsView,
   renderInstallationWhereaboutsView,
+  matchesWhereaboutsTargetYear,
+  resolveProvinceCode,
+  getWhereaboutsColumnFilterValues,
+  getWhereaboutsRowDisplayValue,
   WHEREABOUTS_CONFIGS
 } from './views.js';
 import {
@@ -46,13 +50,15 @@ const appState = {
   monitoringLevel: 'both', // 'both' | 'etitles' | 'area'
   measurementLogic: 'both', // 'both' | 'incremental' | 'cumulative'
   nepMetricMode: 'both', // 'both' | 'count' | 'area'
-  nepYearFilter: '2026', // 'ALL' | '2026' | '2025' | ...
+  nepYearFilter: 'ALL', // 'ALL' | '2026' | '2025' | ...
   nepMilestoneFilter: 'overall', // 'overall' | 'cf_doc' | 'land_survey' | ...
   nepMilestoneTableFilter: 'ALL', // 'ALL' | 'cf_doc' | 'land_survey' | ...
   nepDisplayMode: 'table', // 'table' | 'cards'
+  nepColVisibility: { lhs: true, area: true, arbs: true },
   nepShowMonths: false,
   nepExpandedQuarters: {},
   nepExpandedTargetSems: false,
+  nepExpandedAccompSems: true,
   nepShowProvinces: false,
   nepExpandedMilestones: {},
   filters: {
@@ -72,6 +78,10 @@ const appState = {
   whereaboutsSearch: {},
   whereaboutsProvinceFilter: {},
   whereaboutsStatusFilter: {},
+  whereaboutsTargetYearFilter: {},
+  whereaboutsColFilters: {},
+  whereaboutsShowGraph: {},
+  whereaboutsGraphMode: {},
   whereaboutsPage: {}
 };
 
@@ -139,10 +149,26 @@ function openColFilterPopover(triggerBtn, colKey, container) {
   if (!col) return;
 
   const currentSpec = appState.optoolColFilters[colKey];
-  const currentVal =
-    typeof currentSpec === 'object' && currentSpec !== null
-      ? String(currentSpec.value ?? '')
-      : String(currentSpec ?? '');
+  const allValues = values.map((v) => v.value);
+  if (blankCount > 0) allValues.push('__BLANK__');
+
+  let selectedSet = new Set();
+  let hasActiveFilter = false;
+
+  if (currentSpec) {
+    if (Array.isArray(currentSpec.values) && currentSpec.values.length > 0) {
+      selectedSet = new Set(currentSpec.values);
+      hasActiveFilter = true;
+    } else if (currentSpec.value && currentSpec.value !== 'ALL') {
+      selectedSet = new Set([String(currentSpec.value)]);
+      hasActiveFilter = true;
+    }
+  }
+
+  // If no filter is active, Excel default is that all items are checked
+  if (!hasActiveFilter) {
+    selectedSet = new Set(allValues);
+  }
 
   const pop = document.createElement('div');
   pop.id = 'col-filter-popover';
@@ -155,7 +181,7 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     <div class="col-dd-head">
       <div class="col-dd-title">
         <span>Filter: ${esc(col.label)}</span>
-        <span>${values.length} option(s)</span>
+        <span class="col-dd-summary-pill" id="col-dd-summary-pill">${selectedSet.size} of ${allValues.length}</span>
       </div>
       <input
         type="search"
@@ -167,15 +193,22 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     </div>
     <div class="col-dd-list" id="col-dd-list" role="listbox"></div>
     <div class="col-dd-meta" id="col-dd-meta"></div>
+    <div class="col-dd-footer">
+      <button type="button" class="btn btn-xs btn-secondary" id="col-dd-clear-btn" title="Clear filter (show all)">Clear</button>
+      <div class="col-dd-footer-btns">
+        <button type="button" class="btn btn-xs btn-outline" id="col-dd-cancel-btn">Cancel</button>
+        <button type="button" class="btn btn-xs btn-primary" id="col-dd-apply-btn">OK</button>
+      </div>
+    </div>
   `;
 
   document.body.appendChild(pop);
 
   const rect = triggerBtn.getBoundingClientRect();
-  const popWidth = pop.offsetWidth || 260;
+  const popWidth = 290;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - popWidth - 12));
   const spaceBelow = window.innerHeight - rect.bottom - 12;
-  const openAbove = spaceBelow < 220 && rect.top > spaceBelow;
+  const openAbove = spaceBelow < 260 && rect.top > spaceBelow;
   pop.style.left = `${left}px`;
   if (openAbove) {
     pop.style.bottom = `${window.innerHeight - rect.top + 4}px`;
@@ -188,7 +221,12 @@ function openColFilterPopover(triggerBtn, colKey, container) {
   const searchEl = pop.querySelector('#col-dd-search');
 
   const applyFilter = (spec) => {
-    if (!spec || !spec.value) {
+    if (
+      !spec ||
+      (spec.values && spec.values.length === 0) ||
+      (spec.values && spec.values.length === allValues.length) ||
+      !spec.value
+    ) {
       delete appState.optoolColFilters[colKey];
     } else {
       appState.optoolColFilters[colKey] = spec;
@@ -196,6 +234,21 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     appState.optoolPage = 1;
     updateOptoolRowsInPlace(container);
     closeColFilterPopover();
+  };
+
+  const updateSummaryPill = () => {
+    const pill = pop.querySelector('#col-dd-summary-pill');
+    if (pill) {
+      if (allValues.length === 0) {
+        pill.textContent = '0 options';
+      } else if (selectedSet.size === allValues.length) {
+        pill.textContent = `(All) ${allValues.length}`;
+      } else if (selectedSet.size === 0) {
+        pill.textContent = '0 selected';
+      } else {
+        pill.textContent = `${selectedSet.size} of ${allValues.length}`;
+      }
+    }
   };
 
   let lastFiltered = values;
@@ -210,59 +263,79 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     const parts = [];
 
     const blankLabel = col.type === 'checkbox' ? '(Unchecked)' : '(Blank)';
+    const isAllChecked = allValues.length > 0 && selectedSet.size === allValues.length;
+    const isSomeChecked = selectedSet.size > 0 && selectedSet.size < allValues.length;
+
     if (!q) {
       parts.push(`
-        <button type="button" class="col-dd-item ${!currentVal ? 'selected' : ''}" data-dd-mode="clear" data-dd-val="">
-          <span class="col-dd-val">(All)</span>
+        <label class="col-dd-item col-dd-select-all">
+          <input type="checkbox" class="col-dd-check" id="col-dd-check-all" ${isAllChecked ? 'checked' : ''} />
+          <span class="col-dd-val"><strong>(Select All)</strong></span>
           <span class="col-dd-count">${totalRows}</span>
-        </button>
+        </label>
       `);
       if (blankCount > 0) {
+        const isBlankChecked = selectedSet.has('__BLANK__');
         parts.push(`
-          <button type="button" class="col-dd-item ${currentVal === '__BLANK__' ? 'selected' : ''}" data-dd-mode="exact" data-dd-val="__BLANK__">
+          <label class="col-dd-item ${isBlankChecked ? 'selected' : ''}">
+            <input type="checkbox" class="col-dd-check" data-dd-val="__BLANK__" ${isBlankChecked ? 'checked' : ''} />
             <span class="col-dd-val">${blankLabel}</span>
             <span class="col-dd-count">${blankCount}</span>
-          </button>
+            <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only ${blankLabel}">only</button>
+          </label>
         `);
       }
     } else {
-      const hintMode =
-        col.type === 'decimal' && /^(>=|<=|>|<|=)\s*-?\d/.test(q) ? q : `Contains "${q}"`;
+      const visibleVals = shown.map((v) => v.value);
+      const allSearchChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
       parts.push(`
-        <button type="button" class="col-dd-item contains-opt" data-dd-mode="contains" data-dd-val="${esc(q)}">
-          <span class="col-dd-val">${esc(hintMode)}</span>
-          <span class="col-dd-count">Enter</span>
-        </button>
+        <label class="col-dd-item col-dd-select-all">
+          <input type="checkbox" class="col-dd-check" id="col-dd-check-search-all" ${allSearchChecked ? 'checked' : ''} />
+          <span class="col-dd-val"><strong>(Select All Search Results)</strong></span>
+          <span class="col-dd-count">${filtered.length}</span>
+        </label>
       `);
       if (col.type === 'checkbox' && blankCount > 0 && 'unchecked'.includes(qLower)) {
+        const isBlankChecked = selectedSet.has('__BLANK__');
         parts.push(`
-          <button type="button" class="col-dd-item ${currentVal === '__BLANK__' ? 'selected' : ''}" data-dd-mode="exact" data-dd-val="__BLANK__">
+          <label class="col-dd-item ${isBlankChecked ? 'selected' : ''}">
+            <input type="checkbox" class="col-dd-check" data-dd-val="__BLANK__" ${isBlankChecked ? 'checked' : ''} />
             <span class="col-dd-val">${blankLabel}</span>
             <span class="col-dd-count">${blankCount}</span>
-          </button>
+            <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only ${blankLabel}">only</button>
+          </label>
         `);
       }
     }
 
     for (const item of shown) {
-      const isSelected = currentVal && currentVal.toLowerCase() === item.value.toLowerCase();
+      const isChecked = selectedSet.has(item.value);
       parts.push(`
-        <button type="button" class="col-dd-item ${isSelected ? 'selected' : ''}" data-dd-mode="exact" data-dd-val="${esc(item.value)}">
+        <label class="col-dd-item ${isChecked ? 'selected' : ''}">
+          <input type="checkbox" class="col-dd-check" data-dd-val="${esc(item.value)}" ${isChecked ? 'checked' : ''} />
           <span class="col-dd-val" title="${esc(item.value)}">${esc(item.value)}</span>
           <span class="col-dd-count">${item.count}</span>
-        </button>
+          <button type="button" class="col-dd-only-btn" data-only-val="${esc(item.value)}" title="Select only ${esc(item.value)}">only</button>
+        </label>
       `);
     }
 
     if (parts.length === 0 || (q && shown.length === 0)) {
-      parts.push('<div style="padding:10px;font-size:12px;color:var(--text-muted)">No exact option match — click above to filter by text.</div>');
+      parts.push('<div class="col-dd-empty" style="padding:10px;font-size:12px;color:var(--text-muted)">No matching options</div>');
     }
 
     listEl.innerHTML = parts.join('');
+
+    const checkAll = listEl.querySelector('#col-dd-check-all');
+    if (checkAll) {
+      checkAll.indeterminate = isSomeChecked;
+    }
+
     metaEl.textContent =
       filtered.length > MAX_RENDERED
         ? `Showing ${MAX_RENDERED} of ${filtered.length} options — keep typing to narrow`
         : `${filtered.length} distinct value(s)`;
+    updateSummaryPill();
   };
 
   renderList('');
@@ -276,27 +349,96 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      const q = searchEl.value.trim();
-      if (!q) {
-        applyFilter(null);
-      } else if (lastFiltered.length === 1) {
-        applyFilter({ mode: 'exact', value: lastFiltered[0].value });
-      } else {
-        applyFilter({ mode: 'contains', value: q });
-      }
+      pop.querySelector('#col-dd-apply-btn')?.click();
     }
   });
 
   listEl.addEventListener('click', (e) => {
-    const item = e.target.closest('[data-dd-mode]');
-    if (!item) return;
-    const mode = item.dataset.ddMode;
-    const val = item.dataset.ddVal || '';
-    if (mode === 'clear' || !val) {
+    // 1. If clicked "only" button
+    const onlyBtn = e.target.closest('.col-dd-only-btn');
+    if (onlyBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const val = onlyBtn.dataset.onlyVal;
+      applyFilter({
+        mode: 'multi',
+        values: [val],
+        value: val === '__BLANK__' ? (col.type === 'checkbox' ? '(Unchecked)' : '(Blank)') : val
+      });
+      return;
+    }
+
+    // 2. If clicked "Select All"
+    const selectAllLabel = e.target.closest('.col-dd-select-all');
+    if (selectAllLabel) {
+      e.preventDefault();
+      const isSearchAll = Boolean(selectAllLabel.querySelector('#col-dd-check-search-all'));
+      if (isSearchAll) {
+        const visibleVals = lastFiltered.map((v) => v.value);
+        const allVisibleChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
+        if (allVisibleChecked) {
+          visibleVals.forEach((v) => selectedSet.delete(v));
+        } else {
+          visibleVals.forEach((v) => selectedSet.add(v));
+        }
+      } else {
+        if (selectedSet.size === allValues.length) {
+          selectedSet.clear();
+        } else {
+          allValues.forEach((v) => selectedSet.add(v));
+        }
+      }
+      renderList(searchEl.value);
+      return;
+    }
+
+    // 3. If clicked regular item label or checkbox
+    const itemLabel = e.target.closest('.col-dd-item');
+    if (!itemLabel) return;
+    const check = itemLabel.querySelector('.col-dd-check');
+    if (!check) return;
+    const val = check.dataset.ddVal;
+    if (val === undefined) return;
+
+    if (e.target.type !== 'checkbox') {
+      check.checked = !check.checked;
+    }
+
+    if (check.checked) {
+      selectedSet.add(val);
+      itemLabel.classList.add('selected');
+    } else {
+      selectedSet.delete(val);
+      itemLabel.classList.remove('selected');
+    }
+
+    const checkAll = listEl.querySelector('#col-dd-check-all');
+    if (checkAll) {
+      checkAll.checked = selectedSet.size === allValues.length;
+      checkAll.indeterminate = selectedSet.size > 0 && selectedSet.size < allValues.length;
+    }
+    updateSummaryPill();
+  });
+
+  pop.querySelector('#col-dd-apply-btn')?.addEventListener('click', () => {
+    if (selectedSet.size === 0 || selectedSet.size === allValues.length) {
       applyFilter(null);
     } else {
-      applyFilter({ mode, value: val });
+      const arr = Array.from(selectedSet);
+      applyFilter({
+        mode: 'multi',
+        values: arr,
+        value: arr.map((v) => (v === '__BLANK__' ? (col.type === 'checkbox' ? '(Unchecked)' : '(Blank)') : v)).join(', ')
+      });
     }
+  });
+
+  pop.querySelector('#col-dd-clear-btn')?.addEventListener('click', () => {
+    applyFilter(null);
+  });
+
+  pop.querySelector('#col-dd-cancel-btn')?.addEventListener('click', () => {
+    closeColFilterPopover();
   });
 
   const onDocMouseDown = (e) => {
@@ -594,10 +736,10 @@ function updateHeaderTitles() {
       `Standardized ${scopeLabel} Schema • Auto-Index (PROV-YYYYMM-XXXX) • LGU Master List Validation`
     ],
     optool: [
-      appState.provinceScope ? `SALIG — ${scopeLabel}` : 'SALIG',
+      appState.provinceScope ? `Optool Support List — ${scopeLabel}` : 'Optool Support List',
       appState.provinceScope
-        ? `Smart Analytics & Logical Information Generator • ${scopeLabel} Records Only`
-        : 'Smart Analytics & Logical Information Generator'
+        ? `SALIG (LAD Database) Support List • ${scopeLabel} Records Only`
+        : 'SALIG (LAD Database) Master Support List • 6 Operational Worksheets'
     ],
     'target-summary': [
       `${scopeLabel} Target Summary`,
@@ -709,12 +851,14 @@ function renderActiveView() {
     nepShowMonths: Boolean(appState.nepShowMonths),
     nepExpandedQuarters: appState.nepExpandedQuarters || {},
     nepExpandedTargetSems: Boolean(appState.nepExpandedTargetSems),
+    nepExpandedAccompSems: appState.nepExpandedAccompSems !== undefined ? Boolean(appState.nepExpandedAccompSems) : true,
     nepShowProvinces: Boolean(appState.nepShowProvinces),
     nepExpandedMilestones: appState.nepExpandedMilestones || {},
     nepYearFilter: appState.nepYearFilter,
     nepMilestoneFilter: appState.nepMilestoneFilter || 'overall',
     nepMilestoneTableFilter: appState.nepMilestoneTableFilter || 'ALL',
     nepDisplayMode: appState.nepDisplayMode || 'table',
+    nepColVisibility: appState.nepColVisibility || { lhs: true, area: true, arbs: true },
     filters: appState.filters,
     activeOptoolTab: appState.activeOptoolTab
   };
@@ -731,6 +875,10 @@ function renderActiveView() {
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsTargetYearFilter: appState.whereaboutsTargetYearFilter,
+      whereaboutsColFilters: appState.whereaboutsColFilters,
+      whereaboutsShowGraph: appState.whereaboutsShowGraph,
+      whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage
     });
     bindWhereaboutsEvents(container, 'cf-whereabouts');
@@ -740,6 +888,10 @@ function renderActiveView() {
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsTargetYearFilter: appState.whereaboutsTargetYearFilter,
+      whereaboutsColFilters: appState.whereaboutsColFilters,
+      whereaboutsShowGraph: appState.whereaboutsShowGraph,
+      whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage
     });
     bindWhereaboutsEvents(container, 'survey-whereabouts');
@@ -749,6 +901,10 @@ function renderActiveView() {
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsTargetYearFilter: appState.whereaboutsTargetYearFilter,
+      whereaboutsColFilters: appState.whereaboutsColFilters,
+      whereaboutsShowGraph: appState.whereaboutsShowGraph,
+      whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage
     });
     bindWhereaboutsEvents(container, 'mov-whereabouts');
@@ -758,6 +914,10 @@ function renderActiveView() {
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsTargetYearFilter: appState.whereaboutsTargetYearFilter,
+      whereaboutsColFilters: appState.whereaboutsColFilters,
+      whereaboutsShowGraph: appState.whereaboutsShowGraph,
+      whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage
     });
     bindWhereaboutsEvents(container, 'regdist-whereabouts');
@@ -767,6 +927,10 @@ function renderActiveView() {
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+      whereaboutsTargetYearFilter: appState.whereaboutsTargetYearFilter,
+      whereaboutsColFilters: appState.whereaboutsColFilters,
+      whereaboutsShowGraph: appState.whereaboutsShowGraph,
+      whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage
     });
     bindWhereaboutsEvents(container, 'installation-whereabouts');
@@ -2198,6 +2362,19 @@ function bindDashboardViewEvents(container) {
     });
   });
 
+  container.querySelector('#btn-toggle-nep-accomp-sems')?.addEventListener('click', () => {
+    appState.nepExpandedAccompSems = !Boolean(appState.nepExpandedAccompSems);
+    renderActiveView();
+  });
+
+  container.querySelectorAll('[data-toggle-accomp-sems]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      appState.nepExpandedAccompSems = !appState.nepExpandedAccompSems;
+      renderActiveView();
+    });
+  });
+
   container.querySelector('#btn-toggle-nep-provinces')?.addEventListener('click', () => {
     appState.nepShowProvinces = !appState.nepShowProvinces;
     appState.nepExpandedMilestones = {};
@@ -2278,6 +2455,21 @@ function bindDashboardViewEvents(container) {
       renderActiveView();
     });
   });
+  container.querySelectorAll('[data-toggle-nep-col]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const col = btn.dataset.toggleNepCol;
+      if (!appState.nepColVisibility) {
+        appState.nepColVisibility = { lhs: true, area: true, arbs: true };
+      }
+      appState.nepColVisibility[col] = !appState.nepColVisibility[col];
+      if (!appState.nepColVisibility.lhs && !appState.nepColVisibility.area && !appState.nepColVisibility.arbs) {
+        appState.nepColVisibility[col] = true;
+        toast('At least one metric column must remain visible', true);
+        return;
+      }
+      renderActiveView();
+    });
+  });
   container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
 }
 
@@ -2342,40 +2534,135 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
     .map((n) => {
       const activeMap = getActiveMap();
       const entry = activeMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultYear };
+      const s1Lhs = entry.sem1Lhs !== undefined && entry.sem1Lhs !== null && entry.sem1Lhs !== ''
+        ? entry.sem1Lhs
+        : (entry.lhs > 0 ? Math.round(entry.lhs / 2) : 0);
+      const s2Lhs = Math.max(0, (entry.lhs || 0) - s1Lhs);
+      const s1Area = entry.sem1Area !== undefined && entry.sem1Area !== null && entry.sem1Area !== ''
+        ? Number(entry.sem1Area)
+        : Number(((entry.area || 0) / 2).toFixed(4));
+      const s2Area = Math.max(0, Number(((entry.area || 0) - s1Area).toFixed(4)));
+      const s1Arbs = entry.sem1Arbs !== undefined && entry.sem1Arbs !== null && entry.sem1Arbs !== ''
+        ? entry.sem1Arbs
+        : (entry.arbs > 0 ? Math.round(entry.arbs / 2) : 0);
+      const s2Arbs = Math.max(0, (entry.arbs || 0) - s1Arbs);
+
       return `
         <tr>
-          <td><strong>${esc(n.provinceName)}</strong><div class="nep-sub-metric">${esc(n.code)}</div></td>
-          <td>
+          <td class="sticky-col-province"><strong>${esc(n.provinceName)}</strong><div class="nep-sub-metric">${esc(n.code)}</div></td>
+          <td class="nep-modal-col-lhs">
             <input
               type="number"
               min="0"
               step="1"
-              class="form-control num nep-sheet-input"
-              data-nep-col="lhs"
+              class="form-control num nep-sheet-input nep-input-lhs"
+              data-prov="${esc(n.code)}"
               name="lhs_${esc(n.code)}"
               value="${esc(entry.lhs || 0)}"
             />
           </td>
-          <td>
-            <input
-              type="number"
-              min="0"
-              step="0.0001"
-              class="form-control num nep-sheet-input"
-              data-nep-col="area"
-              name="area_${esc(n.code)}"
-              value="${esc((Number(entry.area) || 0).toFixed(4))}"
-            />
-          </td>
-          <td>
+          <td class="nep-modal-col-lhs">
             <input
               type="number"
               min="0"
               step="1"
-              class="form-control num nep-sheet-input"
-              data-nep-col="arbs"
+              class="form-control num nep-sheet-input nep-input-s1-lhs"
+              style="border-color:var(--dar-blue,#1d4ed8);background:#f0f7ff;"
+              data-prov="${esc(n.code)}"
+              name="s1_lhs_${esc(n.code)}"
+              placeholder="1st Sem"
+              title="1st Sem LHS Target"
+              value="${esc(s1Lhs)}"
+            />
+          </td>
+          <td class="nep-modal-col-lhs">
+            <input
+              type="number"
+              class="form-control num nep-sheet-input form-control-readonly nep-input-s2-lhs"
+              style="border-color:var(--dar-amber,#b45309);background:#fffbeb;font-weight:700;"
+              data-prov="${esc(n.code)}"
+              name="s2_lhs_${esc(n.code)}"
+              readonly
+              tabindex="-1"
+              title="2nd Sem LHS Target (Auto: NEP - 1st Sem)"
+              value="${esc(s2Lhs)}"
+            />
+          </td>
+          <td class="nep-modal-col-area">
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              class="form-control num nep-sheet-input nep-input-area"
+              data-prov="${esc(n.code)}"
+              name="area_${esc(n.code)}"
+              value="${esc((Number(entry.area) || 0).toFixed(4))}"
+            />
+          </td>
+          <td class="nep-modal-col-area">
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              class="form-control num nep-sheet-input nep-input-s1-area"
+              style="border-color:var(--dar-blue,#1d4ed8);background:#f0f7ff;"
+              data-prov="${esc(n.code)}"
+              name="s1_area_${esc(n.code)}"
+              placeholder="1st Sem Area"
+              title="1st Sem Area Target (HAS)"
+              value="${esc(s1Area.toFixed(4))}"
+            />
+          </td>
+          <td class="nep-modal-col-area">
+            <input
+              type="number"
+              class="form-control num nep-sheet-input form-control-readonly nep-input-s2-area"
+              style="border-color:var(--dar-amber,#b45309);background:#fffbeb;font-weight:700;"
+              data-prov="${esc(n.code)}"
+              name="s2_area_${esc(n.code)}"
+              readonly
+              tabindex="-1"
+              title="2nd Sem Area Target (Auto: NEP - 1st Sem)"
+              value="${esc(s2Area.toFixed(4))}"
+            />
+          </td>
+          <td class="nep-modal-col-arbs">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              class="form-control num nep-sheet-input nep-input-arbs"
+              data-prov="${esc(n.code)}"
               name="arbs_${esc(n.code)}"
+              title="Total ARBs Target"
               value="${esc(entry.arbs || 0)}"
+            />
+          </td>
+          <td class="nep-modal-col-arbs">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              class="form-control num nep-sheet-input nep-input-s1-arbs"
+              style="border-color:var(--dar-blue,#1d4ed8);background:#f0f7ff;"
+              data-prov="${esc(n.code)}"
+              name="s1_arbs_${esc(n.code)}"
+              placeholder="1st Sem"
+              title="1st Sem ARBs Target"
+              value="${esc(s1Arbs)}"
+            />
+          </td>
+          <td class="nep-modal-col-arbs">
+            <input
+              type="number"
+              class="form-control num nep-sheet-input form-control-readonly nep-input-s2-arbs"
+              style="border-color:var(--dar-amber,#b45309);background:#fffbeb;font-weight:700;"
+              data-prov="${esc(n.code)}"
+              name="s2_arbs_${esc(n.code)}"
+              readonly
+              tabindex="-1"
+              title="2nd Sem ARBs Target (Auto: Total ARBs − 1st Sem)"
+              value="${esc(s2Arbs)}"
             />
           </td>
           <td>
@@ -2401,7 +2688,7 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
     cancelId: 'nep-sheet-cancel',
     contentHtml: `
       <p style="margin:0 0 10px;font-size:12.5px;color:var(--text-muted)">
-        Enter or update NEP targets (<strong>LHS</strong>, <strong>AREA</strong>, <strong>ARBs</strong>, and <strong>Year</strong>) stored in the Regional Hub Google Sheet. Only Administrators can edit.
+        Enter or update NEP targets (<strong>Total NEP</strong>, <strong>1st Sem Target</strong>, automatic <strong>2nd Sem Target</strong> (<code>NEP − 1st Sem</code>) for <strong>LHS</strong>, <strong>AREA</strong>, and <strong>ARBs</strong>, plus <strong>Year</strong>) stored in the Regional Hub Google Sheet.
       </p>
 
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;background:var(--surface-alt, #f8faf9);padding:10px 14px;border-radius:8px;border:1px solid var(--border);">
@@ -2423,41 +2710,68 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
           </span>
         </div>
 
-        <!-- Batch Year Updater -->
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Apply Year:</span>
-          <input
-            type="number"
-            id="nep-global-year-input"
-            class="form-control"
-            style="width:85px;height:34px;font-weight:700;text-align:center;"
-            min="2000"
-            max="2099"
-            step="1"
-            value="${defaultYear}"
-          />
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-apply-global-year" style="height:34px;">Apply Year</button>
+        <!-- Batch Year Updater & Column Toggles -->
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Apply Year:</span>
+            <input
+              type="number"
+              id="nep-global-year-input"
+              class="form-control"
+              style="width:85px;height:34px;font-weight:700;text-align:center;"
+              min="2000"
+              max="2099"
+              step="1"
+              value="${defaultYear}"
+            />
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-apply-global-year" style="height:34px;">Apply Year</button>
+          </div>
+
+          <!-- Column Toggles for LHS, AREA, ARBs -->
+          <div style="display:flex;align-items:center;gap:5px;background:var(--surface);padding:3px 6px;border-radius:6px;border:1px solid var(--border);">
+            <span style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-right:2px;">Columns:</span>
+            <button type="button" class="btn btn-xs nep-modal-col-btn btn-primary" data-modal-col="lhs" title="Click to hide/show LHS">✓ LHS</button>
+            <button type="button" class="btn btn-xs nep-modal-col-btn btn-primary" data-modal-col="area" title="Click to hide/show AREA">✓ AREA</button>
+            <button type="button" class="btn btn-xs nep-modal-col-btn btn-primary" data-modal-col="arbs" title="Click to hide/show ARBs">✓ ARBs</button>
+          </div>
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table>
+      <div class="table-wrap nep-modal-table-wrap">
+        <table class="nep-modal-table">
           <thead>
             <tr>
-              <th>Province</th>
-              <th class="right">LHS</th>
-              <th class="right">AREA (HAS)</th>
-              <th class="right">ARBs</th>
-              <th class="center">Year</th>
+              <th rowspan="2" class="sticky-col-province" style="vertical-align:bottom;">Province</th>
+              <th colspan="3" class="center nep-modal-col-lhs" style="background:#f1f5f3;border-left:1px solid var(--border);border-right:1px solid var(--border);">LHS (Landholdings)</th>
+              <th colspan="3" class="center nep-modal-col-area" style="background:#eef6f2;border-right:1px solid var(--border);">AREA (HAS)</th>
+              <th colspan="3" class="center nep-modal-col-arbs" style="background:#f6f8fa;border-right:1px solid var(--border);">ARBs (Beneficiaries)</th>
+              <th rowspan="2" class="center" style="vertical-align:bottom;">Year</th>
+            </tr>
+            <tr>
+              <th class="center nep-modal-col-lhs" style="border-left:1px solid var(--border);">NEP Total</th>
+              <th class="center nep-modal-col-lhs" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
+              <th class="center nep-modal-col-lhs" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
+              <th class="center nep-modal-col-area">NEP Total</th>
+              <th class="center nep-modal-col-area" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
+              <th class="center nep-modal-col-area" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
+              <th class="center nep-modal-col-arbs">NEP Total</th>
+              <th class="center nep-modal-col-arbs" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
+              <th class="center nep-modal-col-arbs" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
             </tr>
           </thead>
           <tbody>
             ${rowsHtml}
-            <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);">
-              <td>Region VIII Total</td>
-              <td class="right" id="nep-sheet-total-lhs">0</td>
-              <td class="right" id="nep-sheet-total-area">0.0000</td>
-              <td class="right" id="nep-sheet-total-arbs">0</td>
+            <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
+              <td class="sticky-col-province">Region VIII Total</td>
+              <td class="center nep-modal-col-lhs" id="nep-sheet-total-lhs">0</td>
+              <td class="center nep-modal-col-lhs" id="nep-sheet-total-s1-lhs" style="color:var(--dar-blue,#1d4ed8);">0</td>
+              <td class="center nep-modal-col-lhs" id="nep-sheet-total-s2-lhs" style="color:var(--dar-amber,#b45309);">0</td>
+              <td class="center nep-modal-col-area" id="nep-sheet-total-area">0.0000</td>
+              <td class="center nep-modal-col-area" id="nep-sheet-total-s1-area" style="color:var(--dar-blue,#1d4ed8);">0.0000</td>
+              <td class="center nep-modal-col-area" id="nep-sheet-total-s2-area" style="color:var(--dar-amber,#b45309);">0.0000</td>
+              <td class="center nep-modal-col-arbs" id="nep-sheet-total-arbs">0</td>
+              <td class="center nep-modal-col-arbs" id="nep-sheet-total-s1-arbs" style="color:var(--dar-blue,#1d4ed8);">0</td>
+              <td class="center nep-modal-col-arbs" id="nep-sheet-total-s2-arbs" style="color:var(--dar-amber,#b45309);">0</td>
               <td class="center">-</td>
             </tr>
           </tbody>
@@ -2471,10 +2785,26 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
     if (!form) return {};
     const map = {};
     for (const n of provNodes) {
+      const lhs = Math.max(0, Math.round(Number(form.elements[`lhs_${n.code}`]?.value) || 0));
+      const s1Lhs = Math.max(0, Math.round(Number(form.elements[`s1_lhs_${n.code}`]?.value) || 0));
+      const s2Lhs = Math.max(0, lhs - s1Lhs);
+      const area = Math.max(0, Number((Number(form.elements[`area_${n.code}`]?.value) || 0).toFixed(4)));
+      const s1Area = Math.max(0, Number((Number(form.elements[`s1_area_${n.code}`]?.value) || 0).toFixed(4)));
+      const s2Area = Math.max(0, Number((area - s1Area).toFixed(4)));
+      const arbs = Math.max(0, Math.round(Number(form.elements[`arbs_${n.code}`]?.value) || 0));
+      const s1Arbs = Math.max(0, Math.round(Number(form.elements[`s1_arbs_${n.code}`]?.value) || 0));
+      const s2Arbs = Math.max(0, arbs - s1Arbs);
+
       map[n.code] = {
-        lhs: Math.max(0, Math.round(Number(form.elements[`lhs_${n.code}`]?.value) || 0)),
-        area: Math.max(0, Number((Number(form.elements[`area_${n.code}`]?.value) || 0).toFixed(4))),
-        arbs: Math.max(0, Math.round(Number(form.elements[`arbs_${n.code}`]?.value) || 0)),
+        lhs,
+        sem1Lhs: s1Lhs,
+        sem2Lhs: s2Lhs,
+        area,
+        sem1Area: s1Area,
+        sem2Area: s2Area,
+        arbs,
+        sem1Arbs: s1Arbs,
+        sem2Arbs: s2Arbs,
         year: Math.max(2000, Math.min(2099, Math.round(Number(form.elements[`year_${n.code}`]?.value) || defaultYear)))
       };
     }
@@ -2486,9 +2816,28 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
     if (!form) return;
     for (const n of provNodes) {
       const item = dataMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultYear };
+      const s1Lhs = item.sem1Lhs !== undefined && item.sem1Lhs !== null && item.sem1Lhs !== ''
+        ? item.sem1Lhs
+        : (item.lhs > 0 ? Math.round(item.lhs / 2) : 0);
+      const s2Lhs = Math.max(0, (item.lhs || 0) - s1Lhs);
+      const s1Area = item.sem1Area !== undefined && item.sem1Area !== null && item.sem1Area !== ''
+        ? Number(item.sem1Area)
+        : Number(((item.area || 0) / 2).toFixed(4));
+      const s2Area = Math.max(0, Number(((item.area || 0) - s1Area).toFixed(4)));
+      const s1Arbs = item.sem1Arbs !== undefined && item.sem1Arbs !== null && item.sem1Arbs !== ''
+        ? item.sem1Arbs
+        : (item.arbs > 0 ? Math.round(item.arbs / 2) : 0);
+      const s2Arbs = Math.max(0, (item.arbs || 0) - s1Arbs);
+
       if (form.elements[`lhs_${n.code}`]) form.elements[`lhs_${n.code}`].value = item.lhs || 0;
+      if (form.elements[`s1_lhs_${n.code}`]) form.elements[`s1_lhs_${n.code}`].value = s1Lhs;
+      if (form.elements[`s2_lhs_${n.code}`]) form.elements[`s2_lhs_${n.code}`].value = s2Lhs;
       if (form.elements[`area_${n.code}`]) form.elements[`area_${n.code}`].value = (Number(item.area) || 0).toFixed(4);
+      if (form.elements[`s1_area_${n.code}`]) form.elements[`s1_area_${n.code}`].value = s1Area.toFixed(4);
+      if (form.elements[`s2_area_${n.code}`]) form.elements[`s2_area_${n.code}`].value = s2Area.toFixed(4);
       if (form.elements[`arbs_${n.code}`]) form.elements[`arbs_${n.code}`].value = item.arbs || 0;
+      if (form.elements[`s1_arbs_${n.code}`]) form.elements[`s1_arbs_${n.code}`].value = s1Arbs;
+      if (form.elements[`s2_arbs_${n.code}`]) form.elements[`s2_arbs_${n.code}`].value = s2Arbs;
       if (form.elements[`year_${n.code}`]) form.elements[`year_${n.code}`].value = item.year || defaultYear;
     }
     updateModalTotals();
@@ -2498,23 +2847,91 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
     const form = document.getElementById('nep-sheet-form');
     if (!form) return;
     let lhsSum = 0;
+    let s1LhsSum = 0;
+    let s2LhsSum = 0;
     let areaSum = 0;
+    let s1AreaSum = 0;
+    let s2AreaSum = 0;
     let arbsSum = 0;
+    let s1ArbsSum = 0;
+    let s2ArbsSum = 0;
     for (const n of provNodes) {
-      lhsSum += Math.max(0, Math.round(Number(form.elements[`lhs_${n.code}`]?.value) || 0));
-      areaSum += Math.max(0, Number(form.elements[`area_${n.code}`]?.value) || 0);
-      arbsSum += Math.max(0, Math.round(Number(form.elements[`arbs_${n.code}`]?.value) || 0));
+      const lhs = Math.max(0, Math.round(Number(form.elements[`lhs_${n.code}`]?.value) || 0));
+      const s1L = Math.max(0, Math.round(Number(form.elements[`s1_lhs_${n.code}`]?.value) || 0));
+      const s2L = Math.max(0, lhs - s1L);
+      const a = Math.max(0, Number(form.elements[`area_${n.code}`]?.value) || 0);
+      const s1A = Math.max(0, Number(form.elements[`s1_area_${n.code}`]?.value) || 0);
+      const s2A = Math.max(0, Number((a - s1A).toFixed(4)));
+      const arb = Math.max(0, Math.round(Number(form.elements[`arbs_${n.code}`]?.value) || 0));
+      const s1Arb = Math.max(0, Math.round(Number(form.elements[`s1_arbs_${n.code}`]?.value) || 0));
+      const s2Arb = Math.max(0, arb - s1Arb);
+
+      lhsSum += lhs;
+      s1LhsSum += s1L;
+      s2LhsSum += s2L;
+      areaSum += a;
+      s1AreaSum += s1A;
+      s2AreaSum += s2A;
+      arbsSum += arb;
+      s1ArbsSum += s1Arb;
+      s2ArbsSum += s2Arb;
     }
     const lhsEl = document.getElementById('nep-sheet-total-lhs');
+    const s1LhsEl = document.getElementById('nep-sheet-total-s1-lhs');
+    const s2LhsEl = document.getElementById('nep-sheet-total-s2-lhs');
     const areaEl = document.getElementById('nep-sheet-total-area');
+    const s1AreaEl = document.getElementById('nep-sheet-total-s1-area');
+    const s2AreaEl = document.getElementById('nep-sheet-total-s2-area');
     const arbsEl = document.getElementById('nep-sheet-total-arbs');
+    const s1ArbsEl = document.getElementById('nep-sheet-total-s1-arbs');
+    const s2ArbsEl = document.getElementById('nep-sheet-total-s2-arbs');
     if (lhsEl) lhsEl.textContent = lhsSum.toLocaleString('en-US');
+    if (s1LhsEl) s1LhsEl.textContent = s1LhsSum.toLocaleString('en-US');
+    if (s2LhsEl) s2LhsEl.textContent = s2LhsSum.toLocaleString('en-US');
     if (areaEl) areaEl.textContent = areaSum.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    if (s1AreaEl) s1AreaEl.textContent = s1AreaSum.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    if (s2AreaEl) s2AreaEl.textContent = s2AreaSum.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
     if (arbsEl) arbsEl.textContent = arbsSum.toLocaleString('en-US');
+    if (s1ArbsEl) s1ArbsEl.textContent = s1ArbsSum.toLocaleString('en-US');
+    if (s2ArbsEl) s2ArbsEl.textContent = s2ArbsSum.toLocaleString('en-US');
+  };
+
+  const handleNepSheetLiveInput = (e) => {
+    const form = document.getElementById('nep-sheet-form');
+    if (!form || !e || !e.target) return;
+    const prov = e.target.dataset.prov;
+    if (prov) {
+      const lhsInp = form.elements[`lhs_${prov}`];
+      const s1LhsInp = form.elements[`s1_lhs_${prov}`];
+      const s2LhsInp = form.elements[`s2_lhs_${prov}`];
+      const areaInp = form.elements[`area_${prov}`];
+      const s1AreaInp = form.elements[`s1_area_${prov}`];
+      const s2AreaInp = form.elements[`s2_area_${prov}`];
+      const arbsInp = form.elements[`arbs_${prov}`];
+      const s1ArbsInp = form.elements[`s1_arbs_${prov}`];
+      const s2ArbsInp = form.elements[`s2_arbs_${prov}`];
+
+      if (lhsInp && s1LhsInp && s2LhsInp) {
+        const totL = Math.max(0, Math.round(Number(lhsInp.value) || 0));
+        const s1L = Math.max(0, Math.round(Number(s1LhsInp.value) || 0));
+        s2LhsInp.value = Math.max(0, totL - s1L);
+      }
+      if (areaInp && s1AreaInp && s2AreaInp) {
+        const totA = Math.max(0, Number(areaInp.value) || 0);
+        const s1A = Math.max(0, Number(s1AreaInp.value) || 0);
+        s2AreaInp.value = Math.max(0, Number((totA - s1A).toFixed(4))).toFixed(4);
+      }
+      if (arbsInp && s1ArbsInp && s2ArbsInp) {
+        const totArb = Math.max(0, Math.round(Number(arbsInp.value) || 0));
+        const s1Arb = Math.max(0, Math.round(Number(s1ArbsInp.value) || 0));
+        s2ArbsInp.value = Math.max(0, totArb - s1Arb);
+      }
+    }
+    updateModalTotals();
   };
 
   updateModalTotals();
-  document.getElementById('nep-sheet-form')?.addEventListener('input', updateModalTotals);
+  document.getElementById('nep-sheet-form')?.addEventListener('input', handleNepSheetLiveInput);
 
   document.getElementById('nep-modal-milestone')?.addEventListener('change', (e) => {
     // 1. Stash current form inputs into localData
@@ -2535,6 +2952,44 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
       if (inp) inp.value = yr;
     }
   });
+
+  const modalColState = {
+    lhs: appState.nepColVisibility?.lhs ?? true,
+    area: appState.nepColVisibility?.area ?? true,
+    arbs: appState.nepColVisibility?.arbs ?? true
+  };
+
+  const applyModalColVisibility = () => {
+    ['lhs', 'area', 'arbs'].forEach((col) => {
+      const isVisible = modalColState[col];
+      const btn = document.querySelector(`.nep-modal-col-btn[data-modal-col="${col}"]`);
+      if (btn) {
+        btn.className = `btn btn-xs nep-modal-col-btn ${isVisible ? 'btn-primary' : 'btn-secondary'}`;
+        btn.textContent = isVisible ? `✓ ${col.toUpperCase()}` : `+ ${col.toUpperCase()}`;
+      }
+      document.querySelectorAll(`.nep-modal-col-${col}`).forEach((el) => {
+        el.style.display = isVisible ? '' : 'none';
+      });
+    });
+  };
+
+  document.querySelectorAll('.nep-modal-col-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const col = btn.dataset.modalCol;
+      modalColState[col] = !modalColState[col];
+      if (!modalColState.lhs && !modalColState.area && !modalColState.arbs) {
+        modalColState[col] = true;
+        toast('At least one metric column must remain visible', true);
+        return;
+      }
+      if (appState.nepColVisibility) {
+        appState.nepColVisibility[col] = modalColState[col];
+      }
+      applyModalColVisibility();
+    });
+  });
+
+  applyModalColVisibility();
 
   if (targetProv) {
     setTimeout(() => {
@@ -2599,16 +3054,27 @@ function openNepTargetsModal() {
   const rowsHtml = milestones
     .map((m) => {
       const t = currentTargets[m.key] || { targetCount: 0, targetAreaHas: 0 };
+      const s1c = t.sem1TargetCount !== undefined && t.sem1TargetCount !== null && t.sem1TargetCount !== ''
+        ? t.sem1TargetCount
+        : (t.targetCount > 0 ? Math.round(t.targetCount / 2) : 0);
+      const s2c = Math.max(0, (t.targetCount || 0) - s1c);
+      const s1a = t.sem1TargetAreaHas !== undefined && t.sem1TargetAreaHas !== null && t.sem1TargetAreaHas !== ''
+        ? Number(t.sem1TargetAreaHas)
+        : Number(((t.targetAreaHas || 0) / 2).toFixed(4));
+      const s2a = Math.max(0, Number(((t.targetAreaHas || 0) - s1a).toFixed(4)));
+
       return `
         <tr>
-          <td><strong>${esc(m.label)}</strong><div class="nep-sub-metric">${esc(m.sourceTab)}</div></td>
+          <td class="sticky-col-province"><strong>${esc(m.label)}</strong><div class="nep-sub-metric">${esc(m.sourceTab)}</div></td>
           <td>
             <input
               type="number"
               min="0"
               step="1"
-              class="form-control num"
+              class="form-control num nep-target-c"
+              data-ms="${esc(m.key)}"
               name="c_${esc(m.key)}"
+              title="NEP Total Lots / eTitles"
               value="${esc(t.targetCount || 0)}"
             />
           </td>
@@ -2616,10 +3082,66 @@ function openNepTargetsModal() {
             <input
               type="number"
               min="0"
+              step="1"
+              class="form-control num nep-target-s1c"
+              data-ms="${esc(m.key)}"
+              style="border-color:var(--dar-blue,#1d4ed8);background:#f0f7ff;"
+              name="s1c_${esc(m.key)}"
+              placeholder="1st Sem"
+              title="1st Sem Lots / eTitles Target"
+              value="${esc(s1c)}"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              class="form-control num form-control-readonly nep-target-s2c"
+              data-ms="${esc(m.key)}"
+              name="s2c_${esc(m.key)}"
+              readonly
+              tabindex="-1"
+              style="border-color:var(--dar-amber,#b45309);background:#fffbeb;font-weight:700;"
+              title="2nd Sem Lots / eTitles Target (Auto: NEP − 1st Sem)"
+              value="${esc(s2c)}"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              min="0"
               step="0.0001"
-              class="form-control num"
+              class="form-control num nep-target-a"
+              data-ms="${esc(m.key)}"
               name="a_${esc(m.key)}"
+              title="NEP Total Area (HAS)"
               value="${esc((Number(t.targetAreaHas) || 0).toFixed(4))}"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              class="form-control num nep-target-s1a"
+              data-ms="${esc(m.key)}"
+              style="border-color:var(--dar-blue,#1d4ed8);background:#f0f7ff;"
+              name="s1a_${esc(m.key)}"
+              placeholder="1st Sem Area"
+              title="1st Sem Area Target (HAS)"
+              value="${esc(s1a.toFixed(4))}"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              class="form-control num form-control-readonly nep-target-s2a"
+              data-ms="${esc(m.key)}"
+              name="s2a_${esc(m.key)}"
+              readonly
+              tabindex="-1"
+              style="border-color:var(--dar-amber,#b45309);background:#fffbeb;font-weight:700;"
+              title="2nd Sem Area Target (Auto: NEP − 1st Sem)"
+              value="${esc(s2a.toFixed(4))}"
             />
           </td>
         </tr>
@@ -2632,21 +3154,29 @@ function openNepTargetsModal() {
     submitLabel: 'Save Regional NEP Targets',
     cancelId: 'nep-cancel',
     bodyHtml: `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;gap:8px;flex-wrap:wrap">
         <p style="margin:0;font-size:12.5px;color:var(--text-muted)">
-          Region VIII consolidated NEP Target per milestone. Only Regional Accounts can edit this list.
+          Region VIII consolidated NEP Target per milestone. Enter <strong>1st Sem Target</strong> and <strong>2nd Sem Target</strong> will automatically compute as <code>NEP − 1st Sem Target</code>.
         </p>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-fetch-hub-nep-modal" style="white-space:nowrap">
           Fetch from Regional Hub NEP
         </button>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="nep-targets-table">
           <thead>
             <tr>
-              <th>Milestone</th>
-              <th class="right">NEP Target (Lots / eTitles)</th>
-              <th class="right">NEP Target Area (HAS)</th>
+              <th rowspan="2" class="sticky-col-province" style="vertical-align:bottom;">Milestone</th>
+              <th colspan="3" class="center" style="background:#f1f5f3;border-left:1px solid var(--border);border-right:1px solid var(--border);">Lots / eTitles</th>
+              <th colspan="3" class="center" style="background:#eef6f2;border-right:1px solid var(--border);">Area (HAS)</th>
+            </tr>
+            <tr>
+              <th class="center" style="border-left:1px solid var(--border);">NEP Total</th>
+              <th class="center" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
+              <th class="center" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
+              <th class="center">NEP Total</th>
+              <th class="center" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
+              <th class="center" style="color:var(--dar-amber,#b45309);">2nd Sem (Auto)</th>
             </tr>
           </thead>
           <tbody>
@@ -2655,6 +3185,31 @@ function openNepTargetsModal() {
         </table>
       </div>
     `
+  });
+
+  const nepTargetsForm = document.getElementById('nep-targets-form');
+  nepTargetsForm?.addEventListener('input', (e) => {
+    const ms = e.target.dataset.ms;
+    if (!ms) return;
+    const cInp = nepTargetsForm.elements[`c_${ms}`];
+    const s1cInp = nepTargetsForm.elements[`s1c_${ms}`];
+    const s2cInp = nepTargetsForm.elements[`s2c_${ms}`];
+    const aInp = nepTargetsForm.elements[`a_${ms}`];
+    const s1aInp = nepTargetsForm.elements[`s1a_${ms}`];
+    const s2aInp = nepTargetsForm.elements[`s2a_${ms}`];
+
+    if (cInp && s1cInp && s2cInp) {
+      const c = Math.max(0, Math.round(Number(cInp.value) || 0));
+      const s1c = Math.max(0, Math.round(Number(s1cInp.value) || 0));
+      const s2c = Math.max(0, c - s1c);
+      s2cInp.value = s2c;
+    }
+    if (aInp && s1aInp && s2aInp) {
+      const a = Math.max(0, Number(aInp.value) || 0);
+      const s1a = Math.max(0, Number(s1aInp.value) || 0);
+      const s2a = Math.max(0, Number((a - s1a).toFixed(4)));
+      s2aInp.value = s2a.toFixed(4);
+    }
   });
 
   document.getElementById('btn-fetch-hub-nep-modal')?.addEventListener('click', async () => {
@@ -2673,10 +3228,28 @@ function openNepTargetsModal() {
       if (form) {
         for (const m of milestones) {
           const t = res.nepTargets?.[m.key] || { targetCount: 0, targetAreaHas: 0 };
+          const s1c = t.sem1TargetCount !== undefined && t.sem1TargetCount !== null && t.sem1TargetCount !== ''
+            ? t.sem1TargetCount
+            : (t.targetCount > 0 ? Math.round(t.targetCount / 2) : 0);
+          const s2c = Math.max(0, (t.targetCount || 0) - s1c);
+          const s1a = t.sem1TargetAreaHas !== undefined && t.sem1TargetAreaHas !== null && t.sem1TargetAreaHas !== ''
+            ? Number(t.sem1TargetAreaHas)
+            : Number(((t.targetAreaHas || 0) / 2).toFixed(4));
+          const s2a = Math.max(0, Number(((t.targetAreaHas || 0) - s1a).toFixed(4)));
+
           const cInput = form.elements[`c_${m.key}`];
+          const s1cInput = form.elements[`s1c_${m.key}`];
+          const s2cInput = form.elements[`s2c_${m.key}`];
           const aInput = form.elements[`a_${m.key}`];
+          const s1aInput = form.elements[`s1a_${m.key}`];
+          const s2aInput = form.elements[`s2a_${m.key}`];
+
           if (cInput) cInput.value = t.targetCount || 0;
+          if (s1cInput) s1cInput.value = s1c;
+          if (s2cInput) s2cInput.value = s2c;
           if (aInput) aInput.value = (Number(t.targetAreaHas) || 0).toFixed(4);
+          if (s1aInput) s1aInput.value = s1a.toFixed(4);
+          if (s2aInput) s2aInput.value = s2a.toFixed(4);
         }
       }
       toast('Fetched NEP Targets from Regional Hub');
@@ -2691,9 +3264,20 @@ function openNepTargetsModal() {
     const fd = new FormData(e.target);
     const payload = {};
     for (const m of milestones) {
+      const c = Math.max(0, Number(fd.get(`c_${m.key}`)) || 0);
+      const s1c = Math.max(0, Number(fd.get(`s1c_${m.key}`)) || 0);
+      const s2c = Math.max(0, c - s1c);
+      const a = Math.max(0, Number(fd.get(`a_${m.key}`)) || 0);
+      const s1a = Math.max(0, Number(fd.get(`s1a_${m.key}`)) || 0);
+      const s2a = Math.max(0, Number((a - s1a).toFixed(4)));
+
       payload[m.key] = {
-        targetCount: Math.max(0, Number(fd.get(`c_${m.key}`)) || 0),
-        targetAreaHas: Math.max(0, Number(fd.get(`a_${m.key}`)) || 0)
+        targetCount: c,
+        sem1TargetCount: s1c,
+        sem2TargetCount: s2c,
+        targetAreaHas: a,
+        sem1TargetAreaHas: s1a,
+        sem2TargetAreaHas: s2a
       };
     }
     try {
@@ -2902,6 +3486,355 @@ function bindUsersViewEvents(container) {
   });
 }
 
+function getWhereaboutsFilterContext(viewKey) {
+  return {
+    state: appState.state,
+    schemas: appState.schemas,
+    provinceScope: appState.provinceScope,
+    whereaboutsColFilters: appState.whereaboutsColFilters,
+    whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
+    whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
+    whereaboutsTargetYearFilter: appState.whereaboutsTargetYearFilter,
+    whereaboutsSearch: appState.whereaboutsSearch,
+    whereaboutsPage: appState.whereaboutsPage
+  };
+}
+
+function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container) {
+  const existingKey = document.getElementById('col-filter-popover')?.dataset.colKey;
+  closeColFilterPopover();
+  if (existingKey === `${viewKey}:${colKey}`) return; // Toggle closed on second click
+
+  const filterCtx = getWhereaboutsFilterContext(viewKey);
+  const { col, blankCount, totalRows, values } = getWhereaboutsColumnFilterValues(filterCtx, viewKey, colKey);
+  if (!col) return;
+
+  const activeColFilters = appState.whereaboutsColFilters[viewKey] || {};
+  const currentSpec = activeColFilters[colKey];
+
+  const allValues = values.map((v) => v.value);
+  if (blankCount > 0) allValues.push('__BLANK__');
+
+  let selectedSet = new Set();
+  let hasActiveFilter = false;
+
+  if (currentSpec) {
+    if (Array.isArray(currentSpec.values) && currentSpec.values.length > 0) {
+      selectedSet = new Set(currentSpec.values);
+      hasActiveFilter = true;
+    } else if (currentSpec.value && currentSpec.value !== 'ALL') {
+      selectedSet = new Set([String(currentSpec.value)]);
+      hasActiveFilter = true;
+    }
+  } else if (colKey === 'province' && appState.whereaboutsProvinceFilter[viewKey] && appState.whereaboutsProvinceFilter[viewKey] !== 'ALL') {
+    selectedSet = new Set([appState.whereaboutsProvinceFilter[viewKey]]);
+    hasActiveFilter = true;
+  } else if (colKey === 'stage' && appState.whereaboutsStatusFilter[viewKey] && appState.whereaboutsStatusFilter[viewKey] !== 'ALL') {
+    selectedSet = new Set([appState.whereaboutsStatusFilter[viewKey]]);
+    hasActiveFilter = true;
+  }
+
+  // If no filter is active, Excel default is that all options are checked
+  if (!hasActiveFilter) {
+    selectedSet = new Set(allValues);
+  }
+
+  const pop = document.createElement('div');
+  pop.id = 'col-filter-popover';
+  pop.className = 'col-filter-popover';
+  pop.dataset.colKey = `${viewKey}:${colKey}`;
+
+  const searchPlaceholder = `Search ${col.label}…`;
+  pop.innerHTML = `
+    <div class="col-dd-head">
+      <div class="col-dd-title">
+        <span>Filter: ${esc(col.label)}</span>
+        <span class="col-dd-summary-pill" id="col-dd-summary-pill">${selectedSet.size} of ${allValues.length}</span>
+      </div>
+      <input
+        type="search"
+        id="col-dd-search"
+        class="col-dd-search"
+        placeholder="${esc(searchPlaceholder)}"
+        autocomplete="off"
+      />
+    </div>
+    <div class="col-dd-list" id="col-dd-list" role="listbox"></div>
+    <div class="col-dd-meta" id="col-dd-meta"></div>
+    <div class="col-dd-footer">
+      <button type="button" class="btn btn-xs btn-secondary" id="col-dd-clear-btn" title="Clear filter (show all)">Clear</button>
+      <div class="col-dd-footer-btns">
+        <button type="button" class="btn btn-xs btn-outline" id="col-dd-cancel-btn">Cancel</button>
+        <button type="button" class="btn btn-xs btn-primary" id="col-dd-apply-btn">OK</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(pop);
+
+  const rect = triggerBtn.getBoundingClientRect();
+  const popWidth = 290;
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - popWidth - 12));
+  const spaceBelow = window.innerHeight - rect.bottom - 12;
+  const openAbove = spaceBelow < 260 && rect.top > spaceBelow;
+  pop.style.left = `${left}px`;
+  if (openAbove) {
+    pop.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+  } else {
+    pop.style.top = `${rect.bottom + 4}px`;
+  }
+
+  const listEl = pop.querySelector('#col-dd-list');
+  const metaEl = pop.querySelector('#col-dd-meta');
+  const searchEl = pop.querySelector('#col-dd-search');
+
+  const applyWhereaboutsFilter = (spec) => {
+    if (!appState.whereaboutsColFilters[viewKey]) {
+      appState.whereaboutsColFilters[viewKey] = {};
+    }
+    if (
+      !spec ||
+      (spec.values && spec.values.length === 0) ||
+      (spec.values && spec.values.length === allValues.length) ||
+      spec.value === 'ALL'
+    ) {
+      delete appState.whereaboutsColFilters[viewKey][colKey];
+      if (colKey === 'province') {
+        appState.whereaboutsProvinceFilter[viewKey] = 'ALL';
+      }
+      if (colKey === 'stage') {
+        appState.whereaboutsStatusFilter[viewKey] = 'ALL';
+      }
+    } else {
+      appState.whereaboutsColFilters[viewKey][colKey] = spec;
+      if (colKey === 'province') {
+        appState.whereaboutsProvinceFilter[viewKey] =
+          spec.values && spec.values.length === 1 ? spec.values[0] : (spec.value || 'ALL');
+      }
+      if (colKey === 'stage') {
+        appState.whereaboutsStatusFilter[viewKey] =
+          spec.values && spec.values.length === 1 ? spec.values[0] : (spec.value || 'ALL');
+      }
+    }
+    appState.whereaboutsPage[viewKey] = 1;
+    closeColFilterPopover();
+    renderActiveView();
+  };
+
+  const updateSummaryPill = () => {
+    const pill = pop.querySelector('#col-dd-summary-pill');
+    if (pill) {
+      if (allValues.length === 0) {
+        pill.textContent = '0 options';
+      } else if (selectedSet.size === allValues.length) {
+        pill.textContent = `(All) ${allValues.length}`;
+      } else if (selectedSet.size === 0) {
+        pill.textContent = '0 selected';
+      } else {
+        pill.textContent = `${selectedSet.size} of ${allValues.length}`;
+      }
+    }
+  };
+
+  let lastFiltered = values;
+  const renderList = (queryText = '') => {
+    const q = queryText.trim();
+    const qLower = q.toLowerCase();
+    const filtered = q ? values.filter((v) => v.value.toLowerCase().includes(qLower)) : values;
+    lastFiltered = filtered;
+
+    const MAX_RENDERED = 200;
+    const shown = filtered.slice(0, MAX_RENDERED);
+    const parts = [];
+
+    const isAllChecked = allValues.length > 0 && selectedSet.size === allValues.length;
+    const isSomeChecked = selectedSet.size > 0 && selectedSet.size < allValues.length;
+
+    if (!q) {
+      parts.push(`
+        <label class="col-dd-item col-dd-select-all">
+          <input type="checkbox" class="col-dd-check" id="col-dd-check-all" ${isAllChecked ? 'checked' : ''} />
+          <span class="col-dd-val"><strong>(Select All)</strong></span>
+          <span class="col-dd-count">${totalRows}</span>
+        </label>
+      `);
+      if (blankCount > 0) {
+        const isBlankChecked = selectedSet.has('__BLANK__');
+        parts.push(`
+          <label class="col-dd-item ${isBlankChecked ? 'selected' : ''}">
+            <input type="checkbox" class="col-dd-check" data-dd-val="__BLANK__" ${isBlankChecked ? 'checked' : ''} />
+            <span class="col-dd-val">(Blank / Pending)</span>
+            <span class="col-dd-count">${blankCount}</span>
+            <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only (Blank)">only</button>
+          </label>
+        `);
+      }
+    } else {
+      const visibleVals = shown.map((v) => v.value);
+      const allSearchChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
+      parts.push(`
+        <label class="col-dd-item col-dd-select-all">
+          <input type="checkbox" class="col-dd-check" id="col-dd-check-search-all" ${allSearchChecked ? 'checked' : ''} />
+          <span class="col-dd-val"><strong>(Select All Search Results)</strong></span>
+          <span class="col-dd-count">${filtered.length}</span>
+        </label>
+      `);
+    }
+
+    for (const item of shown) {
+      const isChecked = selectedSet.has(item.value);
+      parts.push(`
+        <label class="col-dd-item ${isChecked ? 'selected' : ''}">
+          <input type="checkbox" class="col-dd-check" data-dd-val="${esc(item.value)}" ${isChecked ? 'checked' : ''} />
+          <span class="col-dd-val" title="${esc(item.value)}">${esc(item.value)}</span>
+          <span class="col-dd-count">${item.count}</span>
+          <button type="button" class="col-dd-only-btn" data-only-val="${esc(item.value)}" title="Select only ${esc(item.value)}">only</button>
+        </label>
+      `);
+    }
+
+    if (filtered.length === 0) {
+      parts.push('<div class="col-dd-empty" style="padding:10px;font-size:12px;color:var(--text-muted);">No matching options</div>');
+    }
+
+    listEl.innerHTML = parts.join('');
+
+    const checkAll = listEl.querySelector('#col-dd-check-all');
+    if (checkAll) {
+      checkAll.indeterminate = isSomeChecked;
+    }
+
+    metaEl.textContent = `${values.length} distinct value(s)${
+      shown.length < filtered.length ? ` · showing first ${shown.length}` : ''
+    }`;
+    updateSummaryPill();
+  };
+
+  renderList('');
+
+  listEl.addEventListener('click', (e) => {
+    // 1. If clicked "only" button
+    const onlyBtn = e.target.closest('.col-dd-only-btn');
+    if (onlyBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const val = onlyBtn.dataset.onlyVal;
+      applyWhereaboutsFilter({
+        mode: 'multi',
+        values: [val],
+        value: val === '__BLANK__' ? '(Blank)' : val
+      });
+      return;
+    }
+
+    // 2. If clicked "Select All"
+    const selectAllLabel = e.target.closest('.col-dd-select-all');
+    if (selectAllLabel) {
+      e.preventDefault();
+      const isSearchAll = Boolean(selectAllLabel.querySelector('#col-dd-check-search-all'));
+      if (isSearchAll) {
+        const visibleVals = lastFiltered.map((v) => v.value);
+        const allVisibleChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
+        if (allVisibleChecked) {
+          visibleVals.forEach((v) => selectedSet.delete(v));
+        } else {
+          visibleVals.forEach((v) => selectedSet.add(v));
+        }
+      } else {
+        if (selectedSet.size === allValues.length) {
+          selectedSet.clear();
+        } else {
+          allValues.forEach((v) => selectedSet.add(v));
+        }
+      }
+      renderList(searchEl.value);
+      return;
+    }
+
+    // 3. If clicked regular item label or checkbox
+    const itemLabel = e.target.closest('.col-dd-item');
+    if (!itemLabel) return;
+    const check = itemLabel.querySelector('.col-dd-check');
+    if (!check) return;
+    const val = check.dataset.ddVal;
+    if (val === undefined) return;
+
+    if (e.target.type !== 'checkbox') {
+      check.checked = !check.checked;
+    }
+
+    if (check.checked) {
+      selectedSet.add(val);
+      itemLabel.classList.add('selected');
+    } else {
+      selectedSet.delete(val);
+      itemLabel.classList.remove('selected');
+    }
+
+    const checkAll = listEl.querySelector('#col-dd-check-all');
+    if (checkAll) {
+      checkAll.checked = selectedSet.size === allValues.length;
+      checkAll.indeterminate = selectedSet.size > 0 && selectedSet.size < allValues.length;
+    }
+    updateSummaryPill();
+  });
+
+  pop.querySelector('#col-dd-apply-btn')?.addEventListener('click', () => {
+    if (selectedSet.size === 0 || selectedSet.size === allValues.length) {
+      applyWhereaboutsFilter(null);
+    } else {
+      const arr = Array.from(selectedSet);
+      applyWhereaboutsFilter({
+        mode: 'multi',
+        values: arr,
+        value: arr.map((v) => (v === '__BLANK__' ? '(Blank)' : v)).join(', ')
+      });
+    }
+  });
+
+  pop.querySelector('#col-dd-clear-btn')?.addEventListener('click', () => {
+    applyWhereaboutsFilter(null);
+  });
+
+  pop.querySelector('#col-dd-cancel-btn')?.addEventListener('click', () => {
+    closeColFilterPopover();
+  });
+
+  searchEl.addEventListener('input', (e) => {
+    renderList(e.target.value);
+  });
+
+  searchEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      pop.querySelector('#col-dd-apply-btn')?.click();
+    } else if (e.key === 'Escape') {
+      closeColFilterPopover();
+    }
+  });
+
+  const onDocClick = (e) => {
+    if (!pop.contains(e.target) && !triggerBtn.contains(e.target)) {
+      closeColFilterPopover();
+    }
+  };
+  const onDocKey = (e) => {
+    if (e.key === 'Escape') closeColFilterPopover();
+  };
+
+  setTimeout(() => {
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onDocKey);
+    searchEl.focus();
+  }, 10);
+
+  closeColPopoverFn = () => {
+    document.removeEventListener('click', onDocClick);
+    document.removeEventListener('keydown', onDocKey);
+    pop.remove();
+  };
+}
+
 function bindWhereaboutsEvents(container, viewKey) {
   const searchInput = container.querySelector('#whereabouts-search');
   searchInput?.addEventListener('input', (e) => {
@@ -2917,15 +3850,70 @@ function bindWhereaboutsEvents(container, viewKey) {
   });
 
   container.querySelector('#whereabouts-province-filter')?.addEventListener('change', (e) => {
-    appState.whereaboutsProvinceFilter[viewKey] = e.target.value;
+    const val = e.target.value;
+    appState.whereaboutsProvinceFilter[viewKey] = val;
+    if (!appState.whereaboutsColFilters[viewKey]) {
+      appState.whereaboutsColFilters[viewKey] = {};
+    }
+    if (val === 'ALL') {
+      delete appState.whereaboutsColFilters[viewKey].province;
+    } else {
+      appState.whereaboutsColFilters[viewKey].province = { mode: 'exact', value: val };
+    }
     appState.whereaboutsPage[viewKey] = 1;
     renderActiveView();
   });
 
   container.querySelector('#whereabouts-status-filter')?.addEventListener('change', (e) => {
-    appState.whereaboutsStatusFilter[viewKey] = e.target.value;
+    const val = e.target.value;
+    appState.whereaboutsStatusFilter[viewKey] = val;
+    if (!appState.whereaboutsColFilters[viewKey]) {
+      appState.whereaboutsColFilters[viewKey] = {};
+    }
+    if (val === 'ALL') {
+      delete appState.whereaboutsColFilters[viewKey].stage;
+    } else if (!val.startsWith('with_') && val !== 'all_complete' && val !== 'pending') {
+      appState.whereaboutsColFilters[viewKey].stage = { mode: 'exact', value: val };
+    }
     appState.whereaboutsPage[viewKey] = 1;
     renderActiveView();
+  });
+
+  container.querySelector('#whereabouts-target-year-filter')?.addEventListener('change', (e) => {
+    appState.whereaboutsTargetYearFilter[viewKey] = e.target.value;
+    appState.whereaboutsPage[viewKey] = 1;
+    renderActiveView();
+  });
+
+  container.querySelector('#btn-whereabouts-clear-all-filters')?.addEventListener('click', () => {
+    appState.whereaboutsColFilters[viewKey] = {};
+    appState.whereaboutsProvinceFilter[viewKey] = 'ALL';
+    appState.whereaboutsStatusFilter[viewKey] = 'ALL';
+    appState.whereaboutsTargetYearFilter[viewKey] = 'ALL';
+    appState.whereaboutsSearch[viewKey] = '';
+    appState.whereaboutsPage[viewKey] = 1;
+    closeColFilterPopover();
+    renderActiveView();
+  });
+
+  // Attach column dropdown click listeners for table headers
+  container.querySelectorAll('[data-whereabouts-col-dropdown]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openWhereaboutsColFilterPopover(btn, btn.dataset.whereaboutsColDropdown, viewKey, container);
+    });
+  });
+
+  container.querySelector('#btn-whereabouts-toggle-graph')?.addEventListener('click', () => {
+    appState.whereaboutsShowGraph[viewKey] = !appState.whereaboutsShowGraph[viewKey];
+    renderActiveView();
+  });
+
+  container.querySelectorAll('[data-whereabouts-view-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.whereaboutsGraphMode[viewKey] = btn.dataset.whereaboutsViewMode;
+      renderActiveView();
+    });
   });
 
   container.querySelectorAll('[data-whereabouts-page]').forEach((btn) => {
@@ -2943,6 +3931,10 @@ function bindWhereaboutsEvents(container, viewKey) {
       appState.view = 'optool';
       renderActiveView();
     });
+  });
+
+  container.querySelectorAll('[data-lhid]').forEach((btn) => {
+    btn.addEventListener('click', () => openLandholdingDrawer(btn.dataset.lhid));
   });
 
   container.querySelector('#btn-whereabouts-export-csv')?.addEventListener('click', () => {
@@ -2999,11 +3991,15 @@ function exportWhereaboutsCsv(viewKey) {
   const searchVal = (appState.whereaboutsSearch?.[viewKey] || '').trim().toLowerCase();
   const provFilterVal = appState.whereaboutsProvinceFilter?.[viewKey] || 'ALL';
   const statusFilterVal = appState.whereaboutsStatusFilter?.[viewKey] || 'ALL';
+  const targetYearVal = appState.whereaboutsTargetYearFilter?.[viewKey] || 'ALL';
 
   let rows = enrichedRows;
   if (provFilterVal && provFilterVal !== 'ALL') {
     const fNorm = provFilterVal.trim().toUpperCase();
     rows = rows.filter((r) => r.province.toUpperCase().includes(fNorm));
+  }
+  if (targetYearVal && targetYearVal !== 'ALL') {
+    rows = rows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearVal));
   }
   if (statusFilterVal !== 'ALL') {
     if (statusFilterVal === 'all_complete') {

@@ -46,7 +46,13 @@ test('Schema & Region VIII Registry integrity', () => {
   assert.equal(REGIONAL_REGISTRY.length, 7);
   assert.equal(REGIONAL_REGISTRY[0].spreadsheetId, '1jTVJSQlUcWyZFxm6Pxqj9L62q9NtLyhUy1ifYqqb0Lw');
 
-  assert.equal(OPTOOL_SHEET_SCHEMAS.Database.length, 26);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.Database.length, 27);
+  const ladCol = OPTOOL_SHEET_SCHEMAS.Database.find((c) => c.key === 'ladStatus');
+  assert.equal(ladCol?.type, 'select');
+  assert.deepEqual(ladCol?.options, ['LAD Balance', 'Temp. Park', 'For Inclusion']);
+  const workCol = OPTOOL_SHEET_SCHEMAS.Database.find((c) => c.key === 'workability');
+  assert.equal(workCol?.type, 'select');
+  assert.deepEqual(workCol?.options, ['Workable', 'For Replacement', 'Replacement']);
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 23);
   assert.equal(OPTOOL_SHEET_SCHEMAS.Survey.length, 43);
   assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 12);
@@ -159,7 +165,9 @@ test('Schema & Region VIII Registry integrity', () => {
     'totalArea',
     'computedArea',
     'lotNumber',
-    'carpable'
+    'carpable',
+    'ladStatus',
+    'workability'
   ]);
 
   assert.equal(inferProvinceCodeFromMunicipality('Ormoc City'), 'LEY');
@@ -284,7 +292,7 @@ test('HTTP Server end-to-end API routes', async () => {
     assert.equal(bootRes.status, 200);
     const boot = await bootRes.json();
     assert.equal(boot.schemas.registry.length, 7);
-    assert.equal(boot.schemas.optoolPreviewCols.Database.length, 12);
+    assert.equal(boot.schemas.optoolPreviewCols.Database.length, 14);
     assert.ok(boot.gasScript.includes('runRegionalETL'));
     assert.ok(boot.gasHtml.includes('getHubBootstrap'));
 
@@ -339,13 +347,17 @@ test('HTTP Server end-to-end API routes', async () => {
           province: 'Leyte',
           municipality: 'Palo',
           barangay: 'Cavite East',
-          carpable: '5.125'
+          carpable: '5.125',
+          ladStatus: 'LAD Balance',
+          workability: 'Workable'
         }
       })
     });
     assert.equal(optRes.status, 200);
     const optJson = await optRes.json();
     assert.equal(optJson.row.carpable, '5.1250');
+    assert.equal(optJson.row.ladStatus, 'LAD Balance');
+    assert.equal(optJson.row.workability, 'Workable');
 
     // Milestone Target routing from Database -> CF(DOC), Survey, MOV, RegistrationDistribution, Installation
     for (const targetTab of MILESTONE_TARGET_TABS) {
@@ -1755,6 +1767,29 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
     const leyCf = leyJson.milestoneNepBreakdown[0];
     assert.equal(leyCf.nepTargetCount, 6);
     assert.equal(leyCf.total.count, 1); // Only LH-Q1 is Leyte; LH-Q3 is Biliran
+
+    // Update NEP targets with explicit 1st Sem target, verifying 2nd Sem is auto-calculated as (NEP - 1st Sem)
+    const customSemRes = await fetch(`${baseUrl}/api/nep-targets`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+      body: JSON.stringify({
+        cf_doc: { targetCount: 10, targetAreaHas: 25.5, sem1TargetCount: 7, sem1TargetAreaHas: 18.25 },
+        land_survey: { targetCount: 4, targetAreaHas: 10, sem1TargetCount: 1, sem1TargetAreaHas: 2.5 }
+      })
+    });
+    assert.equal(customSemRes.status, 200);
+    const customSemJson = await customSemRes.json();
+    const customCf = customSemJson.analytics.milestoneNepBreakdown[0];
+    assert.equal(customCf.nepTargetCount, 10);
+    assert.equal(customCf.nepTargetAreaHas, 25.5);
+    assert.equal(customCf.nepTargetSem1Count, 7);
+    assert.equal(customCf.nepTargetSem2Count, 3); // 10 - 7
+    assert.equal(customCf.nepTargetSem1AreaHas, 18.25);
+    assert.equal(customCf.nepTargetSem2AreaHas, 7.25); // 25.5 - 18.25
+    assert.equal(customCf.sem1.targetCount, 7);
+    assert.equal(customCf.sem2.targetCount, 3);
+    assert.equal(customCf.sem1.targetAreaHas, 18.25);
+    assert.equal(customCf.sem2.targetAreaHas, 7.25);
 
     // Provincial user is blocked (403) while a Region VIII Hub user (role: 'user') can edit (200)
     const provUser = store.createPendingUser(

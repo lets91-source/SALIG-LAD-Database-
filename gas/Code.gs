@@ -57,6 +57,9 @@ const USER_ACCOUNTS_HEADERS = [
 
 const NEP_SHEET_HEADERS = ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year', 'Milestone'];
 
+const WORKABILITY_OPTIONS = ['Workable', 'For Replacement', 'Replacement'];
+const LAD_STATUS_OPTIONS = ['LAD Balance', 'Temp. Park', 'For Inclusion'];
+
 const OPTOOL_TABS = [
   'Database',
   'CF(DOC)',
@@ -73,7 +76,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'SurveyStatus', 'TargetYear', 'PipelineYear', 'problematic',
     'Total Area', 'ComputedArea', 'DistributedArea', 'SurveyNumber', 'LotNumber',
     'CARPable', 'NONCARPable', 'Optool Status', 'CurrentStatusDesc',
-    'NewLandSize', 'Lad Status', 'Milestone Target', 'Year'
+    'NewLandSize', 'Lad Status', 'Workability', 'Milestone Target', 'Year'
   ],
   'CF(DOC)': [
     'LHID', 'Certificate of TItle', 'DENR Certification', 'Tax Declaration',
@@ -152,6 +155,7 @@ function onOpen() {
     .createMenu('SPLIT Region VIII Hub')
     .addItem('Run Regional ETL Consolidation Now', 'runRegionalETL')
     .addItem('Sync SALIG Column Headers Across Sheets', 'syncAllSheetHeaders')
+    .addItem('Apply Workability & LAD Dropdowns Across Sheets', 'applyDatabaseValidationAcrossSheets')
     .addItem('Initialize Milestone_Data, NEP, Baselines & User_Accounts Tabs', 'initializeHubTabs')
     .addItem('Create / Sync NEP Sheet (LHS, AREA, ARBs)', 'initializeNepSheet')
     .addItem('Install Hourly Auto-Sync Trigger', 'installHourlyTrigger')
@@ -184,6 +188,7 @@ function ensureNepSheet_() {
     .setBackground('#14532D')
     .setFontColor('#FFFFFF');
   sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
 
   if (isNew || sheet.getLastRow() < PROVINCIAL_NODES.length + 1) {
     const currentYear = new Date().getFullYear();
@@ -228,6 +233,7 @@ function ensureMilestoneSheet_() {
       .setBackground('#14532D')
       .setFontColor('#FFFFFF');
     sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
   }
   return sheet;
 }
@@ -246,6 +252,7 @@ function ensureBaselineSheet_() {
     sheet.getRange(2, 1, rows.length, 4).setValues(rows);
     sheet.getRange(2, 4, rows.length, 1).setNumberFormat('0.0000');
     sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
   }
   return sheet;
 }
@@ -956,6 +963,7 @@ function syncOptoolTabHeaders_(ss, tabName, headersSpec) {
       range.setValues([expectedTitles]);
       styleHeaderRange_(range);
       sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
     }
     return { sheet: sheet, added: expectedTitles.slice(), renamed: [], removedEmpty: [] };
   }
@@ -999,6 +1007,12 @@ function syncOptoolTabHeaders_(ss, tabName, headersSpec) {
       (norm === 'targetcurrentprevious' || norm === 'targetyearcurrentprevious')
     ) {
       sheet.getRange(1, c + 1).setValue('TARGET YEAR\n (Current/ Previous)');
+    } else if (
+      tabName === 'Database' &&
+      (norm === 'lad' || norm === 'ladcolumn')
+    ) {
+      sheet.getRange(1, c + 1).setValue('Lad Status');
+      renamed.push(String(headerRow[c]) + ' -> Lad Status');
     }
   }
 
@@ -1027,7 +1041,47 @@ function syncOptoolTabHeaders_(ss, tabName, headersSpec) {
     styleHeaderRange_(range);
   }
 
+  if (tabName === 'Database') {
+    applyDatabaseValidationRules_(sheet);
+  }
+
   return { sheet: sheet, added: added, renamed: renamed, removedEmpty: removedEmpty };
+}
+
+/**
+ * Apply dropdown validation rules to Database sheet:
+ * - Workability: Workable, For Replacement, Replacement
+ * - Lad Status: LAD Balance, Temp. Park, For Inclusion
+ */
+function applyDatabaseValidationRules_(sheet) {
+  if (!sheet) return;
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return;
+  const maxRows = Math.max(sheet.getMaxRows() - 1, 100);
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  const workabilityRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(WORKABILITY_OPTIONS, true)
+    .setAllowInvalid(true)
+    .build();
+
+  const ladStatusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(LAD_STATUS_OPTIONS, true)
+    .setAllowInvalid(true)
+    .build();
+
+  for (let c = 0; c < headers.length; c++) {
+    const norm = normalizeHeaderKey_(headers[c]);
+    if (norm === 'workability') {
+      sheet.getRange(2, c + 1, maxRows, 1).setDataValidation(workabilityRule);
+    } else if (norm === 'ladstatus' || norm === 'lad' || norm === 'ladcolumn') {
+      sheet.getRange(2, c + 1, maxRows, 1).setDataValidation(ladStatusRule);
+    }
+  }
+}
+
+function applyDatabaseValidationAcrossSheets() {
+  return syncAllSheetHeaders();
 }
 
 /**
@@ -1189,7 +1243,12 @@ function upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow) {
       outRow.push('');
       continue;
     }
-    const raw = rowObj[spec.key] !== undefined ? rowObj[spec.key] : '';
+    const raw =
+      rowObj[spec.key] !== undefined
+        ? rowObj[spec.key]
+        : rowObj[spec.header] !== undefined
+        ? rowObj[spec.header]
+        : '';
     if (spec.type === 'decimal' && raw !== '') {
       const num = Number(raw);
       outRow.push(isNaN(num) ? String(raw) : Number(num.toFixed(4)));
@@ -1300,6 +1359,7 @@ function ensureUserAccountsSheet_() {
       .setBackground('#14532D')
       .setFontColor('#FFFFFF');
     sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
     sheet.getRange('E:E').setNumberFormat('@');
   }
   return sheet;
