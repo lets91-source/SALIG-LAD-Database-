@@ -107,7 +107,7 @@ body {
 .brand-badge {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 10px;
   background: transparent;
   display: flex;
   align-items: center;
@@ -120,7 +120,7 @@ body {
   width: 44px;
   height: 44px;
   display: block;
-  border-radius: 50%;
+  border-radius: 10px;
   object-fit: contain;
 }
 
@@ -2323,6 +2323,7 @@ td.cell-check {
 .loading-logo {
   width: 38px;
   height: 38px;
+  border-radius: 8px;
   object-fit: contain;
 }
 
@@ -2422,8 +2423,10 @@ td.cell-check {
 }
 
 .auth-showcase-seal img {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .auth-showcase-kicker {

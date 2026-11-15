@@ -443,7 +443,7 @@ test('HTTP Server end-to-end API routes', async () => {
     assert.equal(delMs.status, 200);
 
     // Static assets
-    for (const staticPath of ['/', '/styles.css', '/app.js', '/views.js', '/charts.js', '/dar-logo.svg']) {
+    for (const staticPath of ['/', '/styles.css', '/app.js', '/views.js', '/charts.js', '/dar-logo.svg', '/dar-logo.png']) {
       const sRes = await fetch(`${baseUrl}${staticPath}`);
       assert.equal(sRes.status, 200);
     }
