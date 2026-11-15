@@ -97,8 +97,8 @@ const appState = {
   cfTableLayout: 'standard'
 };
 
-const AUTO_SYNC_MAX_AGE_MS = 2 * 60 * 1000;
-const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const AUTO_SYNC_MAX_AGE_MS = 45 * 1000;
+const AUTO_SYNC_INTERVAL_MS = 60 * 1000;
 
 let optoolSearchTimer = null;
 let closeColPopoverFn = null;
@@ -1659,8 +1659,21 @@ async function syncAllNodes(mode = 'merge', options = {}) {
     });
     if (!appState.currentUser) return;
     appState.state = { ...appState.state, ...res.state };
+
+    // Automatically sync provincial milestone supportlists directly from each provincial Google Sheet
+    try {
+      const provRes = await api('/api/sync/provincial-optool', { method: 'POST', signal });
+      if (provRes && provRes.ok) {
+        if (provRes.state) appState.state = { ...appState.state, ...provRes.state };
+        if (provRes.analytics) appState.analytics = provRes.analytics;
+      }
+    } catch (_) {}
+
     if (!quiet || !isUserActivelyEditing()) {
       await refreshAnalytics();
+      if (!isUserActivelyEditing()) {
+        renderActiveView();
+      }
     }
     const synced = (res.results || []).filter((r) => r.status === 'synced').length;
     const restricted = (res.results || []).filter((r) => r.status === 'unauthorized').length;
@@ -1688,6 +1701,7 @@ function maybeAutoSyncGoogleSheets() {
   }
 }
 
+let visibilityListenerAttached = false;
 function startAutoSyncLoop() {
   if (autoSyncTimer) clearInterval(autoSyncTimer);
   autoSyncTimer = setInterval(() => {
@@ -1695,6 +1709,15 @@ function startAutoSyncLoop() {
       syncAllNodes('merge', { quiet: true });
     }
   }, AUTO_SYNC_INTERVAL_MS);
+
+  if (!visibilityListenerAttached && typeof document !== 'undefined') {
+    visibilityListenerAttached = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !isUserActivelyEditing()) {
+        maybeAutoSyncGoogleSheets();
+      }
+    });
+  }
 }
 
 async function syncRegionalHub(mode = 'merge') {
@@ -4825,7 +4848,7 @@ async function bootAppSession() {
     'fetching',
     'Fetching Regional Data…',
     'Loading Region VIII OPTool database, analytics, and sync state…',
-    () => api('/api/bootstrap')
+    () => api('/api/bootstrap?sync=auto')
   );
   appState.currentUser = boot.currentUser || appState.currentUser;
   appState.provinceScope = boot.provinceScope || null;

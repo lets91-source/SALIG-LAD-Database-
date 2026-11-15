@@ -3031,3 +3031,87 @@ test('Direct Provincial Google Sheets Sync for OPTool Supportlist (CF, Survey, M
   assert.ok(gasCode.includes('readProvincialMilestoneSupportLists_'), 'GAS Code.gs includes readProvincialMilestoneSupportLists_');
   assert.ok(gasCode.includes('findOptoolSheet_'), 'GAS Code.gs includes findOptoolSheet_');
 });
+
+test('Automatic Live Provincial Sync & Google Sheet Database Integration', async () => {
+  const { performProvincialSync } = await import('../app.js');
+
+  const tempDir = makeTempDir();
+  const testStore = new ConsolidatedStore(tempDir);
+  for (const t of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
+    testStore.state.optool[t] = [];
+  }
+  testStore.state.gasWebAppUrl = 'https://script.google.com/macros/s/TEST/exec';
+  testStore.save();
+
+  let gasCalls = 0;
+  const mockGasSnapshot = {
+    optool: {
+      'CF(DOC)': [{ lhid: '805000001', province: 'Leyte', provinceCode: 'LEY' }],
+      Survey: [{ lhid: '805000002', province: 'Biliran', provinceCode: 'BIL' }],
+      MOV: [],
+      RegistrationDistribution: [],
+      Installation: []
+    }
+  };
+
+  const mockGasPull = async () => {
+    gasCalls++;
+    return mockGasSnapshot;
+  };
+
+  const { server } = createAppServer(testStore, {
+    requireAuth: false,
+    pullFromGasWebApp: mockGasPull
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const port = server.address().port;
+
+  try {
+    // 1. GET /api/sync/auto pulls fresh data
+    const resAuto = await fetch(`http://localhost:${port}/api/sync/auto`);
+    assert.equal(resAuto.status, 200);
+    const dataAuto = await resAuto.json();
+    assert.ok(dataAuto.ok);
+    assert.equal(gasCalls, 1);
+    assert.equal(testStore.state.optool.Survey.length, 1);
+
+    // 2. GET /api/sync/auto within TTL uses cache
+    const resCached = await fetch(`http://localhost:${port}/api/sync/auto`);
+    assert.equal(resCached.status, 200);
+    const dataCached = await resCached.json();
+    assert.ok(dataCached.cached, 'Second immediate call is cached');
+    assert.equal(gasCalls, 1, 'No additional GAS pull within TTL');
+
+    // 3. POST /api/sync/province/SAM forces single-province sync
+    const resProv = await fetch(`http://localhost:${port}/api/sync/province/SAM`, { method: 'POST' });
+    assert.equal(resProv.status, 200);
+    const dataProv = await resProv.json();
+    assert.ok(dataProv.ok);
+    assert.equal(dataProv.provinceCode, 'SAM');
+
+    // 4. POST /api/sync/webhook receives Google Sheet edit event
+    const resWebhook = await fetch(`http://localhost:${port}/api/sync/webhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provinceCode: 'LEY', tabName: 'Survey' })
+    });
+    assert.equal(resWebhook.status, 200);
+    const dataWebhook = await resWebhook.json();
+    assert.ok(dataWebhook.ok);
+
+    // 5. GET /api/bootstrap?sync=auto
+    const resBoot = await fetch(`http://localhost:${port}/api/bootstrap?sync=auto`);
+    assert.equal(resBoot.status, 200);
+    const bootData = await resBoot.json();
+    assert.ok(bootData.state);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+
+  // 6. Verify GAS Code.gs includes scheduledProvincialSync & installAutomatedSyncTrigger
+  const gasCode = fs.readFileSync(path.join(__dirname, '..', '..', 'gas', 'Code.gs'), 'utf8');
+  assert.ok(gasCode.includes('scheduledProvincialSync'), 'Includes scheduledProvincialSync');
+  assert.ok(gasCode.includes('installAutomatedSyncTrigger'), 'Includes installAutomatedSyncTrigger');
+  assert.ok(gasCode.includes('getWriteTargetSpreadsheets_(tabName'), 'Passes tabName to getWriteTargetSpreadsheets_');
+});

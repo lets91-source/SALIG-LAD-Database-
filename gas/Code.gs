@@ -1316,25 +1316,60 @@ function syncAllSheetHeaders(specificSpreadsheetId) {
 }
 
 function resolveNodeIdFromRow_(provinceCode, rowObj) {
-  const rawCode = String(provinceCode || '').trim().toUpperCase();
+  const rawCode = String(provinceCode || (rowObj && (rowObj.provinceCode || rowObj.Province_Code)) || '').trim().toUpperCase();
   for (let i = 0; i < PROVINCIAL_NODES.length; i++) {
     if (PROVINCIAL_NODES[i].code === rawCode) return PROVINCIAL_NODES[i].id;
   }
-  const provText = String((rowObj && rowObj.province) || '').toLowerCase();
+  const provText = String((rowObj && (rowObj.province || rowObj.Province || rowObj.provincename || rowObj.ProvinceName)) || '').toLowerCase();
   if (provText.indexOf('biliran') !== -1) return PROVINCIAL_NODES[0].id;
   if (provText.indexOf('eastern samar') !== -1) return PROVINCIAL_NODES[1].id;
   if (provText.indexOf('northern samar') !== -1) return PROVINCIAL_NODES[3].id;
   if (provText.indexOf('southern leyte') !== -1) return PROVINCIAL_NODES[5].id;
   if (provText.indexOf('samar') !== -1) return PROVINCIAL_NODES[4].id;
   if (provText.indexOf('leyte') !== -1) return PROVINCIAL_NODES[2].id;
+
+  // Search Database sheet by LHID to auto-detect province if not provided directly
+  const targetLhid = rowObj && (rowObj.lhid || rowObj.LHID);
+  if (targetLhid) {
+    try {
+      const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+      const dbSheet = hub.getSheetByName('Database');
+      if (dbSheet && dbSheet.getLastRow() > 1) {
+        const cleanTarget = formatLhidString_(targetLhid).toLowerCase();
+        const headers = dbSheet.getRange(1, 1, 1, dbSheet.getLastColumn()).getValues()[0].map(normalizeHeaderKey_);
+        const lhidCol = headers.indexOf('lhid');
+        let provCol = headers.indexOf('province');
+        if (provCol === -1) provCol = headers.indexOf('provincename');
+        if (lhidCol >= 0 && provCol >= 0) {
+          const vals = dbSheet.getDataRange().getValues();
+          for (let r = 1; r < vals.length; r++) {
+            if (formatLhidString_(vals[r][lhidCol]).toLowerCase() === cleanTarget) {
+              const p = String(vals[r][provCol] || '').toLowerCase();
+              if (p.indexOf('biliran') !== -1) return PROVINCIAL_NODES[0].id;
+              if (p.indexOf('eastern samar') !== -1) return PROVINCIAL_NODES[1].id;
+              if (p.indexOf('northern samar') !== -1) return PROVINCIAL_NODES[3].id;
+              if (p.indexOf('southern leyte') !== -1) return PROVINCIAL_NODES[5].id;
+              if (p.indexOf('samar') !== -1) return PROVINCIAL_NODES[4].id;
+              if (p.indexOf('leyte') !== -1) return PROVINCIAL_NODES[2].id;
+              break;
+            }
+          }
+        }
+      }
+    } catch (ignore) {}
+  }
   return '';
 }
 
-function getWriteTargetSpreadsheets_(provinceCode, rowObj) {
-  const targets = [{ code: 'HUB', id: HUB_SPREADSHEET_ID }];
+function getWriteTargetSpreadsheets_(tabName, provinceCode, rowObj) {
+  const isMilestone = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'].indexOf(tabName) !== -1;
   const provId = resolveNodeIdFromRow_(provinceCode, rowObj);
-  if (provId && provId !== HUB_SPREADSHEET_ID) {
+  const targets = [];
+  if (provId) {
     targets.push({ code: provinceCode || 'PROVINCE', id: provId });
+  }
+  if (!isMilestone || targets.length === 0) {
+    targets.push({ code: 'HUB', id: HUB_SPREADSHEET_ID });
   }
   return targets;
 }
@@ -1476,7 +1511,7 @@ function upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow) {
 }
 
 function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow, provinceCode) {
-  const targets = getWriteTargetSpreadsheets_(provinceCode, rowObj);
+  const targets = getWriteTargetSpreadsheets_(tabName, provinceCode, rowObj);
   const perNode = [];
   let primaryResult = { ok: true, tabName: tabName, updated: false, rowNumber: 0 };
 
@@ -1496,7 +1531,7 @@ function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow, provinceCode
 }
 
 function deleteOptoolRecord_(tabName, headersSpec, rowObj, provinceCode) {
-  const targets = getWriteTargetSpreadsheets_(provinceCode, rowObj);
+  const targets = getWriteTargetSpreadsheets_(tabName, provinceCode, rowObj);
   let deletedAny = false;
   targets.forEach(function (t) {
     try {
@@ -1925,4 +1960,40 @@ function authorizeDriveAndRegionalHub() {
     rootFolderUrl: root.getUrl(),
     res: res
   };
+}
+
+/**
+ * Automated Provincial Synchronization Trigger:
+ * Pulls all milestone supportlists (CF, Survey, MOV, Registration, Installation)
+ * across all 6 provincial Google Sheets and logs sync status.
+ */
+function scheduledProvincialSync() {
+  const res = readProvincialMilestoneSupportLists_();
+  let totalRows = 0;
+  if (res && res.data) {
+    Object.keys(res.data).forEach(function (t) {
+      totalRows += (res.data[t] || []).length;
+    });
+  }
+  Logger.log('Scheduled Provincial Sync: ' + totalRows + ' milestone rows verified across Region VIII.');
+  return { ok: true, totalRows: totalRows };
+}
+
+/**
+ * Run once to install an automatic 5-minute recurring timer
+ * for continuous provincial Google Sheets consolidation.
+ */
+function installAutomatedSyncTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'scheduledProvincialSync') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('scheduledProvincialSync')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+  Logger.log('Installed 5-minute automated provincial sync trigger.');
+  return { ok: true, message: 'Automated 5-minute sync trigger installed successfully.' };
 }

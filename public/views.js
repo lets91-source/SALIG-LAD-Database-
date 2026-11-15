@@ -5656,6 +5656,7 @@ function buildDbByLhidMap(state) {
           </button>
         </div>
         <div class="toolbar-left">
+          <span class="badge badge-success" id="live-sheet-db-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 8px;" title="Connected directly to Google Sheets per province. Auto-sync is active."><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;"></span> Live Sheet DB</span>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-provincial-optool" title="Pull &amp; sync ${esc(currentTab)} directly from all Provincial Google Sheets (Biliran, Eastern Samar, Leyte, Northern Samar, Samar, Southern Leyte)">
             🔄 Sync Provincial Sheets
           </button>
