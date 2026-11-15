@@ -2750,6 +2750,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             </p>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <select
+              class="form-control whereabouts-target-year-select cf-target-year-select"
+              id="cf-status-target-year-filter"
+              aria-label="Filter by Target Year"
+              title="Filter CF(DOC) Milestones by Target Year"
+            >
+              <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
+              ${cfTargetYears
+                .filter((yr) => yr !== 'ALL')
+                .map(
+                  (yr) =>
+                    `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>Target Year: ${esc(yr)}</option>`
+                )
+                .join('')}
+            </select>
             <div class="btn-group" role="group" aria-label="CF Table Layout">
               <button type="button" class="btn btn-xs ${cfTableLayout === 'standard' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="standard" title="Rows: Province • Columns: Milestones">
                 ▦ Rows: Province
@@ -2763,6 +2778,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <button type="button" class="btn btn-xs ${cfMetricMode === 'lhs' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="lhs" title="Show Landholdings (LHS) only">LHS</button>
               <button type="button" class="btn btn-xs ${cfMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="area" title="Show Area (HAS) only">Area (HAS)</button>
             </div>
+            <button type="button" class="btn btn-secondary btn-xs btn-fullscreen" id="btn-fullscreen-cf-status" title="Full Screen Table">
+              <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+            </button>
             <button type="button" class="btn btn-secondary btn-xs" id="btn-cf-status-refresh" title="Refresh Table">
               🔄 Refresh
             </button>
@@ -3431,6 +3449,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
               ${allTargetYears.filter((y) => y !== 'ALL').map((y) => `<option value="${esc(y)}" ${String(targetYearFilterVal) === String(y) ? 'selected' : ''}>Target Year: ${esc(y)}</option>`).join('')}
             </select>
+            <button type="button" class="btn btn-sm btn-secondary btn-fullscreen" id="btn-fullscreen-survey-status" title="Full Screen Survey Status Table">
+              <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+            </button>
             <button type="button" class="btn btn-sm btn-outline-success btn-survey-refresh" id="btn-survey-status-refresh" title="Refresh DAR Survey Status">
               <span class="refresh-icon">🔄</span> Refresh
             </button>

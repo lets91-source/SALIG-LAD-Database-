@@ -3120,6 +3120,30 @@ body.has-fullscreen-panel #loading-overlay,
   margin-bottom: 12px !important;
 }
 
+.panel.is-fullscreen .panel-body,
+.panel:fullscreen .panel-body {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.panel.is-fullscreen .survey-matrix-wrap,
+.panel:fullscreen .survey-matrix-wrap {
+  flex: 1 1 auto !important;
+  max-height: calc(100vh - 120px) !important;
+  height: calc(100vh - 120px) !important;
+  overflow: auto !important;
+}
+
+.panel.is-fullscreen .survey-monitoring-body,
+.panel:fullscreen .survey-monitoring-body {
+  flex: 1 1 auto !important;
+  max-height: calc(100vh - 120px) !important;
+  overflow: auto !important;
+}
+
 
 .panel.is-fullscreen .toolbar,
 .panel:fullscreen .toolbar {
@@ -3990,16 +4014,19 @@ th:hover .q-toggle-pill {
   border: 1px solid var(--border);
 }
 
+.cf-target-year-select,
 .survey-target-year-select {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #0f4d2a;
   border: 1.5px solid #15803d;
   border-radius: 6px;
-  padding: 5px 12px;
+  padding: 4px 10px;
   background: #ffffff;
   cursor: pointer;
+  height: 28px;
+  line-height: 1.2;
 }
 
 .btn-survey-refresh {
