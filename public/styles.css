@@ -620,7 +620,7 @@ textarea.form-control {
 }
 
 .kpi-card.teal {
-  border-left: 4px solid #0f766e;
+  border-left: 4px solid var(--dar-emerald);
 }
 
 .kpi-target-card {
@@ -630,19 +630,22 @@ textarea.form-control {
   cursor: pointer;
   padding: 11px 13px;
   gap: 4px;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
 .kpi-target-card:hover {
-  border-color: var(--dar-green);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
+.kpi-target-card:focus-visible {
+  outline: 2px solid var(--dar-emerald);
+  outline-offset: 2px;
+}
+
 .kpi-target-card.active-target-card {
-  border-color: var(--dar-green);
   background: #effcf3;
-  box-shadow: 0 0 0 2px rgba(15, 76, 41, 0.14);
+  box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.22);
 }
 
 .kpi-target-card .kpi-primary {

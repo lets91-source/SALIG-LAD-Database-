@@ -5414,7 +5414,7 @@ function buildDbByLhidMap(state) {
     'CF(DOC)': { label: 'CF(DOC)', variantClass: 'highlight' },
     Survey: { label: 'Survey', variantClass: 'blue' },
     MOV: { label: 'MOV', variantClass: 'amber' },
-    RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'teal' },
+    RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'highlight' },
     Installation: { label: 'Installation', variantClass: 'highlight' }
   };
 
