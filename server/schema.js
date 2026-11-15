@@ -523,6 +523,7 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'dateFiConducted',
     'datePreparedSigned',
     'target',
+    'targetYear',
     'reportedMonth',
     'remarks'
   ],
@@ -540,6 +541,8 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'dateAcceptedDenrSmd',
     'aspDate',
     'aspNo',
+    'target',
+    'targetYear',
     'reportedMonth'
   ],
   MOV: [
@@ -552,6 +555,8 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'dateTransLbpAoc',
     'lbpClaimNumber',
     'aocNumber',
+    'target',
+    'targetYear',
     'reportedMonth'
   ],
   RegistrationDistribution: [
@@ -572,6 +577,7 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'femaleArbs',
     'noOfTitles',
     'target',
+    'targetYear',
     'monthReported',
     'remarks'
   ],
@@ -592,6 +598,7 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'noOfTitles',
     'yearAccomp',
     'target',
+    'targetYear',
     'monthReported'
   ]
 };

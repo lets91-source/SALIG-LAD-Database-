@@ -375,7 +375,8 @@ export function createSeedState() {
         target: 'Current',
         reportedMonth: 'May 2026',
         remarks: 'Complete CF forwarded to Valuation',
-        pdfFile: 'CF_LH-0837-0012.pdf'
+        pdfFile: 'CF_LH-0837-0012.pdf',
+        targetYear: '2026'
       },
       {
         lhid: 'LH-0878-0009',
@@ -400,7 +401,8 @@ export function createSeedState() {
         target: 'Current',
         reportedMonth: 'June 2026',
         remarks: 'Validated by DARPO Biliran',
-        pdfFile: 'CF_LH-0878-0009.pdf'
+        pdfFile: 'CF_LH-0878-0009.pdf',
+        targetYear: '2026'
       }
     ],
     Survey: [
@@ -447,7 +449,8 @@ export function createSeedState() {
         reportedMonth: 'June 2026',
         pdfFile: 'ASP_Psd-08-041982.pdf',
         currentStatus: '12 - WITH ASP',
-        currentDate: '2026-06-15'
+        currentDate: '2026-06-15',
+        targetYear: '2026'
       }
     ],
     MOV: [
@@ -463,7 +466,8 @@ export function createSeedState() {
         aocNumber: 'AOC-08-2026-118',
         target: 'Current',
         reportedMonth: 'August 2026',
-        pdfFile: 'MOV_LH-0837-0012.pdf'
+        pdfFile: 'MOV_LH-0837-0012.pdf',
+        targetYear: '2026'
       }
     ],
     RegistrationDistribution: [
@@ -488,7 +492,8 @@ export function createSeedState() {
         noOfTitles: '1',
         target: 'Current',
         monthReported: 'November 2026',
-        remarks: 'Registered at ROD Ormoc City'
+        remarks: 'Registered at ROD Ormoc City',
+        targetYear: '2026'
       },
       {
         lhid: 'LH-0826-0016',
@@ -511,7 +516,8 @@ export function createSeedState() {
         noOfTitles: '1',
         target: 'Current',
         monthReported: 'November 2026',
-        remarks: 'Distributed during Guiuan Municipal Ceremonial Release'
+        remarks: 'Distributed during Guiuan Municipal Ceremonial Release',
+        targetYear: '2026'
       }
     ],
     Installation: [
@@ -545,7 +551,8 @@ export function createSeedState() {
         remarks: 'Physical installation completed with MARPO & PNP assistance',
         yearAccomp: '2026',
         target: 'Current',
-        monthReported: 'November 2026'
+        monthReported: 'November 2026',
+        targetYear: '2026'
       }
     ]
   };

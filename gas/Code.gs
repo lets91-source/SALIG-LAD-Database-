@@ -1324,6 +1324,9 @@ function upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow) {
   } else {
     sheet.appendRow(outRow);
   }
+  if (tabName !== 'Database') {
+    applyMilestoneTargetYearFormula_(sheet, tabName);
+  }
   return { ok: true, tabName: tabName, updated: rowNumber > 0, rowNumber: rowNumber > 0 ? rowNumber : sheet.getLastRow() };
 }
 

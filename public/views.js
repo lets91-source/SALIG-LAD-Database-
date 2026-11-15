@@ -4301,6 +4301,15 @@ function getOptoolCellValue(row, col, dbByLhid) {
     const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
     return dbRow?.[col.dbKey] ?? '';
   }
+  if (col?.key === 'targetYear') {
+    const direct = row?.[col.key];
+    if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+      return direct;
+    }
+    const lhidKey = String(row?.lhid || '').trim().toLowerCase();
+    const dbRow = lhidKey && dbByLhid ? dbByLhid.get(lhidKey) : null;
+    return dbRow?.year ?? dbRow?.targetYear ?? '';
+  }
   return row?.[col?.key] ?? '';
 }
 

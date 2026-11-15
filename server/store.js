@@ -94,10 +94,25 @@ function applyRegistrationDistributionDefaults(row, dbRow) {
 }
 
 function applyTabRowDefaults(tabName, row, dbRow) {
-  if (tabName === 'Survey') return applySurveyCurrentStatus(row);
-  if (tabName === 'RegistrationDistribution') return applyRegistrationDistributionDefaults(row, dbRow);
-  if (tabName === 'Installation') return applyTargetPeriodDefault(row, dbRow);
-  return false;
+  let changed = false;
+  if (tabName === 'Survey') {
+    if (applySurveyCurrentStatus(row)) changed = true;
+  } else if (tabName === 'RegistrationDistribution') {
+    if (applyRegistrationDistributionDefaults(row, dbRow)) changed = true;
+  } else if (tabName === 'Installation') {
+    if (applyTargetPeriodDefault(row, dbRow)) changed = true;
+  }
+
+  // Auto-connect targetYear from linked Database row if unset
+  if (tabName !== 'Database' && (!row.targetYear || String(row.targetYear).trim() === '') && dbRow) {
+    const yr = String(dbRow.year || dbRow.targetYear || '').trim();
+    if (yr) {
+      row.targetYear = yr;
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 /**
@@ -130,17 +145,20 @@ const DATABASE_TO_TARGET_MAP = {
   'CF(DOC)': {
     lhid: 'lhid',
     target: (r) => resolveTargetFromDatabaseRow(r),
-    reportedMonth: () => formatCurrentMonthYear()
+    reportedMonth: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
   },
   Survey: {
     lhid: 'lhid',
     target: (r) => resolveTargetFromDatabaseRow(r),
-    reportedMonth: () => formatCurrentMonthYear()
+    reportedMonth: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
   },
   MOV: {
     lhid: 'lhid',
     target: (r) => resolveTargetFromDatabaseRow(r),
-    reportedMonth: () => formatCurrentMonthYear()
+    reportedMonth: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
   },
   RegistrationDistribution: {
     lhid: 'lhid',
@@ -152,7 +170,8 @@ const DATABASE_TO_TARGET_MAP = {
     moa: 'moa',
     rodTitleNo: 'titleNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
-    monthReported: () => formatCurrentMonthYear()
+    monthReported: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
   },
   Installation: {
     lhid: 'lhid',
@@ -167,7 +186,8 @@ const DATABASE_TO_TARGET_MAP = {
     surveyNo: 'surveyNumber',
     areaHas2: (r) => r.distributedArea || r.carpable || r.computedArea || '',
     target: (r) => resolveTargetFromDatabaseRow(r),
-    monthReported: () => formatCurrentMonthYear()
+    monthReported: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
   }
 };
 
@@ -407,10 +427,9 @@ export class ConsolidatedStore {
               }
             }
           }
-          const linkedDbRow =
-            tab === 'RegistrationDistribution' || tab === 'Installation'
-              ? dbByLhid.get(String(row.lhid ?? '').trim().toLowerCase()) || null
-              : null;
+          const linkedDbRow = row.lhid
+            ? dbByLhid.get(String(row.lhid ?? '').trim().toLowerCase()) || null
+            : null;
           if (applyTabRowDefaults(tab, row, linkedDbRow)) {
             dirty = true;
           }
@@ -587,9 +606,7 @@ export class ConsolidatedStore {
     }
     const resolvedLinked =
       linkedDbRow ||
-      (tabName === 'RegistrationDistribution' || tabName === 'Installation'
-        ? findLinkedDatabaseRow(this.state.optool.Database, cleanRow.lhid)
-        : null);
+      (cleanRow.lhid ? findLinkedDatabaseRow(this.state.optool.Database, cleanRow.lhid) : null);
     applyTabRowDefaults(tabName, cleanRow, resolvedLinked);
     return cleanRow;
   }
@@ -752,7 +769,24 @@ export class ConsolidatedStore {
 
     const lhidKey = String(dbRow.lhid || '').trim().toLowerCase();
     const targetRows = this.state.optool[targetTab] || [];
-    if (lhidKey && targetRows.some((r) => String(r.lhid || '').trim().toLowerCase() === lhidKey)) {
+    const existingRow = lhidKey
+      ? targetRows.find((r) => String(r.lhid || '').trim().toLowerCase() === lhidKey)
+      : null;
+
+    const targetYearVal = String(dbRow.year || dbRow.targetYear || '').trim();
+    const targetVal = resolveTargetFromDatabaseRow(dbRow);
+
+    if (existingRow) {
+      let updated = false;
+      if (targetYearVal && existingRow.targetYear !== targetYearVal) {
+        existingRow.targetYear = targetYearVal;
+        updated = true;
+      }
+      if (targetVal && existingRow.target !== targetVal) {
+        existingRow.target = targetVal;
+        updated = true;
+      }
+      if (updated) this.save();
       return false;
     }
 

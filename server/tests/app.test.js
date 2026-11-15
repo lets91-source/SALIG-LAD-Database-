@@ -1032,13 +1032,19 @@ test('GAS_WEB_APP_URL env default and automatic Google Sheet two-way push on mut
         lhid: 'LH-AUTO-001',
         province: 'Leyte',
         municipality: 'Palo',
-        milestoneTarget: 'Survey'
+        milestoneTarget: 'Survey',
+        year: '2026'
       }
     });
     assert.equal(saveRes.statusCode, 200);
     assert.equal(saveRes.body.gasPushResult?.ok, true);
     assert.ok(pushedPayloads.some((p) => p.payload.action === 'upsertOptoolRow' && p.payload.tabName === 'Database'));
-    assert.ok(pushedPayloads.some((p) => p.payload.action === 'upsertOptoolRow' && p.payload.tabName === 'Survey'));
+    const surveyPush = pushedPayloads.find((p) => p.payload.action === 'upsertOptoolRow' && p.payload.tabName === 'Survey');
+    assert.ok(surveyPush);
+    assert.equal(surveyPush.payload.row.targetYear, '2026');
+    const routedSurvey = saveRes.body.optool.Survey.find((r) => r.lhid === 'LH-AUTO-001');
+    assert.ok(routedSurvey);
+    assert.equal(routedSurvey.targetYear, '2026');
 
     // 2. Deleting an OPTool row automatically pushes deleteOptoolRow
     const delRes = await callApi('/api/optool/Database/0', 'DELETE');

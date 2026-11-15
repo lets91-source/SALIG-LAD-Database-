@@ -2164,6 +2164,10 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       if (targetSelectEl && !targetManuallyEdited) {
         targetSelectEl.value = resolveTargetFromDatabaseRow(dbRow);
       }
+      const targetYearInput = document.getElementById('opt-targetYear');
+      if (targetYearInput && (!targetYearInput.value || !isEdit)) {
+        targetYearInput.value = dbRow?.year || dbRow?.targetYear || targetYearInput.value || '';
+      }
     };
     populateLinkedDbFields(existingRow?.lhid ?? '');
     document.getElementById('opt-lhid')?.addEventListener('input', (e) => {

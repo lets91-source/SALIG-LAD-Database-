@@ -2064,7 +2064,24 @@ td.cell-check {
 }
 
 #optool-thead th.th-linked-db {
-  background: #edf7f0;
+  background: #0f4c29;
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+#optool-thead th.th-linked-db .col-filter-btn {
+  color: #ffffff;
+}
+
+#optool-thead th.th-linked-db .col-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+#optool-thead th.th-linked-db .col-filter-caret {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
 }
 
 #optool-tbody td.cell-linked-db {

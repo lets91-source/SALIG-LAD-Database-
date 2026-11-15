@@ -96150,7 +96150,8 @@
         "target": "Current",
         "remarks": "Complete CF forwarded to Valuation",
         "pdfFile": "CF_LH-0837-0012.pdf",
-        "reportedMonth": ""
+        "reportedMonth": "",
+        "targetYear": "2026"
       },
       {
         "lhid": "LH-0878-0009",
@@ -96175,7 +96176,8 @@
         "target": "Current",
         "remarks": "Validated by DARPO Biliran",
         "pdfFile": "CF_LH-0878-0009.pdf",
-        "reportedMonth": ""
+        "reportedMonth": "",
+        "targetYear": "2026"
       }
     ],
     "Survey": [
@@ -105762,7 +105764,8 @@
         "srAcceptedByDarro": "",
         "srReturnedDenrDarroToDarpoDate": "",
         "currentStatus": "12 - WITH ASP",
-        "currentDate": "2026-06-15"
+        "currentDate": "2026-06-15",
+        "targetYear": "2026"
       }
     ],
     "MOV": [
@@ -107570,7 +107573,8 @@
         "aocNumber": "AOC-08-2026-118",
         "target": "Current",
         "reportedMonth": "August 2026",
-        "pdfFile": "MOV_LH-0837-0012.pdf"
+        "pdfFile": "MOV_LH-0837-0012.pdf",
+        "targetYear": "2026"
       }
     ],
     "RegistrationDistribution": [
@@ -107595,7 +107599,8 @@
         "noOfTitles": "2",
         "target": "Current",
         "monthReported": "November 2026",
-        "remarks": "Registered at ROD Ormoc City"
+        "remarks": "Registered at ROD Ormoc City",
+        "targetYear": "2026"
       },
       {
         "lhid": "LH-0826-0016",
@@ -107618,7 +107623,8 @@
         "remarks": "Distributed during Guiuan Municipal Ceremonial Release",
         "maleArbs": "0",
         "femaleArbs": "3",
-        "target": "Current"
+        "target": "Current",
+        "targetYear": "2026"
       }
     ],
     "Installation": [
@@ -107652,7 +107658,8 @@
         "remarks": "Physical installation completed with MARPO & PNP assistance",
         "yearAccomp": "2026",
         "target": "Current",
-        "monthReported": ""
+        "monthReported": "",
+        "targetYear": "2026"
       }
     ]
   },
