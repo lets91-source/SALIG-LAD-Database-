@@ -1550,18 +1550,32 @@ export function createAppServer(dataDir, options = {}) {
 
         if (!uploadedFileUrl) {
           const cleanName = (fileName || `${tabName}_${lhid || 'doc'}.pdf`).replace(/[^a-zA-Z0-9._-]/g, '_');
-          const localFileName = `${Date.now()}-${cleanName}`;
+          const fileId = `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+          store.state.uploadedFiles = store.state.uploadedFiles || {};
+          store.state.uploadedFiles[fileId] = {
+            fileName: cleanName,
+            data: cleanBase64,
+            createdAt: new Date().toISOString()
+          };
+
           try {
-            const uploadsDir = path.join(PUBLIC_DIR, 'uploads');
+            const uploadsDir = path.join(store.dataDir, 'uploads');
             if (!fs.existsSync(uploadsDir)) {
               fs.mkdirSync(uploadsDir, { recursive: true });
             }
-            fs.writeFileSync(path.join(uploadsDir, localFileName), Buffer.from(cleanBase64, 'base64'));
-            uploadedFileUrl = `/uploads/${localFileName}`;
-          } catch (fsErr) {
-            // Read-only filesystem (e.g. Vercel serverless /var/task): fallback to portable data URI
-            uploadedFileUrl = `data:application/pdf;name=${encodeURIComponent(cleanName)};base64,${cleanBase64}`;
-          }
+            fs.writeFileSync(path.join(uploadsDir, `${fileId}.pdf`), Buffer.from(cleanBase64, 'base64'));
+          } catch (_) {}
+
+          try {
+            const publicUploads = path.join(PUBLIC_DIR, 'uploads');
+            if (!fs.existsSync(publicUploads)) {
+              fs.mkdirSync(publicUploads, { recursive: true });
+            }
+            fs.writeFileSync(path.join(publicUploads, `${fileId}.pdf`), Buffer.from(cleanBase64, 'base64'));
+          } catch (_) {}
+
+          uploadedFileUrl = `/api/pdf/${fileId}`;
         }
 
         targetRow[colKey] = uploadedFileUrl;
@@ -1580,6 +1594,51 @@ export function createAppServer(dataDir, options = {}) {
           gasSynced: Boolean(driveFileId),
           gasError: gasErrorMsg || null
         });
+      }
+
+      // Stream uploaded PDF files inline
+      if (req.method === 'GET' && (pathname.startsWith('/api/pdf/') || pathname.startsWith('/uploads/'))) {
+        const rawKey = pathname.startsWith('/api/pdf/')
+          ? decodeURIComponent(pathname.slice('/api/pdf/'.length))
+          : decodeURIComponent(pathname.slice('/uploads/'.length));
+        const fileKey = rawKey.replace(/[^a-zA-Z0-9._-]/g, '');
+        const cleanFileId = fileKey.endsWith('.pdf') ? fileKey.slice(0, -4) : fileKey;
+
+        // 1. Check in store.state.uploadedFiles
+        const fileRecord = store.state.uploadedFiles?.[cleanFileId] || store.state.uploadedFiles?.[fileKey];
+        if (fileRecord && fileRecord.data) {
+          const buf = Buffer.from(fileRecord.data, 'base64');
+          res.writeHead(200, {
+            'Content-Type': 'application/pdf',
+            'Content-Length': buf.length,
+            'Content-Disposition': `inline; filename="${encodeURIComponent(fileRecord.fileName || 'document.pdf')}"`,
+            'Cache-Control': 'public, max-age=86400'
+          });
+          res.end(buf);
+          return;
+        }
+
+        // 2. Check in store.dataDir/uploads or PUBLIC_DIR/uploads
+        const candidates = [
+          path.join(store.dataDir, 'uploads', `${cleanFileId}.pdf`),
+          path.join(store.dataDir, 'uploads', fileKey),
+          path.join(PUBLIC_DIR, 'uploads', fileKey),
+          path.join(PUBLIC_DIR, 'uploads', `${cleanFileId}.pdf`)
+        ];
+        const match = candidates.find((p) => fs.existsSync(p) && !fs.statSync(p).isDirectory());
+        if (match) {
+          const stat = fs.statSync(match);
+          res.writeHead(200, {
+            'Content-Type': 'application/pdf',
+            'Content-Length': stat.size,
+            'Content-Disposition': `inline; filename="${encodeURIComponent(fileKey)}"`,
+            'Cache-Control': 'public, max-age=86400'
+          });
+          fs.createReadStream(match).pipe(res);
+          return;
+        }
+
+        return sendJson(res, 404, { error: 'PDF document not found' });
       }
 
       if (pathname.startsWith('/api/')) {

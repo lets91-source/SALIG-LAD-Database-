@@ -5461,7 +5461,7 @@ function buildDbByLhidMap(state) {
                 return `<td><button type="button" class="link-btn" data-lhid="${esc(displayLhid)}">${esc(displayLhid)}</button></td>`;
               }
               if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
-                const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
+                const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/api/pdf/') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
                 if (isPdfAttached) {
                   return `<td style="white-space:nowrap">
                     <div style="display:inline-flex;gap:4px;align-items:center;">

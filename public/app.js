@@ -2193,7 +2193,7 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
         `;
       }
       if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
-        const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
+        const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/api/pdf/') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
         return `
           ${groupHtml}
           <div class="${fieldClass}">
@@ -5331,6 +5331,82 @@ async function init() {
       }
     };
     reader.readAsDataURL(file);
+  });
+
+  // Global PDF Viewer Interceptor: Handles data URIs, blob URLs, Google Drive links & /api/pdf/ streams
+  document.addEventListener('click', (e) => {
+    const pdfLink = e.target.closest('.pdf-link, a[href*=".pdf"], a[href^="data:application/pdf"], a[href*="/api/pdf/"], a[href*="/uploads/"]');
+    if (pdfLink) {
+      const href = pdfLink.getAttribute('href');
+      if (href) {
+        e.preventDefault();
+        e.stopPropagation();
+        openPdfViewer(href, pdfLink.getAttribute('title') || 'Attached PDF Document');
+      }
+    }
+  });
+}
+
+function openPdfViewer(url, title = 'PDF Document') {
+  if (!url) return;
+  const rawUrl = String(url).trim();
+  if (rawUrl.startsWith('data:application/pdf')) {
+    try {
+      const parts = rawUrl.split(',');
+      const byteString = atob(parts[1]);
+      const len = byteString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      const win = window.open(blobUrl, '_blank');
+      if (!win) {
+        openPdfModal(blobUrl, title);
+      }
+      return;
+    } catch (err) {
+      console.warn('Could not parse data URI as blob:', err);
+    }
+  }
+  const win = window.open(rawUrl, '_blank', 'noopener,noreferrer');
+  if (!win) {
+    openPdfModal(rawUrl, title);
+  }
+}
+
+function openPdfModal(url, title = 'PDF Document') {
+  const existing = document.getElementById('pdf-viewer-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'pdf-viewer-modal';
+  modal.innerHTML = `
+    <div class="modal-box" style="width:92vw;max-width:1100px;height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:8px;">
+      <div class="modal-header" style="padding:10px 16px;background:var(--dar-green,#0f4d2a);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+        <h3 class="modal-title" style="color:#fff;font-size:14px;display:flex;align-items:center;gap:6px;">
+          <span>📄</span> ${esc(title)}
+        </h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs" style="color:#fff;background:rgba(255,255,255,0.2);border:0;padding:4px 10px;text-decoration:none;">
+            ⧉ Open in New Tab
+          </a>
+          <button type="button" class="btn btn-xs btn-close-pdf-modal" style="color:#fff;background:transparent;border:0;font-size:18px;cursor:pointer;line-height:1;">
+            ✕
+          </button>
+        </div>
+      </div>
+      <div style="flex:1;background:#525659;position:relative;">
+        <iframe src="${esc(url)}" style="width:100%;height:100%;border:0;" title="${esc(title)}"></iframe>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('.btn-close-pdf-modal')?.addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
   });
 }
 

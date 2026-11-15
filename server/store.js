@@ -400,6 +400,9 @@ export class ConsolidatedStore {
     this.state.nepProvinceList = normalizeNepProvinceList(this.state.nepProvinceList);
     this.state.nepMilestoneList = normalizeNepMilestoneList(this.state.nepMilestoneList);
     if (!Array.isArray(this.state.milestoneData)) this.state.milestoneData = [];
+    if (!this.state.uploadedFiles || typeof this.state.uploadedFiles !== 'object') {
+      this.state.uploadedFiles = {};
+    }
     for (const m of this.state.milestoneData) {
       if (m?.LHID) {
         const cleanLhid = formatLhidDisplay(m.LHID);
@@ -441,6 +444,20 @@ export class ConsolidatedStore {
           if (row.titleNumber && /^\d+\.0+$/.test(String(row.titleNumber).trim())) {
             row.titleNumber = String(row.titleNumber).trim().split('.')[0];
             dirty = true;
+          }
+          for (const k of ['pdfFile', 'transmittalSrPdf']) {
+            if (row[k] && String(row[k]).startsWith('data:application/pdf')) {
+              const fileId = `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+              const rawStr = String(row[k]);
+              const base64Data = rawStr.split(',')[1] || '';
+              this.state.uploadedFiles[fileId] = {
+                fileName: `${tab}_${k}.pdf`,
+                data: base64Data,
+                createdAt: new Date().toISOString()
+              };
+              row[k] = `/api/pdf/${fileId}`;
+              dirty = true;
+            }
           }
           if (Object.prototype.hasOwnProperty.call(row, 'test')) {
             delete row.test;
