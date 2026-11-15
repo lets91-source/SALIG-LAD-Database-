@@ -4254,6 +4254,51 @@ th:hover .q-toggle-pill {
   width: min(1140px, 98vw);
 }
 
+/* Whereabouts Master Ledger Table Horizontal Scroll & Scrollbar Styling */
+.whereabouts-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.whereabouts-table-wrap::-webkit-scrollbar,
+.survey-matrix-wrap::-webkit-scrollbar {
+  height: 9px;
+  width: 9px;
+}
+
+.whereabouts-table-wrap::-webkit-scrollbar-track,
+.survey-matrix-wrap::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.whereabouts-table-wrap::-webkit-scrollbar-thumb,
+.survey-matrix-wrap::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 6px;
+  border: 2px solid #f1f5f9;
+}
+
+.whereabouts-table-wrap::-webkit-scrollbar-thumb:hover,
+.survey-matrix-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--dar-green, #135d34);
+}
+
+.whereabouts-table-wrap,
+.survey-matrix-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+.whereabouts-bottom-bar .page-btn:hover {
+  background: #edf3ef;
+}
+
+
 
 
 

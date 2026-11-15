@@ -4039,6 +4039,19 @@ function bindWhereaboutsEvents(container, viewKey) {
     });
   });
 
+  container.querySelectorAll('[data-whereabouts-hscroll], [data-hscroll]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const delta = Number(btn.dataset.whereaboutsHscroll || btn.dataset.hscroll) || 0;
+      const targetWrap =
+        btn.closest('.panel')?.querySelector('#whereabouts-table-wrap, .whereabouts-table-wrap, .table-wrap') ||
+        container.querySelector('#whereabouts-table-wrap');
+      if (targetWrap) {
+        targetWrap.scrollBy({ left: delta, behavior: 'smooth' });
+      }
+    });
+  });
+
   container.querySelectorAll('[data-open-optool-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
       appState.activeOptoolTab = btn.dataset.openOptoolTab;

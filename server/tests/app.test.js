@@ -2392,6 +2392,10 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
   assert.ok(htmlDefault.includes('id="btn-fullscreen-cf-status"'), 'Full Screen button exists on CF Milestone panel');
   assert.ok(htmlDefault.includes('id="whereabouts-page-size"'), 'Rows per page select exists in Master Ledger');
   assert.ok(htmlDefault.includes('HAS</strong>'), 'Total area rendered in matching records string in Master Ledger');
+  assert.ok(htmlDefault.includes('data-whereabouts-hscroll="-360"'), 'Horizontal scroll left button exists in Master Ledger');
+  assert.ok(htmlDefault.includes('data-whereabouts-hscroll="360"'), 'Horizontal scroll right button exists in Master Ledger');
+  assert.ok(htmlDefault.includes('id="whereabouts-table-wrap"'), 'Table container has whereabouts-table-wrap id');
+  assert.ok(htmlDefault.includes('class="whereabouts-bottom-bar"'), 'Bottom bar exists with pagination and scroll buttons');
 
   // 6. Support List Modal HTML rendering
   const sampleRows = [

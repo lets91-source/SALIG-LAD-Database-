@@ -4125,6 +4125,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <option value="ALL" ${isShowAllRows ? 'selected' : ''}>All</option>
             </select>
           </span>
+          <button type="button" class="page-btn" data-whereabouts-hscroll="-360" data-hscroll="-360" title="Scroll table left" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">◀ Left</button>
+          <button type="button" class="page-btn" data-whereabouts-hscroll="360" data-hscroll="360" title="Scroll table right" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">Right ▶</button>
           ${(isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
           ${provFilterVal !== 'ALL' ? `<span class="badge badge-green">Province: ${esc(provFilterVal)}</span>` : ''}
           ${Object.entries(activeColFilters)
@@ -4158,8 +4160,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         }
       </div>
 
-      <div class="table-wrap">
-        <table class="nep-milestone-table">
+      <div class="table-wrap whereabouts-table-wrap" id="whereabouts-table-wrap" style="overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch;">
+        <table class="nep-milestone-table" style="min-width:1280px;width:100%;">
           <thead>
             <tr>
               <th style="width:36px;" class="center">#</th>
@@ -4377,6 +4379,27 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             }
           </tbody>
         </table>
+      </div>
+      <div class="whereabouts-bottom-bar" style="padding:8px 16px;background:var(--bg-light);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span>
+            Showing <strong>${showingRange}</strong> of <strong>${totalFiltered.toLocaleString()}</strong> matching ${esc(cfg.tabName)} records
+            • <strong style="color:var(--dar-green-dark,#09341b);">${fmtArea(totalFilteredArea)} HAS</strong>
+          </span>
+          <button type="button" class="page-btn" data-whereabouts-hscroll="-360" data-hscroll="-360" title="Scroll table left" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">◀ Left</button>
+          <button type="button" class="page-btn" data-whereabouts-hscroll="360" data-hscroll="360" title="Scroll table right" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">Right ▶</button>
+        </div>
+        ${
+          totalPages > 1
+            ? `
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>« Prev</button>
+            <span style="font-weight:600;">Page ${currentPage} of ${totalPages}</span>
+            <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>Next »</button>
+          </div>
+        `
+            : ''
+        }
       </div>
     </div>
     `
