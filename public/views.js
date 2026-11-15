@@ -6053,9 +6053,12 @@ export function renderUsersView({ users = [], currentUser = null }) {
         <h2>Account Confirmations &amp; User Access</h2>
         <p class="view-subtitle">Confirm pending Sign-Up registrations before provincial users can access SALIG</p>
       </div>
-      <div class="view-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="view-header-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary btn-sm" id="btn-sync-users-sheet">Sync User_Accounts with Regional Sheet</button>
         <button class="btn btn-secondary btn-sm" id="btn-refresh-users">↻ Refresh Accounts</button>
+        <button class="btn btn-danger btn-sm" id="btn-delete-mock-milestones" style="background:#dc2626;color:#ffffff;border:1px solid #b91c1c;display:inline-flex;align-items:center;gap:6px;" title="Permanently delete all sample/mock data across every milestone stage and every province">
+          <span>🗑</span> Delete Mock Data in Every Milestone
+        </button>
       </div>
     </div>
 

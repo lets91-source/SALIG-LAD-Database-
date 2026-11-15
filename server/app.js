@@ -1378,6 +1378,35 @@ export function createAppServer(dataDir, options = {}) {
         });
       }
 
+      if (
+        req.method === 'POST' &&
+        (pathname === '/api/milestones/delete-mock-data' || pathname === '/api/workspace/delete-mock-milestones')
+      ) {
+        if (scopeCode || (sessionUser && sessionUser.role !== 'admin')) {
+          return sendJson(res, 403, { error: 'Regional Administrator access required to delete mock milestone data.' });
+        }
+        let body = {};
+        try {
+          body = await readJsonBody(req);
+        } catch {
+          body = {};
+        }
+        const result = store.deleteMockMilestones(body);
+        const gasPushResult = await pushMutationToGas(
+          store,
+          { action: 'deleteMockMilestones', result },
+          'Deleted mock milestone data across all Region VIII provinces.',
+          gasPushFn
+        );
+        return sendJson(res, 200, {
+          ok: true,
+          ...result,
+          gasPush: gasPushResult,
+          state: store.state,
+          analytics: store.computeAnalytics(query)
+        });
+      }
+
       if (pathname.startsWith('/api/')) {
         return sendJson(res, 404, { error: `API route not found: ${pathname}` });
       }

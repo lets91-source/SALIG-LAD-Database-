@@ -1012,9 +1012,14 @@ export class ConsolidatedStore {
   resetToSample() {
     const currentUrl = this.state.gasWebAppUrl;
     const currentSnapshot = this.state.liveHubSnapshot;
+    const currentUsers = this.state.users;
+    const currentSecret = this.state.authSecret;
     this.state = createSeedState();
     this.state.gasWebAppUrl = currentUrl;
     this.state.liveHubSnapshot = currentSnapshot;
+    if (currentSecret) this.state.authSecret = currentSecret;
+    if (Array.isArray(currentUsers)) this.state.users = currentUsers;
+    this.normalizeState();
     this.save();
     return this.state;
   }
@@ -1028,6 +1033,58 @@ export class ConsolidatedStore {
     this.addSyncLog('Workspace Reset', 'info', 'Cleared sample staging data. Ready for live Google Sheet sync or fresh entries.');
     this.save();
     return this.state;
+  }
+
+  deleteMockMilestones({ clearAll = false } = {}) {
+    const seed = createSeedState();
+    const mockRecordIds = new Set((seed.milestoneData || []).map((m) => m.Record_ID));
+    const mockLhids = new Set(
+      Object.values(seed.optool || {})
+        .flatMap((rows) => (Array.isArray(rows) ? rows.map((r) => r.lhid) : []))
+        .filter(Boolean)
+    );
+
+    const isMockRecord = (r) => {
+      if (clearAll) return true;
+      if (mockRecordIds.has(r.Record_ID)) return true;
+      if (r.LHID && mockLhids.has(r.LHID)) return true;
+      const batch = String(r.Batch_Category || '').toUpperCase();
+      if (
+        batch.startsWith('ADMIN BATCH') ||
+        batch.includes('SPLIT PIPELINE 2026') ||
+        batch.includes('CARRYOVER BASELINE')
+      ) {
+        return true;
+      }
+      return false;
+    };
+
+    const beforeMs = this.state.milestoneData.length;
+    this.state.milestoneData = this.state.milestoneData.filter((r) => !isMockRecord(r));
+    const deletedMilestonesCount = beforeMs - this.state.milestoneData.length;
+
+    let deletedOptoolCount = 0;
+    if (this.state.optool) {
+      for (const tab of Object.keys(this.state.optool)) {
+        if (Array.isArray(this.state.optool[tab])) {
+          const beforeTab = this.state.optool[tab].length;
+          this.state.optool[tab] = this.state.optool[tab].filter((r) => !mockLhids.has(r.lhid));
+          deletedOptoolCount += beforeTab - this.state.optool[tab].length;
+        }
+      }
+    }
+
+    this.addSyncLog(
+      'Delete Mock Data',
+      'info',
+      `Deleted ${deletedMilestonesCount} mock milestone records and ${deletedOptoolCount} mock OPTool rows across every Region VIII province.`
+    );
+    this.save();
+    return {
+      deletedMilestonesCount,
+      deletedOptoolCount,
+      totalDeleted: deletedMilestonesCount + deletedOptoolCount
+    };
   }
 
   computeMilestoneNepBreakdown({ dbLhidMap, activeScope, milestoneYear = 'ALL' }) {
@@ -1898,6 +1955,9 @@ export class ConsolidatedStore {
       approvedAt: null,
       approvedBy: null
     };
+    if (!Array.isArray(this.state.users)) {
+      this.state.users = [];
+    }
     this.state.users.push(record);
     this.save();
     return toPublicUser(record);

@@ -30,7 +30,8 @@ import {
   renderSurveySupportListModalHtml,
   renderCfSupportListModalHtml,
   DEFAULT_CF_PROVINCES,
-  WHEREABOUTS_CONFIGS
+  WHEREABOUTS_CONFIGS,
+  renderUsersView
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -2582,4 +2583,87 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   });
   assert.ok(instModalHtml.includes('Installation Landholding'), 'Installation Landholding label in modal header');
   assert.ok(instModalHtml.includes('DATE INSTALLED'), 'DATE INSTALLED column header present in modal');
+});
+
+test('Accounts Approval: Delete mock data in every milestone across every province button and endpoint', async () => {
+  // 1. UI rendering test in Accounts Approval view
+  const usersHtml = renderUsersView({
+    users: [
+      { id: 'usr-1', name: 'Regional Admin', email: 'admin@dar.gov.ph', role: 'admin', status: 'approved' }
+    ],
+    currentUser: { id: 'usr-1', role: 'admin' }
+  });
+  assert.ok(usersHtml.includes('id="btn-delete-mock-milestones"'), 'Delete mock data button present in Accounts Approval');
+  assert.ok(usersHtml.includes('Delete Mock Data in Every Milestone'), 'Button has exact label');
+
+  // 2. Unit test on ConsolidatedStore.deleteMockMilestones()
+  const tempDir = makeTempDir();
+  const store = new ConsolidatedStore(tempDir);
+  assert.equal(store.state.milestoneData.length, 13, 'Seed state contains 13 mock milestone records');
+  const initialDbSeedCount = store.state.optool.Database.filter((r) => r.lhid.startsWith('LH-08')).length;
+  assert.ok(initialDbSeedCount > 0, 'Database contains mock seed records');
+
+  const deleteResult = store.deleteMockMilestones();
+  assert.equal(deleteResult.deletedMilestonesCount, 13, 'Deleted all 13 mock milestone records');
+  assert.equal(store.state.milestoneData.length, 0, 'Milestone data is now empty of mock records');
+  assert.ok(deleteResult.deletedOptoolCount > 0, 'Deleted mock rows from OPTool tabs');
+  assert.equal(
+    store.state.optool.Database.filter((r) => r.lhid.startsWith('LH-08')).length,
+    0,
+    'Mock seed LHIDs removed from Database'
+  );
+
+  // 3. HTTP Server API integration: POST /api/milestones/delete-mock-data
+  const { server, store: appStore } = createAppServer(tempDir);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    // Non-authenticated request returns 401
+    const unauthRes = await fetch(`${baseUrl}/api/milestones/delete-mock-data`, {
+      method: 'POST'
+    });
+    assert.equal(unauthRes.status, 401, 'Unauthenticated user blocked from deleting mock data');
+
+    // Reset appStore to sample to have records to delete via API
+    appStore.resetToSample();
+    assert.equal(appStore.state.milestoneData.length, 13);
+
+    // Register and confirm an admin user
+    const hubAdmin = appStore.createPendingUser(
+      {
+        name: 'Hub Administrator',
+        email: 'hub@dar8.gov.ph',
+        role: 'admin',
+        province: 'Region VIII Hub',
+        contactNumber: '09170002222',
+        password: 'Password123!'
+      },
+      { requireOtp: false }
+    );
+    appStore.updateUserStatus(hubAdmin.id, { status: 'approved', role: 'admin' }, 'admin');
+
+    // Admin login
+    const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'hub@dar8.gov.ph', password: 'Password123!' })
+    });
+    const adminCookie = adminLogin.headers.get('set-cookie').split(';')[0];
+
+    // Admin calling delete-mock-data succeeds
+    const delRes = await fetch(`${baseUrl}/api/milestones/delete-mock-data`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' }
+    });
+    assert.equal(delRes.status, 200);
+    const delJson = await delRes.json();
+    assert.equal(delJson.ok, true);
+    assert.equal(delJson.deletedMilestonesCount, 13);
+    assert.equal(delJson.state.milestoneData.length, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });

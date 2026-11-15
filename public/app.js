@@ -3453,6 +3453,35 @@ function bindUsersViewEvents(container) {
     }
   });
 
+  container.querySelector('#btn-delete-mock-milestones')?.addEventListener('click', async () => {
+    const confirmed = confirm(
+      'Are you sure you want to delete all mock data across every milestone in every province?\n\n' +
+      'This will remove all sample milestone records and mock OPTool rows across all Region VIII provinces.'
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await withLoading(
+        'saving',
+        'Deleting Mock Data…',
+        'Removing mock milestone records across all Region VIII provinces…',
+        () => api('/api/milestones/delete-mock-data', { method: 'POST' })
+      );
+      if (res.state) {
+        appState.state = res.state;
+      }
+      if (res.analytics) {
+        appState.analytics = res.analytics;
+      }
+      toast(
+        `Deleted ${res.deletedMilestonesCount ?? 0} mock milestone records and ${res.deletedOptoolCount ?? 0} mock OPTool rows across all provinces.`
+      );
+      renderActiveView();
+    } catch (err) {
+      toast(err.message || 'Failed to delete mock data', true);
+    }
+  });
+
   container.querySelectorAll('[data-user-action]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const userId = btn.dataset.userId;
