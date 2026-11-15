@@ -2159,6 +2159,12 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   assert.ok(html2025.includes('6.1527'), 'Northern Samar Pending Survey area (6.1527) in 2025 matrix');
   assert.ok(html2025.includes('28.8321'), 'Region VIII Total area (28.8321) in 2025 matrix');
 
+  // Check that cross-tabulation matrix cells render clickable figure links for province and status
+  const matrixHtml2025 = html2025.slice(html2025.indexOf('panel-survey-current-status-matrix'));
+  assert.ok(matrixHtml2025.includes('data-open-survey-support-list data-province="LEYTE"'), 'Matrix cells have data-open-survey-support-list for LEYTE');
+  assert.ok(matrixHtml2025.includes('data-open-survey-support-list data-province="SAMAR"'), 'Matrix cells have data-open-survey-support-list for SAMAR');
+  assert.ok(matrixHtml2025.includes('data-open-survey-support-list data-province="ALL"'), 'Matrix total cells have data-open-survey-support-list for ALL Region VIII');
+
   // Check 2026 matrix values
   assert.ok(html2026.includes('panel-survey-current-status-matrix'));
   assert.ok(html2026.includes('2.4500'), 'Leyte 12 - WITH ASP area (2.4500) in 2026 matrix');

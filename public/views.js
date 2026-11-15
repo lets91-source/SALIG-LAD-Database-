@@ -3046,10 +3046,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const cell = d.byStatus[st] || { lhs: 0, area: 0 };
-              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.lhs > 0 ? `<strong>${cell.lhs.toLocaleString()}</strong>` : `<span class="text-muted">0</span>`}</td>`;
+              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                cell.lhs > 0
+                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${cell.lhs} LHs)">${cell.lhs.toLocaleString()}</button>`
+                  : `<span class="text-muted">0</span>`
+              }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#f0fdf4;">${d.totalLhs.toLocaleString()}</td>
+          <td class="right font-bold" style="background:#f0fdf4;">${
+            d.totalLhs > 0
+              ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${d.totalLhs} LHs)">${d.totalLhs.toLocaleString()}</button>`
+              : `<span class="text-muted">0</span>`
+          }</td>
         `;
       }
       if (metricMode === 'area') {
@@ -3058,10 +3066,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const cell = d.byStatus[st] || { lhs: 0, area: 0 };
-              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.area > 0 ? `<strong>${fmtArea(cell.area)}</strong>` : `<span class="text-muted">0.0000</span>`}</td>`;
+              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                cell.area > 0
+                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${fmtArea(cell.area)} HAS)">${fmtArea(cell.area)}</button>`
+                  : `<span class="text-muted">0.0000</span>`
+              }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#f0fdf4;">${fmtArea(d.totalArea)}</td>
+          <td class="right font-bold" style="background:#f0fdf4;">${
+            d.totalArea > 0
+              ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${fmtArea(d.totalArea)} HAS)">${fmtArea(d.totalArea)}</button>`
+              : `<span class="text-muted">0.0000</span>`
+          }</td>
         `;
       }
       // 'both'
@@ -3071,13 +3087,29 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           .map((st) => {
             const cell = d.byStatus[st] || { lhs: 0, area: 0 };
             return `
-              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.lhs > 0 ? `<strong>${cell.lhs.toLocaleString()}</strong>` : `<span class="text-muted">0</span>`}</td>
-              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.area > 0 ? `<strong>${fmtArea(cell.area)}</strong>` : `<span class="text-muted">0.0000</span>`}</td>
+              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                cell.lhs > 0
+                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${cell.lhs} LHs)">${cell.lhs.toLocaleString()}</button>`
+                  : `<span class="text-muted">0</span>`
+              }</td>
+              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                cell.area > 0
+                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${fmtArea(cell.area)} HAS)">${fmtArea(cell.area)}</button>`
+                  : `<span class="text-muted">0.0000</span>`
+              }</td>
             `;
           })
           .join('')}
-        <td class="right font-bold" style="background:#f0fdf4;">${d.totalLhs.toLocaleString()}</td>
-        <td class="right font-bold" style="background:#f0fdf4;">${fmtArea(d.totalArea)}</td>
+        <td class="right font-bold" style="background:#f0fdf4;">${
+          d.totalLhs > 0
+            ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${d.totalLhs} LHs)">${d.totalLhs.toLocaleString()}</button>`
+            : `<span class="text-muted">0</span>`
+        }</td>
+        <td class="right font-bold" style="background:#f0fdf4;">${
+          d.totalArea > 0
+            ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${fmtArea(d.totalArea)} HAS)">${fmtArea(d.totalArea)}</button>`
+            : `<span class="text-muted">0.0000</span>`
+        }</td>
       `;
     }
 
@@ -3088,10 +3120,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const tot = colTotals[st]?.lhs || 0;
-              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${tot.toLocaleString()}</td>`;
+              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                tot > 0
+                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${tot} LHs)">${tot.toLocaleString()}</button>`
+                  : '0'
+              }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#052e16;">${grandTotalLhs.toLocaleString()}</td>
+          <td class="right font-bold" style="background:#052e16;">${
+            grandTotalLhs > 0
+              ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${grandTotalLhs} LHs)">${grandTotalLhs.toLocaleString()}</button>`
+              : '0'
+          }</td>
         `;
       }
       if (metricMode === 'area') {
@@ -3100,10 +3140,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const tot = colTotals[st]?.area || 0;
-              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${fmtArea(tot)}</td>`;
+              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                tot > 0
+                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${fmtArea(tot)} HAS)">${fmtArea(tot)}</button>`
+                  : '0.0000'
+              }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#052e16;">${fmtArea(grandTotalArea)}</td>
+          <td class="right font-bold" style="background:#052e16;">${
+            grandTotalArea > 0
+              ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${fmtArea(grandTotalArea)} HAS)">${fmtArea(grandTotalArea)}</button>`
+              : '0.0000'
+          }</td>
         `;
       }
       // 'both'
@@ -3114,13 +3162,29 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             const lhsTot = colTotals[st]?.lhs || 0;
             const areaTot = colTotals[st]?.area || 0;
             return `
-              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${lhsTot.toLocaleString()}</td>
-              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${fmtArea(areaTot)}</td>
+              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                lhsTot > 0
+                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${lhsTot} LHs)">${lhsTot.toLocaleString()}</button>`
+                  : '0'
+              }</td>
+              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
+                areaTot > 0
+                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${fmtArea(areaTot)} HAS)">${fmtArea(areaTot)}</button>`
+                  : '0.0000'
+              }</td>
             `;
           })
           .join('')}
-        <td class="right font-bold" style="background:#052e16;">${grandTotalLhs.toLocaleString()}</td>
-        <td class="right font-bold" style="background:#052e16;">${fmtArea(grandTotalArea)}</td>
+        <td class="right font-bold" style="background:#052e16;">${
+          grandTotalLhs > 0
+            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${grandTotalLhs} LHs)">${grandTotalLhs.toLocaleString()}</button>`
+            : '0'
+        }</td>
+        <td class="right font-bold" style="background:#052e16;">${
+          grandTotalArea > 0
+            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${fmtArea(grandTotalArea)} HAS)">${fmtArea(grandTotalArea)}</button>`
+            : '0.0000'
+        }</td>
       `;
     }
 
@@ -5526,7 +5590,7 @@ export function renderSurveySupportListModalHtml({
               <th style="color:#ffffff;">FIELD WORK START</th>
               <th style="color:#ffffff;">FIELD WORK DONE</th>
               <th style="color:#ffffff;">ASP DATE</th>
-              <th style="color:#ffffff;">TARGET</th>
+              <th style="color:#ffffff;">TARGET YEAR</th>
               <th class="right" style="color:#ffffff;">ACTION</th>
             </tr>
           </thead>
@@ -5564,7 +5628,7 @@ export function renderSurveySupportListModalHtml({
                 <td>${esc(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || '—')}</td>
                 <td>${esc(r.datesMap?.fieldWorkCompletionDate || r.fieldWorkCompletionDate || '—')}</td>
                 <td>${esc(r.datesMap?.aspDate || r.aspDate || '—')}</td>
-                <td>${esc(r.target || 'Current')}</td>
+                <td>${esc(r.targetYear || r.year || r.target || '—')}</td>
                 <td class="right">
                   <button type="button" class="btn btn-xs btn-primary" data-open-optool-tab="Survey" data-filter-lhid="${esc(r.lhid)}" title="Switch to Survey tab for this LHID">
                     Open in Survey

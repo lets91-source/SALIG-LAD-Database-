@@ -4181,7 +4181,9 @@ function getSurveySupportRows(appState) {
       carpable: carpableNum,
       currentStatus: row.currentStatus || stage,
       stage,
-      target: row.target || db.target || 'Current'
+      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
+      target: row.target || db.target || 'Current',
+      datesMap: { ...row }
     };
   });
 }
@@ -4190,6 +4192,7 @@ function openSurveySupportListModal({ province = 'ALL', status = 'ALL', stageKey
   const allRows = getSurveySupportRows(appState);
   const curYear = new Date().getFullYear();
   const targetYear = appState.whereaboutsTargetYearFilter?.['survey-whereabouts'] || 'ALL';
+  const q = String(appState.whereaboutsSearch?.['survey-whereabouts'] || '').trim().toLowerCase();
 
   const matchedRows = allRows.filter((r) => {
     if (targetYear !== 'ALL') {
@@ -4201,10 +4204,20 @@ function openSurveySupportListModal({ province = 'ALL', status = 'ALL', stageKey
     if (status && status !== 'ALL') {
       const rowStatus = String(r.currentStatus || r.stage || '').trim().toLowerCase();
       const targetStatus = String(status).trim().toLowerCase();
-      if (rowStatus !== targetStatus && !rowStatus.includes(targetStatus)) return false;
+      if (rowStatus !== targetStatus) {
+        const cleanRow = rowStatus.replace(/^\d+[\s\-_.]+/, '').trim();
+        const cleanTarget = targetStatus.replace(/^\d+[\s\-_.]+/, '').trim();
+        if (cleanRow !== cleanTarget && !rowStatus.includes(targetStatus) && !targetStatus.includes(rowStatus)) {
+          return false;
+        }
+      }
     }
     if (stageKey) {
       if (!String(r[stageKey] || r.datesMap?.[stageKey] || '').trim()) return false;
+    }
+    if (q) {
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.stage} ${r.currentStatus}`.toLowerCase();
+      if (!hay.includes(q)) return false;
     }
     return true;
   });
@@ -4288,6 +4301,7 @@ function exportSupportListCsv(rows, { province, status, targetYear }) {
     'Title Number',
     'Carpable Area (HAS)',
     'Current Status',
+    'Target Year',
     'Target',
     'Date RSS',
     'Field Work Start',
@@ -4313,6 +4327,7 @@ function exportSupportListCsv(rows, { province, status, targetYear }) {
         escapeCsv(r.titleNumber),
         fmtArea(r.carpable),
         escapeCsv(r.currentStatus || r.stage || ''),
+        escapeCsv(r.targetYear || r.year || ''),
         escapeCsv(r.target || 'Current'),
         escapeCsv(r.datesMap?.dateRss || r.dateRss || ''),
         escapeCsv(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || ''),
