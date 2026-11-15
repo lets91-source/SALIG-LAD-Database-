@@ -1297,6 +1297,15 @@ export const DEFAULT_SURVEY_STATUS_BENCHMARKS = [
   { code: 'SLE', name: 'SOUTHERN LEYTE', targetLhs: 0, targetArea: 6.6628, rssLhs: 49, rssArea: 328.9620, ongoingLhs: 28, ongoingArea: 141.2464, completedLhs: 42, completedArea: 242.4080 }
 ];
 
+export const DEFAULT_CF_PROVINCES = [
+  { code: 'BIL', name: 'BILIRAN' },
+  { code: 'ESA', name: 'EASTERN SAMAR' },
+  { code: 'LEY', name: 'LEYTE' },
+  { code: 'NSA', name: 'NORTHERN SAMAR' },
+  { code: 'SAM', name: 'SAMAR' },
+  { code: 'SLE', name: 'SOUTHERN LEYTE' }
+];
+
 export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
   if (!selectedYear || selectedYear === 'ALL') return true;
   const s = String(selectedYear).trim();
@@ -1713,7 +1722,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     whereaboutsGraphMode = {},
     whereaboutsPage = {},
     surveyMetricMode = 'both',
-    surveyIndicatorTab = 'all'
+    surveyIndicatorTab = 'all',
+    cfMetricMode = 'both',
+    cfTableLayout = 'transposed'
   } = ctx;
 
   const viewKey = cfg.viewKey;
@@ -1965,6 +1976,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
   // Top KPI Cards for CF Whereabouts (Dynamically filtered by Province & Column Filters!)
   let cfKpiHtml = '';
+  let cfStatusTableHtml = '';
   let cfTargetYears = ['ALL'];
   if (isCfWhereabouts) {
     // 1. Available Target Years (4-digit calendar years only, based on target year column)
@@ -2210,6 +2222,587 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
       </section>
+    `;
+
+    // 6. Provincial Milestone Tracking Table for CF(DOC) (NEP Target, Status, FI, Prep & Signed, Reported Month with Balances)
+    const isTargetYearAll = !targetYearFilterVal || targetYearFilterVal === 'ALL';
+
+    const cfTableRows = DEFAULT_CF_PROVINCES.map((p) => {
+      const nepOverride = state?.nepMilestoneList?.cf_doc?.[p.code];
+      const nepYear = String(nepOverride?.year || curYear);
+
+      let isNepYearMatch = false;
+      if (isTargetYearAll) {
+        isNepYearMatch = true;
+      } else if (String(nepYear) === String(targetYearFilterVal)) {
+        isNepYearMatch = true;
+      }
+
+      let targetLhs = 0;
+      let targetArea = 0;
+
+      if (isNepYearMatch && nepOverride && ((nepOverride.lhs !== undefined && nepOverride.lhs !== null && nepOverride.lhs !== '') || (nepOverride.area !== undefined && nepOverride.area !== null && nepOverride.area !== ''))) {
+        targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
+        targetArea = Math.max(0, Number(nepOverride.area) || 0);
+      } else {
+        let dbProvRows = dbRows.filter((r) => matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
+        if (!isTargetYearAll) {
+          dbProvRows = dbProvRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
+        }
+        const cfDb = dbProvRows.filter((r) => String(r.milestoneTarget || '').toLowerCase().includes('cf'));
+        if (cfDb.length > 0) {
+          targetLhs = cfDb.length;
+          targetArea = cfDb.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
+        } else if (isNepYearMatch && nepOverride && Number(nepOverride.lhs || nepOverride.area)) {
+          targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
+          targetArea = Math.max(0, Number(nepOverride.area) || 0);
+        }
+      }
+      targetArea = Number(targetArea.toFixed(4));
+
+      let provRows = enrichedRows.filter((r) => matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
+      if (!isTargetYearAll) {
+        provRows = provRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
+      }
+
+      const statusLhs = provRows.length;
+      const statusArea = Number(provRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
+
+      const fiRows = provRows.filter((r) => Boolean(r.datesMap?.dateFiConducted || r.dateFiConducted));
+      const fiLhs = fiRows.length;
+      const fiArea = Number(fiRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
+      const balFiLhs = Math.max(0, targetLhs - fiLhs);
+      const balFiArea = Math.max(0, Number((targetArea - fiArea).toFixed(4)));
+
+      const prepRows = provRows.filter((r) => Boolean(r.datesMap?.datePreparedSigned || r.datePreparedSigned));
+      const prepLhs = prepRows.length;
+      const prepArea = Number(prepRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
+      const balPrepLhs = Math.max(0, targetLhs - prepLhs);
+      const balPrepArea = Math.max(0, Number((targetArea - prepArea).toFixed(4)));
+
+      const repRows = provRows.filter((r) => Boolean(r.datesMap?.reportedMonth || r.reportedMonth));
+      const repLhs = repRows.length;
+      const repArea = Number(repRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
+      const balRepLhs = Math.max(0, targetLhs - repLhs);
+      const balRepArea = Math.max(0, Number((targetArea - repArea).toFixed(4)));
+
+      const isActive = selectedProvs.length === 0 || selectedProvs.some((sp) => matchProvinceName(p.name, sp) || matchProvinceName(p.code, sp));
+
+      return {
+        code: p.code,
+        name: p.name,
+        targetLhs,
+        targetArea,
+        statusLhs,
+        statusArea,
+        fiLhs,
+        fiArea,
+        balFiLhs,
+        balFiArea,
+        prepLhs,
+        prepArea,
+        balPrepLhs,
+        balPrepArea,
+        repLhs,
+        repArea,
+        balRepLhs,
+        balRepArea,
+        isActive
+      };
+    });
+
+    const cfTotals = {
+      name: 'REGION VIII TOTAL',
+      targetLhs: cfTableRows.reduce((s, r) => s + r.targetLhs, 0),
+      targetArea: Number(cfTableRows.reduce((s, r) => s + r.targetArea, 0).toFixed(4)),
+      statusLhs: cfTableRows.reduce((s, r) => s + r.statusLhs, 0),
+      statusArea: Number(cfTableRows.reduce((s, r) => s + r.statusArea, 0).toFixed(4)),
+      fiLhs: cfTableRows.reduce((s, r) => s + r.fiLhs, 0),
+      fiArea: Number(cfTableRows.reduce((s, r) => s + r.fiArea, 0).toFixed(4)),
+      balFiLhs: cfTableRows.reduce((s, r) => s + r.balFiLhs, 0),
+      balFiArea: Number(cfTableRows.reduce((s, r) => s + r.balFiArea, 0).toFixed(4)),
+      prepLhs: cfTableRows.reduce((s, r) => s + r.prepLhs, 0),
+      prepArea: Number(cfTableRows.reduce((s, r) => s + r.prepArea, 0).toFixed(4)),
+      balPrepLhs: cfTableRows.reduce((s, r) => s + r.balPrepLhs, 0),
+      balPrepArea: Number(cfTableRows.reduce((s, r) => s + r.balPrepArea, 0).toFixed(4)),
+      repLhs: cfTableRows.reduce((s, r) => s + r.repLhs, 0),
+      repArea: Number(cfTableRows.reduce((s, r) => s + r.repArea, 0).toFixed(4)),
+      balRepLhs: cfTableRows.reduce((s, r) => s + r.balRepLhs, 0),
+      balRepArea: Number(cfTableRows.reduce((s, r) => s + r.balRepArea, 0).toFixed(4))
+    };
+
+    function renderCfFigureBtn({ val, isArea, province, indicator, balanceArea = '', isTotal = false }) {
+      const displayVal = isArea ? fmtArea(val) : Number(val || 0).toLocaleString();
+      const numVal = Number(val || 0);
+
+      if (numVal <= 0) {
+        return `<span style="color:#9ca3af;">${displayVal}</span>`;
+      }
+
+      const extraStyles = indicator.isBal
+        ? 'color:#b45309;font-weight:700;'
+        : isTotal
+          ? 'color:#15803d;font-weight:800;'
+          : 'color:#15803d;font-weight:700;';
+      const stageKeyAttr = indicator.stageKey ? `data-stage-key="${esc(indicator.stageKey)}"` : '';
+      const stageLabelAttr = indicator.stageLabel ? `data-stage-label="${esc(indicator.stageLabel)}"` : '';
+      const balAreaAttr = indicator.isBal && balanceArea ? `data-balance-area="${esc(balanceArea)}"` : '';
+      const title = `Click to view ${esc(indicator.label)} Support List for ${esc(province === 'ALL' ? 'Region VIII' : province)} (${displayVal}${isArea ? ' HAS' : ' LHs'})`;
+
+      return `
+        <button
+          type="button"
+          class="btn-figure-link"
+          style="${extraStyles}"
+          data-open-cf-support-list
+          data-province="${esc(province)}"
+          data-status="ALL"
+          data-mode="${esc(indicator.mode)}"
+          ${stageKeyAttr}
+          ${stageLabelAttr}
+          ${balAreaAttr}
+          title="${esc(title)}"
+        >
+          ${displayVal}
+        </button>
+      `;
+    }
+
+    const cfIndicators = [
+      {
+        key: 'target',
+        label: 'NEP Target',
+        badge: '🎯 TARGET',
+        badgeClass: 'badge-blue',
+        desc: 'Annual Provincial NEP Target Quota',
+        mode: 'target',
+        getLhs: (r) => r.targetLhs,
+        getArea: (r) => r.targetArea,
+        isBal: false
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        badge: '📋 CF RECORDS',
+        badgeClass: 'badge-purple',
+        desc: 'Active Claim Folder Landholdings',
+        mode: 'status',
+        getLhs: (r) => r.statusLhs,
+        getArea: (r) => r.statusArea,
+        isBal: false
+      },
+      {
+        key: 'fi',
+        label: 'With Conducted FI',
+        badge: '✔ ACCOMPLISHED',
+        badgeClass: 'badge-green',
+        desc: 'Field Investigation Completed',
+        mode: 'accomplished',
+        stageKey: 'dateFiConducted',
+        stageLabel: 'Date FI Conducted',
+        getLhs: (r) => r.fiLhs,
+        getArea: (r) => r.fiArea,
+        isBal: false
+      },
+      {
+        key: 'balFi',
+        label: 'Balance (Conducted FI)',
+        badge: '⏳ BALANCE',
+        badgeClass: 'badge-amber',
+        desc: 'Pending / Remaining FI Quota',
+        mode: 'balance',
+        stageKey: 'dateFiConducted',
+        stageLabel: 'Date FI Conducted',
+        getLhs: (r) => r.balFiLhs,
+        getArea: (r) => r.balFiArea,
+        isBal: true
+      },
+      {
+        key: 'prep',
+        label: 'With Prepared & Signed',
+        badge: '✔ ACCOMPLISHED',
+        badgeClass: 'badge-green',
+        desc: 'CARPER Forms Prepared & Signed',
+        mode: 'accomplished',
+        stageKey: 'datePreparedSigned',
+        stageLabel: 'Date Prepared & Signed',
+        getLhs: (r) => r.prepLhs,
+        getArea: (r) => r.prepArea,
+        isBal: false
+      },
+      {
+        key: 'balPrep',
+        label: 'Balance (Prepared & Signed)',
+        badge: '⏳ BALANCE',
+        badgeClass: 'badge-amber',
+        desc: 'Pending / Remaining Prepared & Signed Quota',
+        mode: 'balance',
+        stageKey: 'datePreparedSigned',
+        stageLabel: 'Date Prepared & Signed',
+        getLhs: (r) => r.balPrepLhs,
+        getArea: (r) => r.balPrepArea,
+        isBal: true
+      },
+      {
+        key: 'rep',
+        label: 'With Reported Month',
+        badge: '✔ ACCOMPLISHED',
+        badgeClass: 'badge-green',
+        desc: 'Official Regional Report Month Assigned',
+        mode: 'accomplished',
+        stageKey: 'reportedMonth',
+        stageLabel: 'Reported Month',
+        getLhs: (r) => r.repLhs,
+        getArea: (r) => r.repArea,
+        isBal: false
+      },
+      {
+        key: 'balRep',
+        label: 'Balance (Reported Month)',
+        badge: '⏳ BALANCE',
+        badgeClass: 'badge-amber',
+        desc: 'Pending / Remaining Reported Month Quota',
+        mode: 'balance',
+        stageKey: 'reportedMonth',
+        stageLabel: 'Reported Month',
+        getLhs: (r) => r.balRepLhs,
+        getArea: (r) => r.balRepArea,
+        isBal: true
+      }
+    ];
+
+    function renderCfTransposedTableHtml(rows, totals, metricMode) {
+      return `
+        <table class="nep-milestone-table survey-monitoring-table cf-monitoring-table">
+          <thead>
+            <tr class="survey-th-l1">
+              <th rowspan="${metricMode === 'both' ? 2 : 1}" class="survey-th-unit" style="min-width:240px;background:#09341b;color:#ffffff;">
+                INDICATOR / MILESTONE
+              </th>
+              ${rows.map((p) => `
+                <th colspan="${metricMode === 'both' ? 2 : 1}" class="center survey-th-stage" style="background:#0d4424;color:#ffffff;font-size:12px;font-weight:800;">
+                  ${esc(p.name)}
+                </th>
+              `).join('')}
+              <th colspan="${metricMode === 'both' ? 2 : 1}" class="center survey-th-stage" style="background:#09341b;color:#fde047;font-size:12px;font-weight:800;">
+                REGION VIII TOTAL
+              </th>
+            </tr>
+            ${metricMode === 'both' ? `
+              <tr class="survey-th-l2">
+                ${rows.map(() => `
+                  <th class="right" style="background:#135d33;color:#dcfce7;font-size:11px;">LHS</th>
+                  <th class="right" style="background:#135d33;color:#dcfce7;font-size:11px;">AREA(HAS)</th>
+                `).join('')}
+                <th class="right" style="background:#0b381e;color:#fef08a;font-size:11px;">LHS</th>
+                <th class="right" style="background:#0b381e;color:#fef08a;font-size:11px;">AREA(HAS)</th>
+              </tr>
+            ` : ''}
+          </thead>
+          <tbody>
+            ${cfIndicators.map((ind) => `
+              <tr style="background:${ind.isBal ? 'rgba(254, 243, 199, 0.25)' : '#ffffff'};">
+                <td style="padding:9px 12px;background:#f8fafc;border-right:2px solid #e2e8f0;">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                    <strong style="color:var(--text-primary,#0f172a);font-size:12.5px;">${esc(ind.label)}</strong>
+                    <span class="badge ${ind.badgeClass}" style="font-size:10px;padding:1px 6px;">${esc(ind.badge)}</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted,#64748b);">${esc(ind.desc)}</div>
+                </td>
+                ${rows.map((p) => {
+                  if (metricMode === 'lhs') {
+                    return `
+                      <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fffbeb' : '#ffffff'};">
+                        ${renderCfFigureBtn({ val: ind.getLhs(p), isArea: false, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
+                      </td>
+                    `;
+                  }
+                  if (metricMode === 'area') {
+                    return `
+                      <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fffbeb' : '#ffffff'};">
+                        ${renderCfFigureBtn({ val: ind.getArea(p), isArea: true, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
+                      </td>
+                    `;
+                  }
+                  return `
+                    <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fffbeb' : '#ffffff'};">
+                      ${renderCfFigureBtn({ val: ind.getLhs(p), isArea: false, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
+                    </td>
+                    <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fffbeb' : '#ffffff'};">
+                      ${renderCfFigureBtn({ val: ind.getArea(p), isArea: true, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
+                    </td>
+                  `;
+                }).join('')}
+                ${metricMode === 'lhs' ? `
+                  <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
+                    ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                  </td>
+                ` : metricMode === 'area' ? `
+                  <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
+                    ${renderCfFigureBtn({ val: ind.getArea(totals), isArea: true, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                  </td>
+                ` : `
+                  <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
+                    ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                  </td>
+                  <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
+                    ${renderCfFigureBtn({ val: ind.getArea(totals), isArea: true, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                  </td>
+                `}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderCfStandardTableHtml(rows, totals, metricMode) {
+      const indTarget = cfIndicators[0];
+      const indStatus = cfIndicators[1];
+      const indFi = cfIndicators[2];
+      const indBalFi = cfIndicators[3];
+      const indPrep = cfIndicators[4];
+      const indBalPrep = cfIndicators[5];
+      const indRep = cfIndicators[6];
+      const indBalRep = cfIndicators[7];
+
+      if (metricMode === 'lhs') {
+        return `
+          <table class="nep-milestone-table survey-monitoring-table cf-monitoring-table">
+            <thead>
+              <tr class="survey-th-l1">
+                <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+                <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
+                <th rowspan="2" class="survey-th-nep right">STATUS (LHS)</th>
+                <th colspan="2" class="survey-th-stage center">WITH CONDUCTED FI</th>
+                <th colspan="2" class="survey-th-stage center">WITH PREPARED &amp; SIGNED</th>
+                <th colspan="2" class="survey-th-stage center">WITH REPORTED MONTH</th>
+              </tr>
+              <tr class="survey-th-l2">
+                <th class="right">ACCOMPLISHMENT</th>
+                <th class="right">BALANCE</th>
+                <th class="right">ACCOMPLISHMENT</th>
+                <th class="right">BALANCE</th>
+                <th class="right">ACCOMPLISHMENT</th>
+                <th class="right">BALANCE</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((p) => `
+                <tr>
+                  <td class="survey-td-unit font-bold">${esc(p.name)}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.statusLhs, isArea: false, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.fiLhs, isArea: false, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.balFiLhs, isArea: false, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.prepLhs, isArea: false, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.balPrepLhs, isArea: false, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.repLhs, isArea: false, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.balRepLhs, isArea: false, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
+                <td class="survey-td-unit">REGION VIII TOTAL</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.statusLhs, isArea: false, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.fiLhs, isArea: false, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.balFiLhs, isArea: false, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.prepLhs, isArea: false, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.balPrepLhs, isArea: false, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.repLhs, isArea: false, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.balRepLhs, isArea: false, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
+              </tr>
+            </tfoot>
+          </table>
+        `;
+      }
+
+      if (metricMode === 'area') {
+        return `
+          <table class="nep-milestone-table survey-monitoring-table cf-monitoring-table">
+            <thead>
+              <tr class="survey-th-l1">
+                <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+                <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
+                <th rowspan="2" class="survey-th-nep right">STATUS (AREA HAS)</th>
+                <th colspan="2" class="survey-th-stage center">WITH CONDUCTED FI</th>
+                <th colspan="2" class="survey-th-stage center">WITH PREPARED &amp; SIGNED</th>
+                <th colspan="2" class="survey-th-stage center">WITH REPORTED MONTH</th>
+              </tr>
+              <tr class="survey-th-l2">
+                <th class="right">ACCOMPLISHMENT (HAS)</th>
+                <th class="right">BALANCE (HAS)</th>
+                <th class="right">ACCOMPLISHMENT (HAS)</th>
+                <th class="right">BALANCE (HAS)</th>
+                <th class="right">ACCOMPLISHMENT (HAS)</th>
+                <th class="right">BALANCE (HAS)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((p) => `
+                <tr>
+                  <td class="survey-td-unit font-bold">${esc(p.name)}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.statusArea, isArea: true, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.fiArea, isArea: true, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.balFiArea, isArea: true, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.prepArea, isArea: true, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.balPrepArea, isArea: true, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.repArea, isArea: true, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: p.balRepArea, isArea: true, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
+                <td class="survey-td-unit">REGION VIII TOTAL</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.statusArea, isArea: true, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.fiArea, isArea: true, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.balFiArea, isArea: true, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.prepArea, isArea: true, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.balPrepArea, isArea: true, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.repArea, isArea: true, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
+                <td class="right">${renderCfFigureBtn({ val: totals.balRepArea, isArea: true, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
+              </tr>
+            </tfoot>
+          </table>
+        `;
+      }
+
+      // Default: 'both'
+      return `
+        <table class="nep-milestone-table survey-monitoring-table cf-monitoring-table">
+          <thead>
+            <tr class="survey-th-l1">
+              <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
+              <th colspan="2" class="center survey-th-nep">NEP TARGET</th>
+              <th colspan="2" class="center survey-th-stage">STATUS</th>
+              <th colspan="4" class="center survey-th-stage">WITH CONDUCTED FI</th>
+              <th colspan="4" class="center survey-th-stage">WITH PREPARED &amp; SIGNED</th>
+              <th colspan="4" class="center survey-th-stage">WITH REPORTED MONTH</th>
+            </tr>
+            <tr class="survey-th-l2">
+              <th rowspan="2" class="right">LHS</th>
+              <th rowspan="2" class="right">AREA(HAS)</th>
+              <th rowspan="2" class="right">LHS</th>
+              <th rowspan="2" class="right">AREA(HAS)</th>
+              <th colspan="2" class="center">ACCOMPLISHMENT</th>
+              <th colspan="2" class="center">BALANCE</th>
+              <th colspan="2" class="center">ACCOMPLISHMENT</th>
+              <th colspan="2" class="center">BALANCE</th>
+              <th colspan="2" class="center">ACCOMPLISHMENT</th>
+              <th colspan="2" class="center">BALANCE</th>
+            </tr>
+            <tr class="survey-th-l3">
+              <th class="right">LHS</th>
+              <th class="right">AREA(HAS)</th>
+              <th class="right">LHS</th>
+              <th class="right">AREA(HAS)</th>
+              <th class="right">LHS</th>
+              <th class="right">AREA(HAS)</th>
+              <th class="right">LHS</th>
+              <th class="right">AREA(HAS)</th>
+              <th class="right">LHS</th>
+              <th class="right">AREA(HAS)</th>
+              <th class="right">LHS</th>
+              <th class="right">AREA(HAS)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((p) => `
+              <tr>
+                <td class="survey-td-unit font-bold">${esc(p.name)}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.statusLhs, isArea: false, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.statusArea, isArea: true, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.fiLhs, isArea: false, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.fiArea, isArea: true, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.balFiLhs, isArea: false, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.balFiArea, isArea: true, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.prepLhs, isArea: false, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.prepArea, isArea: true, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.balPrepLhs, isArea: false, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.balPrepArea, isArea: true, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.repLhs, isArea: false, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.repArea, isArea: true, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.balRepLhs, isArea: false, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
+                <td class="right">${renderCfFigureBtn({ val: p.balRepArea, isArea: true, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
+              <td class="survey-td-unit">REGION VIII TOTAL</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.statusLhs, isArea: false, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.statusArea, isArea: true, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.fiLhs, isArea: false, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.fiArea, isArea: true, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.balFiLhs, isArea: false, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.balFiArea, isArea: true, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.prepLhs, isArea: false, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.prepArea, isArea: true, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.balPrepLhs, isArea: false, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.balPrepArea, isArea: true, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.repLhs, isArea: false, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.repArea, isArea: true, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.balRepLhs, isArea: false, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
+              <td class="right">${renderCfFigureBtn({ val: totals.balRepArea, isArea: true, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+    }
+
+    cfStatusTableHtml = `
+      <div class="panel" id="panel-cf-status-table" style="margin-bottom: 22px;">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="panel-icon" style="background:#0f4d2a;color:#ffffff;border-radius:6px;padding:4px 8px;font-size:14px;">📄</span>
+              <h3 class="panel-title" style="margin:0;font-size:16px;font-weight:800;color:var(--text-primary,#111827);">
+                CF(DOC) Milestone Status &amp; Accomplishment Summary
+              </h3>
+              <span class="badge badge-green" style="font-size:11px;font-weight:700;">Target Year: ${esc(targetYearFilterVal)}</span>
+            </div>
+            <p class="panel-subtitle" style="margin:4px 0 0;font-size:12.5px;color:var(--text-muted,#6b7280);">
+              Provincial tracking matrix • NEP Target, Status, Conducted FI, Prepared &amp; Signed, and Reported Month with Balances
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="btn-group" role="group" aria-label="CF Table Layout">
+              <button type="button" class="btn btn-xs ${cfTableLayout === 'transposed' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="transposed" title="Columns: Province • Rows: Milestones">
+                📋 Columns: Province
+              </button>
+              <button type="button" class="btn btn-xs ${cfTableLayout === 'standard' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="standard" title="Rows: Province • Columns: Milestones">
+                ▦ Rows: Province
+              </button>
+            </div>
+            <div class="btn-group" role="group" aria-label="CF Metric Toggle">
+              <button type="button" class="btn btn-xs ${cfMetricMode === 'both' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="both" title="Show both LHs and Area (HAS)">LHS &amp; Area (HAS)</button>
+              <button type="button" class="btn btn-xs ${cfMetricMode === 'lhs' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="lhs" title="Show Landholdings (LHS) only">LHS</button>
+              <button type="button" class="btn btn-xs ${cfMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="area" title="Show Area (HAS) only">Area (HAS)</button>
+            </div>
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-cf-status-refresh" title="Refresh Table">
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+        <div class="panel-body" style="padding:0;">
+          <div class="table-wrap survey-matrix-wrap" style="overflow-x:auto;">
+            ${
+              cfTableLayout === 'standard'
+                ? renderCfStandardTableHtml(cfTableRows, cfTotals, cfMetricMode)
+                : renderCfTransposedTableHtml(cfTableRows, cfTotals, cfMetricMode)
+            }
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -3340,6 +3933,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     ${renderEmptyWorkspaceCallout(state)}
 
     ${isCfWhereabouts ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
+
+    ${isCfWhereabouts ? cfStatusTableHtml : ''}
 
     ${isSurveyWhereabouts ? surveyStatusTableHtml : ''}
 
@@ -5695,6 +6290,158 @@ export function renderSurveySupportListModalHtml({
                 </td>
               </tr>
             `)
+                    .join('')
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+export function renderCfSupportListModalHtml({
+  rows = [],
+  province = 'ALL',
+  status = 'ALL',
+  stageKey = '',
+  stageLabel = '',
+  targetYear = 'ALL',
+  totalArea = 0,
+  mode = 'accomplished',
+  balanceArea = ''
+}) {
+  const isBalanceMode = mode === 'balance' || mode === 'pending';
+  const isTargetMode = mode === 'target';
+  const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
+  let statusDisplay = '';
+  if (isTargetMode) {
+    statusDisplay = 'NEP Target Workable Pool';
+  } else if (isBalanceMode) {
+    statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
+  } else {
+    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Claim Folders')) : status;
+  }
+  const totalCount = rows.length;
+
+  return `
+    <div class="cf-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
+      <!-- Summary Header Banner -->
+      <div style="background:${isBalanceMode ? '#fefce8' : isTargetMode ? '#eff6ff' : '#f0fdf4'};border:1px solid ${isBalanceMode ? '#fde047' : isTargetMode ? '#93c5fd' : '#bbf7d0'};border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span class="badge ${isBalanceMode ? 'badge-amber' : isTargetMode ? 'badge-blue' : 'badge-green'}" style="font-size:12px;font-weight:700;padding:4px 10px;">
+            🏛️ ${esc(provLabel)}
+          </span>
+          <span class="badge ${isBalanceMode ? 'badge-amber' : isTargetMode ? 'badge-blue' : 'badge-green'}" style="font-size:12px;font-weight:700;padding:4px 10px;">
+            ${isTargetMode ? '🎯' : isBalanceMode ? '⏳' : '📌'} ${esc(statusDisplay)}
+          </span>
+          ${targetYear && targetYear !== 'ALL' ? `
+            <span class="badge badge-gray" style="font-size:12px;font-weight:700;padding:4px 10px;">
+              🗓️ Target Year: ${esc(targetYear)}
+            </span>
+          ` : ''}
+          ${isBalanceMode && balanceArea ? `
+            <span class="badge badge-red" style="font-size:12px;font-weight:700;padding:4px 10px;" title="Quota Balance Needed to Reach Target">
+              🎯 NEP Quota Balance: ${esc(balanceArea)} HAS
+            </span>
+          ` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="font-size:13px;color:${isBalanceMode ? '#854d0e' : isTargetMode ? '#1e40af' : '#166534'};font-weight:700;">
+            <strong>${totalCount.toLocaleString()}</strong> ${isBalanceMode ? 'Pending ' : ''}Landholding${totalCount === 1 ? '' : 's'} • <strong>${fmtArea(totalArea)}</strong> HAS
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-export-support-list-csv" style="font-size:12px;padding:4px 10px;" title="Export this Support List to CSV">
+            ⬇ Export CSV
+          </button>
+          ${isBalanceMode ? `
+            <button type="button" class="btn btn-primary btn-sm" id="btn-open-database-balance" data-province="${esc(province)}" style="font-size:12px;padding:4px 10px;" title="View workable parcels in Database to assign to CF(DOC)">
+              ➕ View Database Workable Pool
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Filter & Search Bar inside modal -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <input
+          type="search"
+          class="form-control"
+          id="support-list-search"
+          placeholder="Search within this support list (LHID, Landowner, Title, Municipality...)"
+          style="font-size:12.5px;min-width:280px;flex:1;max-width:440px;"
+        />
+        <div style="font-size:12px;color:var(--text-muted);" id="support-list-count-label">
+          Showing <strong>${totalCount}</strong> records
+        </div>
+      </div>
+
+      <!-- Scrollable Table -->
+      <div class="table-wrap" style="max-height:52vh;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
+        <table class="nep-milestone-table" id="support-list-table">
+          <thead style="position:sticky;top:0;z-index:2;background:#0f4d2a;color:#ffffff;">
+            <tr>
+              <th style="width:36px;color:#ffffff;" class="center">#</th>
+              <th style="color:#ffffff;">LHID</th>
+              <th style="color:#ffffff;">PROVINCE</th>
+              <th style="color:#ffffff;">MUNICIPALITY</th>
+              <th style="color:#ffffff;">BARANGAY</th>
+              <th style="color:#ffffff;">LANDOWNER / TITLE</th>
+              <th class="right" style="color:#ffffff;">CARPABLE AREA</th>
+              <th style="color:#ffffff;">STAGE / STATUS</th>
+              <th style="color:#ffffff;">DATE FI CONDUCTED</th>
+              <th style="color:#ffffff;">DATE PREPARED &amp; SIGNED</th>
+              <th style="color:#ffffff;">REPORTED MONTH</th>
+              <th style="color:#ffffff;">TARGET YEAR</th>
+              <th class="right" style="color:#ffffff;">ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              rows.length === 0
+                ? `
+              <tr>
+                <td colspan="13" class="center" style="padding:28px 16px;color:var(--text-muted);">
+                  No matching landholdings found for this selection.
+                </td>
+              </tr>
+            `
+                : rows
+                    .map((r, idx) => {
+                      const hasFi = Boolean(r.dateFiConducted || r.datesMap?.dateFiConducted);
+                      const hasPrep = Boolean(r.datePreparedSigned || r.datesMap?.datePreparedSigned);
+                      const hasRep = Boolean(r.reportedMonth || r.datesMap?.reportedMonth);
+                      return `
+                <tr>
+                  <td class="center font-mono" style="font-size:11px;color:var(--text-muted);">${idx + 1}</td>
+                  <td>
+                    <button type="button" class="btn-lhid-drawer" data-lhid="${esc(r.lhid)}" title="Open Landholding Details Drawer">
+                      ${esc(r.lhid)}
+                    </button>
+                  </td>
+                  <td><span class="badge badge-gray" style="font-size:11px;">${esc(r.province || '—')}</span></td>
+                  <td>${esc(r.municipality || '—')}</td>
+                  <td>${esc(r.barangay || '—')}</td>
+                  <td>
+                    <div style="font-weight:600;font-size:12px;">${esc(r.landOwner || '—')}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber || '—')}</div>
+                  </td>
+                  <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.carpable || 0)} HAS</td>
+                  <td>
+                    <span class="badge ${r.stage?.includes('Completed') ? 'badge-green' : r.stage?.includes('Prepared') ? 'badge-blue' : r.stage?.includes('FI') ? 'badge-amber' : 'badge-gray'}" style="font-size:11px;">
+                      ${esc(r.currentStatus || r.stage || '—')}
+                    </span>
+                  </td>
+                  <td>${hasFi ? `<span class="badge badge-green">✔ ${esc(r.dateFiConducted || r.datesMap?.dateFiConducted)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
+                  <td>${hasPrep ? `<span class="badge badge-blue">✔ ${esc(r.datePreparedSigned || r.datesMap?.datePreparedSigned)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
+                  <td>${hasRep ? `<span class="badge badge-amber">${esc(r.reportedMonth || r.datesMap?.reportedMonth)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
+                  <td>${r.targetYear ? `<span class="badge badge-gray">${esc(r.targetYear)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
+                  <td class="right">
+                    <button type="button" class="btn btn-secondary btn-xs" data-lhid="${esc(r.lhid)}" style="font-size:11px;padding:2px 8px;" title="View Landholding Drawer">
+                      View Drawer
+                    </button>
+                  </td>
+                </tr>
+              `;
+                    })
                     .join('')
             }
           </tbody>

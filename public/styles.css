@@ -4210,7 +4210,8 @@ th:hover .q-toggle-pill {
   text-decoration-color: #facc15;
 }
 
-.modal-card:has(.survey-support-list-modal) {
+.modal-card:has(.survey-support-list-modal),
+.modal-card:has(.cf-support-list-modal) {
   width: min(1140px, 98vw);
 }
 

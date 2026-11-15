@@ -28,6 +28,8 @@ import {
   renderMilestoneWhereaboutsView,
   matchesWhereaboutsTargetYear,
   renderSurveySupportListModalHtml,
+  renderCfSupportListModalHtml,
+  DEFAULT_CF_PROVINCES,
   WHEREABOUTS_CONFIGS
 } from '../../public/views.js';
 import {
@@ -2315,4 +2317,116 @@ test('CF Whereabouts Target Year filter in toolbar after All Records, removed st
   const html2026 = renderMilestoneWhereaboutsView(ctx2026, cfg);
   assert.ok(html2026.includes('value="2026" selected>Target Year: 2026</option>'), 'Target Year: 2026 selected when filter set to 2026');
   assert.equal(html2026.includes('class="cf-target-year-bar"'), false, 'Standalone bar still absent in 2026 view');
+});
+
+test('CF Whereabouts Provincial Milestone Table: Province columns, NEP Target, Status, FI, Prep, Reported Month, Balances, and Support List modal', () => {
+  const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
+  const cfg = WHEREABOUTS_CONFIGS['cf-whereabouts'];
+
+  assert.equal(DEFAULT_CF_PROVINCES.length, 6, 'Region VIII must have 6 provinces');
+
+  const ctxTransposed = {
+    state: store,
+    schemas: { registry: [] },
+    provinceScope: null,
+    cfMetricMode: 'both',
+    cfTableLayout: 'transposed',
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': 'ALL' },
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {}
+  };
+
+  const htmlTransposed = renderMilestoneWhereaboutsView(ctxTransposed, cfg);
+
+  // 1. Panel and Title
+  assert.ok(htmlTransposed.includes('id="panel-cf-status-table"'), 'panel-cf-status-table must exist');
+  assert.ok(htmlTransposed.includes('CF(DOC) Milestone Status &amp; Accomplishment Summary'), 'Title exists in panel');
+
+  // 2. Transposed Table has Province Columns across top
+  for (const prov of DEFAULT_CF_PROVINCES) {
+    assert.ok(htmlTransposed.includes(prov.name), `Province ${prov.name} must appear in table headers`);
+  }
+  assert.ok(htmlTransposed.includes('REGION VIII TOTAL'), 'REGION VIII TOTAL must appear as total column');
+
+  // 3. Rows must contain NEP Target, Status, Conducted FI & Balance, Prepared & Signed & Balance, Reported Month & Balance
+  assert.ok(htmlTransposed.includes('NEP Target'), 'NEP Target row exists');
+  assert.ok(htmlTransposed.includes('Status'), 'Status row exists');
+  assert.ok(htmlTransposed.includes('With Conducted FI'), 'With Conducted FI row exists');
+  assert.ok(htmlTransposed.includes('Balance (Conducted FI)'), 'Balance (Conducted FI) row exists');
+  assert.ok(htmlTransposed.includes('With Prepared &amp; Signed'), 'With Prepared & Signed row exists');
+  assert.ok(htmlTransposed.includes('Balance (Prepared &amp; Signed)'), 'Balance (Prepared & Signed) row exists');
+  assert.ok(htmlTransposed.includes('With Reported Month'), 'With Reported Month row exists');
+  assert.ok(htmlTransposed.includes('Balance (Reported Month)'), 'Balance (Reported Month) row exists');
+
+  // 4. Clickable figure links with data-open-cf-support-list
+  assert.ok(htmlTransposed.includes('data-open-cf-support-list'), 'Clickable figure links must be present');
+  assert.ok(htmlTransposed.includes('data-cf-metric="both"'), 'Metric mode switcher exists');
+  assert.ok(htmlTransposed.includes('data-cf-layout="transposed"'), 'Layout switcher exists');
+
+  // 5. Standard Layout (Rows: Province, Columns: Indicators)
+  const ctxStandard = {
+    ...ctxTransposed,
+    cfTableLayout: 'standard'
+  };
+  const htmlStandard = renderMilestoneWhereaboutsView(ctxStandard, cfg);
+  assert.ok(htmlStandard.includes('OPERATING UNIT'), 'Standard table has OPERATING UNIT column');
+  assert.ok(htmlStandard.includes('NEP TARGET'), 'Standard table has NEP TARGET header');
+  assert.ok(htmlStandard.includes('WITH CONDUCTED FI'), 'Standard table has WITH CONDUCTED FI header');
+  assert.ok(htmlStandard.includes('WITH PREPARED &amp; SIGNED'), 'Standard table has WITH PREPARED & SIGNED header');
+  assert.ok(htmlStandard.includes('WITH REPORTED MONTH'), 'Standard table has WITH REPORTED MONTH header');
+
+  // 6. Support List Modal HTML rendering
+  const sampleRows = [
+    {
+      lhid: '8.05000013E8',
+      province: 'WESTERN SAMAR',
+      municipality: 'Basey',
+      barangay: 'San Antonio',
+      landOwner: 'DELA CRUZ, JUAN',
+      titleNumber: 'OCT-1234',
+      carpable: 5.5,
+      currentStatus: 'FI Conducted',
+      stage: 'FI Conducted',
+      dateFiConducted: '2026-04-10',
+      datePreparedSigned: '',
+      reportedMonth: '2026-11-01',
+      targetYear: '2026'
+    }
+  ];
+
+  const modalHtmlAccomplished = renderCfSupportListModalHtml({
+    rows: sampleRows,
+    province: 'SAMAR',
+    status: 'ALL',
+    stageKey: 'dateFiConducted',
+    stageLabel: 'Date FI Conducted',
+    targetYear: '2026',
+    totalArea: 5.5,
+    mode: 'accomplished'
+  });
+
+  assert.ok(modalHtmlAccomplished.includes('cf-support-list-modal'), 'Modal class present');
+  assert.ok(modalHtmlAccomplished.includes('8.05000013E8'), 'LHID rendered');
+  assert.ok(modalHtmlAccomplished.includes('DELA CRUZ, JUAN'), 'Landowner rendered');
+  assert.ok(modalHtmlAccomplished.includes('2026-04-10'), 'Date FI Conducted rendered');
+  assert.ok(modalHtmlAccomplished.includes('Target Year: 2026'), 'Target year badge present');
+
+  const modalHtmlBalance = renderCfSupportListModalHtml({
+    rows: sampleRows,
+    province: 'SAMAR',
+    status: 'ALL',
+    stageKey: 'datePreparedSigned',
+    stageLabel: 'Date Prepared & Signed',
+    targetYear: '2026',
+    totalArea: 5.5,
+    mode: 'balance',
+    balanceArea: '120.5000'
+  });
+
+  assert.ok(modalHtmlBalance.includes('Balance / Pending: Date Prepared &amp; Signed'), 'Balance status display present');
+  assert.ok(modalHtmlBalance.includes('NEP Quota Balance: 120.5000 HAS'), 'NEP Quota balance badge present');
+  assert.ok(modalHtmlBalance.includes('id="btn-open-database-balance"'), 'Database workable pool button present for balance mode');
 });

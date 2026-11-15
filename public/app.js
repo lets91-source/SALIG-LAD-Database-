@@ -25,6 +25,7 @@ import {
   getWhereaboutsColumnFilterValues,
   getWhereaboutsRowDisplayValue,
   renderSurveySupportListModalHtml,
+  renderCfSupportListModalHtml,
   WHEREABOUTS_CONFIGS
 } from './views.js';
 import {
@@ -87,7 +88,9 @@ const appState = {
   whereaboutsColFilters: {},
   whereaboutsShowGraph: {},
   whereaboutsGraphMode: {},
-  whereaboutsPage: {}
+  whereaboutsPage: {},
+  cfMetricMode: 'both',
+  cfTableLayout: 'transposed'
 };
 
 const AUTO_SYNC_MAX_AGE_MS = 2 * 60 * 1000;
@@ -884,7 +887,9 @@ function renderActiveView() {
       whereaboutsColFilters: appState.whereaboutsColFilters,
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
-      whereaboutsPage: appState.whereaboutsPage
+      whereaboutsPage: appState.whereaboutsPage,
+      cfMetricMode: appState.cfMetricMode || 'both',
+      cfTableLayout: appState.cfTableLayout || 'transposed'
     });
     bindWhereaboutsEvents(container, 'cf-whereabouts');
   } else if (appState.view === 'survey-whereabouts') {
@@ -3905,6 +3910,24 @@ function bindWhereaboutsEvents(container, viewKey) {
     renderActiveView();
   });
 
+  container.querySelector('#btn-cf-status-refresh')?.addEventListener('click', () => {
+    renderActiveView();
+  });
+
+  container.querySelectorAll('[data-cf-metric]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.cfMetricMode = btn.dataset.cfMetric;
+      renderActiveView();
+    });
+  });
+
+  container.querySelectorAll('[data-cf-layout]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.cfTableLayout = btn.dataset.cfLayout;
+      renderActiveView();
+    });
+  });
+
   container.querySelectorAll('[data-survey-metric]').forEach((btn) => {
     btn.addEventListener('click', () => {
       appState.surveyMetricMode = btn.dataset.surveyMetric;
@@ -4028,6 +4051,19 @@ function bindWhereaboutsEvents(container, viewKey) {
     });
   });
 
+  container.querySelectorAll('[data-open-cf-support-list]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const prov = btn.dataset.province || 'ALL';
+      const st = btn.dataset.status || 'ALL';
+      const stageKey = btn.dataset.stageKey || '';
+      const stageLabel = btn.dataset.stageLabel || '';
+      const mode = btn.dataset.mode || 'accomplished';
+      const balanceArea = btn.dataset.balanceArea || '';
+      openCfSupportListModal({ province: prov, status: st, stageKey, stageLabel, mode, balanceArea });
+    });
+  });
+
   container.querySelector('#btn-whereabouts-export-csv')?.addEventListener('click', () => {
     exportWhereaboutsCsv(viewKey);
   });
@@ -4147,6 +4183,141 @@ function exportWhereaboutsCsv(viewKey) {
   a.href = URL.createObjectURL(blob);
   a.download = `${cfg.tabName}_Whereabouts_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
+}
+
+function getCfSupportRows(appState) {
+  const rawRows = appState.state?.optool?.['CF(DOC)'] || [];
+  const dbRows = appState.state?.optool?.Database || [];
+  const dbMap = new Map();
+  for (const db of dbRows) {
+    const k = String(db.lhid || '').trim().toLowerCase();
+    if (k && !dbMap.has(k)) dbMap.set(k, db);
+  }
+
+  return rawRows.map((row) => {
+    const lhidKey = String(row.lhid || '').trim().toLowerCase();
+    const db = dbMap.get(lhidKey) || {};
+    const carpableNum = Number(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const provName = db.province || row.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
+    const muniName = db.municipality || row.municipality || '—';
+    const brgyName = db.barangay || row.barangay || '—';
+    const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
+    const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
+
+    const stageObj = WHEREABOUTS_CONFIGS['cf-whereabouts'].resolveStage(row);
+    const stage = stageObj.stage || 'Pending FI';
+
+    return {
+      ...row,
+      lhid: row.lhid || db.lhid || '—',
+      province: provName,
+      municipality: muniName,
+      barangay: brgyName,
+      titleNumber: titleNum,
+      landOwner: landOwner,
+      carpable: carpableNum,
+      currentStatus: row.currentStatus || stage,
+      stage,
+      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
+      target: row.target || db.target || 'Current',
+      datesMap: {
+        dateFiConducted: row.dateFiConducted || '',
+        datePreparedSigned: row.datePreparedSigned || '',
+        reportedMonth: row.reportedMonth || ''
+      }
+    };
+  });
+}
+
+function openCfSupportListModal({
+  province = 'ALL',
+  status = 'ALL',
+  stageKey = '',
+  stageLabel = '',
+  mode = 'accomplished',
+  balanceArea = ''
+}) {
+  const allRows = getCfSupportRows(appState);
+  const curYear = new Date().getFullYear();
+  const targetYear = appState.whereaboutsTargetYearFilter?.['cf-whereabouts'] || 'ALL';
+  const q = String(appState.whereaboutsSearch?.['cf-whereabouts'] || '').trim().toLowerCase();
+  const isBalanceMode = mode === 'balance' || mode === 'pending';
+  const isTargetMode = mode === 'target';
+
+  let matchedRows = [];
+
+  if (isTargetMode) {
+    const dbRows = appState.state?.optool?.Database || [];
+    matchedRows = dbRows.filter((d) => {
+      if (province && province !== 'ALL') {
+        if (!matchProvinceName(d.province, province)) return false;
+      }
+      if (targetYear !== 'ALL') {
+        if (!matchesWhereaboutsTargetYear(d, targetYear, curYear)) return false;
+      }
+      return true;
+    }).map((d) => ({
+      ...d,
+      carpable: Number(d.carpable || d.areaHas || d.computedArea || 0) || 0,
+      stage: 'Target Pool',
+      currentStatus: d.optoolStatus || d.currentStatusDescription || 'Workable Database Parcel',
+      datesMap: {}
+    }));
+
+    const cfTagged = matchedRows.filter((r) => String(r.milestoneTarget || '').toLowerCase().includes('cf'));
+    if (cfTagged.length > 0) {
+      matchedRows = cfTagged;
+    }
+  } else {
+    matchedRows = allRows.filter((r) => {
+      if (targetYear !== 'ALL') {
+        if (!matchesWhereaboutsTargetYear(r, targetYear, curYear)) return false;
+      }
+      if (province && province !== 'ALL') {
+        if (!matchProvinceName(r.province, province)) return false;
+      }
+      if (stageKey) {
+        const hasDate = Boolean(String(r[stageKey] || r.datesMap?.[stageKey] || '').trim());
+        if (isBalanceMode) {
+          if (hasDate) return false;
+        } else {
+          if (!hasDate) return false;
+        }
+      }
+      if (q) {
+        const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.stage} ${r.currentStatus}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  const totalArea = matchedRows.reduce((sum, r) => sum + (Number(r.carpable) || 0), 0);
+  const provLabel = province === 'ALL' ? 'Region VIII' : province;
+  let statusLabel = '';
+  if (isTargetMode) {
+    statusLabel = 'NEP Target Workable Pool';
+  } else if (isBalanceMode) {
+    statusLabel = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending';
+  } else {
+    statusLabel = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Claim Folders')) : status;
+  }
+  const modalTitle = `CF(DOC) Support List: ${provLabel} • ${statusLabel}`;
+
+  const modalHtml = renderCfSupportListModalHtml({
+    rows: matchedRows,
+    province,
+    status,
+    stageKey,
+    stageLabel,
+    targetYear,
+    totalArea,
+    mode,
+    balanceArea
+  });
+
+  showModal(modalTitle, modalHtml);
+  bindSupportListModalEvents(matchedRows, { province, status, stageKey, targetYear, mode, balanceArea });
 }
 
 function getSurveySupportRows(appState) {
@@ -4325,23 +4496,40 @@ function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey
 }
 
 function exportSupportListCsv(rows, { province, status, targetYear }) {
-  const headers = [
-    '#',
-    'LHID',
-    'Province',
-    'Municipality',
-    'Barangay',
-    'Landowner',
-    'Title Number',
-    'Carpable Area (HAS)',
-    'Current Status',
-    'Target Year',
-    'Target',
-    'Date RSS',
-    'Field Work Start',
-    'Field Work Completed',
-    'ASP Date'
-  ];
+  const isCf = rows.some((r) => r.dateFiConducted !== undefined || r.datePreparedSigned !== undefined || r.reportedMonth !== undefined || r.datesMap?.dateFiConducted !== undefined);
+  const headers = isCf
+    ? [
+        '#',
+        'LHID',
+        'Province',
+        'Municipality',
+        'Barangay',
+        'Landowner',
+        'Title Number',
+        'Carpable Area (HAS)',
+        'Current Status',
+        'Target Year',
+        'Date FI Conducted',
+        'Date Prepared & Signed',
+        'Reported Month'
+      ]
+    : [
+        '#',
+        'LHID',
+        'Province',
+        'Municipality',
+        'Barangay',
+        'Landowner',
+        'Title Number',
+        'Carpable Area (HAS)',
+        'Current Status',
+        'Target Year',
+        'Target',
+        'Date RSS',
+        'Field Work Start',
+        'Field Work Completed',
+        'ASP Date'
+      ];
 
   const escapeCsv = (val) => {
     const s = String(val ?? '');
@@ -4350,25 +4538,45 @@ function exportSupportListCsv(rows, { province, status, targetYear }) {
 
   const csvLines = [headers.join(',')];
   rows.forEach((r, idx) => {
-    csvLines.push(
-      [
-        idx + 1,
-        escapeCsv(r.lhid),
-        escapeCsv(r.province),
-        escapeCsv(r.municipality),
-        escapeCsv(r.barangay),
-        escapeCsv(r.landOwner),
-        escapeCsv(r.titleNumber),
-        fmtArea(r.carpable),
-        escapeCsv(r.currentStatus || r.stage || ''),
-        escapeCsv(r.targetYear || r.year || ''),
-        escapeCsv(r.target || 'Current'),
-        escapeCsv(r.datesMap?.dateRss || r.dateRss || ''),
-        escapeCsv(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || ''),
-        escapeCsv(r.datesMap?.fieldWorkCompletionDate || r.fieldWorkCompletionDate || ''),
-        escapeCsv(r.datesMap?.aspDate || r.aspDate || '')
-      ].join(',')
-    );
+    if (isCf) {
+      csvLines.push(
+        [
+          idx + 1,
+          escapeCsv(r.lhid),
+          escapeCsv(r.province),
+          escapeCsv(r.municipality),
+          escapeCsv(r.barangay),
+          escapeCsv(r.landOwner),
+          escapeCsv(r.titleNumber),
+          fmtArea(r.carpable),
+          escapeCsv(r.currentStatus || r.stage || ''),
+          escapeCsv(r.targetYear || r.year || ''),
+          escapeCsv(r.datesMap?.dateFiConducted || r.dateFiConducted || ''),
+          escapeCsv(r.datesMap?.datePreparedSigned || r.datePreparedSigned || ''),
+          escapeCsv(r.datesMap?.reportedMonth || r.reportedMonth || '')
+        ].join(',')
+      );
+    } else {
+      csvLines.push(
+        [
+          idx + 1,
+          escapeCsv(r.lhid),
+          escapeCsv(r.province),
+          escapeCsv(r.municipality),
+          escapeCsv(r.barangay),
+          escapeCsv(r.landOwner),
+          escapeCsv(r.titleNumber),
+          fmtArea(r.carpable),
+          escapeCsv(r.currentStatus || r.stage || ''),
+          escapeCsv(r.targetYear || r.year || ''),
+          escapeCsv(r.target || 'Current'),
+          escapeCsv(r.datesMap?.dateRss || r.dateRss || ''),
+          escapeCsv(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || ''),
+          escapeCsv(r.datesMap?.fieldWorkCompletionDate || r.fieldWorkCompletionDate || ''),
+          escapeCsv(r.datesMap?.aspDate || r.aspDate || '')
+        ].join(',')
+      );
+    }
   });
 
   const blob = new Blob([csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
