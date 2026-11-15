@@ -89,6 +89,7 @@ const appState = {
   whereaboutsShowGraph: {},
   whereaboutsGraphMode: {},
   whereaboutsPage: {},
+  whereaboutsPageSize: {},
   cfMetricMode: 'both',
   cfTableLayout: 'standard'
 };
@@ -888,6 +889,7 @@ function renderActiveView() {
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
+      whereaboutsPageSize: appState.whereaboutsPageSize,
       cfMetricMode: appState.cfMetricMode || 'both',
       cfTableLayout: appState.cfTableLayout || 'standard'
     });
@@ -903,6 +905,7 @@ function renderActiveView() {
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
+      whereaboutsPageSize: appState.whereaboutsPageSize,
       surveyMetricMode: appState.surveyMetricMode || 'both',
       surveyIndicatorTab: appState.surveyIndicatorTab || 'all',
       surveyMatrixMode: appState.surveyMatrixMode || 'active'
@@ -918,7 +921,8 @@ function renderActiveView() {
       whereaboutsColFilters: appState.whereaboutsColFilters,
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
-      whereaboutsPage: appState.whereaboutsPage
+      whereaboutsPage: appState.whereaboutsPage,
+      whereaboutsPageSize: appState.whereaboutsPageSize
     });
     bindWhereaboutsEvents(container, 'mov-whereabouts');
   } else if (appState.view === 'regdist-whereabouts') {
@@ -931,7 +935,8 @@ function renderActiveView() {
       whereaboutsColFilters: appState.whereaboutsColFilters,
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
-      whereaboutsPage: appState.whereaboutsPage
+      whereaboutsPage: appState.whereaboutsPage,
+      whereaboutsPageSize: appState.whereaboutsPageSize
     });
     bindWhereaboutsEvents(container, 'regdist-whereabouts');
   } else if (appState.view === 'installation-whereabouts') {
@@ -944,7 +949,8 @@ function renderActiveView() {
       whereaboutsColFilters: appState.whereaboutsColFilters,
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
-      whereaboutsPage: appState.whereaboutsPage
+      whereaboutsPage: appState.whereaboutsPage,
+      whereaboutsPageSize: appState.whereaboutsPageSize
     });
     bindWhereaboutsEvents(container, 'installation-whereabouts');
   } else if (appState.view === 'nep') {
@@ -4020,6 +4026,15 @@ function bindWhereaboutsEvents(container, viewKey) {
   container.querySelectorAll('[data-whereabouts-page]').forEach((btn) => {
     btn.addEventListener('click', () => {
       appState.whereaboutsPage[viewKey] = Number(btn.dataset.whereaboutsPage) || 1;
+      renderActiveView();
+    });
+  });
+
+  container.querySelectorAll('.whereabouts-page-size-select, #whereabouts-page-size').forEach((el) => {
+    el.addEventListener('change', (e) => {
+      if (!appState.whereaboutsPageSize) appState.whereaboutsPageSize = {};
+      appState.whereaboutsPageSize[viewKey] = e.target.value;
+      appState.whereaboutsPage[viewKey] = 1;
       renderActiveView();
     });
   });

@@ -2390,6 +2390,8 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
   assert.ok(!htmlDefault.includes('>STATUS<') && !htmlDefault.includes('STATUS (LHS)'), 'Default table layout does not have STATUS column');
   assert.ok(htmlDefault.includes('id="cf-status-target-year-filter"'), 'Target Year dropdown exists on CF Milestone panel');
   assert.ok(htmlDefault.includes('id="btn-fullscreen-cf-status"'), 'Full Screen button exists on CF Milestone panel');
+  assert.ok(htmlDefault.includes('id="whereabouts-page-size"'), 'Rows per page select exists in Master Ledger');
+  assert.ok(htmlDefault.includes('HAS</strong>'), 'Total area rendered in matching records string in Master Ledger');
 
   // 6. Support List Modal HTML rendering
   const sampleRows = [

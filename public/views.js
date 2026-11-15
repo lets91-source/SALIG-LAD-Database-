@@ -1721,6 +1721,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     whereaboutsShowGraph = {},
     whereaboutsGraphMode = {},
     whereaboutsPage = {},
+    whereaboutsPageSize = {},
     surveyMetricMode = 'both',
     surveyIndicatorTab = 'all',
     cfMetricMode = 'both',
@@ -1967,11 +1968,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     filteredRows = filteredRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
   }
 
-  // Pagination
-  const pageSize = 50;
+  // Pagination & Page Size
+  const rawPageSizeVal = whereaboutsPageSize[viewKey] || 50;
+  const isShowAllRows = String(rawPageSizeVal).toUpperCase() === 'ALL';
   const totalFiltered = filteredRows.length;
+  const totalFilteredArea = Number(filteredRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || 0), 0).toFixed(4));
+  const pageSize = isShowAllRows ? (totalFiltered || 50) : (Number(rawPageSizeVal) || 50);
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
   const currentPage = Math.min(Math.max(1, Number(pageVal) || 1), totalPages);
+  const showingFrom = totalFiltered === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const showingTo = Math.min(totalFiltered, currentPage * pageSize);
+  const showingRange = totalFiltered === 0
+    ? '0'
+    : showingFrom === showingTo
+      ? `${showingFrom.toLocaleString()}`
+      : `${showingFrom.toLocaleString()}–${showingTo.toLocaleString()}`;
   const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Top KPI Cards for CF Whereabouts (Dynamically filtered by Province & Column Filters!)
@@ -4095,7 +4106,25 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
       <div style="padding:8px 16px;background:var(--bg-light);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px;">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
-          <span>Showing <strong>${pagedRows.length}</strong> of <strong>${totalFiltered}</strong> matching ${esc(cfg.tabName)} records</span>
+          <span>
+            Showing <strong>${showingRange}</strong> of <strong>${totalFiltered.toLocaleString()}</strong> matching ${esc(cfg.tabName)} records
+            • <strong style="color:var(--dar-green-dark,#09341b);">${fmtArea(totalFilteredArea)} HAS</strong>
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+            <label for="whereabouts-page-size" style="color:var(--text-muted,#6b7280);font-size:12px;margin:0;">Rows:</label>
+            <select
+              id="whereabouts-page-size"
+              class="toolbar-select whereabouts-page-size-select"
+              style="height:26px;font-size:12px;padding:2px 6px;border-radius:4px;border:1px solid var(--border,#d1d5db);background:#ffffff;cursor:pointer;"
+              aria-label="Rows per page"
+            >
+              <option value="25" ${String(rawPageSizeVal) === '25' ? 'selected' : ''}>25</option>
+              <option value="50" ${String(rawPageSizeVal) === '50' ? 'selected' : ''}>50</option>
+              <option value="100" ${String(rawPageSizeVal) === '100' ? 'selected' : ''}>100</option>
+              <option value="250" ${String(rawPageSizeVal) === '250' ? 'selected' : ''}>250</option>
+              <option value="ALL" ${isShowAllRows ? 'selected' : ''}>All</option>
+            </select>
+          </span>
           ${(isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
           ${provFilterVal !== 'ALL' ? `<span class="badge badge-green">Province: ${esc(provFilterVal)}</span>` : ''}
           ${Object.entries(activeColFilters)
