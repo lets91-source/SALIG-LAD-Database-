@@ -2245,10 +2245,43 @@ test('CF Whereabouts Target Year filter in toolbar after All Records, removed st
   assert.ok(pStatus < pTargetYear, 'whereabouts-target-year-filter must come after whereabouts-status-filter');
   assert.ok(pTargetYear < pExportCsv, 'whereabouts-target-year-filter must come before btn-whereabouts-export-csv');
 
-  // 3. Check options in dropdown
+  // 3. Check options in dropdown: Must display 4-digit years only, NEVER "Current" or "Previous Year"
   assert.ok(htmlAll.includes('value="ALL" selected>Target Year: ALL</option>'), 'Target Year: ALL selected by default');
+  assert.equal(htmlAll.includes('Target Year: Current'), false, 'Target Year: Current must NOT be present in dropdown');
+  assert.equal(htmlAll.includes('Target Year: Previous Year'), false, 'Target Year: Previous Year must NOT be present in dropdown');
+  assert.equal(htmlAll.includes('Target Year: Previous'), false, 'Target Year: Previous must NOT be present in dropdown');
 
-  // 4. Test selecting specific year (e.g. 2026)
+  // Verify all options in whereabouts-target-year-filter are 4-digit years or ALL
+  const selectMatch = htmlAll.match(/<select[^>]*id="whereabouts-target-year-filter"[^>]*>([\s\S]*?)<\/select>/);
+  assert.ok(selectMatch, 'Target year select found in html');
+  const optionValues = Array.from(selectMatch[1].matchAll(/value="([^"]+)"/g)).map((m) => m[1]);
+  for (const v of optionValues) {
+    assert.ok(v === 'ALL' || /^\d{4}$/.test(v), `Option value "${v}" must be 'ALL' or a 4-digit year`);
+  }
+
+  // 4. Test Survey Whereabouts Target Year dropdown also displays 4-digit years only
+  const surveyCfg = WHEREABOUTS_CONFIGS['survey-whereabouts'];
+  const surveyCtx = {
+    ...ctxAll,
+    whereaboutsTargetYearFilter: { 'survey-whereabouts': 'ALL' }
+  };
+  const surveyHtml = renderMilestoneWhereaboutsView(surveyCtx, surveyCfg);
+  assert.equal(surveyHtml.includes('Target Year: Current'), false, 'Survey must NOT contain Target Year: Current');
+  assert.equal(surveyHtml.includes('Target Year: Previous Year'), false, 'Survey must NOT contain Target Year: Previous Year');
+  const surveySelectMatch = surveyHtml.match(/<select[^>]*class="[^"]*survey-target-year-select[^"]*"[^>]*>([\s\S]*?)<\/select>/);
+  assert.ok(surveySelectMatch, 'Survey target year select found');
+  const surveyOptionVals = Array.from(surveySelectMatch[1].matchAll(/value="([^"]+)"/g)).map((m) => m[1]);
+  for (const v of surveyOptionVals) {
+    assert.ok(v === 'ALL' || /^\d{4}$/.test(v), `Survey option "${v}" must be 'ALL' or a 4-digit year`);
+  }
+
+  // 5. Test matchesWhereaboutsTargetYear prioritizes targetYear column
+  assert.equal(matchesWhereaboutsTargetYear({ targetYear: '2026', target: 'Previous Year' }, '2026'), true, 'targetYear 2026 matches 2026 even if target says Previous Year');
+  assert.equal(matchesWhereaboutsTargetYear({ targetYear: '2026', target: 'Previous Year' }, '2025'), false, 'targetYear 2026 does not match 2025');
+  assert.equal(matchesWhereaboutsTargetYear({ targetYear: '2025', target: 'Current' }, '2025'), true, 'targetYear 2025 matches 2025 even if target says Current');
+  assert.equal(matchesWhereaboutsTargetYear({ targetYear: '2025', target: 'Current' }, '2026'), false, 'targetYear 2025 does not match 2026');
+
+  // 6. Test selecting specific year (e.g. 2026)
   const ctx2026 = {
     ...ctxAll,
     whereaboutsTargetYearFilter: { 'cf-whereabouts': '2026' }

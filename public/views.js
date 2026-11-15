@@ -1299,18 +1299,44 @@ export const DEFAULT_SURVEY_STATUS_BENCHMARKS = [
 
 export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
   if (!selectedYear || selectedYear === 'ALL') return true;
-  const s = String(selectedYear).trim().toLowerCase();
+  const s = String(selectedYear).trim();
+  const sLower = s.toLowerCase();
   const curStr = String(currentYear);
   const prevStr = String(currentYear - 1);
 
-  const isCurrentSelected = (s === curStr || s === 'current' || s === 'current year');
-  const isPreviousSelected = (s === prevStr || s === 'previous' || s === 'previous year' || s.includes('prev'));
+  const isCurrentSelected = (sLower === curStr || sLower === 'current' || sLower === 'current year');
+  const isPreviousSelected = (sLower === prevStr || sLower === 'previous' || sLower === 'previous year' || sLower.includes('prev'));
 
-  // 1. Check survey database TARGET column (takes highest priority for Current vs Previous Year)
-  const rTarget = String(r.target || '').trim().toLowerCase();
+  // 1. Primary: Check targetYear or year column (base on current update year target column)
+  const rYear = String(r.targetYear || r.year || '').trim();
+  if (rYear) {
+    const ym = rYear.match(/\b(20\d{2})\b/);
+    if (ym) {
+      if (ym[1] === s) return true;
+      if (isCurrentSelected && ym[1] === curStr) return true;
+      if (isPreviousSelected && ym[1] === prevStr) return true;
+      return false;
+    }
+    const rYearLower = rYear.toLowerCase();
+    if (isCurrentSelected && (rYearLower === curStr || rYearLower === 'current' || rYearLower === 'current year')) return true;
+    if (isPreviousSelected && (rYearLower === prevStr || rYearLower === 'previous' || rYearLower === 'previous year' || rYearLower.includes('prev'))) return true;
+    if (rYearLower === sLower || rYearLower.startsWith(sLower)) return true;
+    return false;
+  }
+
+  // 2. Secondary: Check survey database TARGET column if targetYear not explicitly set
+  const rTarget = String(r.target || '').trim();
   if (rTarget) {
-    const isRowCurrent = (rTarget === 'current' || rTarget === 'current year' || rTarget === curStr);
-    const isRowPrevious = (rTarget === 'previous' || rTarget === 'previous year' || rTarget.includes('prev') || rTarget === prevStr);
+    const tm = rTarget.match(/\b(20\d{2})\b/);
+    if (tm) {
+      if (tm[1] === s) return true;
+      if (isCurrentSelected && tm[1] === curStr) return true;
+      if (isPreviousSelected && tm[1] === prevStr) return true;
+      return false;
+    }
+    const rTargetLower = rTarget.toLowerCase();
+    const isRowCurrent = (rTargetLower === 'current' || rTargetLower === 'current year' || rTargetLower === curStr);
+    const isRowPrevious = (rTargetLower === 'previous' || rTargetLower === 'previous year' || rTargetLower.includes('prev') || rTargetLower === prevStr);
 
     if (isCurrentSelected) {
       return isRowCurrent;
@@ -1318,17 +1344,8 @@ export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new 
     if (isPreviousSelected) {
       return isRowPrevious;
     }
-    if (rTarget === s) return true;
+    if (rTargetLower === sLower) return true;
     if (isRowCurrent || isRowPrevious) return false;
-  }
-
-  // 2. Check targetYear or year column if present
-  const rYear = String(r.targetYear || r.year || '').trim().toLowerCase();
-  if (rYear) {
-    if (isCurrentSelected && (rYear === curStr || rYear === 'current' || rYear === 'current year')) return true;
-    if (isPreviousSelected && (rYear === prevStr || rYear === 'previous' || rYear === 'previous year' || rYear.includes('prev'))) return true;
-    if (rYear === s || rYear.startsWith(s)) return true;
-    return false;
   }
 
   // 3. Fallback to record dates if neither target nor targetYear is explicitly set on the row
@@ -1339,25 +1356,15 @@ export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new 
     ...(r.datesMap ? Object.values(r.datesMap) : [])
   ].filter(Boolean);
 
-  if (isCurrentSelected) {
-    for (const dt of dates) {
-      const str = String(dt || '').toLowerCase();
-      if (str.includes(curStr) || str.includes('current')) return true;
-    }
-    return false;
-  }
-
-  if (isPreviousSelected) {
-    for (const dt of dates) {
-      const str = String(dt || '').toLowerCase();
-      if (str.includes(prevStr) || str.includes('prev')) return true;
-    }
-    return false;
-  }
-
   for (const dt of dates) {
-    if (String(dt || '').toLowerCase().includes(s)) return true;
+    const dm = String(dt || '').match(/\b(20\d{2})\b/);
+    if (dm) {
+      if (dm[1] === s) return true;
+      if (isCurrentSelected && dm[1] === curStr) return true;
+      if (isPreviousSelected && dm[1] === prevStr) return true;
+    }
   }
+
   return false;
 }
 
@@ -1556,6 +1563,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       titleNumber: titleNum,
       landOwner: landOwner,
       carpable: carpableNum,
+      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
       currentStatus: row.currentStatus || stage,
       datesMap,
       populatedDatesCount,
@@ -1775,6 +1783,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       titleNumber: titleNum,
       landOwner: landOwner,
       carpable: carpableNum,
+      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
       currentStatus: row.currentStatus || stage,
       datesMap,
       populatedDatesCount,
@@ -1958,28 +1967,34 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   let cfKpiHtml = '';
   let cfTargetYears = ['ALL'];
   if (isCfWhereabouts) {
-    // 1. Available Target Years
+    // 1. Available Target Years (4-digit calendar years only, based on target year column)
     const targetYearSet = new Set();
     targetYearSet.add(String(curYear));
     targetYearSet.add(String(curYear - 1));
     for (const pData of Object.values(state?.nepMilestoneList?.cf_doc || {})) {
-      if (pData?.year) targetYearSet.add(String(pData.year));
+      if (pData?.year) {
+        const m = String(pData.year).match(/\b(20\d{2})\b/);
+        if (m) targetYearSet.add(m[1]);
+      }
     }
     for (const r of enrichedRows) {
-      if (r.targetYear) targetYearSet.add(String(r.targetYear));
-      if (r.target) targetYearSet.add(String(r.target));
-      for (const dt of Object.values(r.datesMap)) {
-        const m = String(dt || '').match(/\b(20\d{2})\b/);
-        if (m) targetYearSet.add(m[1]);
+      const yrVal = String(r.targetYear || r.year || '').trim();
+      const m = yrVal.match(/\b(20\d{2})\b/);
+      if (m) {
+        targetYearSet.add(m[1]);
+      } else if (r.target) {
+        const tm = String(r.target).match(/\b(20\d{2})\b/);
+        if (tm) targetYearSet.add(tm[1]);
+      }
+      for (const dt of Object.values(r.datesMap || {})) {
+        const dm = String(dt || '').match(/\b(20\d{2})\b/);
+        if (dm) targetYearSet.add(dm[1]);
       }
     }
     const numYears = Array.from(targetYearSet)
       .filter((y) => /^\d{4}$/.test(y))
       .sort((a, b) => Number(b) - Number(a));
-    const otherYears = Array.from(targetYearSet)
-      .filter((y) => !/^\d{4}$/.test(y))
-      .sort();
-    cfTargetYears = ['ALL', ...numYears, ...otherYears];
+    cfTargetYears = ['ALL', ...numYears];
     const allTargetYears = cfTargetYears;
 
     // 2. Global Target: based on the Database worksheet per province
@@ -2297,28 +2312,34 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   let surveyStatusTableHtml = '';
   let surveyCurrentStatusMatrixHtml = '';
   if (isSurveyWhereabouts) {
-    // 1. Available Target Years
+    // 1. Available Target Years (4-digit calendar years only, based on target year column)
     const targetYearSet = new Set();
     targetYearSet.add(String(curYear));
     targetYearSet.add(String(curYear - 1));
     for (const pData of Object.values(state?.nepMilestoneList?.land_survey || state?.nepMilestoneList?.survey || {})) {
-      if (pData?.year) targetYearSet.add(String(pData.year));
+      if (pData?.year) {
+        const m = String(pData.year).match(/\b(20\d{2})\b/);
+        if (m) targetYearSet.add(m[1]);
+      }
     }
     for (const r of enrichedRows) {
-      if (r.targetYear && String(r.targetYear).trim()) targetYearSet.add(String(r.targetYear).trim());
-      if (r.target && String(r.target).trim()) targetYearSet.add(String(r.target).trim());
+      const yrVal = String(r.targetYear || r.year || '').trim();
+      const m = yrVal.match(/\b(20\d{2})\b/);
+      if (m) {
+        targetYearSet.add(m[1]);
+      } else if (r.target) {
+        const tm = String(r.target).match(/\b(20\d{2})\b/);
+        if (tm) targetYearSet.add(tm[1]);
+      }
       for (const dt of Object.values(r.datesMap || {})) {
-        const m = String(dt || '').match(/\b(20\d{2})\b/);
-        if (m) targetYearSet.add(m[1]);
+        const dm = String(dt || '').match(/\b(20\d{2})\b/);
+        if (dm) targetYearSet.add(dm[1]);
       }
     }
     const numYears = Array.from(targetYearSet)
       .filter((y) => /^\d{4}$/.test(y))
       .sort((a, b) => Number(b) - Number(a));
-    const otherYears = Array.from(targetYearSet)
-      .filter((y) => y && !/^\d{4}$/.test(y))
-      .sort();
-    const allTargetYears = ['ALL', ...numYears, ...otherYears];
+    const allTargetYears = ['ALL', ...numYears];
 
     // 2. Stage definitions and table calculations based on DEFAULT_SURVEY_STATUS_BENCHMARKS
     const SURVEY_GROUPS = [
@@ -2807,7 +2828,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             </div>
 
             <select class="form-control whereabouts-target-year-select survey-target-year-select" aria-label="Select Target Year">
-              <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year</option>
+              <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
               ${allTargetYears.filter((y) => y !== 'ALL').map((y) => `<option value="${esc(y)}" ${String(targetYearFilterVal) === String(y) ? 'selected' : ''}>Target Year: ${esc(y)}</option>`).join('')}
             </select>
             <button type="button" class="btn btn-sm btn-outline-success btn-survey-refresh" id="btn-survey-status-refresh" title="Refresh DAR Survey Status">
@@ -4304,11 +4325,19 @@ function getOptoolCellValue(row, col, dbByLhid) {
   if (col?.key === 'targetYear') {
     const direct = row?.[col.key];
     if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
-      return direct;
+      const s = String(direct).trim();
+      const m = s.match(/\b(20\d{2})\b/);
+      return m ? m[1] : s;
     }
     const lhidKey = String(row?.lhid || '').trim().toLowerCase();
     const dbRow = lhidKey && dbByLhid ? dbByLhid.get(lhidKey) : null;
-    return dbRow?.year ?? dbRow?.targetYear ?? '';
+    const dbYr = dbRow?.year ?? dbRow?.targetYear ?? '';
+    if (dbYr !== '') {
+      const s = String(dbYr).trim();
+      const m = s.match(/\b(20\d{2})\b/);
+      return m ? m[1] : s;
+    }
+    return '';
   }
   return row?.[col?.key] ?? '';
 }

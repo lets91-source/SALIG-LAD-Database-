@@ -2166,7 +2166,9 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       }
       const targetYearInput = document.getElementById('opt-targetYear');
       if (targetYearInput && (!targetYearInput.value || !isEdit)) {
-        targetYearInput.value = dbRow?.year || dbRow?.targetYear || targetYearInput.value || '';
+        const rawYr = dbRow?.year || dbRow?.targetYear || targetYearInput.value || '';
+        const m = String(rawYr).match(/\b(20\d{2})\b/);
+        targetYearInput.value = m ? m[1] : (targetYearInput.value || '');
       }
     };
     populateLinkedDbFields(existingRow?.lhid ?? '');
