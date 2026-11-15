@@ -922,7 +922,9 @@ function renderActiveView() {
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
-      whereaboutsPageSize: appState.whereaboutsPageSize
+      whereaboutsPageSize: appState.whereaboutsPageSize,
+      cfMetricMode: appState.whereaboutsMetricMode?.['mov-whereabouts'] || appState.cfMetricMode || 'both',
+      cfTableLayout: appState.whereaboutsTableLayout?.['mov-whereabouts'] || appState.cfTableLayout || 'standard'
     });
     bindWhereaboutsEvents(container, 'mov-whereabouts');
   } else if (appState.view === 'regdist-whereabouts') {
@@ -936,7 +938,9 @@ function renderActiveView() {
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
-      whereaboutsPageSize: appState.whereaboutsPageSize
+      whereaboutsPageSize: appState.whereaboutsPageSize,
+      cfMetricMode: appState.whereaboutsMetricMode?.['regdist-whereabouts'] || appState.cfMetricMode || 'both',
+      cfTableLayout: appState.whereaboutsTableLayout?.['regdist-whereabouts'] || appState.cfTableLayout || 'standard'
     });
     bindWhereaboutsEvents(container, 'regdist-whereabouts');
   } else if (appState.view === 'installation-whereabouts') {
@@ -950,7 +954,9 @@ function renderActiveView() {
       whereaboutsShowGraph: appState.whereaboutsShowGraph,
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
-      whereaboutsPageSize: appState.whereaboutsPageSize
+      whereaboutsPageSize: appState.whereaboutsPageSize,
+      cfMetricMode: appState.whereaboutsMetricMode?.['installation-whereabouts'] || appState.cfMetricMode || 'both',
+      cfTableLayout: appState.whereaboutsTableLayout?.['installation-whereabouts'] || appState.cfTableLayout || 'standard'
     });
     bindWhereaboutsEvents(container, 'installation-whereabouts');
   } else if (appState.view === 'nep') {
@@ -3922,6 +3928,8 @@ function bindWhereaboutsEvents(container, viewKey) {
 
   container.querySelectorAll('[data-cf-metric]').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (!appState.whereaboutsMetricMode) appState.whereaboutsMetricMode = {};
+      appState.whereaboutsMetricMode[viewKey] = btn.dataset.cfMetric;
       appState.cfMetricMode = btn.dataset.cfMetric;
       renderActiveView();
     });
@@ -3929,6 +3937,8 @@ function bindWhereaboutsEvents(container, viewKey) {
 
   container.querySelectorAll('[data-cf-layout]').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (!appState.whereaboutsTableLayout) appState.whereaboutsTableLayout = {};
+      appState.whereaboutsTableLayout[viewKey] = btn.dataset.cfLayout;
       appState.cfTableLayout = btn.dataset.cfLayout;
       renderActiveView();
     });
@@ -4088,7 +4098,18 @@ function bindWhereaboutsEvents(container, viewKey) {
       const stageLabel = btn.dataset.stageLabel || '';
       const mode = btn.dataset.mode || 'accomplished';
       const balanceArea = btn.dataset.balanceArea || '';
-      openCfSupportListModal({ province: prov, status: st, stageKey, stageLabel, mode, balanceArea });
+      const btnViewKey = btn.dataset.viewKey || viewKey;
+      const btnTabName = btn.dataset.tabName || WHEREABOUTS_CONFIGS[btnViewKey]?.tabName || 'CF(DOC)';
+      openCfSupportListModal({
+        province: prov,
+        status: st,
+        stageKey,
+        stageLabel,
+        mode,
+        balanceArea,
+        viewKey: btnViewKey,
+        tabName: btnTabName
+      });
     });
   });
 
@@ -4213,14 +4234,16 @@ function exportWhereaboutsCsv(viewKey) {
   a.click();
 }
 
-function getCfSupportRows(appState) {
-  const rawRows = appState.state?.optool?.['CF(DOC)'] || [];
+function getCfSupportRows(appState, tabName = 'CF(DOC)') {
+  const rawRows = appState.state?.optool?.[tabName] || [];
   const dbRows = appState.state?.optool?.Database || [];
   const dbMap = new Map();
   for (const db of dbRows) {
     const k = String(db.lhid || '').trim().toLowerCase();
     if (k && !dbMap.has(k)) dbMap.set(k, db);
   }
+
+  const cfgEntry = Object.values(WHEREABOUTS_CONFIGS).find((c) => c.tabName === tabName) || WHEREABOUTS_CONFIGS['cf-whereabouts'];
 
   return rawRows.map((row) => {
     const lhidKey = String(row.lhid || '').trim().toLowerCase();
@@ -4232,8 +4255,18 @@ function getCfSupportRows(appState) {
     const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
     const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
 
-    const stageObj = WHEREABOUTS_CONFIGS['cf-whereabouts'].resolveStage(row);
-    const stage = stageObj.stage || 'Pending FI';
+    const stageObj = cfgEntry.resolveStage ? cfgEntry.resolveStage(row) : { stage: row.currentStatus || 'Pending' };
+    const stage = stageObj.stage || row.currentStatus || 'Pending';
+
+    const datesMap = {};
+    if (Array.isArray(cfgEntry.dates)) {
+      for (const d of cfgEntry.dates) {
+        datesMap[d.key] = row[d.key] || row.datesMap?.[d.key] || '';
+      }
+    }
+    if (row.dateFiConducted) datesMap.dateFiConducted = row.dateFiConducted;
+    if (row.datePreparedSigned) datesMap.datePreparedSigned = row.datePreparedSigned;
+    if (row.reportedMonth) datesMap.reportedMonth = row.reportedMonth;
 
     return {
       ...row,
@@ -4248,11 +4281,7 @@ function getCfSupportRows(appState) {
       stage,
       targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
       target: row.target || db.target || 'Current',
-      datesMap: {
-        dateFiConducted: row.dateFiConducted || '',
-        datePreparedSigned: row.datePreparedSigned || '',
-        reportedMonth: row.reportedMonth || ''
-      }
+      datesMap
     };
   });
 }
@@ -4263,12 +4292,16 @@ function openCfSupportListModal({
   stageKey = '',
   stageLabel = '',
   mode = 'accomplished',
-  balanceArea = ''
+  balanceArea = '',
+  viewKey = 'cf-whereabouts',
+  tabName = 'CF(DOC)'
 }) {
-  const allRows = getCfSupportRows(appState);
+  const cfg = WHEREABOUTS_CONFIGS[viewKey] || Object.values(WHEREABOUTS_CONFIGS).find((c) => c.tabName === tabName) || WHEREABOUTS_CONFIGS['cf-whereabouts'];
+  const effectiveTabName = cfg.tabName || tabName || 'CF(DOC)';
+  const allRows = getCfSupportRows(appState, effectiveTabName);
   const curYear = new Date().getFullYear();
-  const targetYear = appState.whereaboutsTargetYearFilter?.['cf-whereabouts'] || 'ALL';
-  const q = String(appState.whereaboutsSearch?.['cf-whereabouts'] || '').trim().toLowerCase();
+  const targetYear = appState.whereaboutsTargetYearFilter?.[viewKey] || appState.whereaboutsTargetYearFilter?.['cf-whereabouts'] || 'ALL';
+  const q = String(appState.whereaboutsSearch?.[viewKey] || appState.whereaboutsSearch?.['cf-whereabouts'] || '').trim().toLowerCase();
   const isBalanceMode = mode === 'balance' || mode === 'pending';
   const isTargetMode = mode === 'target';
 
@@ -4292,9 +4325,9 @@ function openCfSupportListModal({
       datesMap: {}
     }));
 
-    const cfTagged = matchedRows.filter((r) => String(r.milestoneTarget || '').toLowerCase().includes('cf'));
-    if (cfTagged.length > 0) {
-      matchedRows = cfTagged;
+    const tagged = matchedRows.filter((r) => matchesMilestoneDatabaseTag(r, viewKey));
+    if (tagged.length > 0) {
+      matchedRows = tagged;
     }
   } else {
     matchedRows = allRows.filter((r) => {
@@ -4328,9 +4361,9 @@ function openCfSupportListModal({
   } else if (isBalanceMode) {
     statusLabel = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending';
   } else {
-    statusLabel = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Claim Folders')) : status;
+    statusLabel = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : `All ${effectiveTabName} Records`)) : status;
   }
-  const modalTitle = `CF(DOC) Support List: ${provLabel} • ${statusLabel}`;
+  const modalTitle = `${effectiveTabName} Support List: ${provLabel} • ${statusLabel}`;
 
   const modalHtml = renderCfSupportListModalHtml({
     rows: matchedRows,
@@ -4341,11 +4374,23 @@ function openCfSupportListModal({
     targetYear,
     totalArea,
     mode,
-    balanceArea
+    balanceArea,
+    tabName: effectiveTabName,
+    dates: cfg.dates
   });
 
   showModal(modalTitle, modalHtml);
-  bindSupportListModalEvents(matchedRows, { province, status, stageKey, targetYear, mode, balanceArea });
+  bindSupportListModalEvents(matchedRows, {
+    province,
+    status,
+    stageKey,
+    targetYear,
+    mode,
+    balanceArea,
+    viewKey,
+    tabName: effectiveTabName,
+    dates: cfg.dates
+  });
 }
 
 function getSurveySupportRows(appState) {
@@ -4462,7 +4507,7 @@ function openSurveySupportListModal({
   bindSupportListModalEvents(matchedRows, { province, status, stageKey, targetYear, mode, balanceArea });
 }
 
-function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey, targetYear }) {
+function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey, targetYear, mode, balanceArea, viewKey, tabName, dates }) {
   const modalEl = document.getElementById('modal-body');
   if (!modalEl) return;
 
@@ -4486,7 +4531,7 @@ function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey
   });
 
   modalEl.querySelector('#btn-export-support-list-csv')?.addEventListener('click', () => {
-    exportSupportListCsv(allMatchedRows, { province, status, targetYear });
+    exportSupportListCsv(allMatchedRows, { province, status, targetYear, tabName, dates });
   });
 
   modalEl.querySelector('#btn-open-database-balance')?.addEventListener('click', (e) => {
@@ -4523,41 +4568,60 @@ function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey
   });
 }
 
-function exportSupportListCsv(rows, { province, status, targetYear }) {
+function exportSupportListCsv(rows, { province, status, targetYear, tabName, dates }) {
   const isCf = rows.some((r) => r.dateFiConducted !== undefined || r.datePreparedSigned !== undefined || r.reportedMonth !== undefined || r.datesMap?.dateFiConducted !== undefined);
-  const headers = isCf
-    ? [
-        '#',
-        'LHID',
-        'Province',
-        'Municipality',
-        'Barangay',
-        'Landowner',
-        'Title Number',
-        'Carpable Area (HAS)',
-        'Current Status',
-        'Target Year',
-        'Date FI Conducted',
-        'Date Prepared & Signed',
-        'Reported Month'
-      ]
-    : [
-        '#',
-        'LHID',
-        'Province',
-        'Municipality',
-        'Barangay',
-        'Landowner',
-        'Title Number',
-        'Carpable Area (HAS)',
-        'Current Status',
-        'Target Year',
-        'Target',
-        'Date RSS',
-        'Field Work Start',
-        'Field Work Completed',
-        'ASP Date'
-      ];
+  const effectiveDates = Array.isArray(dates) && dates.length > 0 ? dates : null;
+
+  let headers = [];
+  if (effectiveDates) {
+    headers = [
+      '#',
+      'LHID',
+      'Province',
+      'Municipality',
+      'Barangay',
+      'Landowner',
+      'Title Number',
+      'Carpable Area (HAS)',
+      'Current Status',
+      'Target Year',
+      ...effectiveDates.map((d) => d.shortLabel || d.label || d.key)
+    ];
+  } else if (isCf) {
+    headers = [
+      '#',
+      'LHID',
+      'Province',
+      'Municipality',
+      'Barangay',
+      'Landowner',
+      'Title Number',
+      'Carpable Area (HAS)',
+      'Current Status',
+      'Target Year',
+      'Date FI Conducted',
+      'Date Prepared & Signed',
+      'Reported Month'
+    ];
+  } else {
+    headers = [
+      '#',
+      'LHID',
+      'Province',
+      'Municipality',
+      'Barangay',
+      'Landowner',
+      'Title Number',
+      'Carpable Area (HAS)',
+      'Current Status',
+      'Target Year',
+      'Target',
+      'Date RSS',
+      'Field Work Start',
+      'Field Work Completed',
+      'ASP Date'
+    ];
+  }
 
   const escapeCsv = (val) => {
     const s = String(val ?? '');
@@ -4566,7 +4630,23 @@ function exportSupportListCsv(rows, { province, status, targetYear }) {
 
   const csvLines = [headers.join(',')];
   rows.forEach((r, idx) => {
-    if (isCf) {
+    if (effectiveDates) {
+      csvLines.push(
+        [
+          idx + 1,
+          escapeCsv(r.lhid),
+          escapeCsv(r.province),
+          escapeCsv(r.municipality),
+          escapeCsv(r.barangay),
+          escapeCsv(r.landOwner),
+          escapeCsv(r.titleNumber),
+          fmtArea(r.carpable),
+          escapeCsv(r.currentStatus || r.stage || ''),
+          escapeCsv(r.targetYear || r.year || ''),
+          ...effectiveDates.map((d) => escapeCsv(r.datesMap?.[d.key] || r[d.key] || ''))
+        ].join(',')
+      );
+    } else if (isCf) {
       csvLines.push(
         [
           idx + 1,

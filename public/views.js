@@ -1161,7 +1161,7 @@ export const WHEREABOUTS_CONFIGS = {
     subtitle: 'Claim Folder (CF) Tracking • Date FI Conducted • Date Prepared & Signed • Reported Month',
     openTabName: 'CF(DOC)',
     dates: [
-      { key: 'dateFiConducted', label: 'DATE FI CONDUCTED', shortLabel: 'FI Conducted', badgeClass: 'badge-green', icon: '✔' },
+      { key: 'dateFiConducted', label: 'DATE FI CONDUCTED', shortLabel: 'Conducted FI', badgeClass: 'badge-green', icon: '✔' },
       { key: 'datePreparedSigned', label: 'DATE PREPARED & SIGNED', shortLabel: 'Prepared & Signed', badgeClass: 'badge-blue', icon: '✔' },
       { key: 'reportedMonth', label: 'REPORTED MONTH', shortLabel: 'Reported Month', badgeClass: 'badge-amber', isMonth: true }
     ],
@@ -1305,6 +1305,24 @@ export const DEFAULT_CF_PROVINCES = [
   { code: 'SAM', name: 'SAMAR' },
   { code: 'SLE', name: 'SOUTHERN LEYTE' }
 ];
+
+export function getNepMilestoneKey(viewKey) {
+  if (viewKey === 'cf-whereabouts') return 'cf_doc';
+  if (viewKey === 'survey-whereabouts') return 'land_survey';
+  if (viewKey === 'mov-whereabouts') return 'land_valuation';
+  if (viewKey === 'regdist-whereabouts') return 'ep_cloa_registration';
+  if (viewKey === 'installation-whereabouts') return 'installation';
+  return 'overall';
+}
+
+export function matchesMilestoneDatabaseTag(dbRow, viewKey) {
+  const mt = String(dbRow?.milestoneTarget || dbRow?.target || '').toLowerCase();
+  if (viewKey === 'cf-whereabouts') return mt.includes('cf');
+  if (viewKey === 'mov-whereabouts') return mt.includes('mov') || mt.includes('val');
+  if (viewKey === 'regdist-whereabouts') return mt.includes('reg') || mt.includes('dist') || mt.includes('cloa');
+  if (viewKey === 'installation-whereabouts') return mt.includes('install');
+  return true;
+}
 
 export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
   if (!selectedYear || selectedYear === 'ALL') return true;
@@ -1606,7 +1624,8 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     if (selectedProvs.length > 0) {
       if (!selectedProvs.some((p) => matchProvinceName(r.province, p))) return false;
     }
-    if ((viewKey === 'cf-whereabouts' || viewKey === 'survey-whereabouts') && targetYearFilterVal !== 'ALL') {
+    const isTargetYearFilterableView = viewKey === 'cf-whereabouts' || viewKey === 'mov-whereabouts' || viewKey === 'regdist-whereabouts' || viewKey === 'installation-whereabouts' || viewKey === 'survey-whereabouts';
+    if (isTargetYearFilterableView && targetYearFilterVal !== 'ALL') {
       if (!matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear)) return false;
     }
     for (const [k, spec] of Object.entries(activeColFilters)) {
@@ -1737,7 +1756,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const targetYearFilterVal = whereaboutsTargetYearFilter[viewKey] || 'ALL';
   const isCfWhereabouts = viewKey === 'cf-whereabouts';
   const isSurveyWhereabouts = viewKey === 'survey-whereabouts';
-  const showGraphVal = isCfWhereabouts || isSurveyWhereabouts
+  const isMovWhereabouts = viewKey === 'mov-whereabouts';
+  const isRegDistWhereabouts = viewKey === 'regdist-whereabouts';
+  const isInstallationWhereabouts = viewKey === 'installation-whereabouts';
+  const isMilestoneTrackingView = isCfWhereabouts || isMovWhereabouts || isRegDistWhereabouts || isInstallationWhereabouts;
+  const showGraphVal = isMilestoneTrackingView || isSurveyWhereabouts
     ? Boolean(whereaboutsShowGraph[viewKey])
     : whereaboutsShowGraph[viewKey] !== false;
   const graphMode = whereaboutsGraphMode[viewKey] || 'graph';
@@ -1962,9 +1985,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     return b.total - a.total;
   });
 
-  // Table rows: filter scopeRows by target year (for CF and Survey Whereabouts)
+  // Table rows: filter scopeRows by target year (for CF, MOV, RegDist, Installation, and Survey Whereabouts)
   let filteredRows = scopeRows;
-  if ((isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') {
+  if ((isMilestoneTrackingView || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') {
     filteredRows = filteredRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
   }
 
@@ -1985,16 +2008,17 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       : `${showingFrom.toLocaleString()}–${showingTo.toLocaleString()}`;
   const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // Top KPI Cards for CF Whereabouts (Dynamically filtered by Province & Column Filters!)
+  // Top KPI Cards for Milestone Whereabouts (Dynamically filtered by Province & Column Filters!)
   let cfKpiHtml = '';
   let cfStatusTableHtml = '';
   let cfTargetYears = ['ALL'];
-  if (isCfWhereabouts) {
+  if (isMilestoneTrackingView) {
+    const nepMsKey = getNepMilestoneKey(viewKey);
     // 1. Available Target Years (4-digit calendar years only, based on target year column)
     const targetYearSet = new Set();
     targetYearSet.add(String(curYear));
     targetYearSet.add(String(curYear - 1));
-    for (const pData of Object.values(state?.nepMilestoneList?.cf_doc || {})) {
+    for (const pData of Object.values(state?.nepMilestoneList?.[nepMsKey] || {})) {
       if (pData?.year) {
         const m = String(pData.year).match(/\b(20\d{2})\b/);
         if (m) targetYearSet.add(m[1]);
@@ -2036,7 +2060,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     // Fallback to nepMilestoneList / nepTargets if Database worksheet has no records
     const targetProvCodes = selectedProvs.map((p) => resolveProvinceCode(p, schemas)).filter(Boolean);
-    const msMap = state?.nepMilestoneList?.cf_doc || {};
+    const msMap = state?.nepMilestoneList?.[nepMsKey] || {};
     if (globalTargetLhs === 0 && globalTargetArea === 0) {
       if (targetProvCodes.length > 0) {
         for (const pCode of targetProvCodes) {
@@ -2051,7 +2075,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           globalTargetArea += Math.max(0, Number(pData?.area) || 0);
         }
         if (globalTargetLhs === 0 && globalTargetArea === 0) {
-          const regTarget = state?.nepTargets?.cf_doc || {};
+          const regTarget = state?.nepTargets?.[nepMsKey] || {};
           globalTargetLhs = Math.max(0, Math.round(Number(regTarget.targetCount) || 0));
           globalTargetArea = Math.max(0, Number(regTarget.targetAreaHas) || 0);
         }
@@ -2111,19 +2135,20 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       }
     }
 
-    // 5. Selected Year Actual Milestones (FI, Prepared & Signed, Reported Month)
-    // Filtered by both Target Year AND the active scope (Province, Municipality, etc.)!
+    // 5. Selected Year Actual Milestones (Filtered by both Target Year AND the active scope)
     const yearMatchingRows = scopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
-    const fiRows = yearMatchingRows.filter((r) => Boolean(r.datesMap.dateFiConducted));
-    const prepRows = yearMatchingRows.filter((r) => Boolean(r.datesMap.datePreparedSigned));
-    const repRows = yearMatchingRows.filter((r) => Boolean(r.datesMap.reportedMonth));
+
+    // For backward compatibility with CF
+    const fiRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.dateFiConducted || r.dateFiConducted));
+    const prepRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.datePreparedSigned || r.datePreparedSigned));
+    const repRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.reportedMonth || r.reportedMonth));
 
     const fiLhs = fiRows.length;
-    const fiArea = fiRows.reduce((s, r) => s + r.carpable, 0);
+    const fiArea = fiRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
     const prepLhs = prepRows.length;
-    const prepArea = prepRows.reduce((s, r) => s + r.carpable, 0);
+    const prepArea = prepRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
     const repLhs = repRows.length;
-    const repArea = repRows.reduce((s, r) => s + r.carpable, 0);
+    const repArea = repRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
 
     cfKpiHtml = `
       <!-- Row 1: Global Target & Global Accomplishment -->
@@ -2163,8 +2188,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
       </section>
 
-      <!-- Row 2: 4 Target Year Filtered Cards -->
-      <section class="cf-kpi-year-grid">
+      <!-- Row 2: Target Year Filtered Cards -->
+      <section class="cf-kpi-year-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:14px;margin-bottom:18px;">
         <div class="cf-kpi-card">
           <div class="cf-kpi-header">
             <span class="cf-kpi-title">Target Year: ${esc(targetYearFilterVal)}</span>
@@ -2182,56 +2207,29 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
 
-        <div class="cf-kpi-card">
-          <div class="cf-kpi-header">
-            <span class="cf-kpi-title">Total with Conducted FI</span>
-            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
-          </div>
-          <div class="cf-kpi-body">
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">LHs</span>
-              <span class="cf-kpi-val">${fiLhs.toLocaleString()}</span>
+        ${cfg.dates.map((d) => {
+          const matchingRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
+          const dLhs = matchingRows.length;
+          const dArea = matchingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
+          return `
+            <div class="cf-kpi-card">
+              <div class="cf-kpi-header">
+                <span class="cf-kpi-title">Total with ${esc(d.shortLabel)}</span>
+                ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+              </div>
+              <div class="cf-kpi-body">
+                <div class="cf-kpi-stat">
+                  <span class="cf-kpi-label">LHs</span>
+                  <span class="cf-kpi-val">${dLhs.toLocaleString()}</span>
+                </div>
+                <div class="cf-kpi-stat">
+                  <span class="cf-kpi-label">Area</span>
+                  <span class="cf-kpi-val area">${fmtArea(dArea)}<span class="cf-kpi-unit">HAS</span></span>
+                </div>
+              </div>
             </div>
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">Area</span>
-              <span class="cf-kpi-val area">${fmtArea(fiArea)}<span class="cf-kpi-unit">HAS</span></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="cf-kpi-card">
-          <div class="cf-kpi-header">
-            <span class="cf-kpi-title">Total with Prepared &amp; Signed</span>
-            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
-          </div>
-          <div class="cf-kpi-body">
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">LHs</span>
-              <span class="cf-kpi-val">${prepLhs.toLocaleString()}</span>
-            </div>
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">Area</span>
-              <span class="cf-kpi-val area">${fmtArea(prepArea)}<span class="cf-kpi-unit">HAS</span></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="cf-kpi-card">
-          <div class="cf-kpi-header">
-            <span class="cf-kpi-title">Total with Reported Month</span>
-            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
-          </div>
-          <div class="cf-kpi-body">
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">LHs</span>
-              <span class="cf-kpi-val">${repLhs.toLocaleString()}</span>
-            </div>
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">Area</span>
-              <span class="cf-kpi-val area">${fmtArea(repArea)}<span class="cf-kpi-unit">HAS</span></span>
-            </div>
-          </div>
-        </div>
+          `;
+        }).join('')}
       </section>
     `;
 
@@ -2239,7 +2237,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const isTargetYearAll = !targetYearFilterVal || targetYearFilterVal === 'ALL';
 
     const cfTableRows = DEFAULT_CF_PROVINCES.map((p) => {
-      const nepOverride = state?.nepMilestoneList?.cf_doc?.[p.code];
+      const nepOverride = state?.nepMilestoneList?.[nepMsKey]?.[p.code];
       const nepYear = String(nepOverride?.year || curYear);
 
       let isNepYearMatch = false;
@@ -2260,13 +2258,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         if (!isTargetYearAll) {
           dbProvRows = dbProvRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
         }
-        const cfDb = dbProvRows.filter((r) => String(r.milestoneTarget || '').toLowerCase().includes('cf'));
-        if (cfDb.length > 0) {
-          targetLhs = cfDb.length;
-          targetArea = cfDb.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
+        const taggedDb = dbProvRows.filter((r) => matchesMilestoneDatabaseTag(r, viewKey));
+        if (taggedDb.length > 0) {
+          targetLhs = taggedDb.length;
+          targetArea = taggedDb.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
         } else if (isNepYearMatch && nepOverride && Number(nepOverride.lhs || nepOverride.area)) {
           targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
           targetArea = Math.max(0, Number(nepOverride.area) || 0);
+        } else {
+          targetLhs = dbProvRows.length;
+          targetArea = dbProvRows.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
         }
       }
       targetArea = Number(targetArea.toFixed(4));
@@ -2279,23 +2280,31 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       const statusLhs = provRows.length;
       const statusArea = Number(provRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
 
-      const fiRows = provRows.filter((r) => Boolean(r.datesMap?.dateFiConducted || r.dateFiConducted));
-      const fiLhs = fiRows.length;
-      const fiArea = Number(fiRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
-      const balFiLhs = Math.max(0, targetLhs - fiLhs);
-      const balFiArea = Math.max(0, Number((targetArea - fiArea).toFixed(4)));
+      const dateStats = {};
+      for (const d of cfg.dates) {
+        const dRows = provRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
+        const dLhs = dRows.length;
+        const dArea = Number(dRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
+        const balLhs = Math.max(0, targetLhs - dLhs);
+        const balArea = Math.max(0, Number((targetArea - dArea).toFixed(4)));
+        dateStats[d.key] = { lhs: dLhs, area: dArea, balLhs, balArea };
+      }
 
-      const prepRows = provRows.filter((r) => Boolean(r.datesMap?.datePreparedSigned || r.datePreparedSigned));
-      const prepLhs = prepRows.length;
-      const prepArea = Number(prepRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
-      const balPrepLhs = Math.max(0, targetLhs - prepLhs);
-      const balPrepArea = Math.max(0, Number((targetArea - prepArea).toFixed(4)));
+      // Backward compatibility fields for CF(DOC)
+      const fiLhs = dateStats['dateFiConducted']?.lhs || 0;
+      const fiArea = dateStats['dateFiConducted']?.area || 0;
+      const balFiLhs = dateStats['dateFiConducted']?.balLhs || 0;
+      const balFiArea = dateStats['dateFiConducted']?.balArea || 0;
 
-      const repRows = provRows.filter((r) => Boolean(r.datesMap?.reportedMonth || r.reportedMonth));
-      const repLhs = repRows.length;
-      const repArea = Number(repRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
-      const balRepLhs = Math.max(0, targetLhs - repLhs);
-      const balRepArea = Math.max(0, Number((targetArea - repArea).toFixed(4)));
+      const prepLhs = dateStats['datePreparedSigned']?.lhs || 0;
+      const prepArea = dateStats['datePreparedSigned']?.area || 0;
+      const balPrepLhs = dateStats['datePreparedSigned']?.balLhs || 0;
+      const balPrepArea = dateStats['datePreparedSigned']?.balArea || 0;
+
+      const repLhs = dateStats['reportedMonth']?.lhs || 0;
+      const repArea = dateStats['reportedMonth']?.area || 0;
+      const balRepLhs = dateStats['reportedMonth']?.balLhs || 0;
+      const balRepArea = dateStats['reportedMonth']?.balArea || 0;
 
       const isActive = selectedProvs.length === 0 || selectedProvs.some((sp) => matchProvinceName(p.name, sp) || matchProvinceName(p.code, sp));
 
@@ -2306,6 +2315,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         targetArea,
         statusLhs,
         statusArea,
+        dateStats,
         fiLhs,
         fiArea,
         balFiLhs,
@@ -2328,6 +2338,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       targetArea: Number(cfTableRows.reduce((s, r) => s + r.targetArea, 0).toFixed(4)),
       statusLhs: cfTableRows.reduce((s, r) => s + r.statusLhs, 0),
       statusArea: Number(cfTableRows.reduce((s, r) => s + r.statusArea, 0).toFixed(4)),
+      dateStats: {},
       fiLhs: cfTableRows.reduce((s, r) => s + r.fiLhs, 0),
       fiArea: Number(cfTableRows.reduce((s, r) => s + r.fiArea, 0).toFixed(4)),
       balFiLhs: cfTableRows.reduce((s, r) => s + r.balFiLhs, 0),
@@ -2341,6 +2352,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       balRepLhs: cfTableRows.reduce((s, r) => s + r.balRepLhs, 0),
       balRepArea: Number(cfTableRows.reduce((s, r) => s + r.balRepArea, 0).toFixed(4))
     };
+
+    for (const d of cfg.dates) {
+      cfTotals.dateStats[d.key] = {
+        lhs: cfTableRows.reduce((s, r) => s + (r.dateStats?.[d.key]?.lhs || 0), 0),
+        area: Number(cfTableRows.reduce((s, r) => s + (r.dateStats?.[d.key]?.area || 0), 0).toFixed(4)),
+        balLhs: cfTableRows.reduce((s, r) => s + (r.dateStats?.[d.key]?.balLhs || 0), 0),
+        balArea: Number(cfTableRows.reduce((s, r) => s + (r.dateStats?.[d.key]?.balArea || 0), 0).toFixed(4))
+      };
+    }
 
     function renderCfFigureBtn({ val, isArea, province, indicator, balanceArea = '', isTotal = false }) {
       const displayVal = isArea ? fmtArea(val) : Number(val || 0).toLocaleString();
@@ -2358,6 +2378,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       const stageKeyAttr = indicator.stageKey ? `data-stage-key="${esc(indicator.stageKey)}"` : '';
       const stageLabelAttr = indicator.stageLabel ? `data-stage-label="${esc(indicator.stageLabel)}"` : '';
       const balAreaAttr = indicator.isBal && balanceArea ? `data-balance-area="${esc(balanceArea)}"` : '';
+      const viewKeyAttr = `data-view-key="${esc(viewKey)}"`;
+      const tabNameAttr = `data-tab-name="${esc(cfg.tabName)}"`;
       const title = `Click to view ${esc(indicator.label)} Support List for ${esc(province === 'ALL' ? 'Region VIII' : province)} (${displayVal}${isArea ? ' HAS' : ' LHs'})`;
 
       return `
@@ -2372,6 +2394,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${stageKeyAttr}
           ${stageLabelAttr}
           ${balAreaAttr}
+          ${viewKeyAttr}
+          ${tabNameAttr}
           title="${esc(title)}"
         >
           ${displayVal}
@@ -2390,86 +2414,37 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         getLhs: (r) => r.targetLhs,
         getArea: (r) => r.targetArea,
         isBal: false
-      },
-      {
-        key: 'fi',
-        label: 'With Conducted FI',
-        badge: '✔ ACCOMPLISHED',
-        badgeClass: 'badge-green',
-        desc: 'Field Investigation Completed',
-        mode: 'accomplished',
-        stageKey: 'dateFiConducted',
-        stageLabel: 'Date FI Conducted',
-        getLhs: (r) => r.fiLhs,
-        getArea: (r) => r.fiArea,
-        isBal: false
-      },
-      {
-        key: 'balFi',
-        label: 'Balance (Conducted FI)',
-        badge: '⏳ BALANCE',
-        badgeClass: 'badge-amber',
-        desc: 'Pending / Remaining FI Quota',
-        mode: 'balance',
-        stageKey: 'dateFiConducted',
-        stageLabel: 'Date FI Conducted',
-        getLhs: (r) => r.balFiLhs,
-        getArea: (r) => r.balFiArea,
-        isBal: true
-      },
-      {
-        key: 'prep',
-        label: 'With Prepared & Signed',
-        badge: '✔ ACCOMPLISHED',
-        badgeClass: 'badge-green',
-        desc: 'CARPER Forms Prepared & Signed',
-        mode: 'accomplished',
-        stageKey: 'datePreparedSigned',
-        stageLabel: 'Date Prepared & Signed',
-        getLhs: (r) => r.prepLhs,
-        getArea: (r) => r.prepArea,
-        isBal: false
-      },
-      {
-        key: 'balPrep',
-        label: 'Balance (Prepared & Signed)',
-        badge: '⏳ BALANCE',
-        badgeClass: 'badge-amber',
-        desc: 'Pending / Remaining Prepared & Signed Quota',
-        mode: 'balance',
-        stageKey: 'datePreparedSigned',
-        stageLabel: 'Date Prepared & Signed',
-        getLhs: (r) => r.balPrepLhs,
-        getArea: (r) => r.balPrepArea,
-        isBal: true
-      },
-      {
-        key: 'rep',
-        label: 'With Reported Month',
-        badge: '✔ ACCOMPLISHED',
-        badgeClass: 'badge-green',
-        desc: 'Official Regional Report Month Assigned',
-        mode: 'accomplished',
-        stageKey: 'reportedMonth',
-        stageLabel: 'Reported Month',
-        getLhs: (r) => r.repLhs,
-        getArea: (r) => r.repArea,
-        isBal: false
-      },
-      {
-        key: 'balRep',
-        label: 'Balance (Reported Month)',
-        badge: '⏳ BALANCE',
-        badgeClass: 'badge-amber',
-        desc: 'Pending / Remaining Reported Month Quota',
-        mode: 'balance',
-        stageKey: 'reportedMonth',
-        stageLabel: 'Reported Month',
-        getLhs: (r) => r.balRepLhs,
-        getArea: (r) => r.balRepArea,
-        isBal: true
       }
     ];
+
+    for (const d of cfg.dates) {
+      cfIndicators.push({
+        key: d.key,
+        label: `With ${d.shortLabel}`,
+        badge: '✔ ACCOMPLISHED',
+        badgeClass: 'badge-green',
+        desc: `${d.label || d.shortLabel} Completed`,
+        mode: 'accomplished',
+        stageKey: d.key,
+        stageLabel: d.label || d.shortLabel,
+        getLhs: (r) => r.dateStats?.[d.key]?.lhs ?? 0,
+        getArea: (r) => r.dateStats?.[d.key]?.area ?? 0,
+        isBal: false
+      });
+      cfIndicators.push({
+        key: `bal_${d.key}`,
+        label: `Balance (${d.shortLabel})`,
+        badge: '⏳ BALANCE',
+        badgeClass: 'badge-amber',
+        desc: `Pending / Remaining ${d.shortLabel} Quota`,
+        mode: 'balance',
+        stageKey: d.key,
+        stageLabel: d.label || d.shortLabel,
+        getLhs: (r) => r.dateStats?.[d.key]?.balLhs ?? 0,
+        getArea: (r) => r.dateStats?.[d.key]?.balArea ?? 0,
+        isBal: true
+      });
+    }
 
     function renderCfTransposedTableHtml(rows, totals, metricMode) {
       return `
@@ -2558,12 +2533,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     function renderCfStandardTableHtml(rows, totals, metricMode) {
       const indTarget = cfIndicators.find((i) => i.key === 'target');
-      const indFi = cfIndicators.find((i) => i.key === 'fi');
-      const indBalFi = cfIndicators.find((i) => i.key === 'balFi');
-      const indPrep = cfIndicators.find((i) => i.key === 'prep');
-      const indBalPrep = cfIndicators.find((i) => i.key === 'balPrep');
-      const indRep = cfIndicators.find((i) => i.key === 'rep');
-      const indBalRep = cfIndicators.find((i) => i.key === 'balRep');
 
       if (metricMode === 'lhs') {
         return `
@@ -2572,17 +2541,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <tr class="survey-th-l1">
                 <th rowspan="2" class="survey-th-unit">PROVINCE</th>
                 <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
-                <th colspan="2" class="survey-th-stage center">WITH CONDUCTED FI</th>
-                <th colspan="2" class="survey-th-stage center">WITH PREPARED &amp; SIGNED</th>
-                <th colspan="2" class="survey-th-stage center">WITH REPORTED MONTH</th>
+                ${cfg.dates.map((d) => `
+                  <th colspan="2" class="survey-th-stage center">WITH ${esc(d.shortLabel.toUpperCase())}</th>
+                `).join('')}
               </tr>
               <tr class="survey-th-l2">
-                <th class="right">ACCOMPLISHMENT</th>
-                <th class="right">BALANCE</th>
-                <th class="right">ACCOMPLISHMENT</th>
-                <th class="right">BALANCE</th>
-                <th class="right">ACCOMPLISHMENT</th>
-                <th class="right">BALANCE</th>
+                ${cfg.dates.map(() => `
+                  <th class="right">ACCOMPLISHMENT</th>
+                  <th class="right">BALANCE</th>
+                `).join('')}
               </tr>
             </thead>
             <tbody>
@@ -2590,12 +2557,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <tr>
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.fiLhs, isArea: false, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.balFiLhs, isArea: false, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.prepLhs, isArea: false, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.balPrepLhs, isArea: false, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.repLhs, isArea: false, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.balRepLhs, isArea: false, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
+                  ${cfg.dates.map((d) => {
+                    const indAcc = cfIndicators.find((i) => i.key === d.key);
+                    const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+                    const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+                    return `
+                      <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
+                      <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
+                    `;
+                  }).join('')}
                 </tr>
               `).join('')}
             </tbody>
@@ -2603,12 +2573,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.fiLhs, isArea: false, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.balFiLhs, isArea: false, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.prepLhs, isArea: false, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.balPrepLhs, isArea: false, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.repLhs, isArea: false, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.balRepLhs, isArea: false, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
+                ${cfg.dates.map((d) => {
+                  const indAcc = cfIndicators.find((i) => i.key === d.key);
+                  const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+                  const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+                  return `
+                    <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
+                    <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
+                  `;
+                }).join('')}
               </tr>
             </tfoot>
           </table>
@@ -2622,17 +2595,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <tr class="survey-th-l1">
                 <th rowspan="2" class="survey-th-unit">PROVINCE</th>
                 <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
-                <th colspan="2" class="survey-th-stage center">WITH CONDUCTED FI</th>
-                <th colspan="2" class="survey-th-stage center">WITH PREPARED &amp; SIGNED</th>
-                <th colspan="2" class="survey-th-stage center">WITH REPORTED MONTH</th>
+                ${cfg.dates.map((d) => `
+                  <th colspan="2" class="survey-th-stage center">WITH ${esc(d.shortLabel.toUpperCase())}</th>
+                `).join('')}
               </tr>
               <tr class="survey-th-l2">
-                <th class="right">ACCOMPLISHMENT (HAS)</th>
-                <th class="right">BALANCE (HAS)</th>
-                <th class="right">ACCOMPLISHMENT (HAS)</th>
-                <th class="right">BALANCE (HAS)</th>
-                <th class="right">ACCOMPLISHMENT (HAS)</th>
-                <th class="right">BALANCE (HAS)</th>
+                ${cfg.dates.map(() => `
+                  <th class="right">ACCOMPLISHMENT (HAS)</th>
+                  <th class="right">BALANCE (HAS)</th>
+                `).join('')}
               </tr>
             </thead>
             <tbody>
@@ -2640,12 +2611,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <tr>
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.fiArea, isArea: true, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.balFiArea, isArea: true, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.prepArea, isArea: true, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.balPrepArea, isArea: true, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.repArea, isArea: true, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.balRepArea, isArea: true, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
+                  ${cfg.dates.map((d) => {
+                    const indAcc = cfIndicators.find((i) => i.key === d.key);
+                    const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+                    const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+                    return `
+                      <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
+                      <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
+                    `;
+                  }).join('')}
                 </tr>
               `).join('')}
             </tbody>
@@ -2653,12 +2627,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.fiArea, isArea: true, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.balFiArea, isArea: true, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.prepArea, isArea: true, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.balPrepArea, isArea: true, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.repArea, isArea: true, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.balRepArea, isArea: true, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
+                ${cfg.dates.map((d) => {
+                  const indAcc = cfIndicators.find((i) => i.key === d.key);
+                  const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+                  const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+                  return `
+                    <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
+                    <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
+                  `;
+                }).join('')}
               </tr>
             </tfoot>
           </table>
@@ -2672,33 +2649,25 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             <tr class="survey-th-l1">
               <th rowspan="3" class="survey-th-unit">PROVINCE</th>
               <th colspan="2" class="center survey-th-nep">NEP TARGET</th>
-              <th colspan="4" class="center survey-th-stage">WITH CONDUCTED FI</th>
-              <th colspan="4" class="center survey-th-stage">WITH PREPARED &amp; SIGNED</th>
-              <th colspan="4" class="center survey-th-stage">WITH REPORTED MONTH</th>
+              ${cfg.dates.map((d) => `
+                <th colspan="4" class="center survey-th-stage">WITH ${esc(d.shortLabel.toUpperCase())}</th>
+              `).join('')}
             </tr>
             <tr class="survey-th-l2">
               <th rowspan="2" class="right">LHS</th>
               <th rowspan="2" class="right">AREA(HAS)</th>
-              <th colspan="2" class="center">ACCOMPLISHMENT</th>
-              <th colspan="2" class="center">BALANCE</th>
-              <th colspan="2" class="center">ACCOMPLISHMENT</th>
-              <th colspan="2" class="center">BALANCE</th>
-              <th colspan="2" class="center">ACCOMPLISHMENT</th>
-              <th colspan="2" class="center">BALANCE</th>
+              ${cfg.dates.map(() => `
+                <th colspan="2" class="center">ACCOMPLISHMENT</th>
+                <th colspan="2" class="center">BALANCE</th>
+              `).join('')}
             </tr>
             <tr class="survey-th-l3">
-              <th class="right">LHS</th>
-              <th class="right">AREA(HAS)</th>
-              <th class="right">LHS</th>
-              <th class="right">AREA(HAS)</th>
-              <th class="right">LHS</th>
-              <th class="right">AREA(HAS)</th>
-              <th class="right">LHS</th>
-              <th class="right">AREA(HAS)</th>
-              <th class="right">LHS</th>
-              <th class="right">AREA(HAS)</th>
-              <th class="right">LHS</th>
-              <th class="right">AREA(HAS)</th>
+              ${cfg.dates.map(() => `
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+                <th class="right">LHS</th>
+                <th class="right">AREA(HAS)</th>
+              `).join('')}
             </tr>
           </thead>
           <tbody>
@@ -2707,18 +2676,17 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.fiLhs, isArea: false, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.fiArea, isArea: true, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.balFiLhs, isArea: false, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.balFiArea, isArea: true, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.prepLhs, isArea: false, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.prepArea, isArea: true, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.balPrepLhs, isArea: false, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.balPrepArea, isArea: true, province: p.name, indicator: indBalPrep, balanceArea: fmtArea(p.balPrepArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.repLhs, isArea: false, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.repArea, isArea: true, province: p.name, indicator: indRep, balanceArea: fmtArea(p.repArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.balRepLhs, isArea: false, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.balRepArea, isArea: true, province: p.name, indicator: indBalRep, balanceArea: fmtArea(p.balRepArea) })}</td>
+                ${cfg.dates.map((d) => {
+                  const indAcc = cfIndicators.find((i) => i.key === d.key);
+                  const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+                  const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+                  return `
+                    <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
+                    <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
+                    <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
+                    <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
+                  `;
+                }).join('')}
               </tr>
             `).join('')}
           </tbody>
@@ -2727,37 +2695,38 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <td class="survey-td-unit">REGION VIII TOTAL</td>
               <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
               <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.fiLhs, isArea: false, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.fiArea, isArea: true, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.balFiLhs, isArea: false, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.balFiArea, isArea: true, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.prepLhs, isArea: false, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.prepArea, isArea: true, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.balPrepLhs, isArea: false, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.balPrepArea, isArea: true, province: 'ALL', indicator: indBalPrep, balanceArea: fmtArea(totals.balPrepArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.repLhs, isArea: false, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.repArea, isArea: true, province: 'ALL', indicator: indRep, balanceArea: fmtArea(totals.repArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.balRepLhs, isArea: false, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.balRepArea, isArea: true, province: 'ALL', indicator: indBalRep, balanceArea: fmtArea(totals.balRepArea), isTotal: true })}</td>
+              ${cfg.dates.map((d) => {
+                const indAcc = cfIndicators.find((i) => i.key === d.key);
+                const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+                const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+                return `
+                  <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
+                  <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
+                `;
+              }).join('')}
             </tr>
           </tfoot>
         </table>
       `;
     }
 
+    const displayTabName = cfg.tabName === 'RegistrationDistribution' ? 'Registration / Distribution' : cfg.tabName;
+
     cfStatusTableHtml = `
       <div class="panel" id="panel-cf-status-table" style="margin-bottom: 22px;">
         <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div>
             <div style="display:flex;align-items:center;gap:10px;">
-              <span class="panel-icon" style="background:#0f4d2a;color:#ffffff;border-radius:6px;padding:4px 8px;font-size:14px;">📄</span>
+              <span class="panel-icon" style="background:#0f4d2a;color:#ffffff;border-radius:6px;padding:4px 8px;font-size:14px;">${esc(cfg.badgeIcon || '📄')}</span>
               <h3 class="panel-title" style="margin:0;font-size:16px;font-weight:800;color:var(--text-primary,#111827);">
-                CF(DOC) Milestone Status &amp; Accomplishment Summary
+                ${esc(displayTabName)} Milestone Status &amp; Accomplishment Summary
               </h3>
               <span class="badge badge-green" style="font-size:11px;font-weight:700;">Target Year: ${esc(targetYearFilterVal)}</span>
             </div>
             <p class="panel-subtitle" style="margin:4px 0 0;font-size:12.5px;color:var(--text-muted,#6b7280);">
-              Provincial tracking matrix • NEP Target, Conducted FI, Prepared &amp; Signed, and Reported Month with Balances
+              Provincial tracking matrix • NEP Target and ${esc(cfg.dates.map((d) => d.shortLabel).join(', '))} with Balances
             </p>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -2765,7 +2734,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               class="form-control whereabouts-target-year-select cf-target-year-select"
               id="cf-status-target-year-filter"
               aria-label="Filter by Target Year"
-              title="Filter CF(DOC) Milestones by Target Year"
+              title="Filter ${esc(displayTabName)} Milestones by Target Year"
             >
               <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
               ${cfTargetYears
@@ -2776,7 +2745,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 )
                 .join('')}
             </select>
-            <div class="btn-group" role="group" aria-label="CF Table Layout">
+            <div class="btn-group" role="group" aria-label="Table Layout">
               <button type="button" class="btn btn-xs ${cfTableLayout === 'standard' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="standard" title="Rows: Province • Columns: Milestones">
                 ▦ Rows: Province
               </button>
@@ -2784,7 +2753,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 📋 Columns: Province
               </button>
             </div>
-            <div class="btn-group" role="group" aria-label="CF Metric Toggle">
+            <div class="btn-group" role="group" aria-label="Metric Toggle">
               <button type="button" class="btn btn-xs ${cfMetricMode === 'both' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="both" title="Show both LHs and Area (HAS)">LHS &amp; Area (HAS)</button>
               <button type="button" class="btn btn-xs ${cfMetricMode === 'lhs' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="lhs" title="Show Landholdings (LHS) only">LHS</button>
               <button type="button" class="btn btn-xs ${cfMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-cf-metric="area" title="Show Area (HAS) only">Area (HAS)</button>
@@ -2812,7 +2781,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
   const hasAnyActiveFilter =
     provFilterVal !== 'ALL' ||
-    ((isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') ||
+    ((isMilestoneTrackingView || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') ||
     statusFilterVal !== 'ALL' ||
     Boolean(q) ||
     Object.values(activeColFilters).some((s) => s && s.value && s.value !== 'ALL');
@@ -2874,7 +2843,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         }
       </select>
       ${
-        isCfWhereabouts
+        isMilestoneTrackingView
           ? `
       <select class="form-control nep-filter-select whereabouts-target-year-select" id="whereabouts-target-year-filter" aria-label="Filter by Target Year">
         <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
@@ -3939,9 +3908,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
-    ${isCfWhereabouts ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
+    ${isMilestoneTrackingView ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
 
-    ${isCfWhereabouts ? cfStatusTableHtml : ''}
+    ${isMilestoneTrackingView ? cfStatusTableHtml : ''}
 
     ${isSurveyWhereabouts ? surveyStatusTableHtml : ''}
 
@@ -4127,7 +4096,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </span>
           <button type="button" class="page-btn" data-whereabouts-hscroll="-360" data-hscroll="-360" title="Scroll table left" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">◀ Left</button>
           <button type="button" class="page-btn" data-whereabouts-hscroll="360" data-hscroll="360" title="Scroll table right" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">Right ▶</button>
-          ${(isCfWhereabouts || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
+          ${(isMilestoneTrackingView || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
           ${provFilterVal !== 'ALL' ? `<span class="badge badge-green">Province: ${esc(provFilterVal)}</span>` : ''}
           ${Object.entries(activeColFilters)
             .map(([k, s]) => {
@@ -6356,7 +6325,9 @@ export function renderCfSupportListModalHtml({
   targetYear = 'ALL',
   totalArea = 0,
   mode = 'accomplished',
-  balanceArea = ''
+  balanceArea = '',
+  tabName = 'CF(DOC)',
+  dates = null
 }) {
   const isBalanceMode = mode === 'balance' || mode === 'pending';
   const isTargetMode = mode === 'target';
@@ -6367,9 +6338,19 @@ export function renderCfSupportListModalHtml({
   } else if (isBalanceMode) {
     statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
   } else {
-    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Claim Folders')) : status;
+    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : `All ${tabName} Records`)) : status;
   }
   const totalCount = rows.length;
+
+  const effectiveDates = Array.isArray(dates) && dates.length > 0
+    ? dates
+    : [
+        { key: 'dateFiConducted', shortLabel: 'Date FI Conducted' },
+        { key: 'datePreparedSigned', shortLabel: 'Date Prepared & Signed' },
+        { key: 'reportedMonth', shortLabel: 'Reported Month' }
+      ];
+
+  const colSpanCount = 9 + effectiveDates.length + 1;
 
   return `
     <div class="cf-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
@@ -6395,13 +6376,13 @@ export function renderCfSupportListModalHtml({
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <div style="font-size:13px;color:${isBalanceMode ? '#854d0e' : isTargetMode ? '#1e40af' : '#166534'};font-weight:700;">
-            <strong>${totalCount.toLocaleString()}</strong> ${isBalanceMode ? 'Pending ' : ''}Landholding${totalCount === 1 ? '' : 's'} • <strong>${fmtArea(totalArea)}</strong> HAS
+            <strong>${totalCount.toLocaleString()}</strong> ${isBalanceMode ? 'Pending ' : ''}${tabName ? `${esc(tabName)} ` : ''}Landholding${totalCount === 1 ? '' : 's'} • <strong>${fmtArea(totalArea)}</strong> HAS
           </div>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-export-support-list-csv" style="font-size:12px;padding:4px 10px;" title="Export this Support List to CSV">
             ⬇ Export CSV
           </button>
           ${isBalanceMode ? `
-            <button type="button" class="btn btn-primary btn-sm" id="btn-open-database-balance" data-province="${esc(province)}" style="font-size:12px;padding:4px 10px;" title="View workable parcels in Database to assign to CF(DOC)">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-open-database-balance" data-province="${esc(province)}" style="font-size:12px;padding:4px 10px;" title="View workable parcels in Database to assign to ${esc(tabName)}">
               ➕ View Database Workable Pool
             </button>
           ` : ''}
@@ -6435,9 +6416,7 @@ export function renderCfSupportListModalHtml({
               <th style="color:#ffffff;">LANDOWNER / TITLE</th>
               <th class="right" style="color:#ffffff;">CARPABLE AREA</th>
               <th style="color:#ffffff;">STAGE / STATUS</th>
-              <th style="color:#ffffff;">DATE FI CONDUCTED</th>
-              <th style="color:#ffffff;">DATE PREPARED &amp; SIGNED</th>
-              <th style="color:#ffffff;">REPORTED MONTH</th>
+              ${effectiveDates.map((d) => `<th style="color:#ffffff;">${esc(d.shortLabel || d.label || d.key).toUpperCase()}</th>`).join('')}
               <th style="color:#ffffff;">TARGET YEAR</th>
               <th class="right" style="color:#ffffff;">ACTION</th>
             </tr>
@@ -6447,16 +6426,13 @@ export function renderCfSupportListModalHtml({
               rows.length === 0
                 ? `
               <tr>
-                <td colspan="13" class="center" style="padding:28px 16px;color:var(--text-muted);">
+                <td colspan="${colSpanCount}" class="center" style="padding:28px 16px;color:var(--text-muted);">
                   No matching landholdings found for this selection.
                 </td>
               </tr>
             `
                 : rows
                     .map((r, idx) => {
-                      const hasFi = Boolean(r.dateFiConducted || r.datesMap?.dateFiConducted);
-                      const hasPrep = Boolean(r.datePreparedSigned || r.datesMap?.datePreparedSigned);
-                      const hasRep = Boolean(r.reportedMonth || r.datesMap?.reportedMonth);
                       return `
                 <tr>
                   <td class="center font-mono" style="font-size:11px;color:var(--text-muted);">${idx + 1}</td>
@@ -6474,13 +6450,14 @@ export function renderCfSupportListModalHtml({
                   </td>
                   <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.carpable || 0)} HAS</td>
                   <td>
-                    <span class="badge ${r.stage?.includes('Completed') ? 'badge-green' : r.stage?.includes('Prepared') ? 'badge-blue' : r.stage?.includes('FI') ? 'badge-amber' : 'badge-gray'}" style="font-size:11px;">
+                    <span class="badge ${r.stage?.includes('Completed') ? 'badge-green' : r.stage?.includes('Prepared') || r.stage?.includes('Distributed') ? 'badge-blue' : r.stage?.includes('FI') || r.stage?.includes('MOV') || r.stage?.includes('PPU') ? 'badge-amber' : 'badge-gray'}" style="font-size:11px;">
                       ${esc(r.currentStatus || r.stage || '—')}
                     </span>
                   </td>
-                  <td>${hasFi ? `<span class="badge badge-green">✔ ${esc(r.dateFiConducted || r.datesMap?.dateFiConducted)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
-                  <td>${hasPrep ? `<span class="badge badge-blue">✔ ${esc(r.datePreparedSigned || r.datesMap?.datePreparedSigned)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
-                  <td>${hasRep ? `<span class="badge badge-amber">${esc(r.reportedMonth || r.datesMap?.reportedMonth)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
+                  ${effectiveDates.map((d) => {
+                    const dVal = r[d.key] || r.datesMap?.[d.key];
+                    return `<td>${dVal ? `<span class="badge badge-green">✔ ${esc(dVal)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>`;
+                  }).join('')}
                   <td>${r.targetYear ? `<span class="badge badge-gray">${esc(r.targetYear)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
                   <td class="right">
                     <button type="button" class="btn btn-secondary btn-xs" data-lhid="${esc(r.lhid)}" style="font-size:11px;padding:2px 8px;" title="View Landholding Drawer">

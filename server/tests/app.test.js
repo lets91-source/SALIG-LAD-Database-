@@ -2449,3 +2449,129 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
   assert.ok(modalHtmlBalance.includes('NEP Quota Balance: 120.5000 HAS'), 'NEP Quota balance badge present');
   assert.ok(modalHtmlBalance.includes('id="btn-open-database-balance"'), 'Database workable pool button present for balance mode');
 });
+
+test('Milestone Status & Accomplishment Summary template replicated across MOV, Registration/Distribution, and Installation Whereabouts', () => {
+  const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
+
+  const baseCtx = {
+    state: store,
+    schemas: { registry: [] },
+    provinceScope: null,
+    cfMetricMode: 'both',
+    cfTableLayout: 'standard',
+    whereaboutsTargetYearFilter: {
+      'mov-whereabouts': 'ALL',
+      'regdist-whereabouts': 'ALL',
+      'installation-whereabouts': 'ALL'
+    },
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {},
+    whereaboutsPageSize: {}
+  };
+
+  // 1. MOV Whereabouts
+  const movCfg = WHEREABOUTS_CONFIGS['mov-whereabouts'];
+  const movHtml = renderMilestoneWhereaboutsView(baseCtx, movCfg);
+  assert.ok(movHtml.includes('id="panel-cf-status-table"'), 'MOV panel exists');
+  assert.ok(movHtml.includes('MOV Milestone Status &amp; Accomplishment Summary'), 'MOV summary title present');
+  assert.ok(movHtml.includes('WITH PPU DATE'), 'MOV standard table has WITH PPU DATE header');
+  assert.ok(movHtml.includes('WITH RECEIVED DARPO'), 'MOV standard table has WITH RECEIVED DARPO header');
+  assert.ok(movHtml.includes('WITH DATE OF MOV'), 'MOV standard table has WITH DATE OF MOV header');
+  assert.ok(movHtml.includes('WITH TRANS TO LBP/AOC'), 'MOV standard table has WITH TRANS TO LBP/AOC header');
+  assert.ok(movHtml.includes('WITH REPORTED MONTH'), 'MOV standard table has WITH REPORTED MONTH header');
+  assert.ok(movHtml.includes('data-open-cf-support-list'), 'MOV table has clickable figure links');
+  assert.ok(movHtml.includes('id="cf-status-target-year-filter"'), 'MOV panel has Target Year select');
+  assert.ok(movHtml.includes('id="whereabouts-target-year-filter"'), 'MOV master ledger has Target Year filter');
+  assert.ok(movHtml.includes('color:#ffffff;font-weight:800;'), 'MOV Region VIII Total footer has white font color');
+
+  // MOV Transposed Layout
+  const movTransposedHtml = renderMilestoneWhereaboutsView({ ...baseCtx, cfTableLayout: 'transposed' }, movCfg);
+  assert.ok(movTransposedHtml.includes('With PPU Date'), 'MOV transposed has With PPU Date row');
+  assert.ok(movTransposedHtml.includes('Balance (PPU Date)'), 'MOV transposed has Balance (PPU Date) row');
+  assert.ok(movTransposedHtml.includes('With Trans to LBP/AOC'), 'MOV transposed has With Trans to LBP/AOC row');
+
+  // 2. Registration / Distribution Whereabouts
+  const regDistCfg = WHEREABOUTS_CONFIGS['regdist-whereabouts'];
+  const regDistHtml = renderMilestoneWhereaboutsView(baseCtx, regDistCfg);
+  assert.ok(regDistHtml.includes('id="panel-cf-status-table"'), 'RegDist panel exists');
+  assert.ok(regDistHtml.includes('Registration / Distribution Milestone Status &amp; Accomplishment Summary'), 'RegDist title present');
+  assert.ok(regDistHtml.includes('WITH DATE REGISTERED'), 'RegDist standard table has WITH DATE REGISTERED header');
+  assert.ok(regDistHtml.includes('WITH DATE DISTRIBUTED'), 'RegDist standard table has WITH DATE DISTRIBUTED header');
+  assert.ok(regDistHtml.includes('WITH MONTH REPORTED'), 'RegDist standard table has WITH MONTH REPORTED header');
+  assert.ok(regDistHtml.includes('data-open-cf-support-list'), 'RegDist table has clickable figure links');
+  assert.ok(regDistHtml.includes('id="cf-status-target-year-filter"'), 'RegDist panel has Target Year select');
+  assert.ok(regDistHtml.includes('id="whereabouts-target-year-filter"'), 'RegDist master ledger has Target Year filter');
+
+  // 3. Installation Whereabouts
+  const instCfg = WHEREABOUTS_CONFIGS['installation-whereabouts'];
+  const instHtml = renderMilestoneWhereaboutsView(baseCtx, instCfg);
+  assert.ok(instHtml.includes('id="panel-cf-status-table"'), 'Installation panel exists');
+  assert.ok(instHtml.includes('Installation Milestone Status &amp; Accomplishment Summary'), 'Installation title present');
+  assert.ok(instHtml.includes('WITH DATE REGISTERED'), 'Installation standard table has WITH DATE REGISTERED header');
+  assert.ok(instHtml.includes('WITH DATE DISTRIBUTED'), 'Installation standard table has WITH DATE DISTRIBUTED header');
+  assert.ok(instHtml.includes('WITH DATE INSTALLED'), 'Installation standard table has WITH DATE INSTALLED header');
+  assert.ok(instHtml.includes('WITH MONTH REPORTED'), 'Installation standard table has WITH MONTH REPORTED header');
+  assert.ok(instHtml.includes('data-open-cf-support-list'), 'Installation table has clickable figure links');
+  assert.ok(instHtml.includes('id="cf-status-target-year-filter"'), 'Installation panel has Target Year select');
+  assert.ok(instHtml.includes('id="whereabouts-target-year-filter"'), 'Installation master ledger has Target Year filter');
+
+  // 4. Dynamic Support List Modal rendering for MOV, RegDist, and Installation
+  const sampleMovRow = [
+    {
+      lhid: '8.05000020E8',
+      province: 'LEYTE',
+      municipality: 'Alangalang',
+      barangay: 'Dapdap',
+      landOwner: 'SANTOS, MARIA',
+      titleNumber: 'TCT-999',
+      carpable: 12.34,
+      currentStatus: 'MOV Prepared',
+      stage: 'MOV Prepared',
+      datesMap: {
+        ppuDate: '2026-02-15',
+        dateReceivedDarpo: '2026-03-01',
+        dateOfMov: '2026-03-20',
+        dateTransLbpAoc: '',
+        reportedMonth: '2026-04-01'
+      },
+      targetYear: '2026'
+    }
+  ];
+
+  const movModalHtml = renderCfSupportListModalHtml({
+    rows: sampleMovRow,
+    province: 'LEYTE',
+    status: 'ALL',
+    stageKey: 'dateOfMov',
+    stageLabel: 'Date of MOV',
+    targetYear: '2026',
+    totalArea: 12.34,
+    mode: 'accomplished',
+    tabName: 'MOV',
+    dates: movCfg.dates
+  });
+  assert.ok(movModalHtml.includes('MOV Landholding'), 'MOV Landholding label in modal header');
+  assert.ok(movModalHtml.includes('PPU DATE'), 'PPU DATE column header present in modal');
+  assert.ok(movModalHtml.includes('DATE OF MOV'), 'DATE OF MOV column header present in modal');
+  assert.ok(movModalHtml.includes('TRANS TO LBP/AOC'), 'TRANS TO LBP/AOC column header present in modal');
+  assert.ok(movModalHtml.includes('2026-02-15'), 'PPU date value rendered');
+  assert.ok(movModalHtml.includes('SANTOS, MARIA'), 'Landowner rendered in modal');
+
+  const instModalHtml = renderCfSupportListModalHtml({
+    rows: sampleMovRow,
+    province: 'LEYTE',
+    status: 'ALL',
+    stageKey: 'dateOfInstallation',
+    stageLabel: 'Date of Installation',
+    targetYear: '2026',
+    totalArea: 12.34,
+    mode: 'accomplished',
+    tabName: 'Installation',
+    dates: instCfg.dates
+  });
+  assert.ok(instModalHtml.includes('Installation Landholding'), 'Installation Landholding label in modal header');
+  assert.ok(instModalHtml.includes('DATE INSTALLED'), 'DATE INSTALLED column header present in modal');
+});
