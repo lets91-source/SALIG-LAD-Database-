@@ -8,13 +8,15 @@
  *   2. Paste this file into Code.gs
  *   3. Create an HTML file named "Index" (Index.html) and paste gas/Index.html
  *   4. Click Deploy -> New deployment -> Web app
- *      - Execute as: Me (Regional Hub Account with access to provincial sheets)
- *      - Who has access: Anyone within DAR / Anyone with the link
- *   5. Open the deployed /exec URL in your browser OR paste it into the local
+ *      - Execute as: Me (ltsdarregion08@gmail.com — Regional Hub Account)
+ *      - Who has access: Anyone (or Anyone with the link)
+ *   5. Authorize permissions when prompted for Google Drive and Google Sheets.
+ *   6. Open the deployed /exec URL in your browser OR paste it into the local
  *      Node.js Hub's "Google Sheets & GAS ETL" tab for two-way sync.
  * ============================================================================
  */
 
+const REGIONAL_OWNER_EMAIL = 'ltsdarregion08@gmail.com';
 const HUB_SPREADSHEET_ID = '1jTVJSQlUcWyZFxm6Pxqj9L62q9NtLyhUy1ifYqqb0Lw';
 const REGIONAL_DRIVE_FOLDER_ID = '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ';
 
@@ -1770,5 +1772,26 @@ function uploadPdfFileToDrive(payload) {
     fileName: fileName,
     province: matchedProv.name,
     milestone: msName
+  };
+}
+
+/**
+ * Run once inside Apps Script editor under ltsdarregion08@gmail.com
+ * to authorize Google Drive & Spreadsheet permissions and verify access to the root folder.
+ */
+function authorizeDriveAndRegionalHub() {
+  const userEmail = Session.getEffectiveUser().getEmail();
+  Logger.log('Active user authorizing Drive: ' + userEmail + ' (Primary Owner: ltsdarregion08@gmail.com)');
+  const root = DriveApp.getFolderById(REGIONAL_DRIVE_FOLDER_ID);
+  Logger.log('Root Folder Name: ' + root.getName());
+  Logger.log('Root Folder URL: ' + root.getUrl());
+  const res = setupRegionalDriveFolders(REGIONAL_DRIVE_FOLDER_ID);
+  Logger.log('Google Drive Folders Initialized: ' + JSON.stringify(res));
+  return {
+    ok: true,
+    authorizedUser: userEmail,
+    primaryOwner: 'ltsdarregion08@gmail.com',
+    rootFolderUrl: root.getUrl(),
+    res: res
   };
 }

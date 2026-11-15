@@ -5984,7 +5984,8 @@ export function renderSyncView(ctx) {
       </div>
       <div class="panel-body" id="drive-folders-summary">
         <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-muted)">
-          Target Google Drive Root: <a href="https://drive.google.com/drive/folders/1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ" target="_blank" rel="noopener noreferrer" class="mono font-semibold">1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ</a>.
+          Target Google Drive Root: <a href="https://drive.google.com/drive/folders/1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ" target="_blank" rel="noopener noreferrer" class="mono font-semibold">1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ</a>
+          <span style="margin-left:8px;" class="badge badge-blue">Owner: ltsdarregion08@gmail.com</span>.
           All 6 provinces (<strong>BILIRAN, EASTERN SAMAR, LEYTE, NORTHERN SAMAR, SAMAR, SOUTHERN LEYTE</strong>) each contain subfolders for all 5 milestones (<strong>CF(DOC), Survey, MOV, RegistrationDistribution, Installation</strong>).
         </p>
         <div class="grid-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">
