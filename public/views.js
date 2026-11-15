@@ -1724,7 +1724,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     surveyMetricMode = 'both',
     surveyIndicatorTab = 'all',
     cfMetricMode = 'both',
-    cfTableLayout = 'transposed'
+    cfTableLayout = 'standard'
   } = ctx;
 
   const viewKey = cfg.viewKey;
@@ -2381,17 +2381,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         isBal: false
       },
       {
-        key: 'status',
-        label: 'Status',
-        badge: '📋 CF RECORDS',
-        badgeClass: 'badge-purple',
-        desc: 'Active Claim Folder Landholdings',
-        mode: 'status',
-        getLhs: (r) => r.statusLhs,
-        getArea: (r) => r.statusArea,
-        isBal: false
-      },
-      {
         key: 'fi',
         label: 'With Conducted FI',
         badge: '✔ ACCOMPLISHED',
@@ -2557,23 +2546,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     }
 
     function renderCfStandardTableHtml(rows, totals, metricMode) {
-      const indTarget = cfIndicators[0];
-      const indStatus = cfIndicators[1];
-      const indFi = cfIndicators[2];
-      const indBalFi = cfIndicators[3];
-      const indPrep = cfIndicators[4];
-      const indBalPrep = cfIndicators[5];
-      const indRep = cfIndicators[6];
-      const indBalRep = cfIndicators[7];
+      const indTarget = cfIndicators.find((i) => i.key === 'target');
+      const indFi = cfIndicators.find((i) => i.key === 'fi');
+      const indBalFi = cfIndicators.find((i) => i.key === 'balFi');
+      const indPrep = cfIndicators.find((i) => i.key === 'prep');
+      const indBalPrep = cfIndicators.find((i) => i.key === 'balPrep');
+      const indRep = cfIndicators.find((i) => i.key === 'rep');
+      const indBalRep = cfIndicators.find((i) => i.key === 'balRep');
 
       if (metricMode === 'lhs') {
         return `
           <table class="nep-milestone-table survey-monitoring-table cf-monitoring-table">
             <thead>
               <tr class="survey-th-l1">
-                <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+                <th rowspan="2" class="survey-th-unit">PROVINCE</th>
                 <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
-                <th rowspan="2" class="survey-th-nep right">STATUS (LHS)</th>
                 <th colspan="2" class="survey-th-stage center">WITH CONDUCTED FI</th>
                 <th colspan="2" class="survey-th-stage center">WITH PREPARED &amp; SIGNED</th>
                 <th colspan="2" class="survey-th-stage center">WITH REPORTED MONTH</th>
@@ -2592,7 +2579,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <tr>
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.statusLhs, isArea: false, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.fiLhs, isArea: false, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.balFiLhs, isArea: false, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.prepLhs, isArea: false, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
@@ -2606,7 +2592,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.statusLhs, isArea: false, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.fiLhs, isArea: false, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.balFiLhs, isArea: false, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.prepLhs, isArea: false, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
@@ -2624,9 +2609,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <table class="nep-milestone-table survey-monitoring-table cf-monitoring-table">
             <thead>
               <tr class="survey-th-l1">
-                <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
+                <th rowspan="2" class="survey-th-unit">PROVINCE</th>
                 <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
-                <th rowspan="2" class="survey-th-nep right">STATUS (AREA HAS)</th>
                 <th colspan="2" class="survey-th-stage center">WITH CONDUCTED FI</th>
                 <th colspan="2" class="survey-th-stage center">WITH PREPARED &amp; SIGNED</th>
                 <th colspan="2" class="survey-th-stage center">WITH REPORTED MONTH</th>
@@ -2645,7 +2629,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <tr>
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.statusArea, isArea: true, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.fiArea, isArea: true, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.balFiArea, isArea: true, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.prepArea, isArea: true, province: p.name, indicator: indPrep, balanceArea: fmtArea(p.prepArea) })}</td>
@@ -2659,7 +2642,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.statusArea, isArea: true, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.fiArea, isArea: true, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.balFiArea, isArea: true, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.prepArea, isArea: true, province: 'ALL', indicator: indPrep, balanceArea: fmtArea(totals.prepArea), isTotal: true })}</td>
@@ -2677,16 +2659,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <table class="nep-milestone-table survey-monitoring-table cf-monitoring-table">
           <thead>
             <tr class="survey-th-l1">
-              <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
+              <th rowspan="3" class="survey-th-unit">PROVINCE</th>
               <th colspan="2" class="center survey-th-nep">NEP TARGET</th>
-              <th colspan="2" class="center survey-th-stage">STATUS</th>
               <th colspan="4" class="center survey-th-stage">WITH CONDUCTED FI</th>
               <th colspan="4" class="center survey-th-stage">WITH PREPARED &amp; SIGNED</th>
               <th colspan="4" class="center survey-th-stage">WITH REPORTED MONTH</th>
             </tr>
             <tr class="survey-th-l2">
-              <th rowspan="2" class="right">LHS</th>
-              <th rowspan="2" class="right">AREA(HAS)</th>
               <th rowspan="2" class="right">LHS</th>
               <th rowspan="2" class="right">AREA(HAS)</th>
               <th colspan="2" class="center">ACCOMPLISHMENT</th>
@@ -2717,8 +2696,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.statusLhs, isArea: false, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.statusArea, isArea: true, province: p.name, indicator: indStatus, balanceArea: fmtArea(p.statusArea) })}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.fiLhs, isArea: false, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.fiArea, isArea: true, province: p.name, indicator: indFi, balanceArea: fmtArea(p.fiArea) })}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.balFiLhs, isArea: false, province: p.name, indicator: indBalFi, balanceArea: fmtArea(p.balFiArea) })}</td>
@@ -2739,8 +2716,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <td class="survey-td-unit">REGION VIII TOTAL</td>
               <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
               <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.statusLhs, isArea: false, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.statusArea, isArea: true, province: 'ALL', indicator: indStatus, balanceArea: fmtArea(totals.statusArea), isTotal: true })}</td>
               <td class="right">${renderCfFigureBtn({ val: totals.fiLhs, isArea: false, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
               <td class="right">${renderCfFigureBtn({ val: totals.fiArea, isArea: true, province: 'ALL', indicator: indFi, balanceArea: fmtArea(totals.fiArea), isTotal: true })}</td>
               <td class="right">${renderCfFigureBtn({ val: totals.balFiLhs, isArea: false, province: 'ALL', indicator: indBalFi, balanceArea: fmtArea(totals.balFiArea), isTotal: true })}</td>
@@ -2771,16 +2746,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <span class="badge badge-green" style="font-size:11px;font-weight:700;">Target Year: ${esc(targetYearFilterVal)}</span>
             </div>
             <p class="panel-subtitle" style="margin:4px 0 0;font-size:12.5px;color:var(--text-muted,#6b7280);">
-              Provincial tracking matrix • NEP Target, Status, Conducted FI, Prepared &amp; Signed, and Reported Month with Balances
+              Provincial tracking matrix • NEP Target, Conducted FI, Prepared &amp; Signed, and Reported Month with Balances
             </p>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <div class="btn-group" role="group" aria-label="CF Table Layout">
-              <button type="button" class="btn btn-xs ${cfTableLayout === 'transposed' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="transposed" title="Columns: Province • Rows: Milestones">
-                📋 Columns: Province
-              </button>
               <button type="button" class="btn btn-xs ${cfTableLayout === 'standard' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="standard" title="Rows: Province • Columns: Milestones">
                 ▦ Rows: Province
+              </button>
+              <button type="button" class="btn btn-xs ${cfTableLayout === 'transposed' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="transposed" title="Columns: Province • Rows: Milestones">
+                📋 Columns: Province
               </button>
             </div>
             <div class="btn-group" role="group" aria-label="CF Metric Toggle">

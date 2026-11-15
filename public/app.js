@@ -90,7 +90,7 @@ const appState = {
   whereaboutsGraphMode: {},
   whereaboutsPage: {},
   cfMetricMode: 'both',
-  cfTableLayout: 'transposed'
+  cfTableLayout: 'standard'
 };
 
 const AUTO_SYNC_MAX_AGE_MS = 2 * 60 * 1000;
@@ -889,7 +889,7 @@ function renderActiveView() {
       whereaboutsGraphMode: appState.whereaboutsGraphMode,
       whereaboutsPage: appState.whereaboutsPage,
       cfMetricMode: appState.cfMetricMode || 'both',
-      cfTableLayout: appState.cfTableLayout || 'transposed'
+      cfTableLayout: appState.cfTableLayout || 'standard'
     });
     bindWhereaboutsEvents(container, 'cf-whereabouts');
   } else if (appState.view === 'survey-whereabouts') {

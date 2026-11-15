@@ -2319,7 +2319,7 @@ test('CF Whereabouts Target Year filter in toolbar after All Records, removed st
   assert.equal(html2026.includes('class="cf-target-year-bar"'), false, 'Standalone bar still absent in 2026 view');
 });
 
-test('CF Whereabouts Provincial Milestone Table: Province columns, NEP Target, Status, FI, Prep, Reported Month, Balances, and Support List modal', () => {
+test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, FI, Prep, Reported Month, Balances, and Support List modal', () => {
   const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
   const cfg = WHEREABOUTS_CONFIGS['cf-whereabouts'];
 
@@ -2351,9 +2351,9 @@ test('CF Whereabouts Provincial Milestone Table: Province columns, NEP Target, S
   }
   assert.ok(htmlTransposed.includes('REGION VIII TOTAL'), 'REGION VIII TOTAL must appear as total column');
 
-  // 3. Rows must contain NEP Target, Status, Conducted FI & Balance, Prepared & Signed & Balance, Reported Month & Balance
+  // 3. Rows must contain NEP Target, Conducted FI & Balance, Prepared & Signed & Balance, Reported Month & Balance (Status column removed)
   assert.ok(htmlTransposed.includes('NEP Target'), 'NEP Target row exists');
-  assert.ok(htmlTransposed.includes('Status'), 'Status row exists');
+  assert.ok(!htmlTransposed.includes('>Status<'), 'Status row must be removed');
   assert.ok(htmlTransposed.includes('With Conducted FI'), 'With Conducted FI row exists');
   assert.ok(htmlTransposed.includes('Balance (Conducted FI)'), 'Balance (Conducted FI) row exists');
   assert.ok(htmlTransposed.includes('With Prepared &amp; Signed'), 'With Prepared & Signed row exists');
@@ -2366,17 +2366,27 @@ test('CF Whereabouts Provincial Milestone Table: Province columns, NEP Target, S
   assert.ok(htmlTransposed.includes('data-cf-metric="both"'), 'Metric mode switcher exists');
   assert.ok(htmlTransposed.includes('data-cf-layout="transposed"'), 'Layout switcher exists');
 
-  // 5. Standard Layout (Rows: Province, Columns: Indicators)
+  // 5. Standard Layout (Rows: Province, Columns: Indicators, without redundant STATUS column)
   const ctxStandard = {
     ...ctxTransposed,
     cfTableLayout: 'standard'
   };
   const htmlStandard = renderMilestoneWhereaboutsView(ctxStandard, cfg);
-  assert.ok(htmlStandard.includes('OPERATING UNIT'), 'Standard table has OPERATING UNIT column');
+  assert.ok(htmlStandard.includes('PROVINCE'), 'Standard table has PROVINCE column');
   assert.ok(htmlStandard.includes('NEP TARGET'), 'Standard table has NEP TARGET header');
   assert.ok(htmlStandard.includes('WITH CONDUCTED FI'), 'Standard table has WITH CONDUCTED FI header');
   assert.ok(htmlStandard.includes('WITH PREPARED &amp; SIGNED'), 'Standard table has WITH PREPARED & SIGNED header');
   assert.ok(htmlStandard.includes('WITH REPORTED MONTH'), 'Standard table has WITH REPORTED MONTH header');
+  assert.ok(!htmlStandard.includes('>STATUS<') && !htmlStandard.includes('STATUS (LHS)'), 'Redundant STATUS column must be removed');
+
+  // 5b. Default Layout is Standard (Rows: Province)
+  const ctxDefault = {
+    ...ctxTransposed,
+    cfTableLayout: undefined
+  };
+  const htmlDefault = renderMilestoneWhereaboutsView(ctxDefault, cfg);
+  assert.ok(htmlDefault.includes('PROVINCE'), 'Default table layout has PROVINCE in rows');
+  assert.ok(!htmlDefault.includes('>STATUS<') && !htmlDefault.includes('STATUS (LHS)'), 'Default table layout does not have STATUS column');
 
   // 6. Support List Modal HTML rendering
   const sampleRows = [
