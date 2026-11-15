@@ -1282,6 +1282,21 @@ function buildOptoolColMap_(sheet, tabName, headersSpec) {
   return { colMap: colMap, width: Math.max(lastCol, colMap.length) };
 }
 
+function formatLhidString_(raw) {
+  if (raw === null || raw === undefined || raw === '') return '';
+  const str = String(raw).trim();
+  if (/^[+-]?\d+(?:\.\d+)?[eE][+-]?\d+$/i.test(str)) {
+    const num = Number(str);
+    if (!isNaN(num) && isFinite(num)) {
+      return String(Math.round(num));
+    }
+  }
+  if (/^\d+\.0+$/.test(str)) {
+    return str.split('.')[0];
+  }
+  return str;
+}
+
 function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
   if (sheet.getLastRow() <= 1) return -1;
   const values = sheet.getDataRange().getValues();
@@ -1293,15 +1308,22 @@ function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
     }
   }
   const ref = prevRow || targetRow || {};
-  const refLhid = String(ref.lhid || targetRow.lhid || '').trim().toLowerCase();
-  if (!refLhid || lhidCol < 0) return -1;
+  const rawRefLhid = String(ref.lhid || targetRow.lhid || '').trim().toLowerCase();
+  const cleanRefLhid = formatLhidString_(ref.lhid || targetRow.lhid || '').toLowerCase();
+  if ((!rawRefLhid && !cleanRefLhid) || lhidCol < 0) return -1;
 
   const isUniqueByLhid = tabName === 'Database';
   let firstLhidMatch = -1;
 
   for (let r = 1; r < values.length; r++) {
-    const rowLhid = String(values[r][lhidCol] || '').trim().toLowerCase();
-    if (rowLhid !== refLhid) continue;
+    const rawRowLhid = String(values[r][lhidCol] || '').trim().toLowerCase();
+    const cleanRowLhid = formatLhidString_(values[r][lhidCol] || '').toLowerCase();
+    const lhidMatches =
+      rawRowLhid === rawRefLhid ||
+      cleanRowLhid === cleanRefLhid ||
+      rawRowLhid === cleanRefLhid ||
+      cleanRowLhid === rawRefLhid;
+    if (!lhidMatches) continue;
     if (isUniqueByLhid) return r + 1;
     if (firstLhidMatch === -1) firstLhidMatch = r + 1;
 
@@ -1751,8 +1773,11 @@ function uploadPdfFileToDrive(payload) {
           const pdfColIdx = headers.findIndex(function (h) { return String(h).toUpperCase().indexOf('PDF') >= 0; });
           if (lhidColIdx >= 0 && pdfColIdx >= 0) {
             const data = sheet.getRange(2, lhidColIdx + 1, lastRow - 1, 1).getValues();
+            const cleanTargetLhid = formatLhidString_(lhid).toLowerCase();
             for (let i = 0; i < data.length; i++) {
-              if (String(data[i][0]).trim().toLowerCase() === lhid) {
+              const rawCell = String(data[i][0]).trim().toLowerCase();
+              const cleanCell = formatLhidString_(data[i][0]).toLowerCase();
+              if (rawCell === lhid || cleanCell === cleanTargetLhid || rawCell === cleanTargetLhid || cleanCell === lhid) {
                 sheet.getRange(i + 2, pdfColIdx + 1).setValue(fileUrl);
                 break;
               }

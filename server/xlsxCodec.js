@@ -211,7 +211,16 @@ export function readXlsxWorkbook(buffer) {
               } else if (cellType === 'n' && dateStyles.has(styleIdx)) {
                 val = excelSerialToIsoDate(raw);
               } else {
-                val = raw;
+                if (/^[+-]?\d+(?:\.\d+)?[eE]\+?\d+$/i.test(raw)) {
+                  const num = Number(raw);
+                  if (Number.isFinite(num) && Number.isSafeInteger(num) && Math.abs(num) >= 100000) {
+                    val = String(Math.round(num));
+                  } else {
+                    val = raw;
+                  }
+                } else {
+                  val = raw;
+                }
               }
             }
           }

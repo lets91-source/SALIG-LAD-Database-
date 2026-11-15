@@ -35,6 +35,7 @@ import { createSeedState } from './seedData.js';
 import {
   LEGACY_SURVEY_STATUS_LABELS,
   formatCurrentMonthYear,
+  formatLhidDisplay,
   resolveSurveyCurrentStatus,
   resolveTargetFromDatabaseRow,
   resolveTotalArbsFromGenderCounts
@@ -45,7 +46,14 @@ const PROVINCIAL_NODES = REGIONAL_REGISTRY.filter((n) => n.role === 'Provincial 
 function findLinkedDatabaseRow(dbRows, lhid) {
   const key = String(lhid ?? '').trim().toLowerCase();
   if (!key || !Array.isArray(dbRows)) return null;
-  return dbRows.find((r) => String(r?.lhid ?? '').trim().toLowerCase() === key) || null;
+  const cleanKey = formatLhidDisplay(lhid).toLowerCase();
+  return (
+    dbRows.find((r) => {
+      const rKey = String(r?.lhid ?? '').trim().toLowerCase();
+      const rClean = formatLhidDisplay(r?.lhid).toLowerCase();
+      return rKey === key || rClean === cleanKey || rKey === cleanKey || rClean === key;
+    }) || null
+  );
 }
 
 /**
@@ -392,13 +400,25 @@ export class ConsolidatedStore {
     this.state.nepProvinceList = normalizeNepProvinceList(this.state.nepProvinceList);
     this.state.nepMilestoneList = normalizeNepMilestoneList(this.state.nepMilestoneList);
     if (!Array.isArray(this.state.milestoneData)) this.state.milestoneData = [];
+    for (const m of this.state.milestoneData) {
+      if (m?.LHID) {
+        const cleanLhid = formatLhidDisplay(m.LHID);
+        if (cleanLhid !== m.LHID) {
+          m.LHID = cleanLhid;
+          dirty = true;
+        }
+      }
+    }
     if (!this.state.optool) this.state.optool = {};
     let dirty = false;
-    const dbByLhid = new Map(
-      (Array.isArray(this.state.optool.Database) ? this.state.optool.Database : [])
-        .filter((r) => r?.lhid)
-        .map((r) => [String(r.lhid).trim().toLowerCase(), r])
-    );
+    const dbByLhid = new Map();
+    for (const r of (Array.isArray(this.state.optool.Database) ? this.state.optool.Database : [])) {
+      if (!r?.lhid) continue;
+      const rawKey = String(r.lhid).trim().toLowerCase();
+      const cleanKey = formatLhidDisplay(r.lhid).toLowerCase();
+      if (cleanKey && !dbByLhid.has(cleanKey)) dbByLhid.set(cleanKey, r);
+      if (rawKey && !dbByLhid.has(rawKey)) dbByLhid.set(rawKey, r);
+    }
     for (const tab of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
       if (!Array.isArray(this.state.optool[tab])) {
         this.state.optool[tab] = [];
@@ -407,6 +427,21 @@ export class ConsolidatedStore {
         const schemaCols = OPTOOL_SHEET_SCHEMAS[tab];
         for (const row of this.state.optool[tab]) {
           if (!row || typeof row !== 'object') continue;
+          if (row.lhid) {
+            const cleanLhid = formatLhidDisplay(row.lhid);
+            if (cleanLhid !== row.lhid) {
+              row.lhid = cleanLhid;
+              dirty = true;
+            }
+          }
+          if (row.lotNumber && /^\d+\.0+$/.test(String(row.lotNumber).trim())) {
+            row.lotNumber = String(row.lotNumber).trim().split('.')[0];
+            dirty = true;
+          }
+          if (row.titleNumber && /^\d+\.0+$/.test(String(row.titleNumber).trim())) {
+            row.titleNumber = String(row.titleNumber).trim().split('.')[0];
+            dirty = true;
+          }
           if (Object.prototype.hasOwnProperty.call(row, 'test')) {
             delete row.test;
             dirty = true;
@@ -427,9 +462,12 @@ export class ConsolidatedStore {
               }
             }
           }
-          const linkedDbRow = row.lhid
-            ? dbByLhid.get(String(row.lhid ?? '').trim().toLowerCase()) || null
-            : null;
+          const rawKey = String(row.lhid ?? '').trim().toLowerCase();
+          const cleanKey = formatLhidDisplay(row.lhid).toLowerCase();
+          const linkedDbRow =
+            (cleanKey ? dbByLhid.get(cleanKey) : null) ||
+            (rawKey ? dbByLhid.get(rawKey) : null) ||
+            null;
           if (applyTabRowDefaults(tab, row, linkedDbRow)) {
             dirty = true;
           }
@@ -825,17 +863,32 @@ export class ConsolidatedStore {
   }
 
   getLandholding360(lhid) {
-    const target = String(lhid || '').trim();
+    const rawTarget = String(lhid || '').trim();
+    const cleanTarget = formatLhidDisplay(lhid);
     const tabs = {};
     for (const tabName of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
-      tabs[tabName] = this.state.optool[tabName].filter(
-        (row) => String(row.lhid || '').trim().toLowerCase() === target.toLowerCase()
-      );
+      tabs[tabName] = this.state.optool[tabName].filter((row) => {
+        const rowLhid = String(row.lhid || '').trim();
+        const rowClean = formatLhidDisplay(row.lhid);
+        return (
+          (rawTarget && rowLhid.toLowerCase() === rawTarget.toLowerCase()) ||
+          (cleanTarget && rowClean.toLowerCase() === cleanTarget.toLowerCase()) ||
+          (cleanTarget && rowLhid.toLowerCase() === cleanTarget.toLowerCase()) ||
+          (rawTarget && rowClean.toLowerCase() === rawTarget.toLowerCase())
+        );
+      });
     }
-    const milestones = this.state.milestoneData.filter(
-      (m) => String(m.LHID || '').trim().toLowerCase() === target.toLowerCase()
-    );
-    return { lhid: target, tabs, milestones };
+    const milestones = this.state.milestoneData.filter((m) => {
+      const mLhid = String(m.LHID || '').trim();
+      const mClean = formatLhidDisplay(m.LHID);
+      return (
+        (rawTarget && mLhid.toLowerCase() === rawTarget.toLowerCase()) ||
+        (cleanTarget && mClean.toLowerCase() === cleanTarget.toLowerCase()) ||
+        (cleanTarget && mLhid.toLowerCase() === cleanTarget.toLowerCase()) ||
+        (rawTarget && mClean.toLowerCase() === rawTarget.toLowerCase())
+      );
+    });
+    return { lhid: cleanTarget || rawTarget, tabs, milestones };
   }
 
   /** Resolve province code for a milestone record (returns null if unknown). */
@@ -853,15 +906,17 @@ export class ConsolidatedStore {
   buildDbLhidProvinceMap() {
     const map = new Map();
     for (const r of this.state.optool?.Database || []) {
-      const lhidKey = String(r.lhid || '').trim().toLowerCase();
-      if (!lhidKey) continue;
+      const rawKey = String(r.lhid || '').trim().toLowerCase();
+      const cleanKey = formatLhidDisplay(r.lhid).toLowerCase();
+      if (!rawKey && !cleanKey) continue;
       const code =
         inferProvinceCodeFromText(r.province) ||
         inferProvinceCodeFromMunicipality(r.municipality) ||
         inferProvinceCodeFromText(r.lhid) ||
         null;
-      if (code && !map.has(lhidKey)) {
-        map.set(lhidKey, code);
+      if (code) {
+        if (cleanKey && !map.has(cleanKey)) map.set(cleanKey, code);
+        if (rawKey && !map.has(rawKey)) map.set(rawKey, code);
       }
     }
     return map;

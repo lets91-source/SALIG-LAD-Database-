@@ -9,6 +9,7 @@ import {
   formatArea4,
   normalizeChecklistValue
 } from './schema.js';
+import { formatLhidDisplay } from '../public/reportingUtils.js';
 import { readXlsxWorkbook, writeXlsxWorkbook } from './xlsxCodec.js';
 
 function normalizeHeader(value) {
@@ -106,7 +107,7 @@ export async function parseWorkbookBuffer(buffer) {
           Milestone_Stage: record.Milestone_Stage || 'eTitle Registered',
           Milestone_Date: record.Milestone_Date || new Date().toISOString().slice(0, 10),
           Batch_Category: record.Batch_Category || 'ADMIN BATCH 1',
-          LHID: record.LHID || ''
+          LHID: formatLhidDisplay(record.LHID || '')
         });
       }
       result.tabRowCounts[name] = rowCount;
@@ -188,7 +189,9 @@ export async function parseWorkbookBuffer(buffer) {
         let nonEmptyCount = 0;
         for (const [colIdx, colDef] of mapping.entries()) {
           let val = String(row.values[colIdx] ?? '').trim();
-          if (colDef.type === 'decimal' && val !== '') {
+          if (colDef.key === 'lhid' || colDef.key === 'LHID') {
+            val = formatLhidDisplay(val);
+          } else if (colDef.type === 'decimal' && val !== '') {
             const num = Number(val);
             if (Number.isFinite(num)) val = num.toFixed(4);
           } else if (colDef.type === 'checkbox') {
@@ -272,7 +275,9 @@ export function parseCsvText(csvText, targetTab = 'Milestone_Data') {
     for (const col of schemaCols) obj[col.key] = '';
     for (const [colIdx, colDef] of mapping.entries()) {
       const raw = String(vals[colIdx - 1] ?? '').trim();
-      if (colDef.type === 'decimal' && raw) {
+      if (colDef.key === 'lhid' || colDef.key === 'LHID') {
+        obj[colDef.key] = formatLhidDisplay(raw);
+      } else if (colDef.type === 'decimal' && raw) {
         obj[colDef.key] = formatArea4(raw);
       } else if (colDef.type === 'checkbox') {
         obj[colDef.key] = normalizeChecklistValue(raw);

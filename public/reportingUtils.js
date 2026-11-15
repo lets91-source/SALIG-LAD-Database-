@@ -1,5 +1,24 @@
 export const TARGET_PERIOD_OPTIONS = ['Current', 'Previous Year'];
 
+/**
+ * Normalizes an LHID or parcel identifier from scientific notation (e.g. "8.05000007E8")
+ * or float with trailing ".0" back to the exact standard database integer string (e.g. "805000007").
+ */
+export function formatLhidDisplay(raw) {
+  if (raw === null || raw === undefined || raw === '') return '';
+  const str = String(raw).trim();
+  if (/^[+-]?\d+(?:\.\d+)?[eE][+-]?\d+$/i.test(str)) {
+    const num = Number(str);
+    if (!Number.isNaN(num) && Number.isFinite(num)) {
+      return String(Math.round(num));
+    }
+  }
+  if (/^\d+\.0+$/.test(str)) {
+    return str.split('.')[0];
+  }
+  return str;
+}
+
 const MONTH_NAMES = [
   'January',
   'February',

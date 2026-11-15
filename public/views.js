@@ -4,7 +4,13 @@ import {
   renderWhereaboutsProvincialGraphSvg,
   renderWhereaboutsMonthlyGraphSvg
 } from './charts.js';
-import { getReportedMonthOptions, isReportedMonthKey, resolveSurveyCurrentStatus, SURVEY_STATUS_STAGES } from './reportingUtils.js';
+import {
+  getReportedMonthOptions,
+  isReportedMonthKey,
+  resolveSurveyCurrentStatus,
+  SURVEY_STATUS_STAGES,
+  formatLhidDisplay
+} from './reportingUtils.js';
 
 export function esc(str) {
   return String(str ?? '')
@@ -1452,7 +1458,7 @@ export function getWhereaboutsRowDisplayValue(row, colKey, cfg) {
   if (colKey === 'barangay') return row.barangay || '—';
   if (colKey === 'landOwner') return row.landOwner || '—';
   if (colKey === 'titleNumber') return row.titleNumber || '—';
-  if (colKey === 'lhid') return row.lhid || '—';
+  if (colKey === 'lhid') return formatLhidDisplay(row.lhid) || '—';
   if (colKey === 'target') return row.target || 'Current';
   if (colKey === 'stage') return row.currentStatus || row.stage || '—';
   if (row.datesMap && colKey in row.datesMap) {
@@ -1546,13 +1552,16 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
   const dbRows = state?.optool?.Database || [];
   const dbMap = new Map();
   for (const db of dbRows) {
-    const k = String(db.lhid || '').trim().toLowerCase();
-    if (k && !dbMap.has(k)) dbMap.set(k, db);
+    const rawKey = String(db.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(db.lhid).toLowerCase();
+    if (cleanKey && !dbMap.has(cleanKey)) dbMap.set(cleanKey, db);
+    if (rawKey && !dbMap.has(rawKey)) dbMap.set(rawKey, db);
   }
 
   const enrichedRows = rawRows.map((row) => {
-    const lhidKey = String(row.lhid || '').trim().toLowerCase();
-    const db = dbMap.get(lhidKey) || {};
+    const rawKey = String(row.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(row.lhid).toLowerCase();
+    const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
     const carpableNum = parseNumericValue(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
     const provName = db.province || row.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
     const muniName = db.municipality || row.municipality || '—';
@@ -1583,7 +1592,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
 
     return {
       ...row,
-      lhid: row.lhid || db.lhid || '—',
+      lhid: formatLhidDisplay(row.lhid || db.lhid || '') || '—',
       province: provName,
       municipality: muniName,
       barangay: brgyName,
@@ -1680,7 +1689,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     } else if (colKey === 'landOwner') {
       rawVal = r.landOwner;
     } else if (colKey === 'lhid') {
-      rawVal = r.lhid;
+      rawVal = formatLhidDisplay(r.lhid);
     } else if (colKey === 'target') {
       rawVal = r.target || 'Current';
     } else if (colKey === 'stage') {
@@ -1772,14 +1781,17 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const dbRows = state?.optool?.Database || [];
   const dbMap = new Map();
   for (const db of dbRows) {
-    const k = String(db.lhid || '').trim().toLowerCase();
-    if (k && !dbMap.has(k)) dbMap.set(k, db);
+    const rawKey = String(db.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(db.lhid).toLowerCase();
+    if (cleanKey && !dbMap.has(cleanKey)) dbMap.set(cleanKey, db);
+    if (rawKey && !dbMap.has(rawKey)) dbMap.set(rawKey, db);
   }
 
   // Enrich each row with Database parcel attributes
   const enrichedRows = rawRows.map((row) => {
-    const lhidKey = String(row.lhid || '').trim().toLowerCase();
-    const db = dbMap.get(lhidKey) || {};
+    const rawKey = String(row.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(row.lhid).toLowerCase();
+    const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
     const carpableNum = parseNumericValue(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
     const provName = db.province || row.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
     const muniName = db.municipality || row.municipality || '—';
@@ -1811,7 +1823,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     return {
       ...row,
-      lhid: row.lhid || db.lhid || '—',
+      lhid: formatLhidDisplay(row.lhid || db.lhid || '') || '—',
       province: provName,
       municipality: muniName,
       barangay: brgyName,
@@ -4301,10 +4313,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       <button
                         type="button"
                         class="link-btn lhid-chip"
-                        data-lhid="${esc(r.lhid)}"
+                        data-lhid="${esc(formatLhidDisplay(r.lhid))}"
                         title="Click to view Landholding Profile &amp; Milestones"
                       >
-                        ${esc(r.lhid)}
+                        ${esc(formatLhidDisplay(r.lhid))}
                       </button>
                     </td>
                     <td>
@@ -4744,7 +4756,7 @@ export function renderMilestonesView(ctx) {
                     <td>
                       ${
                         r.LHID
-                          ? `<button type="button" class="link-btn" data-lhid="${esc(r.LHID)}">${esc(r.LHID)}</button>`
+                          ? `<button type="button" class="link-btn" data-lhid="${esc(formatLhidDisplay(r.LHID))}">${esc(formatLhidDisplay(r.LHID))}</button>`
                           : '<span style="color:var(--text-light)">—</span>'
                       }
                     </td>
@@ -4995,9 +5007,13 @@ function buildDbByLhidMap(state) {
   let dbTotalCarpableArea = 0;
   for (const r of dbRows) {
     dbTotalCarpableArea += parseNumericValue(r.carpable) || 0;
-    const lhidKey = String(r.lhid || '').trim().toLowerCase();
-    if (lhidKey && !dbByLhid.has(lhidKey)) {
-      dbByLhid.set(lhidKey, r);
+    const rawKey = String(r.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(r.lhid).toLowerCase();
+    if (cleanKey && !dbByLhid.has(cleanKey)) {
+      dbByLhid.set(cleanKey, r);
+    }
+    if (rawKey && !dbByLhid.has(rawKey)) {
+      dbByLhid.set(rawKey, r);
     }
   }
   return { dbRows, dbByLhid, dbTotalCarpableArea };
@@ -5031,9 +5047,13 @@ function getOptoolTableColumns(schemas, tabName) {
 
 function getOptoolCellValue(row, col, dbByLhid) {
   if (col?.dbKey) {
-    const lhidKey = String(row?.lhid || '').trim().toLowerCase();
-    const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
+    const rawKey = String(row?.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
+    const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
     return dbRow?.[col.dbKey] ?? '';
+  }
+  if (col?.key === 'lhid') {
+    return formatLhidDisplay(row?.[col.key]);
   }
   if (col?.key === 'targetYear') {
     const direct = row?.[col.key];
@@ -5042,8 +5062,9 @@ function getOptoolCellValue(row, col, dbByLhid) {
       const m = s.match(/\b(20\d{2})\b/);
       return m ? m[1] : s;
     }
-    const lhidKey = String(row?.lhid || '').trim().toLowerCase();
-    const dbRow = lhidKey && dbByLhid ? dbByLhid.get(lhidKey) : null;
+    const rawKey = String(row?.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
+    const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
     const dbYr = dbRow?.year ?? dbRow?.targetYear ?? '';
     if (dbYr !== '') {
       const s = String(dbYr).trim();
@@ -5486,6 +5507,7 @@ function renderOptoolBodyRowsHtml(vm) {
   }
   return pagedRows
     .map(({ row, idx }) => {
+      const rowLhidClean = formatLhidDisplay(row.lhid);
       const rowTarget = String(row.milestoneTarget || '').trim();
       const targetSelectHtml =
         currentTab === 'Database'
@@ -5505,19 +5527,20 @@ function renderOptoolBodyRowsHtml(vm) {
               const val = getOptoolCellValue(row, c, dbByLhid);
               const linkedCls = c.linkedFromDb ? 'cell-linked-db' : '';
               if (c.key === 'lhid' && val) {
-                return `<td><button type="button" class="link-btn" data-lhid="${esc(val)}">${esc(val)}</button></td>`;
+                const displayLhid = formatLhidDisplay(val);
+                return `<td><button type="button" class="link-btn" data-lhid="${esc(displayLhid)}">${esc(displayLhid)}</button></td>`;
               }
               if (c.key === 'pdfFile') {
                 if (val && typeof val === 'string' && val.trim() !== '') {
                   return `<td style="white-space:nowrap">
                     <div style="display:inline-flex;gap:4px;align-items:center;">
                       <a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;font-weight:600;"><span style="font-size:12px;">📄</span> View PDF</a>
-                      <button type="button" class="btn btn-secondary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(row.lhid || '')}" data-upload-pdf-province="${esc(row.province || '')}" title="Replace or re-upload PDF" style="padding:2px 6px;font-size:11px;">⬆</button>
+                      <button type="button" class="btn btn-secondary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" title="Replace or re-upload PDF" style="padding:2px 6px;font-size:11px;">⬆</button>
                     </div>
                   </td>`;
                 }
                 return `<td style="white-space:nowrap">
-                  <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(row.lhid || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
+                  <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
                 </td>`;
               }
               if (c.type === 'checkbox') {
@@ -5525,7 +5548,7 @@ function renderOptoolBodyRowsHtml(vm) {
                 return `<td class="cell-check"><input type="checkbox" class="table-check-input" data-optool-check-idx="${idx}" data-optool-check-key="${esc(
                   c.key
                 )}" ${checked ? 'checked' : ''} aria-label="${esc(c.label)} for ${esc(
-                  row.lhid || `row ${idx + 1}`
+                  rowLhidClean || `row ${idx + 1}`
                 )}" title="${esc(c.label)}: ${checked ? 'Checked' : 'Unchecked'}" /></td>`;
               }
               if (
@@ -5537,7 +5560,7 @@ function renderOptoolBodyRowsHtml(vm) {
                 if (val && !opts.includes(val)) opts.push(val);
                 return `<td><select class="table-cell-select ${val ? 'has-value' : ''}" data-optool-select-idx="${idx}" data-optool-select-key="${esc(
                   c.key
-                )}" aria-label="${esc(c.label)} for ${esc(row.lhid || `row ${idx + 1}`)}"><option value="">-- Select --</option>${opts
+                )}" aria-label="${esc(c.label)} for ${esc(rowLhidClean || `row ${idx + 1}`)}"><option value="">-- Select --</option>${opts
                   .map((opt) => `<option value="${esc(opt)}" ${val === opt ? 'selected' : ''}>${esc(opt)}</option>`)
                   .join('')}</select></td>`;
               }
@@ -6343,8 +6366,8 @@ export function renderSurveySupportListModalHtml({
               <tr>
                 <td class="text-muted center" style="font-size:11px;">${i + 1}</td>
                 <td>
-                  <button type="button" class="link-btn lhid-chip" data-lhid="${esc(r.lhid)}" title="Click to view 360 Landholding Profile">
-                    ${esc(r.lhid)}
+                  <button type="button" class="link-btn lhid-chip" data-lhid="${esc(formatLhidDisplay(r.lhid))}" title="Click to view 360 Landholding Profile">
+                    ${esc(formatLhidDisplay(r.lhid))}
                   </button>
                 </td>
                 <td><strong>${esc(r.province)}</strong></td>
@@ -6364,7 +6387,7 @@ export function renderSurveySupportListModalHtml({
                 <td>${esc(r.datesMap?.aspDate || r.aspDate || '—')}</td>
                 <td>${esc(r.targetYear || r.year || r.target || '—')}</td>
                 <td class="right">
-                  <button type="button" class="btn btn-xs btn-primary" data-open-optool-tab="Survey" data-filter-lhid="${esc(r.lhid)}" title="Switch to Survey tab for this LHID">
+                  <button type="button" class="btn btn-xs btn-primary" data-open-optool-tab="Survey" data-filter-lhid="${esc(formatLhidDisplay(r.lhid))}" title="Switch to Survey tab for this LHID">
                     Open in Survey
                   </button>
                 </td>
@@ -6500,8 +6523,8 @@ export function renderCfSupportListModalHtml({
                 <tr>
                   <td class="center font-mono" style="font-size:11px;color:var(--text-muted);">${idx + 1}</td>
                   <td>
-                    <button type="button" class="btn-lhid-drawer" data-lhid="${esc(r.lhid)}" title="Open Landholding Details Drawer">
-                      ${esc(r.lhid)}
+                    <button type="button" class="btn-lhid-drawer" data-lhid="${esc(formatLhidDisplay(r.lhid))}" title="Open Landholding Details Drawer">
+                      ${esc(formatLhidDisplay(r.lhid))}
                     </button>
                   </td>
                   <td><span class="badge badge-gray" style="font-size:11px;">${esc(r.province || '—')}</span></td>
@@ -6523,7 +6546,7 @@ export function renderCfSupportListModalHtml({
                   }).join('')}
                   <td>${r.targetYear ? `<span class="badge badge-gray">${esc(r.targetYear)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
                   <td class="right">
-                    <button type="button" class="btn btn-secondary btn-xs" data-lhid="${esc(r.lhid)}" style="font-size:11px;padding:2px 8px;" title="View Landholding Drawer">
+                    <button type="button" class="btn btn-secondary btn-xs" data-lhid="${esc(formatLhidDisplay(r.lhid))}" style="font-size:11px;padding:2px 8px;" title="View Landholding Drawer">
                       View Drawer
                     </button>
                   </td>

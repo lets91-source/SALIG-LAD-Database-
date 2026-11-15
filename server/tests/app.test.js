@@ -38,6 +38,7 @@ import {
   formatCurrentMonthYear,
   getReportedMonthOptions,
   isReportedMonthKey,
+  formatLhidDisplay,
   parseDatabaseYear,
   resolveDatabaseYear,
   resolveSurveyCurrentStatus,
@@ -2215,7 +2216,7 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
     totalArea: 3.0906
   });
   assert.ok(supportModalHtml.includes('survey-support-list-modal'), 'Support list modal wrapper rendered');
-  assert.ok(supportModalHtml.includes('8.01011057E8'), 'LHID present in support list modal');
+  assert.ok(supportModalHtml.includes('801011057'), 'Normalized clean LHID present in support list modal');
   assert.ok(supportModalHtml.includes('MAYORGA'), 'Municipality present in support list modal');
   assert.ok(supportModalHtml.includes('btn-export-support-list-csv'), 'Export CSV button present in support list modal');
   assert.ok(supportModalHtml.includes('support-list-search'), 'In-modal search input present in support list modal');
@@ -2429,7 +2430,7 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
   });
 
   assert.ok(modalHtmlAccomplished.includes('cf-support-list-modal'), 'Modal class present');
-  assert.ok(modalHtmlAccomplished.includes('8.05000013E8'), 'LHID rendered');
+  assert.ok(modalHtmlAccomplished.includes('805000013'), 'Normalized clean LHID rendered in support list modal');
   assert.ok(modalHtmlAccomplished.includes('DELA CRUZ, JUAN'), 'Landowner rendered');
   assert.ok(modalHtmlAccomplished.includes('2026-04-10'), 'Date FI Conducted rendered');
   assert.ok(modalHtmlAccomplished.includes('Target Year: 2026'), 'Target year badge present');
@@ -2774,4 +2775,56 @@ test('Google Drive Regional Folder Structure & Automated PDF Upload Integration'
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+test('LHID Normalization & Display: parses scientific notation and float strings into clean database integers matching Google Sheets', () => {
+  // Test user screenshot samples
+  assert.equal(formatLhidDisplay('8.05000007E8'), '805000007');
+  assert.equal(formatLhidDisplay('8.0500003E8'), '805000030');
+  assert.equal(formatLhidDisplay('8.05000017E8'), '805000017');
+  assert.equal(formatLhidDisplay('8.05000051E8'), '805000051');
+  assert.equal(formatLhidDisplay('8.05000053E8'), '805000053');
+  assert.equal(formatLhidDisplay('8.05000182E8'), '805000182');
+  assert.equal(formatLhidDisplay('8.05000001E8'), '805000001');
+
+  // Trailing .0 floats & standard numbers
+  assert.equal(formatLhidDisplay('805000007.0'), '805000007');
+  assert.equal(formatLhidDisplay('805000007'), '805000007');
+  assert.equal(formatLhidDisplay(805000007), '805000007');
+
+  // Alphanumeric LHIDs preserved
+  assert.equal(formatLhidDisplay('LH-0837-0012'), 'LH-0837-0012');
+  assert.equal(formatLhidDisplay(''), '');
+  assert.equal(formatLhidDisplay(null), '');
+  assert.equal(formatLhidDisplay(undefined), '');
+
+  // Verify renderOptoolView formats LHID column cells
+  const sampleState = {
+    optool: {
+      Database: [
+        {
+          lhid: '8.05000007E8',
+          titleNumber: 'OCT-100',
+          landOwner: 'DELA CRUZ, PRIMO',
+          carpable: '7.9293'
+        }
+      ]
+    }
+  };
+  const ctx = {
+    state: sampleState,
+    schemas: {
+      registry: [],
+      optoolTabs: OPTOOL_SHEET_SCHEMAS,
+      optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS
+    },
+    activeOptoolTab: 'Database',
+    filters: { province: 'ALL' },
+    optoolColMode: 'preview',
+    searchTerm: ''
+  };
+  const rendered = renderOptoolView(ctx);
+  assert.ok(rendered.includes('data-lhid="805000007"'), 'Rendered table contains clean integer data-lhid 805000007');
+  assert.ok(rendered.includes('>805000007<'), 'Rendered table button text displays clean integer 805000007');
+  assert.ok(!rendered.includes('8.05000007E8'), 'Rendered table does not contain scientific notation');
 });

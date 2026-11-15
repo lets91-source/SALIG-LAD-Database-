@@ -30,6 +30,7 @@ import {
 } from './views.js';
 import {
   formatCurrentMonthYear,
+  formatLhidDisplay,
   getReportedMonthOptions,
   isReportedMonthKey,
   resolveTargetFromDatabaseRow,
@@ -1972,8 +1973,15 @@ async function openMilestoneModal(existing) {
 function findDatabaseRowByLhid(lhid) {
   const key = String(lhid ?? '').trim().toLowerCase();
   if (!key) return null;
+  const cleanKey = formatLhidDisplay(lhid).toLowerCase();
   const dbRows = appState.state?.optool?.Database || [];
-  return dbRows.find((r) => String(r.lhid ?? '').trim().toLowerCase() === key) || null;
+  return (
+    dbRows.find((r) => {
+      const rKey = String(r.lhid ?? '').trim().toLowerCase();
+      const rClean = formatLhidDisplay(r.lhid).toLowerCase();
+      return rKey === key || rClean === cleanKey || rKey === cleanKey || rClean === key;
+    }) || null
+  );
 }
 
 /**
@@ -3392,7 +3400,8 @@ function openNepTargetsModal() {
 }
 
 async function openLandholdingDrawer(lhid) {
-  document.getElementById('drawer-title').textContent = `LHID: ${lhid}`;
+  const displayLhid = formatLhidDisplay(lhid);
+  document.getElementById('drawer-title').textContent = `LHID: ${displayLhid}`;
   document.getElementById('drawer-body').innerHTML = '<div class="loading-box">Loading cross-tab parcel dossier…</div>';
   document.getElementById('drawer-backdrop').classList.remove('hidden');
 
@@ -3400,8 +3409,8 @@ async function openLandholdingDrawer(lhid) {
     const data = await withLoading(
       'fetching',
       'Fetching Parcel Dossier…',
-      `Loading cross-tab OPTool & Milestone details for ${lhid}…`,
-      () => api(`/api/landholding/${encodeURIComponent(lhid)}`)
+      `Loading cross-tab OPTool & Milestone details for ${displayLhid}…`,
+      () => api(`/api/landholding/${encodeURIComponent(displayLhid)}`)
     );
     const blocks = [];
 
@@ -3444,7 +3453,7 @@ async function openLandholdingDrawer(lhid) {
                     (c) => `
                   <div class="kv-item">
                     <div class="kv-key">${esc(c.label)}</div>
-                    <div class="kv-val">${esc(row[c.key])}</div>
+                    <div class="kv-val">${esc((c.key === 'lhid' || c.key === 'LHID') ? formatLhidDisplay(row[c.key]) : row[c.key])}</div>
                   </div>
                 `
                   )
