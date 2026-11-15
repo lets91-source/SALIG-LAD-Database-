@@ -5610,17 +5610,6 @@ function buildDbByLhidMap(state) {
     return pagedRows
       .map(({ row, idx }) => {
         const rowLhidClean = formatLhidDisplay(row.lhid);
-        const rowTarget = String(row.milestoneTarget || '').trim();
-        const targetSelectHtml =
-          currentTab === 'Database'
-            ? `<select class="target-action-select ${rowTarget ? 'has-target' : ''}" data-milestone-target="${idx}" aria-label="Select Milestone Target" title="Select Milestone Target"><option value="">Milestone Target…</option>${targetTabs
-              .map(
-                (t) =>
-                  `<option value="${esc(t)}" ${rowTarget.toLowerCase() === t.toLowerCase() ? 'selected' : ''
-                  }>${esc(t)}</option>`
-              )
-              .join('')}</select>`
-            : '';
         return `
         <tr>
           ${displayCols
@@ -5677,7 +5666,7 @@ function buildDbByLhidMap(state) {
             : ''
           }
           <td class="center col-actions-sticky" style="white-space:nowrap">
-            ${targetSelectHtml}<button class="btn btn-secondary btn-sm" data-edit-optool="${idx}">Edit / View All</button>
+            <button class="btn btn-secondary btn-sm" data-edit-optool="${idx}">Edit / View All</button>
             <button class="btn btn-danger btn-sm" data-del-optool="${idx}">Delete</button>
           </td>
         </tr>
