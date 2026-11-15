@@ -1238,7 +1238,7 @@ export const WHEREABOUTS_CONFIGS = {
   'mov-whereabouts': {
     tabName: 'MOV',
     viewKey: 'mov-whereabouts',
-    badgeIcon: '💰',
+    badgeIcon: '⚖️',
     title: 'MOV (Land Valuation) Whereabouts & Date Summary',
     subtitle: 'Memorandum of Valuation Tracking • PPU Date • Received at DARPO • Date of MOV • Transmitted to LBP/AOC • Reported Month',
     openTabName: 'MOV',
