@@ -768,28 +768,34 @@ export class ConsolidatedStore {
           continue;
         }
         const targetRows = this.state.optool[tabName];
-        const lhidMap = new Map();
-        const jsonMap = new Map();
+        const makeRowKey = (r) => {
+          if (tabName === 'Database') {
+            return `${String(r?.lhid || '').trim().toLowerCase()}|${String(r?.titleNumber || '').trim().toLowerCase()}|${String(r?.lotNumber || '').trim().toLowerCase()}|${String(r?.landOwner || '').trim().toLowerCase()}`;
+          }
+          return `${String(r?.lhid || '').trim().toLowerCase()}|${JSON.stringify(r)}`;
+        };
+        const keyMap = new Map();
         targetRows.forEach((r, idx) => {
-          if (tabName === 'Database' && r?.lhid) lhidMap.set(r.lhid, idx);
-          jsonMap.set(JSON.stringify(r), idx);
+          keyMap.set(makeRowKey(r), idx);
         });
         const newPrepends = [];
         for (const rawRow of incoming) {
           const lhidKey = String(rawRow?.lhid || '').trim().toLowerCase();
+          if (!lhidKey) continue;
           const linkedDb =
             tabName === 'RegistrationDistribution' || tabName === 'Installation'
               ? getDbByLhid().get(lhidKey) || null
               : null;
           const cleanRow = this.normalizeOptoolRow(tabName, rawRow, linkedDb);
-          const jsonKey = JSON.stringify(cleanRow);
-          if (tabName === 'Database' && cleanRow.lhid && lhidMap.has(cleanRow.lhid)) {
-            targetRows[lhidMap.get(cleanRow.lhid)] = cleanRow;
-          } else if (jsonMap.has(jsonKey)) {
-            targetRows[jsonMap.get(jsonKey)] = cleanRow;
+          const rKey = makeRowKey(cleanRow);
+          if (keyMap.has(rKey)) {
+            const existingIdx = keyMap.get(rKey);
+            if (existingIdx >= 0) {
+              targetRows[existingIdx] = cleanRow;
+            }
           } else {
             newPrepends.push(cleanRow);
-            jsonMap.set(jsonKey, -1);
+            keyMap.set(rKey, -1);
           }
           if (tabName === 'Database' && dbByLhid && cleanRow.lhid) {
             dbByLhid.set(cleanRow.lhid.trim().toLowerCase(), cleanRow);

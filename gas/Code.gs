@@ -1039,6 +1039,8 @@ function readProvincialMilestoneSupportLists_() {
         pRows.forEach(function (row) {
           if (row.lhid) row.lhid = formatLhidString_(row.lhid);
           if (row.LHID) row.LHID = formatLhidString_(row.LHID);
+          const rowLhid = String(row.lhid || row.LHID || '').trim();
+          if (!rowLhid) return; // Skip stray formula / empty rows without LHID
           if (!row.province && !row.Province) row.province = node.name;
           if (!row.provinceCode && !row.Province_Code) row.provinceCode = node.code;
           optoolData[tabName].push(row);
@@ -1449,7 +1451,27 @@ function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
       rawRowLhid === cleanRefLhid ||
       cleanRowLhid === rawRefLhid;
     if (!lhidMatches) continue;
-    if (isUniqueByLhid) return r + 1;
+    if (isUniqueByLhid) {
+      const refOwner = String(ref.landOwner || ref.landowner || '').trim().toLowerCase();
+      const refTitle = String(ref.titleNumber || ref.title || '').trim().toLowerCase();
+      if (!refOwner && !refTitle) return r + 1;
+      let matchedSecondary = true;
+      for (let c = 0; c < colMap.length; c++) {
+        const spec = colMap[c];
+        if (!spec) continue;
+        if (refOwner && (spec.key === 'landOwner' || spec.key === 'landowner')) {
+          const actual = String(values[r][c] || '').trim().toLowerCase();
+          if (actual && actual !== refOwner) matchedSecondary = false;
+        }
+        if (refTitle && (spec.key === 'titleNumber' || spec.key === 'title')) {
+          const actual = String(values[r][c] || '').trim().toLowerCase();
+          if (actual && actual !== refTitle) matchedSecondary = false;
+        }
+      }
+      if (matchedSecondary) return r + 1;
+      if (firstLhidMatch === -1) firstLhidMatch = r + 1;
+      continue;
+    }
     if (firstLhidMatch === -1) firstLhidMatch = r + 1;
 
     let secondaryMatches = true;

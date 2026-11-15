@@ -17,6 +17,7 @@ import {
   isChecklistChecked as isServerChecklistChecked
 } from '../schema.js';
 import { ConsolidatedStore, resolveDefaultDataDir } from '../store.js';
+import { createSeedState } from '../seedData.js';
 import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from '../auth.js';
 import {
   buildConsolidatedWorkbookBuffer,
@@ -2079,8 +2080,36 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   assert.equal(matchesWhereaboutsTargetYear(currRow, '2026', curYear), true);
   assert.equal(matchesWhereaboutsTargetYear(currRow, 'ALL', curYear), true);
 
-  // 2. Integration with store.json data
-  const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
+  // 2. Integration with store data
+  const store = createSeedState();
+  store.optool.Survey = [
+    {
+      lhid: 'TEST-LEY-2025',
+      target: 'Previous Year',
+      dateRss: '2026-11-12',
+      carpable: '6.1812',
+      province: 'Leyte',
+      currentStatus: '01 - With RSS'
+    },
+    {
+      lhid: 'TEST-NSA-2025',
+      target: 'Previous Year',
+      dateRss: '2026-11-12',
+      carpable: '6.1527',
+      province: 'Northern Samar',
+      currentStatus: 'Pending Survey'
+    },
+    {
+      lhid: 'LH-0837-0012',
+      target: 'Current',
+      dateRss: '2026-02-10',
+      fieldWorkCompletionDate: '2026-03-04',
+      aspDate: '2026-06-15',
+      carpable: '2.4500',
+      province: 'Leyte',
+      currentStatus: '12 - WITH ASP'
+    }
+  ];
   const cfg = WHEREABOUTS_CONFIGS['survey-whereabouts'];
 
   // Test 2025 (Previous Year)
@@ -2460,7 +2489,7 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
 });
 
 test('Milestone Status & Accomplishment Summary template replicated across MOV, Registration/Distribution, and Installation Whereabouts', () => {
-  const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
+  const store = createSeedState();
 
   const baseCtx = {
     state: store,

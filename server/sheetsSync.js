@@ -232,6 +232,7 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
           record[colDef.key] = val;
         }
         if (nonEmptyCount === 0) continue;
+        if (!record.lhid && !record.LHID) continue;
         if (options.province && !record.province) {
           record.province = options.province;
         }
@@ -322,6 +323,7 @@ export function parseCsvText(csvText, targetTab = 'Milestone_Data') {
         obj[colDef.key] = raw;
       }
     }
+    if (targetTab !== 'Milestone_Data' && !obj.lhid && !obj.LHID) continue;
     if (targetTab === 'Milestone_Data' && !obj.Province_Code) {
       obj.Province_Code =
         inferProvinceCodeFromMunicipality(obj.Municipality) ||
