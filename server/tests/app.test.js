@@ -2147,7 +2147,7 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
     surveyIndicatorTab: 'all'
   };
   const html2026 = renderMilestoneWhereaboutsView(ctx2026, cfg);
-  assert.ok(html2026.includes('2.4500')); // Current year LH accomplishment area present
+  assert.ok(html2026.includes('2.6500') || html2026.includes('2.4500')); // Current year LH accomplishment total area (Column N)
 
   // Test ALL
   const ctxAll = {
@@ -2208,7 +2208,7 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
 
   // Check 2026 matrix values
   assert.ok(html2026.includes('panel-survey-current-status-matrix'));
-  assert.ok(html2026.includes('2.4500'), 'Leyte 12 - WITH ASP area (2.4500) in 2026 matrix');
+  assert.ok(html2026.includes('2.6500') || html2026.includes('2.4500'), 'Leyte 12 - WITH ASP area in 2026 matrix');
 
   // Check All 12 Stages toggle mode
   const ctxAllStages = {

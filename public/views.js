@@ -1572,7 +1572,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     const rawKey = String(row.lhid || '').trim().toLowerCase();
     const cleanKey = formatLhidDisplay(row.lhid).toLowerCase();
     const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
-    const carpableNum = parseNumericValue(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
+    const carpableNum = parseNumericValue(db.totalArea || row.totalArea || db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
     const provName = db.province || row.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
     const muniName = db.municipality || row.municipality || '—';
     const brgyName = db.barangay || row.barangay || '—';
@@ -1608,7 +1608,9 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
+      totalArea: carpableNum,
       carpable: carpableNum,
+      areaHas: carpableNum,
       targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
       currentStatus: row.currentStatus || stage,
       datesMap,
@@ -1802,7 +1804,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const rawKey = String(row.lhid || '').trim().toLowerCase();
     const cleanKey = formatLhidDisplay(row.lhid).toLowerCase();
     const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
-    const carpableNum = parseNumericValue(db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
+    const carpableNum = parseNumericValue(db.totalArea || row.totalArea || db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0);
     const provName = db.province || row.province || (provinceScope ? provinceScope.provinceName : 'Unknown');
     const muniName = db.municipality || row.municipality || '—';
     const brgyName = db.barangay || row.barangay || '—';
@@ -1839,7 +1841,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
+      totalArea: carpableNum,
       carpable: carpableNum,
+      areaHas: carpableNum,
       targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
       currentStatus: row.currentStatus || stage,
       datesMap,
@@ -2078,7 +2082,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const dbLadRows = dbScopeRows.filter((r) => isLadBalance(r));
     let globalTargetLhs = dbLadRows.length;
     let globalTargetArea = dbLadRows.reduce((sum, r) => {
-      return sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0);
+      return sum + parseNumericValue(r.totalArea || r.carpable || r.areaHas || r.computedArea || 0);
     }, 0);
 
     // Fallback to nepMilestoneList / nepTargets if Database worksheet has no records
@@ -2150,7 +2154,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       } else {
         const yearDbRows = dbScopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
         selectedYearTargetLhs = yearDbRows.length;
-        selectedYearTargetArea = yearDbRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0), 0);
+        selectedYearTargetArea = yearDbRows.reduce((sum, r) => sum + parseNumericValue(r.totalArea || r.carpable || r.areaHas || r.computedArea || 0), 0);
         if (selectedYearTargetLhs === 0 && selectedYearTargetArea === 0) {
           selectedYearTargetLhs = globalTargetLhs;
           selectedYearTargetArea = globalTargetArea;
@@ -2290,13 +2294,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         const taggedDb = activePool.filter((r) => matchesMilestoneDatabaseTag(r, viewKey));
         if (taggedDb.length > 0) {
           targetLhs = taggedDb.length;
-          targetArea = taggedDb.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
+          targetArea = taggedDb.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
         } else if (isNepYearMatch && nepOverride && Number(nepOverride.lhs || nepOverride.area)) {
           targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
           targetArea = Math.max(0, Number(nepOverride.area) || 0);
         } else {
           targetLhs = activePool.length;
-          targetArea = activePool.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
+          targetArea = activePool.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
         }
       }
       targetArea = Number(targetArea.toFixed(4));
@@ -4220,7 +4224,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   <span class="col-filter-caret">▾</span>
                 </button>
               </th>
-              <th class="right">CARPable Area</th>
+              <th class="right">Total Area (HAS)</th>
               ${cfg.dates
             .map((d) => {
               const dLabel = getWhereaboutsColFilterLabel(activeColFilters[d.key]);
@@ -4419,11 +4423,11 @@ export function renderDashboardView(ctx) {
   const tempRows = dbScopeRows.filter((r) => isTempPark(r));
 
   const totalLadLhs = ladRows.length;
-  const totalLadArea = ladRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || 0), 0);
+  const totalLadArea = ladRows.reduce((sum, r) => sum + parseNumericValue(r.totalArea || r.carpable || 0), 0);
   const totalTempLhs = tempRows.length;
-  const totalTempArea = tempRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || 0), 0);
+  const totalTempArea = tempRows.reduce((sum, r) => sum + parseNumericValue(r.totalArea || r.carpable || 0), 0);
   const totalDbLhs = dbScopeRows.length;
-  const totalDbArea = dbScopeRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || 0), 0);
+  const totalDbArea = dbScopeRows.reduce((sum, r) => sum + parseNumericValue(r.totalArea || r.carpable || 0), 0);
 
   const pctLadLhs = totalDbLhs > 0 ? ((totalLadLhs / totalDbLhs) * 100).toFixed(1) : '0.0';
   const pctTempLhs = totalDbLhs > 0 ? ((totalTempLhs / totalDbLhs) * 100).toFixed(1) : '0.0';
@@ -4439,11 +4443,11 @@ export function renderDashboardView(ctx) {
     const pTemp = provDb.filter((r) => isTempPark(r));
 
     const ladLhs = pLad.length;
-    const ladArea = pLad.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0);
+    const ladArea = pLad.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || 0), 0);
     const tempLhs = pTemp.length;
-    const tempArea = pTemp.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0);
+    const tempArea = pTemp.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || 0), 0);
     const dbLhs = provDb.length;
-    const dbArea = provDb.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0);
+    const dbArea = provDb.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || 0), 0);
 
     const pProv = (provincialBreakdown || []).find((pb) => pb.code === p.code || matchProvinceName(pb.provinceName, p.name));
     const regTitles = pProv ? pProv.cumulativeETitles : 0;
@@ -4478,6 +4482,22 @@ export function renderDashboardView(ctx) {
   provTotals.pct = provTotals.ladArea > 0 ? ((provTotals.regArea / provTotals.ladArea) * 100).toFixed(1) : '0.0';
 
   // 3. Milestone Whereabouts Data
+  const dbMap = new Map();
+  for (const db of allDbRows) {
+    const rawKey = String(db.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(db.lhid).toLowerCase();
+    if (cleanKey && !dbMap.has(cleanKey)) dbMap.set(cleanKey, db);
+    if (rawKey && !dbMap.has(rawKey)) dbMap.set(rawKey, db);
+  }
+  function computeMilestoneTotalArea(tabRows) {
+    return (tabRows || []).reduce((s, r) => {
+      const rawKey = String(r.lhid || '').trim().toLowerCase();
+      const cleanKey = formatLhidDisplay(r.lhid).toLowerCase();
+      const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
+      return s + parseNumericValue(db.totalArea || r.totalArea || r.areaHas || r.areaHas1 || r.areaHas2 || db.carpable || r.carpable || 0);
+    }, 0);
+  }
+
   const milestoneWhereaboutsData = [
     {
       key: 'cf-whereabouts',
@@ -4485,7 +4505,7 @@ export function renderDashboardView(ctx) {
       label: 'CF(DOC)',
       navKey: 'cf-whereabouts',
       count: (state.optool?.['CF(DOC)'] || []).length,
-      area: (state.optool?.['CF(DOC)'] || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      area: computeMilestoneTotalArea(state.optool?.['CF(DOC)']),
       stageLabel: 'FI Conducted & Prepared',
       subtext: 'Field Investigation & Documentation'
     },
@@ -4495,7 +4515,7 @@ export function renderDashboardView(ctx) {
       label: 'Survey',
       navKey: 'survey-whereabouts',
       count: (state.optool?.Survey || []).length,
-      area: (state.optool?.Survey || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      area: computeMilestoneTotalArea(state.optool?.Survey),
       stageLabel: 'RSS & Field Survey Return',
       subtext: 'Survey Verification & DARRO/DENR'
     },
@@ -4505,7 +4525,7 @@ export function renderDashboardView(ctx) {
       label: 'MOV',
       navKey: 'mov-whereabouts',
       count: (state.optool?.MOV || []).length,
-      area: (state.optool?.MOV || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      area: computeMilestoneTotalArea(state.optool?.MOV),
       stageLabel: 'Land Valuation & LBP/AOC',
       subtext: 'Memorandum of Valuation'
     },
@@ -4515,7 +4535,7 @@ export function renderDashboardView(ctx) {
       label: 'Registration / Distribution',
       navKey: 'regdist-whereabouts',
       count: (state.optool?.RegistrationDistribution || []).length,
-      area: (state.optool?.RegistrationDistribution || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      area: computeMilestoneTotalArea(state.optool?.RegistrationDistribution),
       stageLabel: 'ROD Registration & ARB Distribution',
       subtext: 'eTitles & ARB Distribution'
     },
@@ -4525,7 +4545,7 @@ export function renderDashboardView(ctx) {
       label: 'Installation',
       navKey: 'installation-whereabouts',
       count: (state.optool?.Installation || []).length,
-      area: (state.optool?.Installation || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      area: computeMilestoneTotalArea(state.optool?.Installation),
       stageLabel: 'On-Ground Physical Installation',
       subtext: 'Agrarian Reform Beneficiaries Installed'
     }
@@ -5363,13 +5383,13 @@ function buildDbByLhidMap(state) {
 
     const scopedLadRows = scopedDbRows.filter(isLadBalance);
     const scopedLadLhs = scopedLadRows.length;
-    const scopedLadArea = scopedLadRows.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+    const scopedLadArea = scopedLadRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
 
     const scopedTempRows = scopedDbRows.filter(isTempPark);
     const scopedTempLhs = scopedTempRows.length;
-    const scopedTempArea = scopedTempRows.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+    const scopedTempArea = scopedTempRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
 
-    const scopedDbCarpableArea = scopedDbRows.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+    const scopedDbCarpableArea = scopedDbRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
 
     let filteredLadLhs = scopedLadLhs;
     let filteredLadArea = scopedLadArea;
@@ -5379,11 +5399,11 @@ function buildDbByLhidMap(state) {
     if (currentTab === 'Database') {
       const dbLadRowsFiltered = filteredRowsOnly.filter(isLadBalance);
       filteredLadLhs = dbLadRowsFiltered.length;
-      filteredLadArea = dbLadRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+      filteredLadArea = dbLadRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
 
       const dbTempRowsFiltered = filteredRowsOnly.filter(isTempPark);
       filteredTempLhs = dbTempRowsFiltered.length;
-      filteredTempArea = dbTempRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+      filteredTempArea = dbTempRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
     }
 
     let scopeBadgeText = 'Region VIII';
@@ -5411,7 +5431,7 @@ function buildDbByLhidMap(state) {
         const canonical = targetLookup.get(String(row.milestoneTarget || '').trim().toLowerCase());
         if (canonical) {
           dbTargetStats[canonical].lhs++;
-          dbTargetStats[canonical].carpableArea += Number(row.carpable) || 0;
+          dbTargetStats[canonical].carpableArea += Number(row.totalArea || row.carpable) || 0;
         }
       }
     }
@@ -5475,14 +5495,15 @@ function buildDbByLhidMap(state) {
 
     for (const row of rows) {
       if (isDb) {
-        carpableArea += parseNumericValue(row.carpable) || 0;
+        carpableArea += parseNumericValue(row.totalArea || row.carpable) || 0;
       } else {
         const lhidKey = String(row.lhid || '').trim().toLowerCase();
         const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
         if (dbRow) matchedCount++;
         if (!lhidKey || !seenLhids.has(lhidKey)) {
           if (lhidKey) seenLhids.add(lhidKey);
-          if (dbRow) carpableArea += parseNumericValue(dbRow.carpable) || 0;
+          if (dbRow) carpableArea += parseNumericValue(dbRow.totalArea || dbRow.carpable || row.totalArea || row.areaHas || 0) || 0;
+          else carpableArea += parseNumericValue(row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.carpable || 0) || 0;
         }
         totalArbs += parseNumericValue(row.noOfArbs) || 0;
         totalTitles += parseNumericValue(row.noOfTitles) || 0;
@@ -6567,7 +6588,7 @@ function buildDbByLhidMap(state) {
               <th style="color:#ffffff;">MUNICIPALITY</th>
               <th style="color:#ffffff;">BARANGAY</th>
               <th style="color:#ffffff;">LANDOWNER / TITLE</th>
-              <th class="right" style="color:#ffffff;">CARPABLE AREA</th>
+              <th class="right" style="color:#ffffff;">TOTAL AREA (HAS)</th>
               <th style="color:#ffffff;">CURRENT STATUS</th>
               <th style="color:#ffffff;">DATE RSS</th>
               <th style="color:#ffffff;">FIELD WORK START</th>
@@ -6609,7 +6630,7 @@ function buildDbByLhidMap(state) {
                   <div style="font-weight:600;font-size:12px;">${esc(r.landOwner)}</div>
                   <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber)}</div>
                 </td>
-                <td class="right font-bold">${fmtArea(r.carpable)} HAS</td>
+                <td class="right font-bold">${fmtArea(r.totalArea || r.carpable)} HAS</td>
                 <td>
                   <span class="badge ${r.stageBadge || 'badge-gray'}">${esc(r.currentStatus || r.stage || '—')}</span>
                 </td>
@@ -6732,7 +6753,7 @@ function buildDbByLhidMap(state) {
               <th style="color:#ffffff;">MUNICIPALITY</th>
               <th style="color:#ffffff;">BARANGAY</th>
               <th style="color:#ffffff;">LANDOWNER / TITLE</th>
-              <th class="right" style="color:#ffffff;">CARPABLE AREA</th>
+              <th class="right" style="color:#ffffff;">TOTAL AREA (HAS)</th>
               <th style="color:#ffffff;">STAGE / STATUS</th>
               ${effectiveDates.map((d) => `<th style="color:#ffffff;">${esc(d.shortLabel || d.label || d.key).toUpperCase()}</th>`).join('')}
               <th style="color:#ffffff;">TARGET YEAR</th>
@@ -6765,7 +6786,7 @@ function buildDbByLhidMap(state) {
                     <div style="font-weight:600;font-size:12px;">${esc(r.landOwner || '—')}</div>
                     <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber || '—')}</div>
                   </td>
-                  <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.carpable || 0)} HAS</td>
+                  <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.totalArea || r.carpable || 0)} HAS</td>
                   <td>
                     <span class="badge ${r.stage?.includes('Completed') ? 'badge-green' : r.stage?.includes('Prepared') || r.stage?.includes('Distributed') ? 'badge-blue' : r.stage?.includes('FI') || r.stage?.includes('MOV') || r.stage?.includes('PPU') ? 'badge-amber' : 'badge-gray'}" style="font-size:11px;">
                       ${esc(r.currentStatus || r.stage || '—')}

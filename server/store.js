@@ -174,7 +174,7 @@ const DATABASE_TO_TARGET_MAP = {
     province: 'province',
     municipality: 'municipality',
     barangay: 'barangay',
-    areaHas: (r) => r.carpable || r.computedArea || r.totalArea || '',
+    areaHas: (r) => r.totalArea || r.carpable || r.computedArea || '',
     moa: 'moa',
     rodTitleNo: 'titleNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
@@ -192,7 +192,7 @@ const DATABASE_TO_TARGET_MAP = {
     lotNo: 'lotNumber',
     areaHas1: (r) => r.totalArea || r.computedArea || '',
     surveyNo: 'surveyNumber',
-    areaHas2: (r) => r.distributedArea || r.carpable || r.computedArea || '',
+    areaHas2: (r) => r.totalArea || r.distributedArea || r.carpable || r.computedArea || '',
     target: (r) => resolveTargetFromDatabaseRow(r),
     monthReported: () => formatCurrentMonthYear(),
     targetYear: (r) => String(r.year || r.targetYear || '').trim()
@@ -280,9 +280,9 @@ function resolveFirstDateQuarter(row, dateKeys) {
 function getDbParcelArea(dbRow) {
   if (!dbRow) return 0;
   return (
+    parseMetricNumber(dbRow.totalArea) ||
     parseMetricNumber(dbRow.carpable) ||
     parseMetricNumber(dbRow.computedArea) ||
-    parseMetricNumber(dbRow.totalArea) ||
     0
   );
 }
