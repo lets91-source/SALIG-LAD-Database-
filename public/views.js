@@ -3037,7 +3037,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       for (const st of ALL_SURVEY_STAGES) {
         const liveRows = provRows.filter((r) => Boolean(r.datesMap?.[st.dKey]) || Boolean(r[st.dKey]));
         const lhs = liveRows.length;
-        const area = Number(liveRows.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0).toFixed(4));
+        const area = Number(liveRows.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0).toFixed(4));
 
         const balLhs = Math.max(0, targetLhs - lhs);
         const balArea = Math.max(0, Number((targetArea - area).toFixed(4)));
@@ -3093,7 +3093,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     }
     const surveyDbLadRows = surveyDbScopeRows.filter((r) => isLadBalance(r));
     const surveyDbLadLhs = surveyDbLadRows.length;
-    const surveyDbLadArea = surveyDbLadRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0), 0);
+    const surveyDbLadArea = surveyDbLadRows.reduce((sum, r) => sum + parseNumericValue(r.totalArea || r.carpable || r.areaHas || r.computedArea || 0), 0);
 
     const surveyGlobalTargetLhs = activeBenchmarkRows.reduce((s, r) => s + r.targetLhs, 0);
     const surveyGlobalTargetArea = Number(activeBenchmarkRows.reduce((s, r) => s + r.targetArea, 0).toFixed(4));
@@ -3134,7 +3134,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       );
     });
     const surveyAtLmsLhs = lmsRows.length;
-    const surveyAtLmsArea = Number(lmsRows.reduce((s, r) => s + r.carpable, 0).toFixed(4));
+    const surveyAtLmsArea = Number(lmsRows.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || 0), 0).toFixed(4));
 
     const now = new Date();
     const curDateFormatted =
@@ -3585,7 +3585,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     for (const r of matrixScopeRows) {
       const rowProv = r.province || '';
       const rowStatus = String(r.currentStatus || r.stage || '').trim() || 'Pending Survey';
-      const carp = parseNumericValue(r.carpable || 0);
+      const carp = parseNumericValue(r.totalArea || r.carpable || 0);
 
       for (const b of DEFAULT_SURVEY_STATUS_BENCHMARKS) {
         if (matchProvinceName(rowProv, b.name)) {
@@ -4327,7 +4327,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       <div class="text-muted">Title: ${esc(r.titleNumber)}</div>
                     </td>
                     <td class="right" style="font-weight:600;font-variant-numeric:tabular-nums;">
-                      ${fmtArea(r.carpable)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
+                      ${fmtArea(r.totalArea ?? r.carpable)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
                     </td>
                     ${cfg.dates
                 .map((d) => {
