@@ -36,6 +36,35 @@ export function fmtArea(val) {
   });
 }
 
+export function getRowLadStatus(row) {
+  if (!row) return '';
+  return String(
+    row.ladStatus ||
+    row.lad_status ||
+    row['Lad Status'] ||
+    row['LAD Status'] ||
+    row.lad ||
+    ''
+  ).trim();
+}
+
+export function isLadBalance(row) {
+  const val = getRowLadStatus(row).toLowerCase();
+  return val === 'lad balance' || val === 'lad_balance' || val === 'balance' || val.includes('lad balance');
+}
+
+export function isTempPark(row) {
+  const val = getRowLadStatus(row).toLowerCase();
+  return (
+    val === 'temp. park' ||
+    val === 'temp park' ||
+    val === 'temppark' ||
+    val === 'temporary park' ||
+    val.includes('temp. park') ||
+    val.includes('temp park')
+  );
+}
+
 function stageBadgeClass(stage) {
   const s = String(stage || '').toLowerCase();
   if (s.includes('installed')) return 'badge-green';
@@ -2038,7 +2067,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     cfTargetYears = ['ALL', ...numYears];
     const allTargetYears = cfTargetYears;
 
-    // 2. Global Target: based on the Database worksheet per province
+    // 2. Global Target: based strictly on LAD Balance records from the Database worksheet per province
     let dbScopeRows = dbRows;
     if (provinceScope) {
       dbScopeRows = dbScopeRows.filter((r) => matchProvinceName(r.province, provinceScope.provinceName));
@@ -2047,8 +2076,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       dbScopeRows = dbScopeRows.filter((r) => selectedProvs.some((p) => matchProvinceName(r.province, p)));
     }
 
-    let globalTargetLhs = dbScopeRows.length;
-    let globalTargetArea = dbScopeRows.reduce((sum, r) => {
+    const dbLadRows = dbScopeRows.filter((r) => isLadBalance(r));
+    let globalTargetLhs = dbLadRows.length;
+    let globalTargetArea = dbLadRows.reduce((sum, r) => {
       return sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0);
     }, 0);
 
@@ -2153,7 +2183,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       <section class="cf-kpi-global-grid">
         <div class="cf-kpi-card cf-kpi-card-sm">
           <div class="cf-kpi-header">
-            <span class="cf-kpi-title">Global Target</span>
+            <span class="cf-kpi-title">Global Target (LAD Balance)</span>
             <span class="cf-kpi-badge">${esc(targetBadgeText)}</span>
           </div>
           <div class="cf-kpi-body">
@@ -2256,7 +2286,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         if (!isTargetYearAll) {
           dbProvRows = dbProvRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
         }
-        const taggedDb = dbProvRows.filter((r) => matchesMilestoneDatabaseTag(r, viewKey));
+        const ladDbProv = dbProvRows.filter((r) => isLadBalance(r));
+        const activePool = ladDbProv.length > 0 ? ladDbProv : dbProvRows;
+        const taggedDb = activePool.filter((r) => matchesMilestoneDatabaseTag(r, viewKey));
         if (taggedDb.length > 0) {
           targetLhs = taggedDb.length;
           targetArea = taggedDb.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
@@ -2264,8 +2296,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
           targetArea = Math.max(0, Number(nepOverride.area) || 0);
         } else {
-          targetLhs = dbProvRows.length;
-          targetArea = dbProvRows.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
+          targetLhs = activePool.length;
+          targetArea = activePool.reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0);
         }
       }
       targetArea = Number(targetArea.toFixed(4));
@@ -3049,8 +3081,22 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       ? surveyTableRows.filter((r) => r.isActive)
       : surveyTableRows;
 
+    let surveyDbScopeRows = dbRows;
+    if (provinceScope) {
+      surveyDbScopeRows = surveyDbScopeRows.filter((r) => matchProvinceName(r.province, provinceScope.provinceName));
+    }
+    if (selectedProvs.length > 0) {
+      surveyDbScopeRows = surveyDbScopeRows.filter((r) => selectedProvs.some((p) => matchProvinceName(r.province, p)));
+    }
+    const surveyDbLadRows = surveyDbScopeRows.filter((r) => isLadBalance(r));
+    const surveyDbLadLhs = surveyDbLadRows.length;
+    const surveyDbLadArea = surveyDbLadRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || r.areaHas || r.computedArea || 0), 0);
+
     const surveyGlobalTargetLhs = activeBenchmarkRows.reduce((s, r) => s + r.targetLhs, 0);
     const surveyGlobalTargetArea = Number(activeBenchmarkRows.reduce((s, r) => s + r.targetArea, 0).toFixed(4));
+
+    const finalSurveyGlobalTargetLhs = surveyDbLadLhs > 0 ? surveyDbLadLhs : surveyGlobalTargetLhs;
+    const finalSurveyGlobalTargetArea = surveyDbLadLhs > 0 ? surveyDbLadArea : surveyGlobalTargetArea;
 
     const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.lhs, 0);
     const surveyGlobalAccompArea = Number(activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.area, 0).toFixed(4));
@@ -3098,17 +3144,17 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       <section class="cf-kpi-global-grid">
         <div class="cf-kpi-card cf-kpi-card-sm">
           <div class="cf-kpi-header">
-            <span class="cf-kpi-title">Global Target</span>
+            <span class="cf-kpi-title">Global Target (LAD Balance)</span>
             <span class="cf-kpi-badge">${esc(targetBadgeText)}</span>
           </div>
           <div class="cf-kpi-body">
             <div class="cf-kpi-stat">
               <span class="cf-kpi-label">LHs</span>
-              <span class="cf-kpi-val">${surveyGlobalTargetLhs.toLocaleString()}</span>
+              <span class="cf-kpi-val">${finalSurveyGlobalTargetLhs.toLocaleString()}</span>
             </div>
             <div class="cf-kpi-stat">
               <span class="cf-kpi-label">Area</span>
-              <span class="cf-kpi-val area">${fmtArea(surveyGlobalTargetArea)}<span class="cf-kpi-unit">HAS</span></span>
+              <span class="cf-kpi-val area">${fmtArea(finalSurveyGlobalTargetArea)}<span class="cf-kpi-unit">HAS</span></span>
             </div>
           </div>
         </div>
@@ -5200,6 +5246,64 @@ function buildDbByLhidMap(state) {
     const filteredRowsOnly = indexedRows.map((entry) => entry.row);
     const tabFilteredStats = sumOptoolCarpableMetrics(filteredRowsOnly, dbByLhid, currentTab);
 
+    // Global Target breakdown: LAD Balance vs Temp. Park
+    let scopedDbRows = dbRows;
+    const activeFilterProv = (ctx.filters && ctx.filters.province) || 'ALL';
+    const codeMap = {
+      BIL: 'biliran',
+      ESA: 'eastern samar',
+      LEY: 'leyte',
+      NSA: 'northern samar',
+      SAM: 'samar',
+      SLE: 'southern leyte'
+    };
+    if (ctx.provinceScope) {
+      scopedDbRows = scopedDbRows.filter((r) => matchProvinceName(r.province, ctx.provinceScope.provinceName));
+    } else if (activeFilterProv !== 'ALL') {
+      const target = codeMap[activeFilterProv];
+      if (target) {
+        scopedDbRows = scopedDbRows.filter((r) => {
+          const provText = String(r.province || '').toLowerCase();
+          if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
+          if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
+          return provText.includes(target);
+        });
+      }
+    }
+
+    const scopedLadRows = scopedDbRows.filter(isLadBalance);
+    const scopedLadLhs = scopedLadRows.length;
+    const scopedLadArea = scopedLadRows.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+
+    const scopedTempRows = scopedDbRows.filter(isTempPark);
+    const scopedTempLhs = scopedTempRows.length;
+    const scopedTempArea = scopedTempRows.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+
+    const scopedDbCarpableArea = scopedDbRows.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+
+    let filteredLadLhs = scopedLadLhs;
+    let filteredLadArea = scopedLadArea;
+    let filteredTempLhs = scopedTempLhs;
+    let filteredTempArea = scopedTempArea;
+
+    if (currentTab === 'Database') {
+      const dbLadRowsFiltered = filteredRowsOnly.filter(isLadBalance);
+      filteredLadLhs = dbLadRowsFiltered.length;
+      filteredLadArea = dbLadRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+
+      const dbTempRowsFiltered = filteredRowsOnly.filter(isTempPark);
+      filteredTempLhs = dbTempRowsFiltered.length;
+      filteredTempArea = dbTempRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.carpable) || 0), 0);
+    }
+
+    let scopeBadgeText = 'Region VIII';
+    if (ctx.provinceScope) {
+      scopeBadgeText = ctx.provinceScope.provinceName;
+    } else if (activeFilterProv !== 'ALL') {
+      const reg = (schemas.registry || []).find((p) => p.code === activeFilterProv);
+      scopeBadgeText = reg?.provinceName || activeFilterProv;
+    }
+
     let dbFilteredAssignedCount = 0;
     const dbTargetStats = {};
     for (const t of targetTabs) {
@@ -5236,6 +5340,17 @@ function buildDbByLhidMap(state) {
       isFilteredScope,
       dbAllRowsCount: dbRows.length,
       dbTotalCarpableArea,
+      scopedDbRowsCount: scopedDbRows.length,
+      scopedDbCarpableArea,
+      scopedLadLhs,
+      scopedLadArea,
+      scopedTempLhs,
+      scopedTempArea,
+      filteredLadLhs,
+      filteredLadArea,
+      filteredTempLhs,
+      filteredTempArea,
+      scopeBadgeText,
       dbFilteredAssignedCount,
       dbTargetStats,
       tabAllStats,
@@ -5315,7 +5430,18 @@ function buildDbByLhidMap(state) {
       tabFilteredStats,
       targetTabs,
       targetFilter,
-      isFilteredScope
+      isFilteredScope,
+      scopedDbRowsCount,
+      scopedDbCarpableArea,
+      scopedLadLhs,
+      scopedLadArea,
+      scopedTempLhs,
+      scopedTempArea,
+      filteredLadLhs,
+      filteredLadArea,
+      filteredTempLhs,
+      filteredTempArea,
+      scopeBadgeText
     } = vm;
 
     if (currentTab !== 'Database') {
@@ -5364,36 +5490,80 @@ function buildDbByLhidMap(state) {
           <div class="kpi-meta">CARPable matched from Database by LHID (${tabFilteredStats.matchedCount}/${tabFilteredStats.count} row(s))</div>
         </div>
       </section>
+
+      <!-- Companion Global Target Breakdown (LAD Balance vs Temp. Park) -->
+      <section class="kpi-grid kpi-grid-2" style="margin-top: 10px;" aria-label="Global Target Breakdown">
+        <div class="kpi-card highlight">
+          <div class="kpi-label">Global Target (LAD Balance)</div>
+          <div class="kpi-primary num">${scopedLadLhs.toLocaleString()} LHs</div>
+          <div class="kpi-secondary num" style="color:var(--dar-green)">${fmtArea(scopedLadArea)} HAS CARPable</div>
+          <div class="kpi-meta">Active LAD Balance target for ${esc(scopeBadgeText || 'Region VIII')}</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Temp. Park</div>
+          <div class="kpi-primary num">${scopedTempLhs.toLocaleString()} LHs</div>
+          <div class="kpi-secondary num" style="color:var(--dar-amber)">${fmtArea(scopedTempArea)} HAS CARPable</div>
+          <div class="kpi-meta">Temporarily parked parcels in Database</div>
+        </div>
+      </section>
     `;
     }
 
-    const pctLhs = dbAllRowsCount > 0 ? ((totalRows / dbAllRowsCount) * 100).toFixed(1) : '0.0';
+    const pctLhs = (scopedDbRowsCount || dbAllRowsCount) > 0
+      ? ((totalRows / (scopedDbRowsCount || dbAllRowsCount)) * 100).toFixed(1)
+      : '0.0';
     const pctArea =
-      dbTotalCarpableArea > 0 ? ((tabFilteredStats.carpableArea / dbTotalCarpableArea) * 100).toFixed(1) : '0.0';
+      (scopedDbCarpableArea || dbTotalCarpableArea) > 0
+        ? ((tabFilteredStats.carpableArea / (scopedDbCarpableArea || dbTotalCarpableArea)) * 100).toFixed(1)
+        : '0.0';
+
+    const ladLhsToDisplay = isFilteredScope ? filteredLadLhs : scopedLadLhs;
+    const ladAreaToDisplay = isFilteredScope ? filteredLadArea : scopedLadArea;
+    const tempLhsToDisplay = isFilteredScope ? filteredTempLhs : scopedTempLhs;
+    const tempAreaToDisplay = isFilteredScope ? filteredTempArea : scopedTempArea;
 
     const summaryRowHtml = `
-    <section class="kpi-grid kpi-grid-2">
+    <section class="kpi-grid kpi-grid-3" aria-label="Global Target Breakdown">
+      <!-- Card 1: Global Target (LAD Balance) -->
       <div class="kpi-card highlight">
-        <div class="kpi-label">Total LHs</div>
-        <div class="kpi-primary num">${totalRows.toLocaleString()} LHs</div>
-        <div class="kpi-secondary num">
-          ${isFilteredScope
-        ? `of ${dbAllRowsCount.toLocaleString()} total LHs (${pctLhs}%)`
-        : `${dbFilteredAssignedCount.toLocaleString()} assigned to Milestone Target`
-      }
+        <div class="kpi-label">Global Target (LAD Balance)</div>
+        <div class="kpi-primary num">${ladLhsToDisplay.toLocaleString()} LHs</div>
+        <div class="kpi-secondary num" style="color:var(--dar-green)">
+          ${fmtArea(ladAreaToDisplay)} HAS
         </div>
-        <div class="kpi-meta">${isFilteredScope ? 'Filtered Database landholdings' : 'Active Database master landholdings'}</div>
+        <div class="kpi-meta">
+          ${isFilteredScope
+            ? `of ${scopedLadLhs.toLocaleString()} LAD Balance LHs (${scopedLadLhs > 0 ? ((ladLhsToDisplay / scopedLadLhs) * 100).toFixed(1) : '0.0'}%)`
+            : `Active LAD Balance landholdings (${scopedDbRowsCount > 0 ? ((ladLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
+        </div>
       </div>
-      <div class="kpi-card blue">
-        <div class="kpi-label">Area (CARPable)</div>
-        <div class="kpi-primary num">${fmtArea(tabFilteredStats.carpableArea)} HAS</div>
-        <div class="kpi-secondary num" style="color:var(--dar-blue)">
-          ${isFilteredScope
-        ? `of ${fmtArea(dbTotalCarpableArea)} HAS total CARPable (${pctArea}%)`
-        : `Sum of CARPable column across ${dbAllRowsCount.toLocaleString()} LH(s)`
-      }
+
+      <!-- Card 2: Temp. Park -->
+      <div class="kpi-card amber">
+        <div class="kpi-label">Temp. Park</div>
+        <div class="kpi-primary num">${tempLhsToDisplay.toLocaleString()} LHs</div>
+        <div class="kpi-secondary num" style="color:var(--dar-amber)">
+          ${fmtArea(tempAreaToDisplay)} HAS
         </div>
-        <div class="kpi-meta">CARPable area total in hectares (4-decimal precision)</div>
+        <div class="kpi-meta">
+          ${isFilteredScope
+            ? `of ${scopedTempLhs.toLocaleString()} Temp. Park LHs (${scopedTempLhs > 0 ? ((tempLhsToDisplay / scopedTempLhs) * 100).toFixed(1) : '0.0'}%)`
+            : `Temporarily parked landholdings (${scopedDbRowsCount > 0 ? ((tempLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
+        </div>
+      </div>
+
+      <!-- Card 3: Total Database (All Records) -->
+      <div class="kpi-card blue">
+        <div class="kpi-label">Total Database (All Records)</div>
+        <div class="kpi-primary num">${totalRows.toLocaleString()} LHs</div>
+        <div class="kpi-secondary num" style="color:var(--dar-blue)">
+          ${fmtArea(tabFilteredStats.carpableArea)} HAS
+        </div>
+        <div class="kpi-meta">
+          ${isFilteredScope
+            ? `of ${(scopedDbRowsCount || dbAllRowsCount).toLocaleString()} total LHs (${pctLhs}%)`
+            : `${dbFilteredAssignedCount.toLocaleString()} assigned to Milestone Target`}
+        </div>
       </div>
     </section>
   `;

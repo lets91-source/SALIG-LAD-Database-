@@ -35,7 +35,9 @@ import {
   renderCfSupportListModalHtml,
   DEFAULT_CF_PROVINCES,
   WHEREABOUTS_CONFIGS,
-  renderUsersView
+  renderUsersView,
+  isLadBalance,
+  isTempPark
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -3114,4 +3116,105 @@ test('Automatic Live Provincial Sync & Google Sheet Database Integration', async
   assert.ok(gasCode.includes('scheduledProvincialSync'), 'Includes scheduledProvincialSync');
   assert.ok(gasCode.includes('installAutomatedSyncTrigger'), 'Includes installAutomatedSyncTrigger');
   assert.ok(gasCode.includes('getWriteTargetSpreadsheets_(tabName'), 'Passes tabName to getWriteTargetSpreadsheets_');
+});
+
+test('Global Target filters strictly to LAD Balance, and OPTool Support List breaks down LAD Balance vs Temp. Park', () => {
+  // 1. Helper function checks
+  assert.equal(isLadBalance({ ladStatus: 'LAD Balance' }), true);
+  assert.equal(isLadBalance({ ladStatus: 'lad balance' }), true);
+  assert.equal(isLadBalance({ 'Lad Status': 'LAD Balance' }), true);
+  assert.equal(isLadBalance({ ladStatus: 'Temp. Park' }), false);
+  assert.equal(isLadBalance({ ladStatus: 'For Inclusion' }), false);
+  assert.equal(isLadBalance({ ladStatus: '' }), false);
+  assert.equal(isLadBalance(null), false);
+
+  assert.equal(isTempPark({ ladStatus: 'Temp. Park' }), true);
+  assert.equal(isTempPark({ ladStatus: 'temp park' }), true);
+  assert.equal(isTempPark({ 'Lad Status': 'Temp. Park' }), true);
+  assert.equal(isTempPark({ ladStatus: 'LAD Balance' }), false);
+  assert.equal(isTempPark({ ladStatus: 'For Inclusion' }), false);
+  assert.equal(isTempPark({ ladStatus: '' }), false);
+
+  // 2. Whereabouts Global Target: strictly counts LAD Balance records
+  const mockState = {
+    optool: {
+      Database: [
+        { lhid: '805000001', province: 'Western Samar', carpable: '10.5000', ladStatus: 'LAD Balance' },
+        { lhid: '805000002', province: 'Western Samar', carpable: '5.2500', ladStatus: 'LAD Balance' },
+        { lhid: '805000003', province: 'Western Samar', carpable: '20.0000', ladStatus: 'Temp. Park' },
+        { lhid: '805000004', province: 'Western Samar', carpable: '3.0000', ladStatus: 'For Inclusion' },
+        { lhid: '805000005', province: 'Leyte', carpable: '15.0000', ladStatus: 'Temp. Park' }
+      ],
+      'CF(DOC)': [
+        { lhid: '805000001', province: 'Western Samar', dateFiConducted: '2026-03-01' }
+      ],
+      Survey: [
+        { lhid: '805000001', province: 'Western Samar', dateRss: '2026-03-01' }
+      ]
+    },
+    nepMilestoneList: {},
+    nepTargets: {}
+  };
+
+  const cfCfg = WHEREABOUTS_CONFIGS['cf-whereabouts'];
+  const whereaboutsCtx = {
+    state: mockState,
+    schemas: {
+      registry: [{ code: 'SAM', provinceName: 'Western Samar' }, { code: 'LEY', provinceName: 'Leyte' }],
+      optoolTabs: {
+        Database: { key: 'Database', label: 'Database' },
+        'CF(DOC)': { key: 'CF(DOC)', label: 'CF(DOC)' },
+        Survey: { key: 'Survey', label: 'Survey' }
+      }
+    },
+    provinceScope: null,
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': 'ALL' },
+    whereaboutsProvinceFilter: { 'cf-whereabouts': 'Western Samar' },
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {},
+    cfMetricMode: 'both',
+    cfTableLayout: 'standard'
+  };
+
+  const cfHtml = renderMilestoneWhereaboutsView(whereaboutsCtx, cfCfg);
+  assert.ok(cfHtml.includes('Global Target (LAD Balance)'), 'Whereabouts must label card as Global Target (LAD Balance)');
+  // Western Samar has 2 LAD Balance LHs (15.7500 HAS), 1 Temp. Park (20 HAS), and 1 For Inclusion (3 HAS)
+  assert.ok(cfHtml.includes('15.7500'), 'Global Target area must strictly be 15.7500 HAS (sum of LAD Balance only)');
+  assert.equal(cfHtml.includes('38.7500'), false, 'Global Target must NOT sum Temp. Park or For Inclusion area');
+
+  // 3. OPTool Support List Database Tab: Breakdown into 3 KPI cards
+  const optoolDbCtx = {
+    state: mockState,
+    schemas: {
+      registry: [{ code: 'SAM', provinceName: 'Western Samar' }, { code: 'LEY', provinceName: 'Leyte' }],
+      optoolTabs: OPTOOL_SHEET_SCHEMAS,
+      optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS,
+      milestoneTargetTabs: MILESTONE_TARGET_TABS
+    },
+    activeOptoolTab: 'Database',
+    searchTerm: '',
+    optoolTargetFilter: 'ALL',
+    optoolColFilters: {},
+    filters: { province: 'ALL' }
+  };
+
+  const dbTabHtml = renderOptoolView(optoolDbCtx);
+  assert.ok(dbTabHtml.includes('kpi-grid-3'), 'Database tab must render 3-column KPI breakdown grid');
+  assert.ok(dbTabHtml.includes('Global Target (LAD Balance)'), 'Database tab must have Global Target (LAD Balance) card');
+  assert.ok(dbTabHtml.includes('Temp. Park'), 'Database tab must have Temp. Park breakdown card');
+  assert.ok(dbTabHtml.includes('Total Database (All Records)'), 'Database tab must have Total Database card');
+  assert.ok(dbTabHtml.includes('Target per Milestone'), 'Database tab retains Target per Milestone section');
+
+  // 4. OPTool Support List Milestone Tab (Survey): Companion Global Target Breakdown
+  const optoolSurveyCtx = {
+    ...optoolDbCtx,
+    activeOptoolTab: 'Survey'
+  };
+  const surveyTabHtml = renderOptoolView(optoolSurveyCtx);
+  assert.ok(surveyTabHtml.includes('Survey — Total LHs'), 'Survey tab includes Survey Total LHs card');
+  assert.ok(surveyTabHtml.includes('Survey — Area (CARPable)'), 'Survey tab includes Survey Area card');
+  assert.ok(surveyTabHtml.includes('Global Target (LAD Balance)'), 'Survey tab includes companion Global Target (LAD Balance) breakdown card');
+  assert.ok(surveyTabHtml.includes('Temp. Park'), 'Survey tab includes companion Temp. Park breakdown card');
 });

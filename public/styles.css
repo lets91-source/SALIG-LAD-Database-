@@ -573,6 +573,10 @@ textarea.form-control {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.kpi-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .kpi-targets-section {
   display: flex;
   flex-direction: column;
@@ -2208,7 +2212,8 @@ td.cell-check {
 }
 
 @media (max-width: 1120px) {
-  .kpi-grid {
+  .kpi-grid,
+  .kpi-grid-3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .kpi-grid-targets {
@@ -2242,7 +2247,8 @@ td.cell-check {
   .form-grid {
     grid-template-columns: 1fr;
   }
-  .kpi-grid {
+  .kpi-grid,
+  .kpi-grid-3 {
     grid-template-columns: 1fr;
   }
 }
