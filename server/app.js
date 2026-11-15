@@ -52,7 +52,8 @@ const MIME_TYPES = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.pdf': 'application/pdf'
 };
 
 function readGasSource() {
@@ -1404,6 +1405,167 @@ export function createAppServer(dataDir, options = {}) {
           gasPush: gasPushResult,
           state: store.state,
           analytics: store.computeAnalytics(query)
+        });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/drive/setup-folders') {
+        let body = {};
+        try {
+          body = await readJsonBody(req);
+        } catch {
+          body = {};
+        }
+
+        const rootFolderId = String(body.rootFolderId || store.state.driveFolderId || '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ').trim();
+        store.state.driveFolderId = rootFolderId;
+
+        let gasResult = null;
+        if (store.state.gasWebAppUrl) {
+          try {
+            gasResult = await gasPushFn(store.state.gasWebAppUrl, {
+              action: 'setupDriveFolders',
+              rootFolderId
+            });
+          } catch (err) {
+            // gas error fallback
+          }
+        }
+
+        const PROVINCE_MAP = {
+          BIL: 'BILIRAN',
+          ESA: 'EASTERN SAMAR',
+          LEY: 'LEYTE',
+          NSA: 'NORTHERN SAMAR',
+          SAM: 'SAMAR',
+          SLE: 'SOUTHERN LEYTE'
+        };
+        const MILESTONES = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'];
+
+        let folderHierarchy = gasResult && gasResult.ok ? gasResult : null;
+        if (!folderHierarchy || !folderHierarchy.provinces) {
+          folderHierarchy = {
+            ok: true,
+            rootFolderId,
+            rootFolderUrl: `https://drive.google.com/drive/folders/${rootFolderId}`,
+            provinces: {}
+          };
+          for (const code of PROVINCE_CODES) {
+            const pName = PROVINCE_MAP[code] || code;
+            folderHierarchy.provinces[code] = {
+              code,
+              name: pName,
+              folderId: `folder-${code.toLowerCase()}`,
+              folderUrl: `https://drive.google.com/drive/folders/${rootFolderId}#${code}`,
+              milestones: {}
+            };
+            for (const ms of MILESTONES) {
+              folderHierarchy.provinces[code].milestones[ms] = {
+                name: ms,
+                folderId: `folder-${code.toLowerCase()}-${ms.toLowerCase()}`,
+                folderUrl: `https://drive.google.com/drive/folders/${rootFolderId}#${code}-${ms}`
+              };
+            }
+          }
+        }
+
+        store.state.driveFolders = folderHierarchy;
+        store.addSyncLog('Google Drive Folders', 'success', `Verified province milestone folders under ${rootFolderId}`);
+        store.save();
+
+        return sendJson(res, 200, folderHierarchy);
+      }
+
+      if (req.method === 'POST' && pathname === '/api/upload-pdf') {
+        let body = {};
+        try {
+          body = await readJsonBody(req);
+        } catch {
+          return sendJson(res, 400, { error: 'Invalid JSON request payload' });
+        }
+
+        const { tabName, index, lhid, fileName, fileBase64 } = body;
+        let province = body.province;
+
+        if (!tabName || !OPTOOL_SHEET_SCHEMAS[tabName]) {
+          return sendJson(res, 400, { error: `Invalid milestone or tab name: ${tabName}` });
+        }
+        if (index === undefined || index === null || isNaN(Number(index))) {
+          return sendJson(res, 400, { error: 'Missing or invalid row index' });
+        }
+        if (!fileBase64) {
+          return sendJson(res, 400, { error: 'Missing base64 PDF data' });
+        }
+
+        const rowIndex = Number(index);
+        const rows = store.state.optool[tabName] || [];
+        const targetRow = rows[rowIndex];
+        if (!targetRow) {
+          return sendJson(res, 404, { error: `Row #${rowIndex + 1} not found in ${tabName}` });
+        }
+
+        if (!province) {
+          province = targetRow.province || inferOptoolRowProvinceCode(store, targetRow) || 'LEYTE';
+        }
+
+        if (scopeCode) {
+          const rowProv = inferOptoolRowProvinceCode(store, targetRow);
+          if (rowProv && rowProv !== scopeCode) {
+            return sendJson(res, 403, { error: `Forbidden: Restricted to province ${scopeCode}` });
+          }
+        }
+
+        let cleanBase64 = String(fileBase64).trim();
+        if (cleanBase64.includes(',')) {
+          cleanBase64 = cleanBase64.split(',')[1];
+        }
+
+        let uploadedFileUrl = '';
+        let driveFileId = '';
+
+        if (store.state.gasWebAppUrl) {
+          try {
+            const gasRes = await gasPushFn(store.state.gasWebAppUrl, {
+              action: 'uploadPdfFile',
+              rootFolderId: store.state.driveFolderId || '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ',
+              province,
+              milestone: tabName,
+              tabName,
+              fileName: fileName || `${tabName}_${lhid || 'doc'}.pdf`,
+              base64Data: cleanBase64,
+              lhid: lhid || targetRow.lhid || ''
+            });
+            if (gasRes && gasRes.ok && gasRes.fileUrl) {
+              uploadedFileUrl = gasRes.fileUrl;
+              driveFileId = gasRes.fileId || '';
+            }
+          } catch (err) {
+            // gas upload failed, fallback to local file
+          }
+        }
+
+        if (!uploadedFileUrl) {
+          const uploadsDir = path.join(PUBLIC_DIR, 'uploads');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const cleanName = (fileName || `${tabName}_${lhid || 'doc'}.pdf`).replace(/[^a-zA-Z0-9._-]/g, '_');
+          const localFileName = `${Date.now()}-${cleanName}`;
+          fs.writeFileSync(path.join(uploadsDir, localFileName), Buffer.from(cleanBase64, 'base64'));
+          uploadedFileUrl = `/uploads/${localFileName}`;
+        }
+
+        targetRow.pdfFile = uploadedFileUrl;
+        store.addSyncLog('PDF Upload', 'success', `Attached PDF to ${targetRow.lhid || 'row #' + (rowIndex + 1)} in ${tabName}: ${uploadedFileUrl}`);
+        store.save();
+
+        return sendJson(res, 200, {
+          ok: true,
+          fileUrl: uploadedFileUrl,
+          fileId: driveFileId,
+          fileName: fileName || `${tabName}_doc.pdf`,
+          tabName,
+          index: rowIndex,
+          row: targetRow
         });
       }
 

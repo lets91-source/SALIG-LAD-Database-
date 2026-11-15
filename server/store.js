@@ -439,6 +439,10 @@ export class ConsolidatedStore {
     if (!this.state.gasWebAppUrl && process.env.GAS_WEB_APP_URL) {
       this.state.gasWebAppUrl = String(process.env.GAS_WEB_APP_URL).trim();
     }
+    if (!this.state.driveFolderId) {
+      this.state.driveFolderId = '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ';
+      dirty = true;
+    }
     if (!this.state.authSecret) {
       this.state.authSecret =
         String(process.env.SALIG_AUTH_SECRET || '').trim() ||

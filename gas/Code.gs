@@ -16,6 +16,24 @@
  */
 
 const HUB_SPREADSHEET_ID = '1jTVJSQlUcWyZFxm6Pxqj9L62q9NtLyhUy1ifYqqb0Lw';
+const REGIONAL_DRIVE_FOLDER_ID = '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ';
+
+const PROVINCE_DRIVE_CONFIGS = [
+  { code: 'BIL', name: 'BILIRAN' },
+  { code: 'ESA', name: 'EASTERN SAMAR' },
+  { code: 'LEY', name: 'LEYTE' },
+  { code: 'NSA', name: 'NORTHERN SAMAR' },
+  { code: 'SAM', name: 'SAMAR' },
+  { code: 'SLE', name: 'SOUTHERN LEYTE' }
+];
+
+const MILESTONE_DRIVE_FOLDERS = [
+  'CF(DOC)',
+  'Survey',
+  'MOV',
+  'RegistrationDistribution',
+  'Installation'
+];
 
 const PROVINCIAL_NODES = [
   { code: 'BIL', name: 'Biliran Province', id: '1MoHaQxhcCqXpMRAEUfLEBkXAgWfWRQxCZpJrjXDE-kk' },
@@ -126,7 +144,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'EP or CLOA \nSERIAL No.', 'AREA\n(HAs)', 'MOA', 'ROD TITLE NO.',
     'DATE REGISTERED', 'DATE OF DISTRIBUTION (mm/dd/yyyy)',
     'Total Number of ARB', 'Male', 'Female', 'NO. OF TITLES',
-    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'REMARKS', 'Target Year'
+    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'REMARKS', 'PDF File', 'Target Year'
   ],
   Installation: [
     'LHID \n (From OPTool, \n if New Land)', 'REGION', 'PROVINCE',
@@ -137,7 +155,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'AREA\n (HAs) 2', 'DATE REGISTERED', 'DATE DISTRIBUTED',
     'DATE OF INSTALLATION (mm/dd/yyyy)', 'REMARKS (Installed - Yes/No)',
     'No. OF ARBs', 'No. OF TITLES', 'REMARKS', 'YEAR ACCOMP',
-    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'Target Year'
+    'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'PDF File', 'Target Year'
   ]
 };
 
@@ -158,6 +176,7 @@ function onOpen() {
     .addItem('Apply Workability & LAD Dropdowns Across Sheets', 'applyDatabaseValidationAcrossSheets')
     .addItem('Initialize Milestone_Data, NEP, Baselines & User_Accounts Tabs', 'initializeHubTabs')
     .addItem('Create / Sync NEP Sheet (LHS, AREA, ARBs)', 'initializeNepSheet')
+    .addItem('Setup Google Drive Milestone Folders', 'menuSetupDriveFolders')
     .addItem('Install Hourly Auto-Sync Trigger', 'installHourlyTrigger')
     .addToUi();
 }
@@ -568,6 +587,18 @@ function doPost(e) {
     if (body.action === 'deleteUserAccount' && (body.userId || body.email)) {
       const deleted = deleteUserAccountRecord_(body.userId || '', body.email || '');
       return ContentService.createTextOutput(JSON.stringify({ ok: true, deleted: deleted }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'setupDriveFolders') {
+      const driveSetupRes = setupRegionalDriveFolders(body.rootFolderId || REGIONAL_DRIVE_FOLDER_ID);
+      return ContentService.createTextOutput(JSON.stringify(driveSetupRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'uploadPdfFile') {
+      const uploadPdfRes = uploadPdfFileToDrive(body);
+      return ContentService.createTextOutput(JSON.stringify(uploadPdfRes))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -1571,4 +1602,173 @@ function authorizeEmailQuota() {
   const remaining = MailApp.getRemainingDailyQuota();
   Logger.log('Remaining daily MailApp quota: ' + remaining);
   return remaining;
+}
+
+/* ============================================================================
+ * Google Drive Milestone Storage & Automated PDF Ingestion
+ * Root Folder: https://drive.google.com/drive/folders/1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ
+ * ============================================================================ */
+
+/** Find an existing subfolder by exact or normalized name, or create it with public-read permissions. */
+function getOrCreateDriveSubfolder_(parentFolder, folderName) {
+  const targetName = String(folderName || '').trim();
+  const folders = parentFolder.getFoldersByName(targetName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // Fallback: check case-insensitive or prefix matching
+  const allIter = parentFolder.getFolders();
+  while (allIter.hasNext()) {
+    const f = allIter.next();
+    const curName = f.getName().trim().toUpperCase();
+    if (curName === targetName.toUpperCase() || curName.startsWith(targetName.toUpperCase())) {
+      return f;
+    }
+  }
+
+  // Create new folder
+  const created = parentFolder.createFolder(targetName);
+  try {
+    created.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (err) {
+    Logger.log('Could not set link sharing for folder ' + targetName + ': ' + err.message);
+  }
+  return created;
+}
+
+/**
+ * Creates/verifies a dedicated folder for each Region VIII province and 5 milestone subfolders in each.
+ * Returns a JSON mapping of all folder IDs and web URLs.
+ */
+function setupRegionalDriveFolders(rootFolderId) {
+  const targetId = rootFolderId || REGIONAL_DRIVE_FOLDER_ID;
+  const root = DriveApp.getFolderById(targetId);
+  try {
+    root.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) {
+    Logger.log('Root link sharing: ' + e.message);
+  }
+
+  const result = {
+    ok: true,
+    rootFolderId: targetId,
+    rootFolderUrl: root.getUrl(),
+    provinces: {}
+  };
+
+  PROVINCE_DRIVE_CONFIGS.forEach(function (p) {
+    const provFolder = getOrCreateDriveSubfolder_(root, p.name);
+    result.provinces[p.code] = {
+      code: p.code,
+      name: p.name,
+      folderId: provFolder.getId(),
+      folderUrl: provFolder.getUrl(),
+      milestones: {}
+    };
+
+    MILESTONE_DRIVE_FOLDERS.forEach(function (ms) {
+      const msFolder = getOrCreateDriveSubfolder_(provFolder, ms);
+      result.provinces[p.code].milestones[ms] = {
+        name: ms,
+        folderId: msFolder.getId(),
+        folderUrl: msFolder.getUrl()
+      };
+    });
+  });
+
+  return result;
+}
+
+/** UI Menu wrapper to run setup from the Google Sheets menu. */
+function menuSetupDriveFolders() {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const res = setupRegionalDriveFolders(REGIONAL_DRIVE_FOLDER_ID);
+    ui.alert(
+      'Google Drive Setup Complete!\n\n' +
+      'All 6 Province and 5 Milestone folders are active in:\n' +
+      res.rootFolderUrl
+    );
+  } catch (err) {
+    ui.alert('Drive Setup Failed: ' + err.message);
+  }
+}
+
+/**
+ * Uploads a base64 encoded PDF file to the appropriate province and milestone subfolder.
+ * Optionally updates the matching Google Sheet row's "PDF File" column.
+ */
+function uploadPdfFileToDrive(payload) {
+  const targetId = payload.rootFolderId || REGIONAL_DRIVE_FOLDER_ID;
+  const root = DriveApp.getFolderById(targetId);
+
+  // Match province code or name
+  const rawProv = String(payload.province || 'LEYTE').trim().toUpperCase();
+  let matchedProv = PROVINCE_DRIVE_CONFIGS.find(function (p) {
+    return p.code === rawProv || p.name === rawProv || rawProv.indexOf(p.code) >= 0 || rawProv.indexOf(p.name) >= 0;
+  });
+  if (!matchedProv) matchedProv = PROVINCE_DRIVE_CONFIGS[2]; // Default Leyte
+
+  const provFolder = getOrCreateDriveSubfolder_(root, matchedProv.name);
+
+  const msName = String(payload.milestone || payload.tabName || 'CF(DOC)').trim();
+  const msFolder = getOrCreateDriveSubfolder_(provFolder, msName);
+
+  let cleanBase64 = String(payload.base64Data || payload.fileBase64 || '').trim();
+  if (cleanBase64.indexOf(',') >= 0) {
+    cleanBase64 = cleanBase64.split(',')[1];
+  }
+  const bytes = Utilities.base64Decode(cleanBase64);
+  const rawFileName = String(payload.fileName || (msName + '_' + (payload.lhid || 'doc') + '.pdf')).trim();
+  const fileName = rawFileName.toLowerCase().endsWith('.pdf') ? rawFileName : (rawFileName + '.pdf');
+
+  const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
+  const file = msFolder.createFile(blob);
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) {
+    Logger.log('Sharing error on file: ' + e.message);
+  }
+
+  const fileUrl = file.getUrl();
+
+  // If tabName and lhid provided, attempt to update the Google Sheet cell
+  try {
+    const tabName = payload.tabName || msName;
+    const lhid = payload.lhid ? String(payload.lhid).trim().toLowerCase() : '';
+    if (tabName && lhid) {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(tabName);
+      if (sheet) {
+        const lastRow = sheet.getLastRow();
+        const lastCol = sheet.getLastColumn();
+        if (lastRow > 1 && lastCol > 0) {
+          const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+          const lhidColIdx = headers.findIndex(function (h) { return String(h).toUpperCase().indexOf('LHID') >= 0; });
+          const pdfColIdx = headers.findIndex(function (h) { return String(h).toUpperCase().indexOf('PDF') >= 0; });
+          if (lhidColIdx >= 0 && pdfColIdx >= 0) {
+            const data = sheet.getRange(2, lhidColIdx + 1, lastRow - 1, 1).getValues();
+            for (let i = 0; i < data.length; i++) {
+              if (String(data[i][0]).trim().toLowerCase() === lhid) {
+                sheet.getRange(i + 2, pdfColIdx + 1).setValue(fileUrl);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (sheetErr) {
+    Logger.log('Could not update sheet cell for PDF: ' + sheetErr.message);
+  }
+
+  return {
+    ok: true,
+    fileId: file.getId(),
+    fileUrl: fileUrl,
+    fileName: fileName,
+    province: matchedProv.name,
+    milestone: msName
+  };
 }

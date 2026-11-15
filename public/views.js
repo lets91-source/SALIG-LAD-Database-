@@ -4335,7 +4335,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                     <td>
                       <span class="badge ${esc(r.stageBadge)}" style="font-weight:700;">${esc(r.stage)}</span>
                     </td>
-                    <td class="right">
+                    <td class="right" style="white-space:nowrap;">
+                      ${r.row && r.row.pdfFile ? `<a href="${esc(r.row.pdfFile)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="View Attached PDF"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
                       <button
                         type="button"
                         class="btn btn-secondary btn-xs"
@@ -5089,11 +5090,12 @@ function filterOptoolRows(rows, ctx, skipColKey = null, dbByLhidOverride = null)
   return rows
     .map((row, idx) => ({ row, idx }))
     .filter(({ row }) => {
-      if (filters.province !== 'ALL' && row.province !== undefined && row.province !== '') {
+      const activeFilterProv = (filters && filters.province) || 'ALL';
+      if (activeFilterProv !== 'ALL' && row.province !== undefined && row.province !== '') {
         const provText = String(row.province).toLowerCase();
-        const target = codeMap[filters.province];
-        if (filters.province === 'LEY' && provText.includes('southern')) return false;
-        if (filters.province === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
+        const target = codeMap[activeFilterProv];
+        if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
+        if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
         if (target && !provText.includes(target)) return false;
       }
       if (currentTab === 'Database' && targetFilter !== 'ALL') {
@@ -5504,6 +5506,19 @@ function renderOptoolBodyRowsHtml(vm) {
               const linkedCls = c.linkedFromDb ? 'cell-linked-db' : '';
               if (c.key === 'lhid' && val) {
                 return `<td><button type="button" class="link-btn" data-lhid="${esc(val)}">${esc(val)}</button></td>`;
+              }
+              if (c.key === 'pdfFile') {
+                if (val && typeof val === 'string' && val.trim() !== '') {
+                  return `<td style="white-space:nowrap">
+                    <div style="display:inline-flex;gap:4px;align-items:center;">
+                      <a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;font-weight:600;"><span style="font-size:12px;">📄</span> View PDF</a>
+                      <button type="button" class="btn btn-secondary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(row.lhid || '')}" data-upload-pdf-province="${esc(row.province || '')}" title="Replace or re-upload PDF" style="padding:2px 6px;font-size:11px;">⬆</button>
+                    </div>
+                  </td>`;
+                }
+                return `<td style="white-space:nowrap">
+                  <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(row.lhid || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
+                </td>`;
               }
               if (c.type === 'checkbox') {
                 const checked = isChecklistChecked(val);
@@ -5950,6 +5965,46 @@ export function renderSyncView(ctx) {
       `
       }
     </section>
+
+    <!-- Section 2b: Google Drive Provincial Milestone Storage -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Google Drive Provincial Milestone Cloud Folders</h3>
+          <p class="panel-subtitle">Dedicated folders for every province &amp; milestone to upload and store PDF files</p>
+        </div>
+        <div class="toolbar-left">
+          <a class="btn btn-secondary btn-sm" href="https://drive.google.com/drive/folders/1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ" target="_blank" rel="noopener noreferrer">
+            Open Regional Drive Folder ↗
+          </a>
+          <button class="btn btn-primary btn-sm" id="btn-setup-drive-folders">
+            📁 Setup / Verify Province Milestone Folders
+          </button>
+        </div>
+      </div>
+      <div class="panel-body" id="drive-folders-summary">
+        <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-muted)">
+          Target Google Drive Root: <a href="https://drive.google.com/drive/folders/1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ" target="_blank" rel="noopener noreferrer" class="mono font-semibold">1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ</a>.
+          All 6 provinces (<strong>BILIRAN, EASTERN SAMAR, LEYTE, NORTHERN SAMAR, SAMAR, SOUTHERN LEYTE</strong>) each contain subfolders for all 5 milestones (<strong>CF(DOC), Survey, MOV, RegistrationDistribution, Installation</strong>).
+        </p>
+        <div class="grid-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">
+          ${['BILIRAN', 'EASTERN SAMAR', 'LEYTE', 'NORTHERN SAMAR', 'SAMAR', 'SOUTHERN LEYTE'].map(p => `
+            <div style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--surface);">
+              <div style="font-weight:700;color:var(--dar-green-dark,#09341b);display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                <span>📁</span> ${esc(p)}
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;font-size:11px;">
+                <span class="badge badge-gray">CF(DOC)</span>
+                <span class="badge badge-gray">Survey</span>
+                <span class="badge badge-gray">MOV</span>
+                <span class="badge badge-gray">RegistrationDistribution</span>
+                <span class="badge badge-gray">Installation</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
 
     ${
       isScoped

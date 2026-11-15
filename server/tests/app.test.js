@@ -67,19 +67,19 @@ test('Schema & Region VIII Registry integrity', () => {
   const ppuCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'ppuReviewResult');
   assert.equal(ppuCol?.type, 'select');
   assert.deepEqual(ppuCol?.options, ['PASSED', 'FAILED']);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 22);
-  const regReporting = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.slice(-8);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 23);
+  const regReporting = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.slice(-9);
   assert.deepEqual(
     regReporting.map((c) => c.key),
-    ['noOfArbs', 'maleArbs', 'femaleArbs', 'noOfTitles', 'target', 'monthReported', 'remarks', 'targetYear']
+    ['noOfArbs', 'maleArbs', 'femaleArbs', 'noOfTitles', 'target', 'monthReported', 'remarks', 'pdfFile', 'targetYear']
   );
   assert.ok(regReporting.every((c) => c.group === 'Reporting'));
   assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.some((c) => c.key === 'gender'), false);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.Installation.length, 31);
-  const instReporting = OPTOOL_SHEET_SCHEMAS.Installation.slice(-3, -1);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.Installation.length, 32);
+  const instReporting = OPTOOL_SHEET_SCHEMAS.Installation.slice(-4, -1);
   assert.deepEqual(
     instReporting.map((c) => c.key),
-    ['target', 'monthReported']
+    ['target', 'monthReported', 'pdfFile']
   );
   assert.equal(instReporting[0].type, 'select');
   assert.deepEqual(instReporting[0].options, TARGET_PERIOD_OPTIONS);
@@ -2662,6 +2662,114 @@ test('Accounts Approval: Delete mock data in every milestone across every provin
     assert.equal(delJson.ok, true);
     assert.equal(delJson.deletedMilestonesCount, 13);
     assert.equal(delJson.state.milestoneData.length, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('Google Drive Regional Folder Structure & Automated PDF Upload Integration', async () => {
+  const tempDir = makeTempDir();
+  const { server, store: appStore } = createAppServer(tempDir);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    // 1. Create and authenticate admin user
+    const admin = appStore.createPendingUser(
+      {
+        name: 'Regional Admin',
+        email: 'drive.admin@dar8.gov.ph',
+        role: 'admin',
+        province: 'Region VIII Hub',
+        contactNumber: '0917-000-8888',
+        password: 'Password123!'
+      },
+      { requireOtp: false }
+    );
+    appStore.updateUserStatus(admin.id, { status: 'approved', role: 'admin' }, 'admin');
+
+    const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'drive.admin@dar8.gov.ph', password: 'Password123!' })
+    });
+    const adminCookie = adminLogin.headers.get('set-cookie').split(';')[0];
+
+    // 2. Setup Google Drive Folders: POST /api/drive/setup-folders
+    const driveSetupRes = await fetch(`${baseUrl}/api/drive/setup-folders`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rootFolderId: '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ' })
+    });
+    assert.equal(driveSetupRes.status, 200);
+    const driveJson = await driveSetupRes.json();
+    assert.equal(driveJson.ok, true);
+    assert.equal(driveJson.rootFolderId, '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ');
+    assert.ok(driveJson.provinces);
+    const provinceCodes = Object.keys(driveJson.provinces);
+    assert.deepEqual(provinceCodes.sort(), ['BIL', 'ESA', 'LEY', 'NSA', 'SAM', 'SLE'].sort());
+
+    for (const code of provinceCodes) {
+      const p = driveJson.provinces[code];
+      assert.ok(p.name);
+      assert.ok(p.milestones['CF(DOC)']);
+      assert.ok(p.milestones['Survey']);
+      assert.ok(p.milestones['MOV']);
+      assert.ok(p.milestones['RegistrationDistribution']);
+      assert.ok(p.milestones['Installation']);
+    }
+
+    // 3. Upload PDF to CF(DOC): POST /api/upload-pdf
+    const sampleLhid = appStore.state.optool['CF(DOC)'][0]?.lhid || 'LHID-TEST-001';
+    const uploadRes = await fetch(`${baseUrl}/api/upload-pdf`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tabName: 'CF(DOC)',
+        index: 0,
+        lhid: sampleLhid,
+        province: 'LEY',
+        fileName: 'Test_Docket.pdf',
+        fileBase64: 'JVBERi0xLjQKJcTl8uXrp/Og0MTGCjQgMCBvYmoK'
+      })
+    });
+    assert.equal(uploadRes.status, 200);
+    const uploadJson = await uploadRes.json();
+    assert.equal(uploadJson.ok, true);
+    assert.ok(uploadJson.fileUrl, 'Returns a valid file URL');
+    assert.equal(appStore.state.optool['CF(DOC)'][0].pdfFile, uploadJson.fileUrl, 'Row in store updated with pdfFile link');
+
+    // 4. Test UI rendering: View PDF badge when pdfFile exists vs Upload button when empty
+    const { renderOptoolView, renderSyncView } = await import('../../public/views.js');
+    const ctxWithPdf = {
+      state: appStore.state,
+      analytics: appStore.computeAnalytics({}),
+      schemas: {
+        registry: [],
+        optoolTabs: OPTOOL_SHEET_SCHEMAS,
+        optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS
+      },
+      activeOptoolTab: 'CF(DOC)',
+      filters: { province: 'ALL' },
+      optoolColMode: 'preview',
+      searchTerm: ''
+    };
+
+    const optoolHtml = renderOptoolView(ctxWithPdf);
+    assert.ok(optoolHtml.includes('View PDF'), 'Row 0 with pdfFile renders View PDF badge');
+    assert.ok(optoolHtml.includes('btn-upload-pdf'), 'Upload PDF button rendered for rows');
+
+    const syncHtml = renderSyncView({
+      state: appStore.state,
+      schemas: { registry: [] },
+      gasScript: '',
+      gasHtml: '',
+      provinceScope: null
+    });
+    assert.ok(syncHtml.includes('1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ'), 'Sync view references Google Drive root folder');
+    assert.ok(syncHtml.includes('btn-setup-drive-folders'), 'Sync view contains Setup Drive Folders button');
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(tempDir, { recursive: true, force: true });

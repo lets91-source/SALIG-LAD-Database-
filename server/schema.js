@@ -458,6 +458,7 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'target', header: 'TARGET YEAR\n (Current/ Previous)', label: 'Target Year', group: 'Reporting', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'monthReported', header: 'MONTH REPORTED', label: 'Month Reported', group: 'Reporting', type: 'select', options: getReportedMonthOptions() },
     { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Reporting', type: 'text' },
+    { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
     { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
   ],
   Installation: [
@@ -491,6 +492,7 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'yearAccomp', header: 'YEAR ACCOMP', label: 'Year Accomplished', group: 'Dates & Accomplishment', type: 'text' },
     { key: 'target', header: 'TARGET YEAR\n (Current/ Previous)', label: 'Target Year', group: 'Dates & Accomplishment', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'monthReported', header: 'MONTH REPORTED', label: 'Month Reported', group: 'Dates & Accomplishment', type: 'select', options: getReportedMonthOptions() },
+    { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Dates & Accomplishment', type: 'text' },
     { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Accomplishment', type: 'text' }
   ]
 };
@@ -525,6 +527,7 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'target',
     'targetYear',
     'reportedMonth',
+    'pdfFile',
     'remarks'
   ],
   Survey: [
@@ -543,7 +546,8 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'aspNo',
     'target',
     'targetYear',
-    'reportedMonth'
+    'reportedMonth',
+    'pdfFile'
   ],
   MOV: [
     'lhid',
@@ -557,7 +561,8 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'aocNumber',
     'target',
     'targetYear',
-    'reportedMonth'
+    'reportedMonth',
+    'pdfFile'
   ],
   RegistrationDistribution: [
     'lhid',
@@ -579,6 +584,7 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'target',
     'targetYear',
     'monthReported',
+    'pdfFile',
     'remarks'
   ],
   Installation: [
@@ -599,7 +605,8 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'yearAccomp',
     'target',
     'targetYear',
-    'monthReported'
+    'monthReported',
+    'pdfFile'
   ]
 };
 

@@ -3,4 +3,6 @@ server/data/store.json
 .vercel
 *.tmp
 .DS_Store
+public/uploads/*
+!public/uploads/.gitkeep
 

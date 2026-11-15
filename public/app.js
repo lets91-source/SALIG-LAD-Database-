@@ -1557,6 +1557,48 @@ function bindSyncViewEvents(container) {
       toast('Clipboard permission unavailable — select and copy from the code panel.', true);
     }
   });
+
+  container.querySelector('#btn-setup-drive-folders')?.addEventListener('click', async () => {
+    try {
+      const res = await withLoading(
+        'saving',
+        'Setting Up Google Drive Folders…',
+        'Creating & verifying provincial and milestone folders in Google Drive…',
+        () =>
+          api('/api/drive/setup-folders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rootFolderId: '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ' })
+          })
+      );
+      toast('Google Drive milestone folders verified & ready!');
+      const summaryEl = document.getElementById('drive-folders-summary');
+      if (summaryEl && res.provinces) {
+        summaryEl.innerHTML = `
+          <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-muted)">
+            Verified Root Storage: <a href="${esc(res.rootFolderUrl || 'https://drive.google.com/drive/folders/1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ')}" target="_blank" rel="noopener noreferrer" class="mono font-semibold">${esc(res.rootFolderId || '1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ')}</a>.
+            All 6 provinces &amp; 5 milestone subfolders are confirmed active.
+          </p>
+          <div class="grid-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">
+            ${Object.values(res.provinces).map(p => `
+              <div style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--surface);">
+                <div style="font-weight:700;color:var(--dar-green-dark,#09341b);display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                  <span>📁</span> <a href="${esc(p.folderUrl)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;">${esc(p.name)} ↗</a>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;font-size:11px;">
+                  ${Object.values(p.milestones || {}).map(m => `
+                    <a href="${esc(m.folderUrl)}" target="_blank" rel="noopener noreferrer" class="badge badge-gray" style="text-decoration:none;" title="Open ${esc(m.name)} folder">${esc(m.name)} ↗</a>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
 }
 
 function isUserActivelyEditing() {
@@ -2139,6 +2181,21 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
                 .map((opt) => `<option value="${esc(opt)}" ${val === opt ? 'selected' : ''}>${esc(opt)}</option>`)
                 .join('')}
             </select>
+          </div>${linkedAfterLhid}
+        `;
+      }
+      if (c.key === 'pdfFile') {
+        return `
+          ${groupHtml}
+          <div class="${fieldClass}">
+            <label for="opt-${esc(c.key)}">${esc(c.label)}</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" class="form-control" value="${esc(val)}" placeholder="https://drive.google.com/..." style="flex:1;" />
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" style="white-space:nowrap;padding:4px 8px;font-size:12px;">
+                📎 Upload PDF
+              </button>
+              ${val ? `<a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm" style="white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;">📄 View</a>` : ''}
+            </div>
           </div>${linkedAfterLhid}
         `;
       }
@@ -5176,6 +5233,92 @@ async function init() {
         activeFullscreenPanelId = null;
       }
     }
+  });
+
+  // Global PDF Upload Handler
+  let pendingPdfUpload = null;
+  let fileInput = document.getElementById('global-pdf-uploader');
+  if (!fileInput) {
+    fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'global-pdf-uploader';
+    fileInput.accept = 'application/pdf';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+  }
+
+  document.addEventListener('click', (e) => {
+    const uploadBtn = e.target.closest('.btn-upload-pdf, [data-upload-pdf-tab], #btn-modal-upload-pdf');
+    if (uploadBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const tabName = uploadBtn.dataset.uploadPdfTab || appState.activeOptoolTab || 'CF(DOC)';
+      const idx = uploadBtn.dataset.uploadPdfIdx !== undefined && uploadBtn.dataset.uploadPdfIdx !== '' ? Number(uploadBtn.dataset.uploadPdfIdx) : -1;
+      const lhid = uploadBtn.dataset.uploadPdfLhid || '';
+      const province = uploadBtn.dataset.uploadPdfProvince || '';
+      const isModal = uploadBtn.id === 'btn-modal-upload-pdf';
+
+      pendingPdfUpload = { tabName, idx, lhid, province, isModal };
+      fileInput.value = '';
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingPdfUpload) return;
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      toast('Please select a valid PDF file (.pdf)', true);
+      return;
+    }
+
+    const { tabName, idx, lhid, province, isModal } = pendingPdfUpload;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const fileBase64 = reader.result;
+        const uploadRes = await withLoading(
+          'saving',
+          'Uploading PDF to Drive…',
+          `Saving ${file.name} to Region VIII Google Drive…`,
+          () =>
+            api('/api/upload-pdf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tabName,
+                index: idx >= 0 ? idx : 0,
+                lhid,
+                province,
+                fileName: file.name,
+                fileBase64
+              })
+            })
+        );
+
+        toast(`PDF uploaded successfully: ${uploadRes.fileUrl ? 'Linked to Drive' : file.name}`);
+
+        if (isModal) {
+          const pdfInput = document.getElementById('opt-pdfFile');
+          if (pdfInput) {
+            pdfInput.value = uploadRes.fileUrl;
+            pdfInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+
+        if (idx >= 0 && appState.state.optool?.[tabName]?.[idx]) {
+          appState.state.optool[tabName][idx].pdfFile = uploadRes.fileUrl;
+        }
+
+        renderActiveView();
+      } catch (err) {
+        toast(`Upload failed: ${err.message}`, true);
+      } finally {
+        pendingPdfUpload = null;
+        fileInput.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
   });
 }
 
