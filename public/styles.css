@@ -4226,15 +4226,27 @@ th:hover .q-toggle-pill {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.survey-tf-total .btn-figure-link {
-  color: #ffffff;
-  text-decoration-color: rgba(255, 255, 255, 0.5);
+.survey-tf-total .btn-figure-link,
+.survey-monitoring-table tfoot .btn-figure-link,
+.cf-monitoring-table tfoot .btn-figure-link {
+  color: #ffffff !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(255, 255, 255, 0.7) !important;
+  text-underline-offset: 2px !important;
 }
 
-.survey-tf-total .btn-figure-link:hover {
-  background: rgba(255, 255, 255, 0.22);
-  color: #fef08a;
-  text-decoration-color: #facc15;
+.survey-tf-total .btn-figure-link:hover,
+.survey-monitoring-table tfoot .btn-figure-link:hover,
+.cf-monitoring-table tfoot .btn-figure-link:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #fef08a !important;
+  text-decoration-color: #facc15 !important;
+}
+
+.survey-tf-total span,
+.survey-monitoring-table tfoot span,
+.cf-monitoring-table tfoot span {
+  color: #ffffff !important;
 }
 
 .modal-card:has(.survey-support-list-modal),

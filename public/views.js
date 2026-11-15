@@ -2336,13 +2336,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       const numVal = Number(val || 0);
 
       if (numVal <= 0) {
-        return `<span style="color:#9ca3af;">${displayVal}</span>`;
+        return `<span style="color:${isTotal ? '#ffffff' : '#9ca3af'};${isTotal ? 'font-weight:700;' : ''}">${displayVal}</span>`;
       }
 
-      const extraStyles = indicator.isBal
-        ? 'color:#b45309;font-weight:700;'
-        : isTotal
-          ? 'color:#15803d;font-weight:800;'
+      const extraStyles = isTotal
+        ? 'color:#ffffff;font-weight:800;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,0.7);'
+        : indicator.isBal
+          ? 'color:#b45309;font-weight:700;'
           : 'color:#15803d;font-weight:700;';
       const stageKeyAttr = indicator.stageKey ? `data-stage-key="${esc(indicator.stageKey)}"` : '';
       const stageLabelAttr = indicator.stageLabel ? `data-stage-label="${esc(indicator.stageLabel)}"` : '';
@@ -2524,18 +2524,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 }).join('')}
                 ${metricMode === 'lhs' ? `
                   <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
-                    ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                    ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: false })}
                   </td>
                 ` : metricMode === 'area' ? `
                   <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
-                    ${renderCfFigureBtn({ val: ind.getArea(totals), isArea: true, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                    ${renderCfFigureBtn({ val: ind.getArea(totals), isArea: true, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: false })}
                   </td>
                 ` : `
                   <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
-                    ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                    ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: false })}
                   </td>
                   <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
-                    ${renderCfFigureBtn({ val: ind.getArea(totals), isArea: true, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: true })}
+                    ${renderCfFigureBtn({ val: ind.getArea(totals), isArea: true, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: false })}
                   </td>
                 `}
               </tr>

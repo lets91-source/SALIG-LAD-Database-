@@ -2378,6 +2378,7 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
   assert.ok(htmlStandard.includes('WITH PREPARED &amp; SIGNED'), 'Standard table has WITH PREPARED & SIGNED header');
   assert.ok(htmlStandard.includes('WITH REPORTED MONTH'), 'Standard table has WITH REPORTED MONTH header');
   assert.ok(!htmlStandard.includes('>STATUS<') && !htmlStandard.includes('STATUS (LHS)'), 'Redundant STATUS column must be removed');
+  assert.ok(htmlStandard.includes('color:#ffffff;font-weight:800;'), 'Region VIII Total footer figures have white font color');
 
   // 5b. Default Layout is Standard (Rows: Province)
   const ctxDefault = {
