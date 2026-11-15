@@ -770,7 +770,12 @@ export class ConsolidatedStore {
         const targetRows = this.state.optool[tabName];
         const makeRowKey = (r) => {
           if (tabName === 'Database') {
-            return `${String(r?.lhid || '').trim().toLowerCase()}|${String(r?.titleNumber || '').trim().toLowerCase()}|${String(r?.lotNumber || '').trim().toLowerCase()}|${String(r?.landOwner || '').trim().toLowerCase()}`;
+            const lhid = String(r?.lhid || '').trim().toLowerCase();
+            const prov = String(r?.province || '').trim().toLowerCase();
+            if (lhid) {
+              return `${lhid}|${prov}`;
+            }
+            return `${String(r?.titleNumber || '').trim().toLowerCase()}|${String(r?.lotNumber || '').trim().toLowerCase()}|${String(r?.landOwner || '').trim().toLowerCase()}`;
           }
           return `${String(r?.lhid || '').trim().toLowerCase()}|${JSON.stringify(r)}`;
         };
