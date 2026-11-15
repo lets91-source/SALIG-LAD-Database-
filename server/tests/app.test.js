@@ -2486,6 +2486,12 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   assert.ok(movHtml.includes('id="cf-status-target-year-filter"'), 'MOV panel has Target Year select');
   assert.ok(movHtml.includes('id="whereabouts-target-year-filter"'), 'MOV master ledger has Target Year filter');
   assert.ok(movHtml.includes('color:#ffffff;font-weight:800;'), 'MOV Region VIII Total footer has white font color');
+  assert.ok(movHtml.includes('cf-kpi-split-sections'), 'Row 2 uses split sections layout');
+  assert.ok(movHtml.includes('cf-kpi-section-target'), 'Section 1 Target Year container present');
+  assert.ok(movHtml.includes('TARGET YEAR QUOTA'), 'Target Year Quota label present');
+  assert.ok(movHtml.includes('cf-kpi-section-milestones'), 'Section 2 Milestone Accomplishments container present');
+  assert.ok(movHtml.includes('MILESTONE ACCOMPLISHMENTS'), 'Milestone Accomplishments label present');
+  assert.ok(movHtml.includes('cf-kpi-milestones-grid'), 'Milestone cards grid present');
 
   // MOV Transposed Layout
   const movTransposedHtml = renderMilestoneWhereaboutsView({ ...baseCtx, cfTableLayout: 'transposed' }, movCfg);

@@ -2188,48 +2188,64 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
       </section>
 
-      <!-- Row 2: Target Year Filtered Cards -->
-      <section class="cf-kpi-year-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:14px;margin-bottom:18px;">
-        <div class="cf-kpi-card">
-          <div class="cf-kpi-header">
-            <span class="cf-kpi-title">Target Year: ${esc(targetYearFilterVal)}</span>
-            ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+      <!-- Row 2: Two Grouped Sections (Section 1: Target Year Quota • Section 2: Milestone Accomplishments) -->
+      <section class="cf-kpi-split-sections">
+        <!-- Section 1: Target Year Quota -->
+        <div class="cf-kpi-section-target">
+          <div class="cf-kpi-section-label">
+            <span class="cf-kpi-section-tag tag-target">🎯 TARGET YEAR QUOTA</span>
+            <span class="badge badge-gray">${esc(targetYearFilterVal)}</span>
           </div>
-          <div class="cf-kpi-body">
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">LHs</span>
-              <span class="cf-kpi-val">${selectedYearTargetLhs.toLocaleString()}</span>
+          <div class="cf-kpi-card">
+            <div class="cf-kpi-header">
+              <span class="cf-kpi-title">Target Year: ${esc(targetYearFilterVal)}</span>
+              ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
             </div>
-            <div class="cf-kpi-stat">
-              <span class="cf-kpi-label">Area</span>
-              <span class="cf-kpi-val area">${fmtArea(selectedYearTargetArea)}<span class="cf-kpi-unit">HAS</span></span>
+            <div class="cf-kpi-body">
+              <div class="cf-kpi-stat">
+                <span class="cf-kpi-label">LHs</span>
+                <span class="cf-kpi-val">${selectedYearTargetLhs.toLocaleString()}</span>
+              </div>
+              <div class="cf-kpi-stat">
+                <span class="cf-kpi-label">Area</span>
+                <span class="cf-kpi-val area">${fmtArea(selectedYearTargetArea)}<span class="cf-kpi-unit">HAS</span></span>
+              </div>
             </div>
           </div>
         </div>
 
-        ${cfg.dates.map((d) => {
-          const matchingRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
-          const dLhs = matchingRows.length;
-          const dArea = matchingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
-          return `
-            <div class="cf-kpi-card">
-              <div class="cf-kpi-header">
-                <span class="cf-kpi-title">Total with ${esc(d.shortLabel)}</span>
-                ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
-              </div>
-              <div class="cf-kpi-body">
-                <div class="cf-kpi-stat">
-                  <span class="cf-kpi-label">LHs</span>
-                  <span class="cf-kpi-val">${dLhs.toLocaleString()}</span>
+        <!-- Section 2: Milestone Accomplishments -->
+        <div class="cf-kpi-section-milestones">
+          <div class="cf-kpi-section-label">
+            <span class="cf-kpi-section-tag tag-actual">✔ MILESTONE ACCOMPLISHMENTS</span>
+            <span class="badge badge-green">${esc(targetBadgeText || 'Region VIII')} • ${esc(targetYearFilterVal)}</span>
+          </div>
+          <div class="cf-kpi-milestones-grid">
+            ${cfg.dates.map((d) => {
+              const matchingRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
+              const dLhs = matchingRows.length;
+              const dArea = matchingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
+              return `
+                <div class="cf-kpi-card">
+                  <div class="cf-kpi-header">
+                    <span class="cf-kpi-title">Total with ${esc(d.shortLabel)}</span>
+                    ${targetBadgeText ? `<span class="cf-kpi-badge">${esc(targetBadgeText)}</span>` : ''}
+                  </div>
+                  <div class="cf-kpi-body">
+                    <div class="cf-kpi-stat">
+                      <span class="cf-kpi-label">LHs</span>
+                      <span class="cf-kpi-val">${dLhs.toLocaleString()}</span>
+                    </div>
+                    <div class="cf-kpi-stat">
+                      <span class="cf-kpi-label">Area</span>
+                      <span class="cf-kpi-val area">${fmtArea(dArea)}<span class="cf-kpi-unit">HAS</span></span>
+                    </div>
+                  </div>
                 </div>
-                <div class="cf-kpi-stat">
-                  <span class="cf-kpi-label">Area</span>
-                  <span class="cf-kpi-val area">${fmtArea(dArea)}<span class="cf-kpi-unit">HAS</span></span>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
+              `;
+            }).join('')}
+          </div>
+        </div>
       </section>
     `;
 
