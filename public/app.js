@@ -36,7 +36,9 @@ import {
   resolveTargetFromDatabaseRow,
   SURVEY_STATUS_STAGES,
   resolveSurveyCurrentStatus,
-  resolveTotalArbsFromGenderCounts
+  resolveTotalArbsFromGenderCounts,
+  normalizePdfUrl,
+  toEmbeddablePdfUrl
 } from './reportingUtils.js';
 
 const appState = {
@@ -2203,7 +2205,7 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
               <button type="button" class="btn btn-secondary btn-sm btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" data-upload-pdf-col="${esc(c.key)}" style="white-space:nowrap;padding:4px 8px;font-size:12px;">
                 📎 Upload PDF
               </button>
-              ${isPdfAttached ? `<a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm" style="white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;">📄 View</a>` : ''}
+              ${isPdfAttached ? `<a href="${esc(normalizePdfUrl(val))}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm pdf-link" style="white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;" title="${esc(val)}">📄 View</a>` : ''}
             </div>
           </div>${linkedAfterLhid}
         `;
@@ -5315,6 +5317,21 @@ async function init() {
           if (targetInput) {
             targetInput.value = uploadRes.fileUrl;
             targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+            const parentDiv = targetInput.parentElement;
+            if (parentDiv) {
+              let viewLink = parentDiv.querySelector('.pdf-link');
+              if (!viewLink) {
+                viewLink = document.createElement('a');
+                viewLink.className = 'btn btn-success btn-sm pdf-link';
+                viewLink.target = '_blank';
+                viewLink.rel = 'noopener noreferrer';
+                viewLink.style.cssText = 'white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;';
+                viewLink.innerHTML = '📄 View';
+                parentDiv.appendChild(viewLink);
+              }
+              viewLink.href = normalizePdfUrl(uploadRes.fileUrl);
+              viewLink.setAttribute('title', file.name || 'Uploaded PDF');
+            }
           }
         }
 
@@ -5335,9 +5352,11 @@ async function init() {
 
   // Global PDF Viewer Interceptor: Handles data URIs, blob URLs, Google Drive links & /api/pdf/ streams
   document.addEventListener('click', (e) => {
-    const pdfLink = e.target.closest('.pdf-link, a[href*=".pdf"], a[href^="data:application/pdf"], a[href*="/api/pdf/"], a[href*="/uploads/"]');
-    if (pdfLink) {
-      const href = pdfLink.getAttribute('href');
+    const pdfLink = e.target.closest(
+      '.pdf-link, a[data-pdf-url], a[href*=".pdf"], a[href^="data:application/pdf"], a[href*="/api/pdf/"], a[href*="/uploads/"], a[href*="drive.google.com"]'
+    );
+    if (pdfLink && !pdfLink.classList.contains('btn-close-pdf-modal') && !pdfLink.closest('.modal-header')) {
+      const href = pdfLink.getAttribute('data-pdf-url') || pdfLink.getAttribute('href');
       if (href) {
         e.preventDefault();
         e.stopPropagation();
@@ -5350,9 +5369,12 @@ async function init() {
 function openPdfViewer(url, title = 'PDF Document') {
   if (!url) return;
   const rawUrl = String(url).trim();
-  if (rawUrl.startsWith('data:application/pdf')) {
+  const normalizedUrl = normalizePdfUrl(rawUrl);
+
+  // If it's a data URI, convert to a Blob URL
+  if (normalizedUrl.startsWith('data:application/pdf')) {
     try {
-      const parts = rawUrl.split(',');
+      const parts = normalizedUrl.split(',');
       const byteString = atob(parts[1]);
       const len = byteString.length;
       const bytes = new Uint8Array(len);
@@ -5361,45 +5383,51 @@ function openPdfViewer(url, title = 'PDF Document') {
       }
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const blobUrl = URL.createObjectURL(blob);
-      const win = window.open(blobUrl, '_blank');
-      if (!win) {
-        openPdfModal(blobUrl, title);
-      }
+      openPdfModal(blobUrl, title, blobUrl);
       return;
     } catch (err) {
       console.warn('Could not parse data URI as blob:', err);
     }
   }
-  const win = window.open(rawUrl, '_blank', 'noopener,noreferrer');
-  if (!win) {
-    openPdfModal(rawUrl, title);
-  }
+
+  const isDrive = normalizedUrl.includes('drive.google.com');
+  const embedUrl = isDrive ? toEmbeddablePdfUrl(normalizedUrl) : normalizedUrl;
+
+  openPdfModal(embedUrl, title, normalizedUrl);
 }
 
-function openPdfModal(url, title = 'PDF Document') {
+function openPdfModal(embedUrl, title = 'PDF Document', directUrl = '') {
   const existing = document.getElementById('pdf-viewer-modal');
   if (existing) existing.remove();
+
+  const finalDirectUrl = directUrl || embedUrl;
+  const downloadFileName = (title || 'document').toLowerCase().endsWith('.pdf')
+    ? title
+    : `${title || 'document'}.pdf`;
 
   const modal = document.createElement('div');
   modal.className = 'modal-backdrop';
   modal.id = 'pdf-viewer-modal';
   modal.innerHTML = `
-    <div class="modal-box" style="width:92vw;max-width:1100px;height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:8px;">
-      <div class="modal-header" style="padding:10px 16px;background:var(--dar-green,#0f4d2a);color:#fff;display:flex;align-items:center;justify-content:space-between;">
-        <h3 class="modal-title" style="color:#fff;font-size:14px;display:flex;align-items:center;gap:6px;">
+    <div class="modal-box" style="width:94vw;max-width:1150px;height:92vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="padding:10px 18px;background:var(--dar-green,#0f4d2a);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <h3 class="modal-title" style="color:#fff;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;margin:0;">
           <span>📄</span> ${esc(title)}
         </h3>
         <div style="display:flex;gap:8px;align-items:center;">
-          <a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs" style="color:#fff;background:rgba(255,255,255,0.2);border:0;padding:4px 10px;text-decoration:none;">
-            ⧉ Open in New Tab
+          <a href="${esc(finalDirectUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs" style="color:#fff;background:rgba(255,255,255,0.2);border:0;padding:5px 12px;font-size:12px;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" title="Open in separate browser window">
+            <span>⧉</span> Open New Tab
           </a>
-          <button type="button" class="btn btn-xs btn-close-pdf-modal" style="color:#fff;background:transparent;border:0;font-size:18px;cursor:pointer;line-height:1;">
+          <a href="${esc(finalDirectUrl)}" download="${esc(downloadFileName)}" class="btn btn-primary btn-xs" style="color:#fff;background:#2e7d32;border:0;padding:5px 12px;font-size:12px;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" title="Download file to your computer">
+            <span>⬇</span> Download
+          </a>
+          <button type="button" class="btn btn-xs btn-close-pdf-modal" style="color:#fff;background:transparent;border:0;font-size:20px;cursor:pointer;line-height:1;margin-left:8px;padding:0 4px;" title="Close Viewer">
             ✕
           </button>
         </div>
       </div>
-      <div style="flex:1;background:#525659;position:relative;">
-        <iframe src="${esc(url)}" style="width:100%;height:100%;border:0;" title="${esc(title)}"></iframe>
+      <div style="flex:1;background:#2b2b2b;position:relative;display:flex;flex-direction:column;">
+        <iframe src="${esc(embedUrl)}" style="width:100%;height:100%;border:0;flex:1;" allow="autoplay" title="${esc(title)}"></iframe>
       </div>
     </div>
   `;

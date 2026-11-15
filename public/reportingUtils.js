@@ -19,6 +19,44 @@ export function formatLhidDisplay(raw) {
   return str;
 }
 
+/**
+ * Normalizes any PDF reference (Google Drive URL, local /api/pdf/ stream, /uploads/, data URI, or plain filename)
+ * into a valid link that the browser and viewer can resolve.
+ */
+export function normalizePdfUrl(raw) {
+  if (raw === null || raw === undefined) return '';
+  const str = String(raw).trim();
+  if (!str) return '';
+  if (
+    str.startsWith('http://') ||
+    str.startsWith('https://') ||
+    str.startsWith('/api/pdf/') ||
+    str.startsWith('/uploads/') ||
+    str.startsWith('data:application/pdf') ||
+    str.startsWith('blob:')
+  ) {
+    return str;
+  }
+  return `/api/pdf/${encodeURIComponent(str)}`;
+}
+
+/**
+ * Transforms a Google Drive view/open URL into an embeddable preview URL for iframes.
+ */
+export function toEmbeddablePdfUrl(raw) {
+  if (!raw) return '';
+  const str = String(raw).trim();
+  const fileMatch = str.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) {
+    return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+  }
+  const idMatch = str.match(/drive\.google\.com\/(?:open\?id=|uc\?id=)([a-zA-Z0-9_-]+)/);
+  if (idMatch) {
+    return `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+  }
+  return normalizePdfUrl(str);
+}
+
 const MONTH_NAMES = [
   'January',
   'February',

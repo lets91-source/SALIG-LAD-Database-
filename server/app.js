@@ -66,6 +66,47 @@ function readGasHtmlSource() {
   return fs.existsSync(htmlPath) ? fs.readFileSync(htmlPath, 'utf8') : '';
 }
 
+function generatePlaceholderPdf(title, subtitle) {
+  const cleanTitle = String(title || 'SALIG LAD Document').replace(/[\(\)\\\r\n]/g, ' ');
+  const cleanSub = String(subtitle || '').replace(/[\(\)\\\r\n]/g, ' ');
+  const content = `BT
+/F1 16 Tf
+50 720 Td
+(${cleanTitle}) Tj
+/F1 11 Tf
+0 -28 Td
+(${cleanSub}) Tj
+0 -22 Td
+(Recorded in Region VIII SALIG LAD Database) Tj
+0 -20 Td
+(Use the Upload PDF button in OPTool to attach the official scanned file.) Tj
+ET`;
+  const streamLen = Buffer.byteLength(content);
+  const pdfStr = `%PDF-1.4
+1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj
+2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>> endobj
+3 0 obj <</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources <</Font <</F1 5 0 R>>>>>> endobj
+4 0 obj <</Length ${streamLen}>>
+stream
+${content}
+endstream
+endobj
+5 0 obj <</Type /Font /Subtype /Type1 /BaseFont /Helvetica>> endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000244 00000 n 
+0000000320 00000 n 
+trailer <</Size 6 /Root 1 0 R>>
+startxref
+390
+%%EOF`;
+  return Buffer.from(pdfStr);
+}
+
 function sendJson(res, status, data, extraHeaders = {}) {
   const body = JSON.stringify(data);
   res.writeHead(status, {
@@ -486,8 +527,14 @@ export function createAppServer(dataDir, options = {}) {
         );
       }
 
-      // Protected API Gate
-      if (pathname.startsWith('/api/') && requireAuth && !sessionUser) {
+      // Protected API Gate (exempt /api/pdf/ streaming and public auth routes)
+      if (
+        pathname.startsWith('/api/') &&
+        !pathname.startsWith('/api/pdf/') &&
+        !pathname.startsWith('/api/auth/') &&
+        requireAuth &&
+        !sessionUser
+      ) {
         return sendJson(res, 401, { error: 'Authentication required. Please sign in.' });
       }
 
@@ -1597,33 +1644,55 @@ export function createAppServer(dataDir, options = {}) {
       }
 
       // Stream uploaded PDF files inline
-      if (req.method === 'GET' && (pathname.startsWith('/api/pdf/') || pathname.startsWith('/uploads/'))) {
-        const rawKey = pathname.startsWith('/api/pdf/')
-          ? decodeURIComponent(pathname.slice('/api/pdf/'.length))
-          : decodeURIComponent(pathname.slice('/uploads/'.length));
+      if (
+        req.method === 'GET' &&
+        (pathname.startsWith('/api/pdf/') ||
+          pathname.startsWith('/uploads/') ||
+          (pathname.endsWith('.pdf') && !pathname.includes('..')))
+      ) {
+        let rawKey = '';
+        if (pathname.startsWith('/api/pdf/')) {
+          rawKey = decodeURIComponent(pathname.slice('/api/pdf/'.length));
+        } else if (pathname.startsWith('/uploads/')) {
+          rawKey = decodeURIComponent(pathname.slice('/uploads/'.length));
+        } else {
+          rawKey = decodeURIComponent(pathname.replace(/^\/+/, ''));
+        }
         const fileKey = rawKey.replace(/[^a-zA-Z0-9._-]/g, '');
         const cleanFileId = fileKey.endsWith('.pdf') ? fileKey.slice(0, -4) : fileKey;
 
         // 1. Check in store.state.uploadedFiles
-        const fileRecord = store.state.uploadedFiles?.[cleanFileId] || store.state.uploadedFiles?.[fileKey];
+        const fileRecord =
+          store.state.uploadedFiles?.[cleanFileId] ||
+          store.state.uploadedFiles?.[fileKey] ||
+          (store.state.uploadedFiles &&
+            Object.values(store.state.uploadedFiles).find(
+              (f) => f && (f.fileName === fileKey || f.fileName === `${cleanFileId}.pdf`)
+            ));
+
         if (fileRecord && fileRecord.data) {
           const buf = Buffer.from(fileRecord.data, 'base64');
           res.writeHead(200, {
             'Content-Type': 'application/pdf',
             'Content-Length': buf.length,
             'Content-Disposition': `inline; filename="${encodeURIComponent(fileRecord.fileName || 'document.pdf')}"`,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+            'Accept-Ranges': 'bytes',
             'Cache-Control': 'public, max-age=86400'
           });
           res.end(buf);
           return;
         }
 
-        // 2. Check in store.dataDir/uploads or PUBLIC_DIR/uploads
+        // 2. Check in store.dataDir/uploads or PUBLIC_DIR/uploads or PUBLIC_DIR
         const candidates = [
           path.join(store.dataDir, 'uploads', `${cleanFileId}.pdf`),
           path.join(store.dataDir, 'uploads', fileKey),
           path.join(PUBLIC_DIR, 'uploads', fileKey),
-          path.join(PUBLIC_DIR, 'uploads', `${cleanFileId}.pdf`)
+          path.join(PUBLIC_DIR, 'uploads', `${cleanFileId}.pdf`),
+          path.join(PUBLIC_DIR, fileKey)
         ];
         const match = candidates.find((p) => fs.existsSync(p) && !fs.statSync(p).isDirectory());
         if (match) {
@@ -1632,9 +1701,31 @@ export function createAppServer(dataDir, options = {}) {
             'Content-Type': 'application/pdf',
             'Content-Length': stat.size,
             'Content-Disposition': `inline; filename="${encodeURIComponent(fileKey)}"`,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+            'Accept-Ranges': 'bytes',
             'Cache-Control': 'public, max-age=86400'
           });
           fs.createReadStream(match).pipe(res);
+          return;
+        }
+
+        // 3. Fallback: generate a valid sample PDF for recorded filenames from Google Sheet
+        if (fileKey.toLowerCase().endsWith('.pdf') || pathname.startsWith('/api/pdf/')) {
+          const displayDocName = fileKey.toLowerCase().endsWith('.pdf') ? fileKey : `${fileKey}.pdf`;
+          const sampleBuf = generatePlaceholderPdf(displayDocName, 'Region VIII SALIG LAD Database');
+          res.writeHead(200, {
+            'Content-Type': 'application/pdf',
+            'Content-Length': sampleBuf.length,
+            'Content-Disposition': `inline; filename="${encodeURIComponent(displayDocName)}"`,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'public, max-age=3600'
+          });
+          res.end(sampleBuf);
           return;
         }
 

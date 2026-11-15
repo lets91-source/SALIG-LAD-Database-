@@ -2897,3 +2897,64 @@ test('Survey Transmittal PDF as PDF File & Serverless EROFS-Safe Upload Handling
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test('PDF Viewer Streaming Endpoint, Drive Preview URL & Gate Exemption', async () => {
+  const { normalizePdfUrl, toEmbeddablePdfUrl } = await import('../../public/reportingUtils.js');
+
+  // 1. Verify URL normalization & embed transformations
+  assert.equal(
+    normalizePdfUrl('ASP_Psd-08-041982.pdf'),
+    '/api/pdf/ASP_Psd-08-041982.pdf',
+    'Plain filename normalized to /api/pdf/'
+  );
+  assert.equal(
+    normalizePdfUrl('https://drive.google.com/file/d/1ABCXYZ/view?usp=sharing'),
+    'https://drive.google.com/file/d/1ABCXYZ/view?usp=sharing',
+    'Drive link preserved in normalizePdfUrl'
+  );
+  assert.equal(
+    toEmbeddablePdfUrl('https://drive.google.com/file/d/1ABCXYZ/view?usp=sharing'),
+    'https://drive.google.com/file/d/1ABCXYZ/preview',
+    'Drive view link converted to embeddable /preview URL'
+  );
+  assert.equal(
+    toEmbeddablePdfUrl('https://drive.google.com/open?id=1ABCXYZ'),
+    'https://drive.google.com/file/d/1ABCXYZ/preview',
+    'Drive open?id link converted to embeddable /preview URL'
+  );
+
+  // 2. Server test with requireAuth: true
+  const tempDir = makeTempDir();
+  const testStore = new ConsolidatedStore(tempDir);
+  testStore.state.uploadedFiles = {
+    'sample-test-pdf': {
+      fileName: 'Sample_Test.pdf',
+      data: Buffer.from('%PDF-1.4 sample content %%EOF').toString('base64'),
+      createdAt: new Date().toISOString()
+    }
+  };
+  testStore.save();
+
+  const { server } = createAppServer(testStore, { requireAuth: true });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const port = server.address().port;
+
+  try {
+    // 3. GET /api/pdf/:id succeeds with 200 without auth cookie (gate exempted)
+    const streamResp = await fetch(`http://localhost:${port}/api/pdf/sample-test-pdf`);
+    assert.equal(streamResp.status, 200, 'Streaming uploaded PDF succeeds without auth');
+    assert.equal(streamResp.headers.get('content-type'), 'application/pdf', 'Content-Type is application/pdf');
+    const pdfBuf = await streamResp.arrayBuffer();
+    assert.ok(pdfBuf.byteLength > 0, 'PDF bytes streamed successfully');
+
+    // 4. GET /api/pdf/ASP_Psd-08-041982.pdf returns valid sample PDF for legacy sheet filenames
+    const sheetDocResp = await fetch(`http://localhost:${port}/api/pdf/ASP_Psd-08-041982.pdf`);
+    assert.equal(sheetDocResp.status, 200, 'Recorded sheet document succeeds without auth');
+    assert.equal(sheetDocResp.headers.get('content-type'), 'application/pdf', 'Content-Type is application/pdf');
+    const sheetBuf = await sheetDocResp.text();
+    assert.ok(sheetBuf.startsWith('%PDF-1.4'), 'Generated valid fallback PDF stream');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});

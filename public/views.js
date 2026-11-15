@@ -9,7 +9,8 @@ import {
   isReportedMonthKey,
   resolveSurveyCurrentStatus,
   SURVEY_STATUS_STAGES,
-  formatLhidDisplay
+  formatLhidDisplay,
+  normalizePdfUrl
 } from './reportingUtils.js';
 
 export function esc(str) {
@@ -4294,7 +4295,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       <span class="badge ${esc(r.stageBadge)}" style="font-weight:700;">${esc(r.stage)}</span>
                     </td>
                     <td class="right" style="white-space:nowrap;">
-                      ${r.row && (r.row.pdfFile || r.row.transmittalSrPdf) ? `<a href="${esc(r.row.pdfFile || r.row.transmittalSrPdf)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="View Attached PDF"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
+                      ${r.row && (r.row.pdfFile || r.row.transmittalSrPdf) ? `<a href="${esc(normalizePdfUrl(r.row.pdfFile || r.row.transmittalSrPdf))}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="${esc(r.row.pdfFile || r.row.transmittalSrPdf)}"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
                       <button
                         type="button"
                         class="btn btn-secondary btn-xs"
@@ -5465,7 +5466,7 @@ function buildDbByLhidMap(state) {
                 if (isPdfAttached) {
                   return `<td style="white-space:nowrap">
                     <div style="display:inline-flex;gap:4px;align-items:center;">
-                      <a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;font-weight:600;"><span style="font-size:12px;">📄</span> View PDF</a>
+                      <a href="${esc(normalizePdfUrl(val))}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;font-weight:600;" title="${esc(val)}"><span style="font-size:12px;">📄</span> View PDF</a>
                       <button type="button" class="btn btn-secondary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-col="${esc(c.key)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" title="Replace or re-upload PDF" style="padding:2px 6px;font-size:11px;">⬆</button>
                     </div>
                   </td>`;
