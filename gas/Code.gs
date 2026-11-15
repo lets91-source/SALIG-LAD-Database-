@@ -1770,15 +1770,31 @@ function uploadPdfFileToDrive(payload) {
         if (lastRow > 1 && lastCol > 0) {
           const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
           const lhidColIdx = headers.findIndex(function (h) { return String(h).toUpperCase().indexOf('LHID') >= 0; });
-          const pdfColIdx = headers.findIndex(function (h) { return String(h).toUpperCase().indexOf('PDF') >= 0; });
-          if (lhidColIdx >= 0 && pdfColIdx >= 0) {
+          const colKey = payload.colKey || 'pdfFile';
+          let targetColIdx = -1;
+          if (colKey === 'transmittalSrPdf') {
+            targetColIdx = headers.findIndex(function (h) {
+              const u = String(h).toUpperCase();
+              return u.indexOf('TRANSMITTAL') >= 0 || (u.indexOf('SR') >= 0 && u.indexOf('PDF') >= 0);
+            });
+          }
+          if (targetColIdx < 0) {
+            targetColIdx = headers.findIndex(function (h) {
+              const u = String(h).toUpperCase();
+              return u === 'PDF FILE' || u === 'PDF' || (colKey !== 'transmittalSrPdf' && u.indexOf('PDF') >= 0 && u.indexOf('TRANSMITTAL') < 0);
+            });
+          }
+          if (targetColIdx < 0) {
+            targetColIdx = headers.findIndex(function (h) { return String(h).toUpperCase().indexOf('PDF') >= 0; });
+          }
+          if (lhidColIdx >= 0 && targetColIdx >= 0) {
             const data = sheet.getRange(2, lhidColIdx + 1, lastRow - 1, 1).getValues();
             const cleanTargetLhid = formatLhidString_(lhid).toLowerCase();
             for (let i = 0; i < data.length; i++) {
               const rawCell = String(data[i][0]).trim().toLowerCase();
               const cleanCell = formatLhidString_(data[i][0]).toLowerCase();
               if (rawCell === lhid || cleanCell === cleanTargetLhid || rawCell === cleanTargetLhid || cleanCell === lhid) {
-                sheet.getRange(i + 2, pdfColIdx + 1).setValue(fileUrl);
+                sheet.getRange(i + 2, targetColIdx + 1).setValue(fileUrl);
                 break;
               }
             }

@@ -348,7 +348,7 @@ async function pullUsersFromGasIfConfigured(store, pullUsersFn = pullUsersFromGa
 }
 
 export function createAppServer(dataDir, options = {}) {
-  const store = new ConsolidatedStore(dataDir);
+  const store = dataDir instanceof ConsolidatedStore ? dataDir : new ConsolidatedStore(dataDir);
   const gasPushFn = options.pushToGasWebApp || pushToGasWebApp;
   const gasPullFn = options.pullFromGasWebApp || pullFromGasWebApp;
   const gasPullUsersFn = options.pullUsersFromGasWebApp || pullUsersFromGasWebApp;
@@ -1484,6 +1484,7 @@ export function createAppServer(dataDir, options = {}) {
         }
 
         const { tabName, index, lhid, fileName, fileBase64 } = body;
+        const colKey = String(body.colKey || 'pdfFile').trim();
         let province = body.province;
 
         if (!tabName || !OPTOOL_SHEET_SCHEMAS[tabName]) {
@@ -1521,6 +1522,7 @@ export function createAppServer(dataDir, options = {}) {
 
         let uploadedFileUrl = '';
         let driveFileId = '';
+        let gasErrorMsg = '';
 
         if (store.state.gasWebAppUrl) {
           try {
@@ -1530,6 +1532,7 @@ export function createAppServer(dataDir, options = {}) {
               province,
               milestone: tabName,
               tabName,
+              colKey,
               fileName: fileName || `${tabName}_${lhid || 'doc'}.pdf`,
               base64Data: cleanBase64,
               lhid: lhid || targetRow.lhid || ''
@@ -1537,25 +1540,32 @@ export function createAppServer(dataDir, options = {}) {
             if (gasRes && gasRes.ok && gasRes.fileUrl) {
               uploadedFileUrl = gasRes.fileUrl;
               driveFileId = gasRes.fileId || '';
+            } else if (gasRes && gasRes.error) {
+              gasErrorMsg = String(gasRes.error);
             }
           } catch (err) {
-            // gas upload failed, fallback to local file
+            gasErrorMsg = err.message;
           }
         }
 
         if (!uploadedFileUrl) {
-          const uploadsDir = path.join(PUBLIC_DIR, 'uploads');
-          if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-          }
           const cleanName = (fileName || `${tabName}_${lhid || 'doc'}.pdf`).replace(/[^a-zA-Z0-9._-]/g, '_');
           const localFileName = `${Date.now()}-${cleanName}`;
-          fs.writeFileSync(path.join(uploadsDir, localFileName), Buffer.from(cleanBase64, 'base64'));
-          uploadedFileUrl = `/uploads/${localFileName}`;
+          try {
+            const uploadsDir = path.join(PUBLIC_DIR, 'uploads');
+            if (!fs.existsSync(uploadsDir)) {
+              fs.mkdirSync(uploadsDir, { recursive: true });
+            }
+            fs.writeFileSync(path.join(uploadsDir, localFileName), Buffer.from(cleanBase64, 'base64'));
+            uploadedFileUrl = `/uploads/${localFileName}`;
+          } catch (fsErr) {
+            // Read-only filesystem (e.g. Vercel serverless /var/task): fallback to portable data URI
+            uploadedFileUrl = `data:application/pdf;name=${encodeURIComponent(cleanName)};base64,${cleanBase64}`;
+          }
         }
 
-        targetRow.pdfFile = uploadedFileUrl;
-        store.addSyncLog('PDF Upload', 'success', `Attached PDF to ${targetRow.lhid || 'row #' + (rowIndex + 1)} in ${tabName}: ${uploadedFileUrl}`);
+        targetRow[colKey] = uploadedFileUrl;
+        store.addSyncLog('PDF Upload', 'success', `Attached PDF to ${colKey} in ${targetRow.lhid || 'row #' + (rowIndex + 1)} (${tabName}): ${uploadedFileUrl.slice(0, 80)}`);
         store.save();
 
         return sendJson(res, 200, {
@@ -1564,8 +1574,11 @@ export function createAppServer(dataDir, options = {}) {
           fileId: driveFileId,
           fileName: fileName || `${tabName}_doc.pdf`,
           tabName,
+          colKey,
           index: rowIndex,
-          row: targetRow
+          row: targetRow,
+          gasSynced: Boolean(driveFileId),
+          gasError: gasErrorMsg || null
         });
       }
 

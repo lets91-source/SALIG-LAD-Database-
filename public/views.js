@@ -382,37 +382,36 @@ function renderMilestoneNepSection(ctx) {
             <button type="button" class="btn btn-sm ${nepMetricMode === 'count' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="count">Lots / eTitles</button>
             <button type="button" class="btn btn-sm ${nepMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="area">Area (HAS)</button>
           </div>
-          ${
-            !provinceScope
-              ? `
+          ${!provinceScope
+      ? `
             <select class="form-control nep-filter-select" id="nep-province-filter" aria-label="Filter Milestones by Province">
               <option value="ALL" ${activeProvince === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
               ${provNodes
-                .map(
-                  (p) =>
-                    `<option value="${esc(p.code)}" ${activeProvince === p.code ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
-                )
-                .join('')}
+        .map(
+          (p) =>
+            `<option value="${esc(p.code)}" ${activeProvince === p.code ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+        )
+        .join('')}
             </select>
           `
-              : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
-          }
+      : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
+    }
           <select class="form-control nep-filter-select" id="nep-milestone-table-filter" aria-label="Filter by Milestone">
             ${milestoneTableOptions
-              .map(
-                (m) =>
-                  `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
-              )
-              .join('')}
+      .map(
+        (m) =>
+          `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+      )
+      .join('')}
           </select>
           <select class="form-control nep-filter-select" id="nep-year-select" aria-label="Filter Milestones by Year">
             <option value="ALL" ${activeYear === 'ALL' ? 'selected' : ''}>All Years</option>
             ${years
-              .map(
-                (y) =>
-                  `<option value="${esc(String(y))}" ${String(activeYear) === String(y) ? 'selected' : ''}>${esc(String(y))}</option>`
-              )
-              .join('')}
+      .map(
+        (y) =>
+          `<option value="${esc(String(y))}" ${String(activeYear) === String(y) ? 'selected' : ''}>${esc(String(y))}</option>`
+      )
+      .join('')}
           </select>
           <button type="button" class="btn btn-sm ${hasAnyMonthExpanded ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-months" title="Toggle monthly accomplishment in each quarter">
             <span class="fs-icon">📅</span> <span>${hasAnyMonthExpanded ? 'Hide Monthly' : 'Monthly Accomp.'}</span>
@@ -431,28 +430,26 @@ function renderMilestoneNepSection(ctx) {
       <div class="table-wrap nep-milestone-table-wrap" id="nep-milestone-table-wrap">
         <table class="nep-milestone-table">
           <thead>
-            ${
-              !hasAnyMonthExpanded
-                ? `
+            ${!hasAnyMonthExpanded
+      ? `
             <tr>
               <th rowspan="2" class="nep-th-milestone-col sticky-col-province">
                 <div class="nep-th-milestone-flex">
                   <span>Milestone</span>
                   <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter" title="Filter by Milestone" aria-label="Filter by Milestone">
                     ${milestoneTableOptions
-                      .map(
-                        (m) =>
-                          `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
-                      )
-                      .join('')}
+        .map(
+          (m) =>
+            `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+        )
+        .join('')}
                   </select>
                 </div>
               </th>
-              ${
-                !nepExpandedTargetSems
-                  ? `<th rowspan="2" class="right nep-target-header" data-toggle-target-sems title="Click to show 1st &amp; 2nd Sem Target columns">NEP Target <span class="q-toggle-pill">+</span></th>`
-                  : `<th colspan="3" class="center nep-target-group-header" data-toggle-target-sems title="Click to collapse Target columns">NEP Target <span class="q-toggle-pill">Hide Sems ▴</span></th>`
-              }
+              ${!nepExpandedTargetSems
+        ? `<th rowspan="2" class="right nep-target-header" data-toggle-target-sems title="Click to show 1st &amp; 2nd Sem Target columns">NEP Target <span class="q-toggle-pill">+</span></th>`
+        : `<th colspan="3" class="center nep-target-group-header" data-toggle-target-sems title="Click to collapse Target columns">NEP Target <span class="q-toggle-pill">Hide Sems ▴</span></th>`
+      }
               <th colspan="${4 + (nepExpandedAccompSems ? 2 : 0)}" class="center nep-quarter-group" data-toggle-accomp-sems title="Click to toggle Semester Accomplishment columns" style="cursor:pointer;">
                 Accomp. per Quarter ${nepExpandedAccompSems ? '&amp; Semester' : ''} <span class="q-toggle-pill">${nepExpandedAccompSems ? 'Hide Sems ▴' : '+ Sems'}</span>
               </th>
@@ -461,15 +458,14 @@ function renderMilestoneNepSection(ctx) {
               <th rowspan="2" class="right">Variance</th>
             </tr>
             <tr>
-              ${
-                nepExpandedTargetSems
-                  ? `
+              ${nepExpandedTargetSems
+        ? `
                 <th class="center nep-target-sem-th" title="1st Semester NEP Target">1st Sem Target</th>
                 <th class="center nep-target-sem-th" title="2nd Semester NEP Target (Auto: NEP − 1st Sem)">2nd Sem Target</th>
                 <th class="center nep-target-annual-th" title="Full Year NEP Target">Annual Target</th>
               `
-                  : ''
-              }
+        : ''
+      }
               <th class="right nep-q-col-header" data-toggle-q="1" title="Click to show months for Q1">Q1 <span class="q-toggle-pill">+</span></th>
               <th class="right nep-q-col-header" data-toggle-q="2" title="Click to show months for Q2">Q2 <span class="q-toggle-pill">+</span></th>
               ${nepExpandedAccompSems ? `<th class="center nep-sem-accomp-th nep-sem1-accomp-th" title="1st Semester Accomplishment (Q1 + Q2)">1st Sem Accomp</th>` : ''}
@@ -478,26 +474,25 @@ function renderMilestoneNepSection(ctx) {
               ${nepExpandedAccompSems ? `<th class="center nep-sem-accomp-th nep-sem2-accomp-th" title="2nd Semester Accomplishment (Q3 + Q4)">2nd Sem Accomp</th>` : ''}
             </tr>
             `
-                : `
+      : `
             <tr>
               <th rowspan="3" class="nep-th-milestone-col sticky-col-province">
                 <div class="nep-th-milestone-flex">
                   <span>Milestone</span>
                   <select class="form-control nep-th-milestone-select" id="nep-th-milestone-filter-m" title="Filter by Milestone" aria-label="Filter by Milestone">
                     ${milestoneTableOptions
-                      .map(
-                        (m) =>
-                          `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
-                      )
-                      .join('')}
+        .map(
+          (m) =>
+            `<option value="${esc(m.key)}" ${activeMilestoneTable === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+        )
+        .join('')}
                   </select>
                 </div>
               </th>
-              ${
-                !nepExpandedTargetSems
-                  ? `<th rowspan="3" class="right nep-target-header" data-toggle-target-sems title="Click to show 1st &amp; 2nd Sem Target columns">NEP Target <span class="q-toggle-pill">+</span></th>`
-                  : `<th colspan="3" class="center nep-target-group-header" data-toggle-target-sems title="Click to collapse Target columns">NEP Target <span class="q-toggle-pill">Hide Sems ▴</span></th>`
-              }
+              ${!nepExpandedTargetSems
+        ? `<th rowspan="3" class="right nep-target-header" data-toggle-target-sems title="Click to show 1st &amp; 2nd Sem Target columns">NEP Target <span class="q-toggle-pill">+</span></th>`
+        : `<th colspan="3" class="center nep-target-group-header" data-toggle-target-sems title="Click to collapse Target columns">NEP Target <span class="q-toggle-pill">Hide Sems ▴</span></th>`
+      }
               <th colspan="${totalQuarterCols + (nepExpandedAccompSems ? 2 : 0)}" class="center nep-quarter-group" data-toggle-accomp-sems title="Click to toggle Semester Accomplishment columns" style="cursor:pointer;">
                 Accomp. per Quarter, Monthly &amp; Semester <span class="q-toggle-pill">${nepExpandedAccompSems ? 'Hide Sems ▴' : '+ Sems'}</span>
               </th>
@@ -506,65 +501,64 @@ function renderMilestoneNepSection(ctx) {
               <th rowspan="3" class="right">Variance</th>
             </tr>
             <tr>
-              ${
-                nepExpandedTargetSems
-                  ? `
+              ${nepExpandedTargetSems
+        ? `
                 <th class="center nep-target-sem-th" rowspan="2" title="1st Semester NEP Target">1st Sem Target</th>
                 <th class="center nep-target-sem-th" rowspan="2" title="2nd Semester NEP Target (Auto: NEP − 1st Sem)">2nd Sem Target</th>
                 <th class="center nep-target-annual-th" rowspan="2" title="Full Year NEP Target">Annual Target</th>
               `
-                  : ''
-              }
+        : ''
+      }
               ${quartersConfig
-                .slice(0, 2)
-                .map((q) => {
-                  if (isQExpanded(q.q)) {
-                    return `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="${q.q}" title="Click to hide Q${q.q} months">Q${q.q} <span class="q-toggle-pill">Hide Months ▴</span></th>`;
-                  }
-                  return `<th rowspan="2" class="right nep-quarter-group nep-q-header collapsed" data-toggle-q="${q.q}" title="Click to show Q${q.q} months">Q${q.q} <span class="q-toggle-pill">+ Months ▾</span></th>`;
-                })
-                .join('')}
+        .slice(0, 2)
+        .map((q) => {
+          if (isQExpanded(q.q)) {
+            return `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="${q.q}" title="Click to hide Q${q.q} months">Q${q.q} <span class="q-toggle-pill">Hide Months ▴</span></th>`;
+          }
+          return `<th rowspan="2" class="right nep-quarter-group nep-q-header collapsed" data-toggle-q="${q.q}" title="Click to show Q${q.q} months">Q${q.q} <span class="q-toggle-pill">+ Months ▾</span></th>`;
+        })
+        .join('')}
               ${nepExpandedAccompSems ? `<th rowspan="2" class="center nep-sem-accomp-th nep-sem1-accomp-th" title="1st Semester Accomplishment (Q1 + Q2)">1st Sem Accomp</th>` : ''}
               ${quartersConfig
-                .slice(2, 4)
-                .map((q) => {
-                  if (isQExpanded(q.q)) {
-                    return `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="${q.q}" title="Click to hide Q${q.q} months">Q${q.q} <span class="q-toggle-pill">Hide Months ▴</span></th>`;
-                  }
-                  return `<th rowspan="2" class="right nep-quarter-group nep-q-header collapsed" data-toggle-q="${q.q}" title="Click to show Q${q.q} months">Q${q.q} <span class="q-toggle-pill">+ Months ▾</span></th>`;
-                })
-                .join('')}
+        .slice(2, 4)
+        .map((q) => {
+          if (isQExpanded(q.q)) {
+            return `<th colspan="4" class="center nep-quarter-group nep-q-header expanded" data-toggle-q="${q.q}" title="Click to hide Q${q.q} months">Q${q.q} <span class="q-toggle-pill">Hide Months ▴</span></th>`;
+          }
+          return `<th rowspan="2" class="right nep-quarter-group nep-q-header collapsed" data-toggle-q="${q.q}" title="Click to show Q${q.q} months">Q${q.q} <span class="q-toggle-pill">+ Months ▾</span></th>`;
+        })
+        .join('')}
               ${nepExpandedAccompSems ? `<th rowspan="2" class="center nep-sem-accomp-th nep-sem2-accomp-th" title="2nd Semester Accomplishment (Q3 + Q4)">2nd Sem Accomp</th>` : ''}
             </tr>
             <tr>
               ${quartersConfig
-                .map((q) => {
-                  if (!isQExpanded(q.q)) return '';
-                  return `
+        .map((q) => {
+          if (!isQExpanded(q.q)) return '';
+          return `
                     <th class="right nep-month-header">${q.months[0].label}</th>
                     <th class="right nep-month-header">${q.months[1].label}</th>
                     <th class="right nep-month-header">${q.months[2].label}</th>
                     <th class="right nep-q-subtotal-header">Q${q.q} Total</th>
                   `;
-                })
-                .join('')}
+        })
+        .join('')}
             </tr>
             `
-            }
+    }
           </thead>
           <tbody>
             ${displayRows
-              .map((r) => {
-                const isMsExpanded = nepShowProvinces
-                  ? nepExpandedMilestones[r.key] !== false
-                  : Boolean(nepExpandedMilestones[r.key]);
-                let provEntries = Object.values(r.provinceBreakdown || {});
-                if (activeProvince !== 'ALL') {
-                  provEntries = provEntries.filter((p) => p.code === activeProvince);
-                }
-                const zeroList = (r.zeroAccompProvinces || []).filter((c) => activeProvince === 'ALL' || c === activeProvince);
+      .map((r) => {
+        const isMsExpanded = nepShowProvinces
+          ? nepExpandedMilestones[r.key] !== false
+          : Boolean(nepExpandedMilestones[r.key]);
+        let provEntries = Object.values(r.provinceBreakdown || {});
+        if (activeProvince !== 'ALL') {
+          provEntries = provEntries.filter((p) => p.code === activeProvince);
+        }
+        const zeroList = (r.zeroAccompProvinces || []).filter((c) => activeProvince === 'ALL' || c === activeProvince);
 
-                return `
+        return `
               <tr class="nep-milestone-main-row ${isMsExpanded ? 'nep-expanded-row' : ''}">
                 <td class="sticky-col-province">
                   <button
@@ -598,32 +592,29 @@ function renderMilestoneNepSection(ctx) {
                 ${nepExpandedAccompSems ? renderSemAccompCell(r, 2) : ''}
                 <td class="right">
                   ${formatNepMetricCell(r.total.count, r.total.areaHas, nepMetricMode)}
-                  ${
-                    r.undated?.count > 0
-                      ? `<div class="nep-undated-note" title="Records without a reported month or completion date">${r.undated.count.toLocaleString('en-US')} undated</div>`
-                      : ''
-                  }
+                  ${r.undated?.count > 0
+            ? `<div class="nep-undated-note" title="Records without a reported month or completion date">${r.undated.count.toLocaleString('en-US')} undated</div>`
+            : ''
+          }
                 </td>
                 <td class="right">${formatNepRateCell(r.rateCountPct, r.rateAreaPct, nepMetricMode)}</td>
                 <td class="right">${formatNepVarianceCell(r.varianceCount, r.varianceAreaHas, nepMetricMode)}</td>
               </tr>
-              ${
-                isMsExpanded
-                  ? `
+              ${isMsExpanded
+            ? `
                 ${provEntries
-                  .map(
-                    (pd) => `
+              .map(
+                (pd) => `
                 <tr class="nep-prov-subrow ${pd.hasAccomp ? 'has-accomp' : 'no-accomp'}">
                   <td class="nep-prov-subcell sticky-col-province">
                     <div class="nep-prov-indent">
                       <span class="nep-prov-tree">└─</span>
                       <strong class="nep-prov-code-tag">${esc(pd.code)}</strong>
                       <span class="nep-prov-name-text">${esc(pd.name)}</span>
-                      ${
-                        pd.hasAccomp
-                          ? `<span class="badge badge-green badge-xs">Active</span>`
-                          : `<span class="badge badge-danger badge-xs nep-zero-status">No Accomp (0)</span>`
-                      }
+                      ${pd.hasAccomp
+                    ? `<span class="badge badge-green badge-xs">Active</span>`
+                    : `<span class="badge badge-danger badge-xs nep-zero-status">No Accomp (0)</span>`
+                  }
                     </div>
                   </td>
                   ${renderTargetCells(pd)}
@@ -638,8 +629,8 @@ function renderMilestoneNepSection(ctx) {
                   <td class="right">${formatNepVarianceCell(pd.varianceCount, pd.varianceAreaHas, nepMetricMode)}</td>
                 </tr>
               `
-                  )
-                  .join('')}
+              )
+              .join('')}
                 <tr class="nep-prov-subrow-footer">
                   <td colspan="${totalTableCols}" class="nep-prov-footer-cell">
                     <button
@@ -653,11 +644,11 @@ function renderMilestoneNepSection(ctx) {
                   </td>
                 </tr>
               `
-                  : ''
-              }
+            : ''
+          }
             `;
-              })
-              .join('')}
+      })
+      .join('')}
           </tbody>
         </table>
       </div>
@@ -720,24 +711,21 @@ function renderProvincialNepSheetSection(ctx) {
       <div class="panel-header">
         <div>
           <h3 class="panel-title">Regional Hub NEP Sheet — ${esc(milestoneLabel)} (Per Province)</h3>
-          <p class="panel-subtitle">${
-            provinceScope
-              ? `Provincial NEP Sheet allocation for ${esc(provinceScope.provinceName)} (${esc(milestoneLabel)}) (read-only)`
-              : `Region VIII Hub NEP tab — LHS, AREA (HAS), ARBs, and Year for ${esc(milestoneLabel)} across all 6 provinces`
-          }</p>
+          <p class="panel-subtitle">${provinceScope
+      ? `Provincial NEP Sheet allocation for ${esc(provinceScope.provinceName)} (${esc(milestoneLabel)}) (read-only)`
+      : `Region VIII Hub NEP tab — LHS, AREA (HAS), ARBs, and Year for ${esc(milestoneLabel)} across all 6 provinces`
+    }</p>
         </div>
         <div class="panel-actions">
-          ${
-            hubUrl
-              ? `<a href="${esc(hubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Open NEP Sheet ↗</a>`
-              : ''
-          }
-          ${
-            canEditNepSheet
-              ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
+          ${hubUrl
+      ? `<a href="${esc(hubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Open NEP Sheet ↗</a>`
+      : ''
+    }
+          ${canEditNepSheet
+      ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
                  <button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet" data-milestone="${esc(activeMilestone)}">Edit NEP Sheet</button>`
-              : ''
-          }
+      : ''
+    }
         </div>
       </div>
       <div class="table-wrap">
@@ -753,8 +741,8 @@ function renderProvincialNepSheetSection(ctx) {
           </thead>
           <tbody>
             ${rows
-              .map(
-                (r) => `
+      .map(
+        (r) => `
               <tr>
                 <td class="sticky-col-province">
                   <strong>${esc(r.provinceName)}</strong>
@@ -775,11 +763,10 @@ function renderProvincialNepSheetSection(ctx) {
                 <td class="center"><span class="badge badge-gray">${esc(String(r.year || 2026))}</span></td>
               </tr>
             `
-              )
-              .join('')}
-            ${
-              rows.length > 1
-                ? `
+      )
+      .join('')}
+            ${rows.length > 1
+      ? `
               <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);">
                 <td class="sticky-col-province">Region VIII Total</td>
                 <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>
@@ -788,8 +775,8 @@ function renderProvincialNepSheetSection(ctx) {
                 <td class="center">-</td>
               </tr>
             `
-                : ''
-            }
+      : ''
+    }
           </tbody>
         </table>
       </div>
@@ -895,10 +882,10 @@ export function renderNepView(ctx) {
             <span style="font-weight:700;font-size:13px;color:var(--text);">Milestone:</span>
             <select class="form-control nep-filter-select" id="nep-milestone-filter" aria-label="Select NEP Milestone" style="font-weight:700;min-width:210px;">
               ${milestoneOptions
-                .map(
-                  (m) => `<option value="${esc(m.key)}" ${activeMilestone === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
-                )
-                .join('')}
+      .map(
+        (m) => `<option value="${esc(m.key)}" ${activeMilestone === m.key ? 'selected' : ''}>${esc(m.label)}</option>`
+      )
+      .join('')}
             </select>
           </div>
 
@@ -909,10 +896,10 @@ export function renderNepView(ctx) {
             <select class="form-control nep-filter-select" id="nep-year-filter" aria-label="Filter NEP by Year" style="font-weight:700;">
               <option value="ALL" ${activeFilter === 'ALL' ? 'selected' : ''}>All Years</option>
               ${availableYears
-                .map(
-                  (y) => `<option value="${y}" ${String(activeFilter) === String(y) ? 'selected' : ''}>Year ${y}</option>`
-                )
-                .join('')}
+      .map(
+        (y) => `<option value="${y}" ${String(activeFilter) === String(y) ? 'selected' : ''}>Year ${y}</option>`
+      )
+      .join('')}
             </select>
           </div>
           <span class="badge badge-green">${filteredRows.length} ${filteredRows.length === 1 ? 'Province' : 'Provinces'} Shown</span>
@@ -921,14 +908,13 @@ export function renderNepView(ctx) {
         <div style="display:flex;align-items:center;gap:8px;">
           ${hubUrl ? `<a href="${esc(hubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Open NEP Sheet ↗</a>` : ''}
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
-          ${
-            canEditNep
-              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet" data-milestone="${esc(activeMilestone)}">
+          ${canEditNep
+      ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet" data-milestone="${esc(activeMilestone)}">
                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                    Put NEP Data / Edit Figures
                  </button>`
-              : ''
-          }
+      : ''
+    }
         </div>
       </div>
     </div>
@@ -995,27 +981,25 @@ export function renderNepView(ctx) {
             </button>
           </div>
 
-          ${
-            canEditNep
-              ? `<button type="button" class="btn btn-primary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;">
+          ${canEditNep
+      ? `<button type="button" class="btn btn-primary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;">
                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                    Put Data / Edit Figures
                  </button>`
-              : ''
-          }
+      : ''
+    }
           <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-nep-view" title="Full Screen Table">
             <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
           </button>
         </div>
       </div>
 
-      ${
-        nepDisplayMode === 'cards'
-          ? `
+      ${nepDisplayMode === 'cards'
+      ? `
         <div class="grid-3 nep-province-cards-grid" style="padding:16px;">
           ${filteredRows
-            .map(
-              (r) => `
+        .map(
+          (r) => `
             <div class="nep-province-card">
               <div class="nep-province-card-header">
                 <div class="nep-province-name">${esc(r.provinceName)}</div>
@@ -1043,19 +1027,18 @@ export function renderNepView(ctx) {
               </div>
               <div class="nep-card-footer">
                 <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
-                ${
-                  canEditNep
-                    ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
-                    : '<span class="badge badge-gray">Read-Only</span>'
-                }
+                ${canEditNep
+              ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
+              : '<span class="badge badge-gray">Read-Only</span>'
+            }
               </div>
             </div>
           `
-            )
-            .join('')}
+        )
+        .join('')}
         </div>
       `
-          : `
+      : `
         <div class="table-wrap nep-prov-table-wrap">
           <table class="nep-sheet-table">
             <thead>
@@ -1076,8 +1059,8 @@ export function renderNepView(ctx) {
                   </td>
                 </tr>
               ` : filteredRows
-                .map(
-                  (r) => `
+        .map(
+          (r) => `
                 <tr>
                   <td class="sticky-col-province">
                     <strong>${esc(r.provinceName)}</strong>
@@ -1099,22 +1082,20 @@ export function renderNepView(ctx) {
                     ${r.sem1Arbs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</div>` : ''}
                   </td>` : ''}
                   <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
-                  ${
-                    canEditNep
-                      ? `<td class="center">
+                  ${canEditNep
+              ? `<td class="center">
                            <button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:3px 10px;font-size:12px;color:var(--dar-green-dark);font-weight:700;">
                              Edit Figure ↗
                            </button>
                          </td>`
-                      : ''
-                  }
+              : ''
+            }
                 </tr>
               `
-                )
-                .join('')}
-              ${
-                filteredRows.length > 1
-                  ? `
+        )
+        .join('')}
+              ${filteredRows.length > 1
+        ? `
                 <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
                   <td class="sticky-col-province">Region VIII Total</td>
                   ${nepColVisibility.lhs ? `<td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>` : ''}
@@ -1124,13 +1105,13 @@ export function renderNepView(ctx) {
                   ${canEditNep ? '<td class="center">-</td>' : ''}
                 </tr>
               `
-                  : ''
-              }
+        : ''
+      }
             </tbody>
           </table>
         </div>
       `
-      }
+    }
     </div>
 
     <!-- Regional List — Per-Milestone NEP Targets -->
@@ -2224,10 +2205,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
 
         ${cfg.dates.map((d) => {
-          const matchingRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
-          const dLhs = matchingRows.length;
-          const dArea = matchingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
-          return `
+      const matchingRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
+      const dLhs = matchingRows.length;
+      const dArea = matchingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
+      return `
             <div class="cf-kpi-card cf-kpi-card-sm">
               <div class="cf-kpi-header">
                 <span class="cf-kpi-title">Total with ${esc(d.shortLabel)}</span>
@@ -2245,7 +2226,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               </div>
             </div>
           `;
-        }).join('')}
+    }).join('')}
       </section>
     `;
 
@@ -2501,21 +2482,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   <div style="font-size:11px;color:var(--text-muted,#64748b);">${esc(ind.desc)}</div>
                 </td>
                 ${rows.map((p) => {
-                  if (metricMode === 'lhs') {
-                    return `
+        if (metricMode === 'lhs') {
+          return `
                       <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fffbeb' : '#ffffff'};">
                         ${renderCfFigureBtn({ val: ind.getLhs(p), isArea: false, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
                       </td>
                     `;
-                  }
-                  if (metricMode === 'area') {
-                    return `
+        }
+        if (metricMode === 'area') {
+          return `
                       <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fffbeb' : '#ffffff'};">
                         ${renderCfFigureBtn({ val: ind.getArea(p), isArea: true, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
                       </td>
                     `;
-                  }
-                  return `
+        }
+        return `
                     <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fffbeb' : '#ffffff'};">
                       ${renderCfFigureBtn({ val: ind.getLhs(p), isArea: false, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
                     </td>
@@ -2523,7 +2504,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       ${renderCfFigureBtn({ val: ind.getArea(p), isArea: true, province: p.name, indicator: ind, balanceArea: fmtArea(ind.getArea(p)) })}
                     </td>
                   `;
-                }).join('')}
+      }).join('')}
                 ${metricMode === 'lhs' ? `
                   <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
                     ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: false })}
@@ -2574,14 +2555,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                   ${cfg.dates.map((d) => {
-                    const indAcc = cfIndicators.find((i) => i.key === d.key);
-                    const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
-                    const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
-                    return `
+          const indAcc = cfIndicators.find((i) => i.key === d.key);
+          const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+          const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+          return `
                       <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
                       <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
                     `;
-                  }).join('')}
+        }).join('')}
                 </tr>
               `).join('')}
             </tbody>
@@ -2590,14 +2571,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
                 ${cfg.dates.map((d) => {
-                  const indAcc = cfIndicators.find((i) => i.key === d.key);
-                  const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
-                  const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
-                  return `
+          const indAcc = cfIndicators.find((i) => i.key === d.key);
+          const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+          const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+          return `
                     <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
                     <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
                   `;
-                }).join('')}
+        }).join('')}
               </tr>
             </tfoot>
           </table>
@@ -2628,14 +2609,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
                   <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                   ${cfg.dates.map((d) => {
-                    const indAcc = cfIndicators.find((i) => i.key === d.key);
-                    const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
-                    const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
-                    return `
+          const indAcc = cfIndicators.find((i) => i.key === d.key);
+          const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+          const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+          return `
                       <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
                       <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
                     `;
-                  }).join('')}
+        }).join('')}
                 </tr>
               `).join('')}
             </tbody>
@@ -2644,14 +2625,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
                 <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
                 ${cfg.dates.map((d) => {
-                  const indAcc = cfIndicators.find((i) => i.key === d.key);
-                  const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
-                  const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
-                  return `
+          const indAcc = cfIndicators.find((i) => i.key === d.key);
+          const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+          const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+          return `
                     <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
                     <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
                   `;
-                }).join('')}
+        }).join('')}
               </tr>
             </tfoot>
           </table>
@@ -2693,16 +2674,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                 <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                 ${cfg.dates.map((d) => {
-                  const indAcc = cfIndicators.find((i) => i.key === d.key);
-                  const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
-                  const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
-                  return `
+        const indAcc = cfIndicators.find((i) => i.key === d.key);
+        const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+        const st = p.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+        return `
                     <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
                     <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: p.name, indicator: indAcc, balanceArea: fmtArea(st.area) })}</td>
                     <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
                     <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: p.name, indicator: indBal, balanceArea: fmtArea(st.balArea) })}</td>
                   `;
-                }).join('')}
+      }).join('')}
               </tr>
             `).join('')}
           </tbody>
@@ -2712,16 +2693,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
               <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
               ${cfg.dates.map((d) => {
-                const indAcc = cfIndicators.find((i) => i.key === d.key);
-                const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
-                const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
-                return `
+        const indAcc = cfIndicators.find((i) => i.key === d.key);
+        const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
+        const st = totals.dateStats?.[d.key] || { lhs: 0, area: 0, balLhs: 0, balArea: 0 };
+        return `
                   <td class="right">${renderCfFigureBtn({ val: st.lhs, isArea: false, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
                   <td class="right">${renderCfFigureBtn({ val: st.area, isArea: true, province: 'ALL', indicator: indAcc, balanceArea: fmtArea(st.area), isTotal: true })}</td>
                   <td class="right">${renderCfFigureBtn({ val: st.balLhs, isArea: false, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
                   <td class="right">${renderCfFigureBtn({ val: st.balArea, isArea: true, province: 'ALL', indicator: indBal, balanceArea: fmtArea(st.balArea), isTotal: true })}</td>
                 `;
-              }).join('')}
+      }).join('')}
             </tr>
           </tfoot>
         </table>
@@ -2754,12 +2735,12 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             >
               <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
               ${cfTargetYears
-                .filter((yr) => yr !== 'ALL')
-                .map(
-                  (yr) =>
-                    `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>Target Year: ${esc(yr)}</option>`
-                )
-                .join('')}
+        .filter((yr) => yr !== 'ALL')
+        .map(
+          (yr) =>
+            `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>Target Year: ${esc(yr)}</option>`
+        )
+        .join('')}
             </select>
             <div class="btn-group" role="group" aria-label="Table Layout">
               <button type="button" class="btn btn-xs ${cfTableLayout === 'standard' ? 'btn-primary' : 'btn-secondary'}" data-cf-layout="standard" title="Rows: Province • Columns: Milestones">
@@ -2784,11 +2765,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
         <div class="panel-body" style="padding:0;">
           <div class="table-wrap survey-matrix-wrap" style="overflow-x:auto;">
-            ${
-              cfTableLayout === 'standard'
-                ? renderCfStandardTableHtml(cfTableRows, cfTotals, cfMetricMode)
-                : renderCfTransposedTableHtml(cfTableRows, cfTotals, cfMetricMode)
-            }
+            ${cfTableLayout === 'standard'
+        ? renderCfStandardTableHtml(cfTableRows, cfTotals, cfMetricMode)
+        : renderCfTransposedTableHtml(cfTableRows, cfTotals, cfMetricMode)
+      }
           </div>
         </div>
       </div>
@@ -2812,68 +2792,65 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         value="${esc(searchVal)}"
         style="min-width:210px;font-size:13px;"
       />
-      ${
-        !provinceScope
-          ? `
+      ${!provinceScope
+      ? `
         <select class="form-control nep-filter-select" id="whereabouts-province-filter" aria-label="Filter by Province">
           <option value="ALL" ${provFilterVal === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
           ${provNodes
-            .map(
-              (p) =>
-                `<option value="${esc(p.provinceName)}" ${provFilterVal.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
-            )
-            .join('')}
+        .map(
+          (p) =>
+            `<option value="${esc(p.provinceName)}" ${provFilterVal.toUpperCase() === p.provinceName.toUpperCase() ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+        )
+        .join('')}
         </select>
       `
-          : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
-      }
+      : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
+    }
       <select class="form-control nep-filter-select" id="whereabouts-status-filter" aria-label="${isSurveyWhereabouts ? 'Filter by Current Status' : 'Filter by Date Status'}">
         <option value="ALL" ${statusFilterVal === 'ALL' ? 'selected' : ''}>All Records (${totalCount})</option>
-        ${
-          isSurveyWhereabouts
-            ? (() => {
-                const statusCounts = new Map();
-                for (const r of enrichedRows) {
-                  const st = String(r.currentStatus || r.stage || '').trim() || 'Pending Survey';
-                  statusCounts.set(st, (statusCounts.get(st) || 0) + 1);
-                }
-                return Array.from(statusCounts.entries())
-                  .sort(([a], [b]) => {
-                    if (a.startsWith('Pending')) return 1;
-                    if (b.startsWith('Pending')) return -1;
-                    return a.localeCompare(b);
-                  })
-                  .map(([st, count]) => {
-                    return `<option value="${esc(st)}" ${statusFilterVal === st ? 'selected' : ''}>${esc(st)} (${count})</option>`;
-                  })
-                  .join('');
-              })()
-            : cfg.dates
-                .map((d) => {
-                  const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
-                  return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
-                })
-                .join('') +
-              `<option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
-               <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>`
+        ${isSurveyWhereabouts
+      ? (() => {
+        const statusCounts = new Map();
+        for (const r of enrichedRows) {
+          const st = String(r.currentStatus || r.stage || '').trim() || 'Pending Survey';
+          statusCounts.set(st, (statusCounts.get(st) || 0) + 1);
         }
+        return Array.from(statusCounts.entries())
+          .sort(([a], [b]) => {
+            if (a.startsWith('Pending')) return 1;
+            if (b.startsWith('Pending')) return -1;
+            return a.localeCompare(b);
+          })
+          .map(([st, count]) => {
+            return `<option value="${esc(st)}" ${statusFilterVal === st ? 'selected' : ''}>${esc(st)} (${count})</option>`;
+          })
+          .join('');
+      })()
+      : cfg.dates
+        .map((d) => {
+          const matchCount = enrichedRows.filter((r) => Boolean(r.datesMap[d.key])).length;
+          return `<option value="with_${esc(d.key)}" ${statusFilterVal === `with_${d.key}` ? 'selected' : ''}>With ${esc(d.shortLabel)} (${matchCount})</option>`;
+        })
+        .join('') +
+      `<option value="all_complete" ${statusFilterVal === 'all_complete' ? 'selected' : ''}>All Dates Complete (${allCompleteCount})</option>
+               <option value="pending" ${statusFilterVal === 'pending' ? 'selected' : ''}>Pending Dates (${pendingCount})</option>`
+    }
       </select>
-      ${
-        isMilestoneTrackingView
-          ? `
+      ${isMilestoneTrackingView
+      ? `
       <select class="form-control nep-filter-select whereabouts-target-year-select" id="whereabouts-target-year-filter" aria-label="Filter by Target Year">
         <option value="ALL" ${targetYearFilterVal === 'ALL' ? 'selected' : ''}>Target Year: ALL</option>
         ${cfTargetYears
-          .filter((yr) => yr !== 'ALL')
-          .map(
-            (yr) =>
-              `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>Target Year: ${esc(yr)}</option>`
-          )
-          .join('')}
+        .filter((yr) => yr !== 'ALL')
+        .map(
+          (yr) =>
+            `<option value="${esc(yr)}" ${String(targetYearFilterVal) === String(yr) ? 'selected' : ''}>Target Year: ${esc(yr)}</option>`
+        )
+        .join('')}
       </select>
       `
-          : ''
-      }
+      : ''
+    }
       <button type="button" class="btn btn-secondary btn-sm" id="btn-whereabouts-export-csv" title="Export this list to CSV">
         ⬇ Export CSV
       </button>
@@ -2971,10 +2948,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       surveyIndicatorTab === 'all' || !surveyIndicatorTab
         ? SURVEY_GROUPS
         : SURVEY_GROUPS.filter(
-            (g) =>
-              g.id === surveyIndicatorTab ||
-              g.name.toLowerCase().replace(/\s+/g, '') === String(surveyIndicatorTab).toLowerCase().replace(/\s+/g, '')
-          );
+          (g) =>
+            g.id === surveyIndicatorTab ||
+            g.name.toLowerCase().replace(/\s+/g, '') === String(surveyIndicatorTab).toLowerCase().replace(/\s+/g, '')
+        );
     const groupsToRender = activeGroups.length > 0 ? activeGroups : SURVEY_GROUPS;
 
     const isTargetYearAll = !targetYearFilterVal || targetYearFilterVal === 'ALL';
@@ -3000,7 +2977,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         isNepYearMatch &&
         nepOverride &&
         ((nepOverride.lhs !== undefined && nepOverride.lhs !== null && nepOverride.lhs !== '') ||
-         (nepOverride.area !== undefined && nepOverride.area !== null && nepOverride.area !== ''))
+          (nepOverride.area !== undefined && nepOverride.area !== null && nepOverride.area !== ''))
       );
 
       let targetLhs = 0;
@@ -3288,16 +3265,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="survey-td-unit font-bold">${esc(r.name)}</td>
           <td class="right">${r.targetLhs.toLocaleString()}</td>
           ${stages.map((st) => {
-            const s = r.stages[st.key];
-            return `
+          const s = r.stages[st.key];
+          return `
               <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
-              <td class="right">${
-                s.balLhs > 0
-                  ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
-                  : s.balLhs.toLocaleString()
-              }</td>
+              <td class="right">${s.balLhs > 0
+              ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+              : s.balLhs.toLocaleString()
+            }</td>
             `;
-          }).join('')}
+        }).join('')}
         `;
       }
       if (metricMode === 'area') {
@@ -3305,16 +3281,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="survey-td-unit font-bold">${esc(r.name)}</td>
           <td class="right">${fmtArea(r.targetArea)}</td>
           ${stages.map((st) => {
-            const s = r.stages[st.key];
-            return `
+          const s = r.stages[st.key];
+          return `
               <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-              <td class="right">${
-                s.balArea > 0
-                  ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
-                  : fmtArea(s.balArea)
-              }</td>
+              <td class="right">${s.balArea > 0
+              ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+              : fmtArea(s.balArea)
+            }</td>
             `;
-          }).join('')}
+        }).join('')}
         `;
       }
       // Both:
@@ -3323,22 +3298,20 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <td class="right">${r.targetLhs.toLocaleString()}</td>
         <td class="right">${fmtArea(r.targetArea)}</td>
         ${stages.map((st) => {
-          const s = r.stages[st.key];
-          return `
+        const s = r.stages[st.key];
+        return `
             <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
             <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-            <td class="right">${
-              s.balLhs > 0
-                ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
-                : s.balLhs.toLocaleString()
-            }</td>
-            <td class="right">${
-              s.balArea > 0
-                ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
-                : fmtArea(s.balArea)
-            }</td>
+            <td class="right">${s.balLhs > 0
+            ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+            : s.balLhs.toLocaleString()
+          }</td>
+            <td class="right">${s.balArea > 0
+            ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+            : fmtArea(s.balArea)
+          }</td>
           `;
-        }).join('')}
+      }).join('')}
       `;
     }
 
@@ -3348,16 +3321,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="survey-td-unit">REGION VIII</td>
           <td class="right">${totals.targetLhs.toLocaleString()}</td>
           ${stages.map((st) => {
-            const s = totals.stages[st.key];
-            return `
+          const s = totals.stages[st.key];
+          return `
               <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
-              <td class="right">${
-                s.balLhs > 0
-                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
-                  : s.balLhs.toLocaleString()
-              }</td>
+              <td class="right">${s.balLhs > 0
+              ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+              : s.balLhs.toLocaleString()
+            }</td>
             `;
-          }).join('')}
+        }).join('')}
         `;
       }
       if (metricMode === 'area') {
@@ -3365,16 +3337,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="survey-td-unit">REGION VIII</td>
           <td class="right">${fmtArea(totals.targetArea)}</td>
           ${stages.map((st) => {
-            const s = totals.stages[st.key];
-            return `
+          const s = totals.stages[st.key];
+          return `
               <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-              <td class="right">${
-                s.balArea > 0
-                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
-                  : fmtArea(s.balArea)
-              }</td>
+              <td class="right">${s.balArea > 0
+              ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+              : fmtArea(s.balArea)
+            }</td>
             `;
-          }).join('')}
+        }).join('')}
         `;
       }
       // Both:
@@ -3383,22 +3354,20 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <td class="right">${totals.targetLhs.toLocaleString()}</td>
         <td class="right">${fmtArea(totals.targetArea)}</td>
         ${stages.map((st) => {
-          const s = totals.stages[st.key];
-          return `
+        const s = totals.stages[st.key];
+        return `
             <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
             <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-            <td class="right">${
-              s.balLhs > 0
-                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
-                : s.balLhs.toLocaleString()
-            }</td>
-            <td class="right">${
-              s.balArea > 0
-                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
-                : fmtArea(s.balArea)
-            }</td>
+            <td class="right">${s.balLhs > 0
+            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+            : s.balLhs.toLocaleString()
+          }</td>
+            <td class="right">${s.balArea > 0
+            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+            : fmtArea(s.balArea)
+          }</td>
           `;
-        }).join('')}
+      }).join('')}
       `;
     }
 
@@ -3456,8 +3425,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
         <div class="survey-monitoring-body" style="padding: 16px;">
           ${groupsToRender
-            .map(
-              (group, gIdx) => `
+        .map(
+          (group, gIdx) => `
             <div class="survey-group-card" id="survey-group-${esc(group.id)}" style="margin-bottom: ${gIdx === groupsToRender.length - 1 ? '0' : '20px'};">
               <div class="survey-group-titlebar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #0f4d2a; color: #ffffff; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 13px; letter-spacing: 0.02em;">
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -3473,14 +3442,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   </thead>
                   <tbody>
                     ${surveyTableRows
-                      .map(
-                        (r) => `
+              .map(
+                (r) => `
                       <tr class="${r.isActive ? 'survey-row-active' : ''}" data-survey-filter-province="${esc(r.name)}" style="cursor:pointer;" title="Click to filter by ${esc(r.name)}">
                         ${renderGroupRowCells(r, group.stages, surveyMetricMode)}
                       </tr>
                     `
-                      )
-                      .join('')}
+              )
+              .join('')}
                   </tbody>
                   <tfoot>
                     <tr class="survey-tf-total">
@@ -3491,8 +3460,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               </div>
             </div>
           `
-            )
-            .join('')}
+        )
+        .join('')}
         </div>
       </div>
     `;
@@ -3596,14 +3565,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <tr class="survey-th-l1">
             <th class="survey-th-unit" style="min-width:140px;">PROVINCE</th>
             ${cols
-              .map(
-                (st) => `
+            .map(
+              (st) => `
               <th class="right survey-th-stage ${statusFilterVal === st ? 'survey-col-highlight' : ''}" data-survey-matrix-filter-status="${esc(st)}" style="min-width:110px;cursor:pointer;" title="Click to filter by ${esc(st)}">
                 ${esc(st)} (LHS)
               </th>
             `
-              )
-              .join('')}
+            )
+            .join('')}
             <th class="right survey-th-nep" style="min-width:90px;">TOTAL (LHS)</th>
           </tr>
         `;
@@ -3613,14 +3582,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <tr class="survey-th-l1">
             <th class="survey-th-unit" style="min-width:140px;">PROVINCE</th>
             ${cols
-              .map(
-                (st) => `
+            .map(
+              (st) => `
               <th class="right survey-th-stage ${statusFilterVal === st ? 'survey-col-highlight' : ''}" data-survey-matrix-filter-status="${esc(st)}" style="min-width:120px;cursor:pointer;" title="Click to filter by ${esc(st)}">
                 ${esc(st)} (HAS)
               </th>
             `
-              )
-              .join('')}
+            )
+            .join('')}
             <th class="right survey-th-nep" style="min-width:110px;">TOTAL (HAS)</th>
           </tr>
         `;
@@ -3630,25 +3599,25 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <tr class="survey-th-l1">
           <th rowspan="2" class="survey-th-unit" style="min-width:140px;vertical-align:middle;">PROVINCE</th>
           ${cols
-            .map(
-              (st) => `
+          .map(
+            (st) => `
             <th colspan="2" class="center survey-th-stage ${statusFilterVal === st ? 'survey-col-highlight' : ''}" data-survey-matrix-filter-status="${esc(st)}" style="cursor:pointer;" title="Click to filter by ${esc(st)}">
               ${esc(st)}
             </th>
           `
-            )
-            .join('')}
+          )
+          .join('')}
           <th colspan="2" class="center survey-th-nep">TOTAL</th>
         </tr>
         <tr class="survey-th-l2">
           ${cols
-            .map(
-              () => `
+          .map(
+            () => `
             <th class="right" style="min-width:55px;">LHS</th>
             <th class="right" style="min-width:95px;">AREA(HAS)</th>
           `
-            )
-            .join('')}
+          )
+          .join('')}
           <th class="right" style="min-width:55px;">LHS</th>
           <th class="right" style="min-width:95px;">AREA(HAS)</th>
         </tr>
@@ -3663,17 +3632,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const cell = d.byStatus[st] || { lhs: 0, area: 0 };
-              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                cell.lhs > 0
+              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.lhs > 0
                   ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${cell.lhs} LHs)">${cell.lhs.toLocaleString()}</button>`
                   : `<span class="text-muted">0</span>`
-              }</td>`;
+                }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#f0fdf4;">${
-            d.totalLhs > 0
-              ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${d.totalLhs} LHs)">${d.totalLhs.toLocaleString()}</button>`
-              : `<span class="text-muted">0</span>`
+          <td class="right font-bold" style="background:#f0fdf4;">${d.totalLhs > 0
+            ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${d.totalLhs} LHs)">${d.totalLhs.toLocaleString()}</button>`
+            : `<span class="text-muted">0</span>`
           }</td>
         `;
       }
@@ -3683,17 +3650,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const cell = d.byStatus[st] || { lhs: 0, area: 0 };
-              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                cell.area > 0
+              return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.area > 0
                   ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${fmtArea(cell.area)} HAS)">${fmtArea(cell.area)}</button>`
                   : `<span class="text-muted">0.0000</span>`
-              }</td>`;
+                }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#f0fdf4;">${
-            d.totalArea > 0
-              ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${fmtArea(d.totalArea)} HAS)">${fmtArea(d.totalArea)}</button>`
-              : `<span class="text-muted">0.0000</span>`
+          <td class="right font-bold" style="background:#f0fdf4;">${d.totalArea > 0
+            ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${fmtArea(d.totalArea)} HAS)">${fmtArea(d.totalArea)}</button>`
+            : `<span class="text-muted">0.0000</span>`
           }</td>
         `;
       }
@@ -3704,28 +3669,24 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           .map((st) => {
             const cell = d.byStatus[st] || { lhs: 0, area: 0 };
             return `
-              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                cell.lhs > 0
-                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${cell.lhs} LHs)">${cell.lhs.toLocaleString()}</button>`
-                  : `<span class="text-muted">0</span>`
+              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.lhs > 0
+                ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${cell.lhs} LHs)">${cell.lhs.toLocaleString()}</button>`
+                : `<span class="text-muted">0</span>`
               }</td>
-              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                cell.area > 0
-                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${fmtArea(cell.area)} HAS)">${fmtArea(cell.area)}</button>`
-                  : `<span class="text-muted">0.0000</span>`
+              <td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.area > 0
+                ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${fmtArea(cell.area)} HAS)">${fmtArea(cell.area)}</button>`
+                : `<span class="text-muted">0.0000</span>`
               }</td>
             `;
           })
           .join('')}
-        <td class="right font-bold" style="background:#f0fdf4;">${
-          d.totalLhs > 0
-            ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${d.totalLhs} LHs)">${d.totalLhs.toLocaleString()}</button>`
-            : `<span class="text-muted">0</span>`
+        <td class="right font-bold" style="background:#f0fdf4;">${d.totalLhs > 0
+          ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${d.totalLhs} LHs)">${d.totalLhs.toLocaleString()}</button>`
+          : `<span class="text-muted">0</span>`
         }</td>
-        <td class="right font-bold" style="background:#f0fdf4;">${
-          d.totalArea > 0
-            ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${fmtArea(d.totalArea)} HAS)">${fmtArea(d.totalArea)}</button>`
-            : `<span class="text-muted">0.0000</span>`
+        <td class="right font-bold" style="background:#f0fdf4;">${d.totalArea > 0
+          ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="ALL" title="Click to view all Support List for ${esc(b.name)} (${fmtArea(d.totalArea)} HAS)">${fmtArea(d.totalArea)}</button>`
+          : `<span class="text-muted">0.0000</span>`
         }</td>
       `;
     }
@@ -3737,17 +3698,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const tot = colTotals[st]?.lhs || 0;
-              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                tot > 0
+              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${tot > 0
                   ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${tot} LHs)">${tot.toLocaleString()}</button>`
                   : '0'
-              }</td>`;
+                }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#052e16;">${
-            grandTotalLhs > 0
-              ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${grandTotalLhs} LHs)">${grandTotalLhs.toLocaleString()}</button>`
-              : '0'
+          <td class="right font-bold" style="background:#052e16;">${grandTotalLhs > 0
+            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${grandTotalLhs} LHs)">${grandTotalLhs.toLocaleString()}</button>`
+            : '0'
           }</td>
         `;
       }
@@ -3757,17 +3716,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${cols
             .map((st) => {
               const tot = colTotals[st]?.area || 0;
-              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                tot > 0
+              return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${tot > 0
                   ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${fmtArea(tot)} HAS)">${fmtArea(tot)}</button>`
                   : '0.0000'
-              }</td>`;
+                }</td>`;
             })
             .join('')}
-          <td class="right font-bold" style="background:#052e16;">${
-            grandTotalArea > 0
-              ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${fmtArea(grandTotalArea)} HAS)">${fmtArea(grandTotalArea)}</button>`
-              : '0.0000'
+          <td class="right font-bold" style="background:#052e16;">${grandTotalArea > 0
+            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${fmtArea(grandTotalArea)} HAS)">${fmtArea(grandTotalArea)}</button>`
+            : '0.0000'
           }</td>
         `;
       }
@@ -3779,28 +3736,24 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             const lhsTot = colTotals[st]?.lhs || 0;
             const areaTot = colTotals[st]?.area || 0;
             return `
-              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                lhsTot > 0
-                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${lhsTot} LHs)">${lhsTot.toLocaleString()}</button>`
-                  : '0'
+              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${lhsTot > 0
+                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${lhsTot} LHs)">${lhsTot.toLocaleString()}</button>`
+                : '0'
               }</td>
-              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${
-                areaTot > 0
-                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${fmtArea(areaTot)} HAS)">${fmtArea(areaTot)}</button>`
-                  : '0.0000'
+              <td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${areaTot > 0
+                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${fmtArea(areaTot)} HAS)">${fmtArea(areaTot)}</button>`
+                : '0.0000'
               }</td>
             `;
           })
           .join('')}
-        <td class="right font-bold" style="background:#052e16;">${
-          grandTotalLhs > 0
-            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${grandTotalLhs} LHs)">${grandTotalLhs.toLocaleString()}</button>`
-            : '0'
+        <td class="right font-bold" style="background:#052e16;">${grandTotalLhs > 0
+          ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${grandTotalLhs} LHs)">${grandTotalLhs.toLocaleString()}</button>`
+          : '0'
         }</td>
-        <td class="right font-bold" style="background:#052e16;">${
-          grandTotalArea > 0
-            ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${fmtArea(grandTotalArea)} HAS)">${fmtArea(grandTotalArea)}</button>`
-            : '0.0000'
+        <td class="right font-bold" style="background:#052e16;">${grandTotalArea > 0
+          ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" title="Click to view all Region VIII Support List (${fmtArea(grandTotalArea)} HAS)">${fmtArea(grandTotalArea)}</button>`
+          : '0.0000'
         }</td>
       `;
     }
@@ -3863,13 +3816,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               </thead>
               <tbody>
                 ${DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
-                  const isRowActive = provFilterVal !== 'ALL' && matchProvinceName(b.name, provFilterVal);
-                  return `
+      const isRowActive = provFilterVal !== 'ALL' && matchProvinceName(b.name, provFilterVal);
+      return `
                     <tr class="${isRowActive ? 'survey-row-active' : ''}" data-survey-filter-province="${esc(b.name)}" style="cursor:pointer;" title="Click to filter by ${esc(b.name)}">
                       ${renderMatrixRowCells(b, statusCols, surveyMetricMode)}
                     </tr>
                   `;
-                }).join('')}
+    }).join('')}
               </tbody>
               <tfoot>
                 <tr class="survey-tf-total">
@@ -3894,8 +3847,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       </div>
 
       ${scopeDateMetrics
-        .map(
-          (d) => `
+      .map(
+        (d) => `
         <div class="kpi-card ${d.badgeClass.replace('badge-', '')}">
           <div class="kpi-label">${esc(d.shortLabel)}</div>
           <div class="kpi-primary">${d.count.toLocaleString()} Parcels</div>
@@ -3906,8 +3859,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <div class="kpi-meta">${esc(d.label)} completed</div>
         </div>
       `
-        )
-        .join('')}
+      )
+      .join('')}
 
       <div class="kpi-card">
         <div class="kpi-label">All Milestone Dates Complete</div>
@@ -3948,10 +3901,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
         <div class="panel-body" style="padding:14px 16px;">
-          ${
-            graphMode === 'graph'
-              ? renderWhereaboutsProvincialGraphSvg(provSummaryList, cfg)
-              : `
+          ${graphMode === 'graph'
+      ? renderWhereaboutsProvincialGraphSvg(provSummaryList, cfg)
+      : `
             <div class="table-wrap">
               <table class="nep-milestone-table">
                 <thead>
@@ -3964,12 +3916,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${
-                    provSummaryList.length === 0
-                      ? `<tr><td colspan="${4 + cfg.dates.length}" class="text-center" style="padding:16px;color:var(--text-muted)">No provincial records found</td></tr>`
-                      : provSummaryList
-                          .map(
-                            (p) => `
+                  ${provSummaryList.length === 0
+        ? `<tr><td colspan="${4 + cfg.dates.length}" class="text-center" style="padding:16px;color:var(--text-muted)">No provincial records found</td></tr>`
+        : provSummaryList
+          .map(
+            (p) => `
                         <tr>
                           <td style="font-weight:700;">
                             <span class="badge badge-gray" style="margin-right:6px;">${esc(p.code)}</span>
@@ -3978,11 +3929,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                           <td class="right"><strong>${p.total}</strong></td>
                           <td class="right">${fmtArea(p.area)} HAS</td>
                           ${cfg.dates
-                            .map((d) => {
-                              const cnt = p.dateCounts[d.key] || 0;
-                              return `<td class="right">${cnt > 0 ? `<span class="badge ${d.badgeClass}">${cnt}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>`;
-                            })
-                            .join('')}
+                .map((d) => {
+                  const cnt = p.dateCounts[d.key] || 0;
+                  return `<td class="right">${cnt > 0 ? `<span class="badge ${d.badgeClass}">${cnt}</span>` : `<span style="color:var(--text-muted)">0</span>`}</td>`;
+                })
+                .join('')}
                           <td class="right">
                             <span class="badge ${p.completeCount === p.total && p.total > 0 ? 'badge-green' : 'badge-gray'}">
                               ${p.completeCount} (${pct(p.completeCount, p.total)}%)
@@ -3990,9 +3941,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                           </td>
                         </tr>
                       `
-                          )
-                          .join('')
-                  }
+          )
+          .join('')
+      }
                 </tbody>
                 <tfoot>
                   <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
@@ -4006,7 +3957,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               </table>
             </div>
           `
-          }
+    }
         </div>
       </div>
 
@@ -4023,10 +3974,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
         <div class="panel-body" style="padding:14px 16px;">
-          ${
-            graphMode === 'graph'
-              ? renderWhereaboutsMonthlyGraphSvg(monthSummaryList, cfg)
-              : `
+          ${graphMode === 'graph'
+      ? renderWhereaboutsMonthlyGraphSvg(monthSummaryList, cfg)
+      : `
             <div class="table-wrap">
               <table class="nep-milestone-table">
                 <thead>
@@ -4038,12 +3988,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${
-                    monthSummaryList.length === 0
-                      ? `<tr><td colspan="4" class="text-center" style="padding:16px;color:var(--text-muted)">No monthly records</td></tr>`
-                      : monthSummaryList
-                          .map(
-                            (m) => `
+                  ${monthSummaryList.length === 0
+        ? `<tr><td colspan="4" class="text-center" style="padding:16px;color:var(--text-muted)">No monthly records</td></tr>`
+        : monthSummaryList
+          .map(
+            (m) => `
                         <tr>
                           <td style="font-weight:700;">
                             <span class="badge ${m.label.includes('Undated') ? 'badge-gray' : 'badge-amber'}">
@@ -4055,9 +4004,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                           <td class="right"><span class="badge ${m.completeCount > 0 ? 'badge-green' : 'badge-gray'}">${m.completeCount} (${pct(m.completeCount, m.total)}%)</span></td>
                         </tr>
                       `
-                          )
-                          .join('')
-                  }
+          )
+          .join('')
+      }
                 </tbody>
                 <tfoot>
                   <tr style="font-weight:700;background:var(--bg-light);border-top:2px solid var(--border);">
@@ -4070,15 +4019,14 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               </table>
             </div>
           `
-          }
+    }
         </div>
       </div>
     </section>
     </div>
 
-    ${
-      !isSurveyWhereabouts
-        ? `
+    ${!isSurveyWhereabouts
+      ? `
     <!-- Master Ledger Panel -->
     <div class="panel" id="panel-whereabouts-master">
       <div class="panel-header nep-panel-header">
@@ -4115,34 +4063,32 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${(isMilestoneTrackingView || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL' ? `<span class="badge badge-gray">Target Year: ${esc(targetYearFilterVal)}</span>` : ''}
           ${provFilterVal !== 'ALL' ? `<span class="badge badge-green">Province: ${esc(provFilterVal)}</span>` : ''}
           ${Object.entries(activeColFilters)
-            .map(([k, s]) => {
-              if (k === 'province' || !s || !s.value || s.value === 'ALL') return '';
-              return `<span class="badge badge-blue">${esc(k)}: ${esc(s.value)}</span>`;
-            })
-            .join(' ')}
+        .map(([k, s]) => {
+          if (k === 'province' || !s || !s.value || s.value === 'ALL') return '';
+          return `<span class="badge badge-blue">${esc(k)}: ${esc(s.value)}</span>`;
+        })
+        .join(' ')}
           ${statusFilterVal !== 'ALL' && !activeColFilters.stage ? `<span class="badge badge-amber">Filter: ${esc(statusFilterVal)}</span>` : ''}
           ${q ? `<span class="badge badge-gray">Search: "${esc(q)}"</span>` : ''}
-          ${
-            hasAnyActiveFilter
-              ? `
+          ${hasAnyActiveFilter
+        ? `
             <button type="button" class="btn btn-secondary btn-xs" id="btn-whereabouts-clear-all-filters" style="font-size:11.5px;padding:2px 8px;margin-left:4px;" title="Reset all column and toolbar filters">
               ✕ Clear Filters
             </button>
           `
-              : ''
-          }
+        : ''
+      }
         </div>
-        ${
-          totalPages > 1
-            ? `
+        ${totalPages > 1
+        ? `
           <div style="display:flex;align-items:center;gap:6px;">
             <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>« Prev</button>
             <span style="font-weight:600;">Page ${currentPage} of ${totalPages}</span>
             <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>Next »</button>
           </div>
         `
-            : ''
-        }
+        : ''
+      }
       </div>
 
       <div class="table-wrap whereabouts-table-wrap" id="whereabouts-table-wrap" style="overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch;">
@@ -4151,23 +4097,23 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             <tr>
               <th style="width:36px;" class="center">#</th>
               ${(() => {
-                const lhidLabel = getWhereaboutsColFilterLabel(activeColFilters.lhid);
-                const provLabel = getWhereaboutsColFilterLabel(
-                  activeColFilters.province,
-                  selectedProvs.length > 0
-                    ? (selectedProvs.length <= 2 ? selectedProvs.join(', ') : `${selectedProvs.length} selected`)
-                    : ''
-                );
-                const muniLabel = getWhereaboutsColFilterLabel(activeColFilters.municipality);
-                const loLabel = getWhereaboutsColFilterLabel(activeColFilters.landOwner);
-                const targetColLabel = getWhereaboutsColFilterLabel(activeColFilters.target);
-                const stageLabel = getWhereaboutsColFilterLabel(
-                  activeColFilters.stage,
-                  statusFilterVal !== 'ALL' && !statusFilterVal.startsWith('with_') && statusFilterVal !== 'all_complete' && statusFilterVal !== 'pending'
-                    ? statusFilterVal
-                    : ''
-                );
-                return `
+        const lhidLabel = getWhereaboutsColFilterLabel(activeColFilters.lhid);
+        const provLabel = getWhereaboutsColFilterLabel(
+          activeColFilters.province,
+          selectedProvs.length > 0
+            ? (selectedProvs.length <= 2 ? selectedProvs.join(', ') : `${selectedProvs.length} selected`)
+            : ''
+        );
+        const muniLabel = getWhereaboutsColFilterLabel(activeColFilters.municipality);
+        const loLabel = getWhereaboutsColFilterLabel(activeColFilters.landOwner);
+        const targetColLabel = getWhereaboutsColFilterLabel(activeColFilters.target);
+        const stageLabel = getWhereaboutsColFilterLabel(
+          activeColFilters.stage,
+          statusFilterVal !== 'ALL' && !statusFilterVal.startsWith('with_') && statusFilterVal !== 'all_complete' && statusFilterVal !== 'pending'
+            ? statusFilterVal
+            : ''
+        );
+        return `
               <th>
                 <button
                   type="button"
@@ -4230,9 +4176,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               </th>
               <th class="right">CARPable Area</th>
               ${cfg.dates
-                .map((d) => {
-                  const dLabel = getWhereaboutsColFilterLabel(activeColFilters[d.key]);
-                  return `
+            .map((d) => {
+              const dLabel = getWhereaboutsColFilterLabel(activeColFilters[d.key]);
+              return `
                     <th>
                       <button
                         type="button"
@@ -4249,11 +4195,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       </button>
                     </th>
                   `;
-                })
-                .join('')}
-              ${
-                cfg.extraColHeader
-                  ? `
+            })
+            .join('')}
+              ${cfg.extraColHeader
+            ? `
                 <th>
                   <button
                     type="button"
@@ -4270,8 +4215,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   </button>
                 </th>
               `
-                  : ''
-              }
+            : ''
+          }
               <th>
                 <button
                   type="button"
@@ -4288,14 +4233,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 </button>
               </th>
                 `;
-              })()}
+      })()}
               <th class="right" style="width:110px;">Action</th>
             </tr>
           </thead>
           <tbody>
-            ${
-              pagedRows.length === 0
-                ? `
+            ${pagedRows.length === 0
+        ? `
               <tr>
                 <td colspan="${8 + cfg.dates.length}" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
                   <div style="font-size:15px;font-weight:700;margin-bottom:4px;">No ${esc(cfg.tabName)} records match the selected filters</div>
@@ -4303,19 +4247,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 </td>
               </tr>
             `
-                : pagedRows
-                    .map((r, idx) => {
-                      const rowNum = (currentPage - 1) * pageSize + idx + 1;
-                      return `
+        : pagedRows
+          .map((r, idx) => {
+            const rowNum = (currentPage - 1) * pageSize + idx + 1;
+            return `
                   <tr>
                     <td class="text-muted" style="font-size:11px;">${rowNum}</td>
                     <td>
                       <button
                         type="button"
                         class="link-btn lhid-chip"
+                        data-lhid="${esc(r.lhid)}"
                         data-lhid="${esc(formatLhidDisplay(r.lhid))}"
                         title="Click to view Landholding Profile &amp; Milestones"
                       >
+                        ${esc(r.lhid)}
                         ${esc(formatLhidDisplay(r.lhid))}
                       </button>
                     </td>
@@ -4334,21 +4280,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       ${fmtArea(r.carpable)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
                     </td>
                     ${cfg.dates
-                      .map((d) => {
-                        const val = r.datesMap[d.key];
-                        if (!val) {
-                          return `<td><span class="badge badge-gray" style="opacity:0.75;">Pending</span></td>`;
-                        }
-                        const displayVal = d.isMonth ? formatReportedMonthDisplay(val) : val;
-                        return `<td><span class="badge ${d.badgeClass}" style="font-weight:700;"><span style="margin-right:3px;">${d.icon || ''}</span>${esc(displayVal)}</span></td>`;
-                      })
-                      .join('')}
+                .map((d) => {
+                  const val = r.datesMap[d.key];
+                  if (!val) {
+                    return `<td><span class="badge badge-gray" style="opacity:0.75;">Pending</span></td>`;
+                  }
+                  const displayVal = d.isMonth ? formatReportedMonthDisplay(val) : val;
+                  return `<td><span class="badge ${d.badgeClass}" style="font-weight:700;"><span style="margin-right:3px;">${d.icon || ''}</span>${esc(displayVal)}</span></td>`;
+                })
+                .join('')}
                     ${cfg.extraColValue ? `<td style="font-size:11.5px;">${cfg.extraColValue(r)}</td>` : ''}
                     <td>
                       <span class="badge ${esc(r.stageBadge)}" style="font-weight:700;">${esc(r.stage)}</span>
                     </td>
                     <td class="right" style="white-space:nowrap;">
-                      ${r.row && r.row.pdfFile ? `<a href="${esc(r.row.pdfFile)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="View Attached PDF"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
+                      ${r.row && (r.row.pdfFile || r.row.transmittalSrPdf) ? `<a href="${esc(r.row.pdfFile || r.row.transmittalSrPdf)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="View Attached PDF"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
                       <button
                         type="button"
                         class="btn btn-secondary btn-xs"
@@ -4360,9 +4306,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                     </td>
                   </tr>
                 `;
-                    })
-                    .join('')
-            }
+          })
+          .join('')
+      }
           </tbody>
         </table>
       </div>
@@ -4375,21 +4321,20 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <button type="button" class="page-btn" data-whereabouts-hscroll="-360" data-hscroll="-360" title="Scroll table left" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">◀ Left</button>
           <button type="button" class="page-btn" data-whereabouts-hscroll="360" data-hscroll="360" title="Scroll table right" style="height:26px;font-size:11.5px;padding:0 8px;display:inline-flex;align-items:center;gap:2px;">Right ▶</button>
         </div>
-        ${
-          totalPages > 1
-            ? `
+        ${totalPages > 1
+        ? `
           <div style="display:flex;align-items:center;gap:6px;">
             <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>« Prev</button>
             <span style="font-weight:600;">Page ${currentPage} of ${totalPages}</span>
             <button type="button" class="btn btn-secondary btn-xs" data-whereabouts-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>Next »</button>
           </div>
         `
-            : ''
-        }
+        : ''
+      }
       </div>
     </div>
     `
-        : ''
+      : ''
     }
   `;
 }
@@ -4440,9 +4385,8 @@ export function renderDashboardView(ctx) {
 
     <!-- KPI Grid -->
     <section class="kpi-grid">
-      ${
-        showCum
-          ? `
+      ${showCum
+      ? `
         <div class="kpi-card highlight">
           <div class="kpi-label">Cumulative Accomplishment</div>
           <div class="kpi-primary">${formatKpiMain(kpis.cumulativeETitles, kpis.cumulativeAreaHas)}</div>
@@ -4450,12 +4394,11 @@ export function renderDashboardView(ctx) {
           <div class="kpi-meta">Through period: <strong>${esc(analytics.activeMonth)}</strong></div>
         </div>
       `
-          : ''
-      }
+      : ''
+    }
 
-      ${
-        showInc
-          ? `
+      ${showInc
+      ? `
         <div class="kpi-card blue">
           <div class="kpi-label">Incremental Output (${esc(analytics.incrementalTargetMonth || 'Period')})</div>
           <div class="kpi-primary">${formatKpiMain(kpis.incrementalETitles, kpis.incrementalAreaHas)}</div>
@@ -4463,8 +4406,8 @@ export function renderDashboardView(ctx) {
           <div class="kpi-meta">New transactions in selected reporting month</div>
         </div>
       `
-          : ''
-      }
+      : ''
+    }
 
       <div class="kpi-card amber">
         <div class="kpi-label">Cumulative Baseline Target</div>
@@ -4472,9 +4415,9 @@ export function renderDashboardView(ctx) {
         <div class="kpi-secondary" style="color:var(--dar-amber)">${formatKpiSub(kpis.baselineTargetETitles, kpis.baselineTargetAreaHas)}</div>
         <div class="progress-track">
           <div class="progress-fill" style="width:${Math.min(
-            100,
-            monitoringLevel === 'area' ? kpis.areaCompletionPct : kpis.eTitlesCompletionPct
-          )}%"></div>
+      100,
+      monitoringLevel === 'area' ? kpis.areaCompletionPct : kpis.eTitlesCompletionPct
+    )}%"></div>
         </div>
         <div class="kpi-meta">${kpis.eTitlesCompletionPct}% eTitles • ${kpis.areaCompletionPct}% Area attained</div>
       </div>
@@ -4497,11 +4440,10 @@ export function renderDashboardView(ctx) {
         <div class="panel-header">
           <div>
             <h3 class="panel-title">Monthly Incremental vs. Cumulative Trajectory</h3>
-            <p class="panel-subtitle">${
-              provinceScope
-                ? `${esc(provinceScope.provinceName)} (${esc(provinceScope.code)}) provincial ledger`
-                : 'Aggregated across active Region VIII provincial ledgers'
-            }</p>
+            <p class="panel-subtitle">${provinceScope
+      ? `${esc(provinceScope.provinceName)} (${esc(provinceScope.code)}) provincial ledger`
+      : 'Aggregated across active Region VIII provincial ledgers'
+    }</p>
           </div>
         </div>
         <div class="panel-body chart-box">
@@ -4513,11 +4455,10 @@ export function renderDashboardView(ctx) {
         <div class="panel-header">
           <div>
             <h3 class="panel-title">Provincial Baseline vs. Accomplishment</h3>
-            <p class="panel-subtitle">${
-              provinceScope
-                ? `Cumulative performance for ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
-                : 'Cumulative performance across the 6 DAR Region VIII nodes'
-            }</p>
+            <p class="panel-subtitle">${provinceScope
+      ? `Cumulative performance for ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
+      : 'Cumulative performance across the 6 DAR Region VIII nodes'
+    }</p>
           </div>
         </div>
         <div class="panel-body chart-box">
@@ -4531,16 +4472,14 @@ export function renderDashboardView(ctx) {
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3 class="panel-title">${
-              provinceScope
-                ? `${esc(provinceScope.provinceName)} Consolidation Matrix`
-                : 'Region VIII Provincial Consolidation Matrix'
-            }</h3>
-            <p class="panel-subtitle">${
-              provinceScope
-                ? `Real-time metrics for ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
-                : 'Real-time aggregation from the 6 provincial Google Sheet nodes'
-            }</p>
+            <h3 class="panel-title">${provinceScope
+      ? `${esc(provinceScope.provinceName)} Consolidation Matrix`
+      : 'Region VIII Provincial Consolidation Matrix'
+    }</h3>
+            <p class="panel-subtitle">${provinceScope
+      ? `Real-time metrics for ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
+      : 'Real-time aggregation from the 6 provincial Google Sheet nodes'
+    }</p>
           </div>
           <button class="btn btn-secondary btn-sm" data-nav="sync">View Node Registry</button>
         </div>
@@ -4558,24 +4497,22 @@ export function renderDashboardView(ctx) {
             </thead>
             <tbody>
               ${provincialBreakdown
-                .map(
-                  (p) => `
+      .map(
+        (p) => `
                 <tr>
                   <td>
                     <div style="font-weight:700">${esc(p.jurisdiction)}</div>
                     <div class="mono" style="font-size:11px;color:var(--text-muted)">${esc(p.code)}</div>
                   </td>
                   <td class="right">${formatMetricsCell(p.baselineTargetETitles, p.baselineTargetAreaHas, monitoringLevel)}</td>
-                  ${
-                    showInc
-                      ? `<td class="right">${formatMetricsCell(p.incrementalETitles, p.incrementalAreaHas, monitoringLevel)}</td>`
-                      : ''
-                  }
-                  ${
-                    showCum
-                      ? `<td class="right">${formatMetricsCell(p.cumulativeETitles, p.cumulativeAreaHas, monitoringLevel)}</td>`
-                      : ''
-                  }
+                  ${showInc
+            ? `<td class="right">${formatMetricsCell(p.incrementalETitles, p.incrementalAreaHas, monitoringLevel)}</td>`
+            : ''
+          }
+                  ${showCum
+            ? `<td class="right">${formatMetricsCell(p.cumulativeETitles, p.cumulativeAreaHas, monitoringLevel)}</td>`
+            : ''
+          }
                   <td class="right num">
                     <span class="badge ${p.completionPctETitles >= 50 ? 'badge-green' : 'badge-amber'}">
                       ${monitoringLevel === 'area' ? p.completionPctArea : p.completionPctETitles}%
@@ -4586,8 +4523,8 @@ export function renderDashboardView(ctx) {
                   </td>
                 </tr>
               `
-                )
-                .join('')}
+      )
+      .join('')}
             </tbody>
           </table>
         </div>
@@ -4603,9 +4540,9 @@ export function renderDashboardView(ctx) {
         <div class="panel-body">
           <div class="funnel-list">
             ${stageBreakdown
-              .map((s) => {
-                const pct = Math.round((s.count / maxStageCount) * 100);
-                return `
+      .map((s) => {
+        const pct = Math.round((s.count / maxStageCount) * 100);
+        return `
                   <div class="funnel-row">
                     <div class="funnel-row-top">
                       <span style="font-weight:600">${esc(s.stage)}</span>
@@ -4618,8 +4555,8 @@ export function renderDashboardView(ctx) {
                     </div>
                   </div>
                 `;
-              })
-              .join('')}
+      })
+      .join('')}
           </div>
         </div>
       </div>
@@ -4655,8 +4592,8 @@ export function renderDashboardView(ctx) {
           </thead>
           <tbody>
             ${(analytics.databaseByProvince || [])
-              .map(
-                (p) => `
+      .map(
+        (p) => `
               <tr>
                 <td><strong>${esc(p.jurisdiction)}</strong> <span class="mono" style="font-size:11px;color:var(--text-muted)">(${esc(p.code)})</span></td>
                 <td class="right num"><strong>${p.parcelCount}</strong></td>
@@ -4666,8 +4603,8 @@ export function renderDashboardView(ctx) {
                 <td class="right mono num">${fmtArea(p.distributedArea)}</td>
               </tr>
             `
-              )
-              .join('')}
+      )
+      .join('')}
           </tbody>
         </table>
       </div>
@@ -4737,12 +4674,11 @@ export function renderMilestonesView(ctx) {
             </tr>
           </thead>
           <tbody>
-            ${
-              rows.length === 0
-                ? `<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--text-muted)">No matching records in Milestone_Data ledger. Click <strong>+ Add Milestone Entry</strong> or sync/import from Google Sheets.</td></tr>`
-                : rows
-                    .map(
-                      (r) => `
+            ${rows.length === 0
+      ? `<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--text-muted)">No matching records in Milestone_Data ledger. Click <strong>+ Add Milestone Entry</strong> or sync/import from Google Sheets.</td></tr>`
+      : rows
+        .map(
+          (r) => `
                   <tr>
                     <td class="mono" style="font-weight:700">${esc(r.Record_ID)}</td>
                     <td><span class="badge badge-gray">${esc(r.Province_Code)}</span></td>
@@ -4766,9 +4702,9 @@ export function renderMilestonesView(ctx) {
                     </td>
                   </tr>
                 `
-                    )
-                    .join('')
-            }
+        )
+        .join('')
+    }
           </tbody>
         </table>
       </div>
@@ -4792,26 +4728,25 @@ export function renderMilestonesView(ctx) {
           </thead>
           <tbody>
             ${schemas.milestoneColumns
-              .map(
-                (c) => `
+      .map(
+        (c) => `
               <tr>
                 <td class="mono" style="font-weight:700">${esc(c.header)}</td>
                 <td>${esc(c.type)}</td>
-                <td>${
-                  c.key === 'Record_ID'
-                    ? 'Auto Index (PROV-YYYYMM-XXXX)'
-                    : c.key === 'Municipality'
-                    ? 'Region VIII LGU Master List Dropdown'
-                    : c.key === 'Area_HAS'
-                    ? 'Decimal (4 decimal places)'
-                    : c.key === 'Milestone_Date'
-                    ? 'YYYY-MM-DD ISO Standard'
-                    : esc(c.label)
-                }</td>
+                <td>${c.key === 'Record_ID'
+            ? 'Auto Index (PROV-YYYYMM-XXXX)'
+            : c.key === 'Municipality'
+              ? 'Region VIII LGU Master List Dropdown'
+              : c.key === 'Area_HAS'
+                ? 'Decimal (4 decimal places)'
+                : c.key === 'Milestone_Date'
+                  ? 'YYYY-MM-DD ISO Standard'
+                  : esc(c.label)
+          }</td>
               </tr>
             `
-              )
-              .join('')}
+      )
+      .join('')}
           </tbody>
         </table>
       </div>
@@ -5019,401 +4954,400 @@ function buildDbByLhidMap(state) {
   return { dbRows, dbByLhid, dbTotalCarpableArea };
 }
 
-function insertLinkedColsAfterLhid(baseCols) {
-  const lhidIdx = baseCols.findIndex((c) => c.key === 'lhid');
-  if (lhidIdx < 0) return [...LINKED_DB_TABLE_COLUMNS, ...baseCols];
-  return [
-    ...baseCols.slice(0, lhidIdx + 1),
-    ...LINKED_DB_TABLE_COLUMNS,
-    ...baseCols.slice(lhidIdx + 1)
-  ];
-}
-
-function getOptoolTableColumns(schemas, tabName) {
-  const rawCols = schemas.optoolTabs[tabName] || [];
-  const previewKeys = schemas.optoolPreviewCols?.[tabName];
-  const rawPreviewCols = previewKeys
-    ? previewKeys.map((k) => rawCols.find((c) => c.key === k)).filter(Boolean)
-    : rawCols.slice(0, 10);
-
-  if (!LINKED_DB_TABLE_TABS.has(tabName)) {
-    return { cols: rawCols, previewCols: rawPreviewCols };
+  function insertLinkedColsAfterLhid(baseCols) {
+    const lhidIdx = baseCols.findIndex((c) => c.key === 'lhid');
+    if (lhidIdx < 0) return [...LINKED_DB_TABLE_COLUMNS, ...baseCols];
+    return [
+      ...baseCols.slice(0, lhidIdx + 1),
+      ...LINKED_DB_TABLE_COLUMNS,
+      ...baseCols.slice(lhidIdx + 1)
+    ];
   }
-  return {
-    cols: insertLinkedColsAfterLhid(rawCols),
-    previewCols: insertLinkedColsAfterLhid(rawPreviewCols)
-  };
-}
 
-function getOptoolCellValue(row, col, dbByLhid) {
-  if (col?.dbKey) {
-    const rawKey = String(row?.lhid || '').trim().toLowerCase();
-    const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
-    const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
-    return dbRow?.[col.dbKey] ?? '';
-  }
-  if (col?.key === 'lhid') {
-    return formatLhidDisplay(row?.[col.key]);
-  }
-  if (col?.key === 'targetYear') {
-    const direct = row?.[col.key];
-    if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
-      const s = String(direct).trim();
-      const m = s.match(/\b(20\d{2})\b/);
-      return m ? m[1] : s;
+  function getOptoolTableColumns(schemas, tabName) {
+    const rawCols = schemas.optoolTabs[tabName] || [];
+    const previewKeys = schemas.optoolPreviewCols?.[tabName];
+    const rawPreviewCols = previewKeys
+      ? previewKeys.map((k) => rawCols.find((c) => c.key === k)).filter(Boolean)
+      : rawCols.slice(0, 10);
+
+    if (!LINKED_DB_TABLE_TABS.has(tabName)) {
+      return { cols: rawCols, previewCols: rawPreviewCols };
     }
-    const rawKey = String(row?.lhid || '').trim().toLowerCase();
-    const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
-    const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
-    const dbYr = dbRow?.year ?? dbRow?.targetYear ?? '';
-    if (dbYr !== '') {
-      const s = String(dbYr).trim();
-      const m = s.match(/\b(20\d{2})\b/);
-      return m ? m[1] : s;
-    }
-    return '';
+    return {
+      cols: insertLinkedColsAfterLhid(rawCols),
+      previewCols: insertLinkedColsAfterLhid(rawPreviewCols)
+    };
   }
-  return row?.[col?.key] ?? '';
-}
 
-function filterOptoolRows(rows, ctx, skipColKey = null, dbByLhidOverride = null) {
-  const {
-    state,
-    schemas,
-    activeOptoolTab,
-    searchTerm,
-    optoolTargetFilter = 'ALL',
-    optoolColFilters = {},
-    filters
-  } = ctx;
-
-  const tabNames = Object.keys(schemas.optoolTabs);
-  const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
-  const { cols } = getOptoolTableColumns(schemas, currentTab);
-  const colByKey = new Map(cols.map((c) => [c.key, c]));
-  const dbByLhid = dbByLhidOverride || buildDbByLhidMap(state).dbByLhid;
-  const includeLinkedSearch = LINKED_DB_TABLE_TABS.has(currentTab);
-  const activeColEntries = Object.entries(optoolColFilters || {}).filter(
-    ([key, val]) => key !== skipColKey && normalizeFilterSpec(val).value !== ''
-  );
-
-  const q = (searchTerm || '').trim().toLowerCase();
-  const targetFilter = String(optoolTargetFilter || 'ALL');
-  const codeMap = {
-    BIL: 'biliran',
-    ESA: 'eastern samar',
-    LEY: 'leyte',
-    NSA: 'northern samar',
-    SAM: 'samar',
-    SLE: 'southern leyte'
-  };
-
-  return rows
-    .map((row, idx) => ({ row, idx }))
-    .filter(({ row }) => {
-      const activeFilterProv = (filters && filters.province) || 'ALL';
-      if (activeFilterProv !== 'ALL' && row.province !== undefined && row.province !== '') {
-        const provText = String(row.province).toLowerCase();
-        const target = codeMap[activeFilterProv];
-        if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
-        if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
-        if (target && !provText.includes(target)) return false;
+  function getOptoolCellValue(row, col, dbByLhid) {
+    if (col?.dbKey) {
+      const rawKey = String(row?.lhid || '').trim().toLowerCase();
+      const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
+      const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
+      return dbRow?.[col.dbKey] ?? '';
+    }
+    if (col?.key === 'lhid') {
+      return formatLhidDisplay(row?.[col.key]);
+    }
+    if (col?.key === 'targetYear') {
+      const direct = row?.[col.key];
+      if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+        const s = String(direct).trim();
+        const m = s.match(/\b(20\d{2})\b/);
+        return m ? m[1] : s;
       }
-      if (currentTab === 'Database' && targetFilter !== 'ALL') {
-        const rowTarget = String(row.milestoneTarget || '').trim();
-        if (targetFilter === 'ASSIGNED' && !rowTarget) return false;
-        if (targetFilter === 'UNASSIGNED' && rowTarget) return false;
-        if (
-          targetFilter !== 'ASSIGNED' &&
-          targetFilter !== 'UNASSIGNED' &&
-          rowTarget.toLowerCase() !== targetFilter.toLowerCase()
-        ) {
-          return false;
+      const rawKey = String(row?.lhid || '').trim().toLowerCase();
+      const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
+      const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
+      const dbYr = dbRow?.year ?? dbRow?.targetYear ?? '';
+      if (dbYr !== '') {
+        const s = String(dbYr).trim();
+        const m = s.match(/\b(20\d{2})\b/);
+        return m ? m[1] : s;
+      }
+      return '';
+    }
+    return row?.[col?.key] ?? '';
+  }
+
+  function filterOptoolRows(rows, ctx, skipColKey = null, dbByLhidOverride = null) {
+    const {
+      state,
+      schemas,
+      activeOptoolTab,
+      searchTerm,
+      optoolTargetFilter = 'ALL',
+      optoolColFilters = {},
+      filters
+    } = ctx;
+
+    const tabNames = Object.keys(schemas.optoolTabs);
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
+    const { cols } = getOptoolTableColumns(schemas, currentTab);
+    const colByKey = new Map(cols.map((c) => [c.key, c]));
+    const dbByLhid = dbByLhidOverride || buildDbByLhidMap(state).dbByLhid;
+    const includeLinkedSearch = LINKED_DB_TABLE_TABS.has(currentTab);
+    const activeColEntries = Object.entries(optoolColFilters || {}).filter(
+      ([key, val]) => key !== skipColKey && normalizeFilterSpec(val).value !== ''
+    );
+
+    const q = (searchTerm || '').trim().toLowerCase();
+    const targetFilter = String(optoolTargetFilter || 'ALL');
+    const codeMap = {
+      BIL: 'biliran',
+      ESA: 'eastern samar',
+      LEY: 'leyte',
+      NSA: 'northern samar',
+      SAM: 'samar',
+      SLE: 'southern leyte'
+    };
+
+    return rows
+      .map((row, idx) => ({ row, idx }))
+      .filter(({ row }) => {
+        const activeFilterProv = (filters && filters.province) || 'ALL';
+        if (activeFilterProv !== 'ALL' && row.province !== undefined && row.province !== '') {
+          const provText = String(row.province).toLowerCase();
+          const target = codeMap[activeFilterProv];
+          if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
+          if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
+          if (target && !provText.includes(target)) return false;
         }
-      }
-      for (const [colKey, filterSpec] of activeColEntries) {
-        const col = colByKey.get(colKey);
-        const cellVal = getOptoolCellValue(row, col, dbByLhid);
-        if (!matchesColumnFilter(cellVal, filterSpec, col?.type)) {
-          return false;
-        }
-      }
-      if (q) {
-        let hay = Object.values(row).join(' ');
-        if (includeLinkedSearch) {
-          const lhidKey = String(row.lhid || '').trim().toLowerCase();
-          const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
-          if (dbRow) {
-            hay +=
-              ' ' +
-              LINKED_DB_PROFILE_FIELDS.map((f) => dbRow[f.key] ?? '').join(' ');
+        if (currentTab === 'Database' && targetFilter !== 'ALL') {
+          const rowTarget = String(row.milestoneTarget || '').trim();
+          if (targetFilter === 'ASSIGNED' && !rowTarget) return false;
+          if (targetFilter === 'UNASSIGNED' && rowTarget) return false;
+          if (
+            targetFilter !== 'ASSIGNED' &&
+            targetFilter !== 'UNASSIGNED' &&
+            rowTarget.toLowerCase() !== targetFilter.toLowerCase()
+          ) {
+            return false;
           }
         }
-        if (!hay.toLowerCase().includes(q)) return false;
+        for (const [colKey, filterSpec] of activeColEntries) {
+          const col = colByKey.get(colKey);
+          const cellVal = getOptoolCellValue(row, col, dbByLhid);
+          if (!matchesColumnFilter(cellVal, filterSpec, col?.type)) {
+            return false;
+          }
+        }
+        if (q) {
+          let hay = Object.values(row).join(' ');
+          if (includeLinkedSearch) {
+            const lhidKey = String(row.lhid || '').trim().toLowerCase();
+            const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
+            if (dbRow) {
+              hay +=
+                ' ' +
+                LINKED_DB_PROFILE_FIELDS.map((f) => dbRow[f.key] ?? '').join(' ');
+            }
+          }
+          if (!hay.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+  }
+
+  export function getColumnFilterValues(ctx, colKey) {
+    const { state, schemas, activeOptoolTab } = ctx;
+    const tabNames = Object.keys(schemas.optoolTabs);
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
+    const { cols } = getOptoolTableColumns(schemas, currentTab);
+    const col = cols.find((c) => c.key === colKey);
+    const allRows = state.optool[currentTab] || [];
+    const { dbByLhid } = buildDbByLhidMap(state);
+    const matching = filterOptoolRows(allRows, ctx, colKey, dbByLhid);
+
+    const counts = new Map();
+    let blankCount = 0;
+    for (const { row } of matching) {
+      const rawCell = getOptoolCellValue(row, col, dbByLhid);
+      if (col?.type === 'checkbox') {
+        if (isChecklistChecked(rawCell)) {
+          counts.set('Checked', (counts.get('Checked') || 0) + 1);
+        } else {
+          blankCount++;
+        }
+        continue;
       }
-      return true;
-    });
-}
-
-export function getColumnFilterValues(ctx, colKey) {
-  const { state, schemas, activeOptoolTab } = ctx;
-  const tabNames = Object.keys(schemas.optoolTabs);
-  const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
-  const { cols } = getOptoolTableColumns(schemas, currentTab);
-  const col = cols.find((c) => c.key === colKey);
-  const allRows = state.optool[currentTab] || [];
-  const { dbByLhid } = buildDbByLhidMap(state);
-  const matching = filterOptoolRows(allRows, ctx, colKey, dbByLhid);
-
-  const counts = new Map();
-  let blankCount = 0;
-  for (const { row } of matching) {
-    const rawCell = getOptoolCellValue(row, col, dbByLhid);
-    if (col?.type === 'checkbox') {
-      if (isChecklistChecked(rawCell)) {
-        counts.set('Checked', (counts.get('Checked') || 0) + 1);
-      } else {
+      const val = String(rawCell ?? '').trim();
+      if (!val) {
         blankCount++;
-      }
-      continue;
-    }
-    const val = String(rawCell ?? '').trim();
-    if (!val) {
-      blankCount++;
-    } else {
-      counts.set(val, (counts.get(val) || 0) + 1);
-    }
-  }
-
-  const values = Array.from(counts.entries())
-    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }))
-    .map(([value, count]) => ({ value, count }));
-
-  return { col, blankCount, totalRows: matching.length, values };
-}
-
-function buildOptoolViewModel(ctx) {
-  const {
-    state,
-    schemas,
-    activeOptoolTab,
-    searchTerm,
-    optoolTargetFilter = 'ALL',
-    optoolColFilters = {},
-    optoolPage = 1,
-    optoolPageSize = 50,
-    optoolColMode = 'preview',
-    optoolColPage = 1
-  } = ctx;
-
-  const tabNames = Object.keys(schemas.optoolTabs);
-  const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
-  const { cols, previewCols } = getOptoolTableColumns(schemas, currentTab);
-  const allRows = state.optool[currentTab] || [];
-  const targetTabs = schemas.milestoneTargetTabs || [
-    'CF(DOC)',
-    'Survey',
-    'MOV',
-    'RegistrationDistribution',
-    'Installation'
-  ];
-
-  const anchorCol = cols[0]?.key === 'lhid' ? cols[0] : null;
-  const extraCols = anchorCol ? cols.slice(1) : cols;
-  const colPageSize = 7;
-  const totalColPages = Math.max(1, Math.ceil(extraCols.length / colPageSize));
-  const safeColPage = Math.min(Math.max(1, Number(optoolColPage) || 1), totalColPages);
-
-  let displayCols = previewCols;
-  if (optoolColMode === 'all') {
-    displayCols = cols;
-  } else if (optoolColMode === 'paged') {
-    const cStart = (safeColPage - 1) * colPageSize;
-    const slice = extraCols.slice(cStart, cStart + colPageSize);
-    displayCols = anchorCol ? [anchorCol, ...slice] : slice;
-  }
-
-  const activeColEntries = Object.entries(optoolColFilters || {}).filter(
-    ([, val]) => normalizeFilterSpec(val).value !== ''
-  );
-
-  const { dbRows, dbByLhid, dbTotalCarpableArea } = buildDbByLhidMap(state);
-  const q = (searchTerm || '').trim();
-  const targetFilter = String(optoolTargetFilter || 'ALL');
-  const indexedRows = filterOptoolRows(allRows, ctx, null, dbByLhid);
-
-  // Vertical (row) pagination
-  const totalRows = indexedRows.length;
-  const isShowAllRows = String(optoolPageSize) === 'ALL';
-  const rowPageSize = isShowAllRows ? Math.max(1, totalRows) : Math.max(1, Number(optoolPageSize) || 50);
-  const totalRowPages = isShowAllRows ? 1 : Math.max(1, Math.ceil(totalRows / rowPageSize));
-  const safeRowPage = Math.min(Math.max(1, Number(optoolPage) || 1), totalRowPages);
-  const rowStartIdx = (safeRowPage - 1) * rowPageSize;
-  const pagedRows = isShowAllRows ? indexedRows : indexedRows.slice(rowStartIdx, rowStartIdx + rowPageSize);
-  const showingFrom = totalRows === 0 ? 0 : rowStartIdx + 1;
-  const showingTo = Math.min(totalRows, rowStartIdx + pagedRows.length);
-
-  const showMoreCol = optoolColMode !== 'all' && displayCols.length < cols.length;
-  const hiddenColsCount = Math.max(0, cols.length - displayCols.length);
-  const totalColSpan = displayCols.length + (showMoreCol ? 1 : 0) + 1;
-  const hasAnyFilter = activeColEntries.length > 0 || Boolean(q) || targetFilter !== 'ALL';
-  const isFilteredScope =
-    hasAnyFilter || String(ctx.filters?.province || 'ALL') !== 'ALL' || totalRows !== allRows.length;
-
-  const tabAllStats = sumOptoolCarpableMetrics(allRows, dbByLhid, currentTab);
-  const filteredRowsOnly = indexedRows.map((entry) => entry.row);
-  const tabFilteredStats = sumOptoolCarpableMetrics(filteredRowsOnly, dbByLhid, currentTab);
-
-  let dbFilteredAssignedCount = 0;
-  const dbTargetStats = {};
-  for (const t of targetTabs) {
-    dbTargetStats[t] = { lhs: 0, carpableArea: 0 };
-  }
-  if (currentTab === 'Database') {
-    for (const row of filteredRowsOnly) {
-      if (String(row.milestoneTarget || '').trim() !== '') {
-        dbFilteredAssignedCount++;
+      } else {
+        counts.set(val, (counts.get(val) || 0) + 1);
       }
     }
-    const targetScopedRows = filterOptoolRows(allRows, { ...ctx, optoolTargetFilter: 'ALL' }, 'milestoneTarget', dbByLhid);
-    const targetLookup = new Map(targetTabs.map((t) => [t.toLowerCase(), t]));
-    for (const { row } of targetScopedRows) {
-      const canonical = targetLookup.get(String(row.milestoneTarget || '').trim().toLowerCase());
-      if (canonical) {
-        dbTargetStats[canonical].lhs++;
-        dbTargetStats[canonical].carpableArea += Number(row.carpable) || 0;
-      }
-    }
+
+    const values = Array.from(counts.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }))
+      .map(([value, count]) => ({ value, count }));
+
+    return { col, blankCount, totalRows: matching.length, values };
   }
 
-  return {
-    tabNames,
-    currentTab,
-    cols,
-    previewCols,
-    displayCols,
-    dbByLhid,
-    targetTabs,
-    targetFilter,
-    optoolColFilters: optoolColFilters || {},
-    hasAnyFilter,
-    isFilteredScope,
-    dbAllRowsCount: dbRows.length,
-    dbTotalCarpableArea,
-    dbFilteredAssignedCount,
-    dbTargetStats,
-    tabAllStats,
-    tabFilteredStats,
-    indexedRows,
-    pagedRows,
-    totalRows,
-    isShowAllRows,
-    optoolPageSize,
-    totalRowPages,
-    safeRowPage,
-    showingFrom,
-    showingTo,
-    pageButtons: buildPageList(safeRowPage, totalRowPages),
-    optoolColMode,
-    safeColPage,
-    totalColPages,
-    showMoreCol,
-    hiddenColsCount,
-    totalColSpan
+  function buildOptoolViewModel(ctx) {
+    const {
+      state,
+      schemas,
+      activeOptoolTab,
+      searchTerm,
+      optoolTargetFilter = 'ALL',
+      optoolColFilters = {},
+      optoolPage = 1,
+      optoolPageSize = 50,
+      optoolColMode = 'preview',
+      optoolColPage = 1
+    } = ctx;
+
+    const tabNames = Object.keys(schemas.optoolTabs);
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
+    const { cols, previewCols } = getOptoolTableColumns(schemas, currentTab);
+    const allRows = state.optool[currentTab] || [];
+    const targetTabs = schemas.milestoneTargetTabs || [
+      'CF(DOC)',
+      'Survey',
+      'MOV',
+      'RegistrationDistribution',
+      'Installation'
+    ];
+
+    const anchorCol = cols[0]?.key === 'lhid' ? cols[0] : null;
+    const extraCols = anchorCol ? cols.slice(1) : cols;
+    const colPageSize = 7;
+    const totalColPages = Math.max(1, Math.ceil(extraCols.length / colPageSize));
+    const safeColPage = Math.min(Math.max(1, Number(optoolColPage) || 1), totalColPages);
+
+    let displayCols = previewCols;
+    if (optoolColMode === 'all') {
+      displayCols = cols;
+    } else if (optoolColMode === 'paged') {
+      const cStart = (safeColPage - 1) * colPageSize;
+      const slice = extraCols.slice(cStart, cStart + colPageSize);
+      displayCols = anchorCol ? [anchorCol, ...slice] : slice;
+    }
+
+    const activeColEntries = Object.entries(optoolColFilters || {}).filter(
+      ([, val]) => normalizeFilterSpec(val).value !== ''
+    );
+
+    const { dbRows, dbByLhid, dbTotalCarpableArea } = buildDbByLhidMap(state);
+    const q = (searchTerm || '').trim();
+    const targetFilter = String(optoolTargetFilter || 'ALL');
+    const indexedRows = filterOptoolRows(allRows, ctx, null, dbByLhid);
+
+    // Vertical (row) pagination
+    const totalRows = indexedRows.length;
+    const isShowAllRows = String(optoolPageSize) === 'ALL';
+    const rowPageSize = isShowAllRows ? Math.max(1, totalRows) : Math.max(1, Number(optoolPageSize) || 50);
+    const totalRowPages = isShowAllRows ? 1 : Math.max(1, Math.ceil(totalRows / rowPageSize));
+    const safeRowPage = Math.min(Math.max(1, Number(optoolPage) || 1), totalRowPages);
+    const rowStartIdx = (safeRowPage - 1) * rowPageSize;
+    const pagedRows = isShowAllRows ? indexedRows : indexedRows.slice(rowStartIdx, rowStartIdx + rowPageSize);
+    const showingFrom = totalRows === 0 ? 0 : rowStartIdx + 1;
+    const showingTo = Math.min(totalRows, rowStartIdx + pagedRows.length);
+
+    const showMoreCol = optoolColMode !== 'all' && displayCols.length < cols.length;
+    const hiddenColsCount = Math.max(0, cols.length - displayCols.length);
+    const totalColSpan = displayCols.length + (showMoreCol ? 1 : 0) + 1;
+    const hasAnyFilter = activeColEntries.length > 0 || Boolean(q) || targetFilter !== 'ALL';
+    const isFilteredScope =
+      hasAnyFilter || String(ctx.filters?.province || 'ALL') !== 'ALL' || totalRows !== allRows.length;
+
+    const tabAllStats = sumOptoolCarpableMetrics(allRows, dbByLhid, currentTab);
+    const filteredRowsOnly = indexedRows.map((entry) => entry.row);
+    const tabFilteredStats = sumOptoolCarpableMetrics(filteredRowsOnly, dbByLhid, currentTab);
+
+    let dbFilteredAssignedCount = 0;
+    const dbTargetStats = {};
+    for (const t of targetTabs) {
+      dbTargetStats[t] = { lhs: 0, carpableArea: 0 };
+    }
+    if (currentTab === 'Database') {
+      for (const row of filteredRowsOnly) {
+        if (String(row.milestoneTarget || '').trim() !== '') {
+          dbFilteredAssignedCount++;
+        }
+      }
+      const targetScopedRows = filterOptoolRows(allRows, { ...ctx, optoolTargetFilter: 'ALL' }, 'milestoneTarget', dbByLhid);
+      const targetLookup = new Map(targetTabs.map((t) => [t.toLowerCase(), t]));
+      for (const { row } of targetScopedRows) {
+        const canonical = targetLookup.get(String(row.milestoneTarget || '').trim().toLowerCase());
+        if (canonical) {
+          dbTargetStats[canonical].lhs++;
+          dbTargetStats[canonical].carpableArea += Number(row.carpable) || 0;
+        }
+      }
+    }
+
+    return {
+      tabNames,
+      currentTab,
+      cols,
+      previewCols,
+      displayCols,
+      dbByLhid,
+      targetTabs,
+      targetFilter,
+      optoolColFilters: optoolColFilters || {},
+      hasAnyFilter,
+      isFilteredScope,
+      dbAllRowsCount: dbRows.length,
+      dbTotalCarpableArea,
+      dbFilteredAssignedCount,
+      dbTargetStats,
+      tabAllStats,
+      tabFilteredStats,
+      indexedRows,
+      pagedRows,
+      totalRows,
+      isShowAllRows,
+      optoolPageSize,
+      totalRowPages,
+      safeRowPage,
+      showingFrom,
+      showingTo,
+      pageButtons: buildPageList(safeRowPage, totalRowPages),
+      optoolColMode,
+      safeColPage,
+      totalColPages,
+      showMoreCol,
+      hiddenColsCount,
+      totalColSpan
+    };
+  }
+
+  function sumOptoolCarpableMetrics(rows, dbByLhid, currentTab) {
+    const isDb = currentTab === 'Database';
+    const seenLhids = new Set();
+    let carpableArea = 0;
+    let matchedCount = 0;
+    let totalArbs = 0;
+    let totalTitles = 0;
+    let totalCompensation = 0;
+
+    for (const row of rows) {
+      if (isDb) {
+        carpableArea += parseNumericValue(row.carpable) || 0;
+      } else {
+        const lhidKey = String(row.lhid || '').trim().toLowerCase();
+        const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
+        if (dbRow) matchedCount++;
+        if (!lhidKey || !seenLhids.has(lhidKey)) {
+          if (lhidKey) seenLhids.add(lhidKey);
+          if (dbRow) carpableArea += parseNumericValue(dbRow.carpable) || 0;
+        }
+        totalArbs += parseNumericValue(row.noOfArbs) || 0;
+        totalTitles += parseNumericValue(row.noOfTitles) || 0;
+        totalCompensation += parseNumericValue(row.compensationAmount) || 0;
+      }
+    }
+
+    return {
+      count: rows.length,
+      carpableArea,
+      matchedCount,
+      totalArbs,
+      totalTitles,
+      totalCompensation
+    };
+  }
+
+  const TARGET_CARD_META = {
+    'CF(DOC)': { label: 'CF(DOC)', variantClass: 'highlight' },
+    Survey: { label: 'Survey', variantClass: 'blue' },
+    MOV: { label: 'MOV', variantClass: 'amber' },
+    RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'teal' },
+    Installation: { label: 'Installation', variantClass: 'highlight' }
   };
-}
 
-function sumOptoolCarpableMetrics(rows, dbByLhid, currentTab) {
-  const isDb = currentTab === 'Database';
-  const seenLhids = new Set();
-  let carpableArea = 0;
-  let matchedCount = 0;
-  let totalArbs = 0;
-  let totalTitles = 0;
-  let totalCompensation = 0;
+  function renderOptoolKpiCardsHtml(vm) {
+    const {
+      currentTab,
+      totalRows,
+      dbAllRowsCount,
+      dbTotalCarpableArea,
+      dbFilteredAssignedCount,
+      dbTargetStats,
+      tabAllStats,
+      tabFilteredStats,
+      targetTabs,
+      targetFilter,
+      isFilteredScope
+    } = vm;
 
-  for (const row of rows) {
-    if (isDb) {
-      carpableArea += parseNumericValue(row.carpable) || 0;
-    } else {
-      const lhidKey = String(row.lhid || '').trim().toLowerCase();
-      const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
-      if (dbRow) matchedCount++;
-      if (!lhidKey || !seenLhids.has(lhidKey)) {
-        if (lhidKey) seenLhids.add(lhidKey);
-        if (dbRow) carpableArea += parseNumericValue(dbRow.carpable) || 0;
+    if (currentTab !== 'Database') {
+      const meta = TARGET_CARD_META[currentTab] || { label: currentTab, variantClass: 'highlight' };
+      const pctTabLhs = tabAllStats.count > 0 ? ((totalRows / tabAllStats.count) * 100).toFixed(1) : '0.0';
+      const pctTabArea =
+        tabAllStats.carpableArea > 0
+          ? ((tabFilteredStats.carpableArea / tabAllStats.carpableArea) * 100).toFixed(1)
+          : '0.0';
+      const pctDbLhs = dbAllRowsCount > 0 ? ((totalRows / dbAllRowsCount) * 100).toFixed(1) : '0.0';
+      const pctDbArea =
+        dbTotalCarpableArea > 0 ? ((tabFilteredStats.carpableArea / dbTotalCarpableArea) * 100).toFixed(1) : '0.0';
+
+      let lhsMeta = isFilteredScope ? `Filtered ${meta.label} landholdings` : `Active records in ${meta.label} tab`;
+      if (currentTab === 'MOV') {
+        lhsMeta = `Total Compensation: PHP ${tabFilteredStats.totalCompensation.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`;
+      } else if (currentTab === 'RegistrationDistribution' || currentTab === 'Installation') {
+        lhsMeta = `${tabFilteredStats.totalArbs.toLocaleString()} ARBs • ${tabFilteredStats.totalTitles.toLocaleString()} Titles`;
       }
-      totalArbs += parseNumericValue(row.noOfArbs) || 0;
-      totalTitles += parseNumericValue(row.noOfTitles) || 0;
-      totalCompensation += parseNumericValue(row.compensationAmount) || 0;
-    }
-  }
 
-  return {
-    count: rows.length,
-    carpableArea,
-    matchedCount,
-    totalArbs,
-    totalTitles,
-    totalCompensation
-  };
-}
-
-const TARGET_CARD_META = {
-  'CF(DOC)': { label: 'CF(DOC)', variantClass: 'highlight' },
-  Survey: { label: 'Survey', variantClass: 'blue' },
-  MOV: { label: 'MOV', variantClass: 'amber' },
-  RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'teal' },
-  Installation: { label: 'Installation', variantClass: 'highlight' }
-};
-
-function renderOptoolKpiCardsHtml(vm) {
-  const {
-    currentTab,
-    totalRows,
-    dbAllRowsCount,
-    dbTotalCarpableArea,
-    dbFilteredAssignedCount,
-    dbTargetStats,
-    tabAllStats,
-    tabFilteredStats,
-    targetTabs,
-    targetFilter,
-    isFilteredScope
-  } = vm;
-
-  if (currentTab !== 'Database') {
-    const meta = TARGET_CARD_META[currentTab] || { label: currentTab, variantClass: 'highlight' };
-    const pctTabLhs = tabAllStats.count > 0 ? ((totalRows / tabAllStats.count) * 100).toFixed(1) : '0.0';
-    const pctTabArea =
-      tabAllStats.carpableArea > 0
-        ? ((tabFilteredStats.carpableArea / tabAllStats.carpableArea) * 100).toFixed(1)
-        : '0.0';
-    const pctDbLhs = dbAllRowsCount > 0 ? ((totalRows / dbAllRowsCount) * 100).toFixed(1) : '0.0';
-    const pctDbArea =
-      dbTotalCarpableArea > 0 ? ((tabFilteredStats.carpableArea / dbTotalCarpableArea) * 100).toFixed(1) : '0.0';
-
-    let lhsMeta = isFilteredScope ? `Filtered ${meta.label} landholdings` : `Active records in ${meta.label} tab`;
-    if (currentTab === 'MOV') {
-      lhsMeta = `Total Compensation: PHP ${tabFilteredStats.totalCompensation.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      })}`;
-    } else if (currentTab === 'RegistrationDistribution' || currentTab === 'Installation') {
-      lhsMeta = `${tabFilteredStats.totalArbs.toLocaleString()} ARBs • ${tabFilteredStats.totalTitles.toLocaleString()} Titles`;
-    }
-
-    return `
+      return `
       <section class="kpi-grid kpi-grid-2">
         <div class="kpi-card ${meta.variantClass}">
           <div class="kpi-label">${esc(meta.label)} — Total LHs</div>
           <div class="kpi-primary num">${totalRows.toLocaleString()} LHs</div>
           <div class="kpi-secondary num">
-            ${
-              isFilteredScope
-                ? `of ${tabAllStats.count.toLocaleString()} ${esc(meta.label)} LHs (${pctTabLhs}%)`
-                : `${pctDbLhs}% of ${dbAllRowsCount.toLocaleString()} Database LHs`
-            }
+            ${isFilteredScope
+          ? `of ${tabAllStats.count.toLocaleString()} ${esc(meta.label)} LHs (${pctTabLhs}%)`
+          : `${pctDbLhs}% of ${dbAllRowsCount.toLocaleString()} Database LHs`
+        }
           </div>
           <div class="kpi-meta">${lhsMeta}</div>
         </div>
@@ -5421,33 +5355,31 @@ function renderOptoolKpiCardsHtml(vm) {
           <div class="kpi-label">${esc(meta.label)} — Area (CARPable)</div>
           <div class="kpi-primary num">${fmtArea(tabFilteredStats.carpableArea)} HAS</div>
           <div class="kpi-secondary num" style="color:var(--dar-blue)">
-            ${
-              isFilteredScope
-                ? `of ${fmtArea(tabAllStats.carpableArea)} HAS ${esc(meta.label)} CARPable (${pctTabArea}%)`
-                : `${pctDbArea}% of ${fmtArea(dbTotalCarpableArea)} HAS Database CARPable`
-            }
+            ${isFilteredScope
+          ? `of ${fmtArea(tabAllStats.carpableArea)} HAS ${esc(meta.label)} CARPable (${pctTabArea}%)`
+          : `${pctDbArea}% of ${fmtArea(dbTotalCarpableArea)} HAS Database CARPable`
+        }
           </div>
           <div class="kpi-meta">CARPable matched from Database by LHID (${tabFilteredStats.matchedCount}/${tabFilteredStats.count} row(s))</div>
         </div>
       </section>
     `;
-  }
+    }
 
-  const pctLhs = dbAllRowsCount > 0 ? ((totalRows / dbAllRowsCount) * 100).toFixed(1) : '0.0';
-  const pctArea =
-    dbTotalCarpableArea > 0 ? ((tabFilteredStats.carpableArea / dbTotalCarpableArea) * 100).toFixed(1) : '0.0';
+    const pctLhs = dbAllRowsCount > 0 ? ((totalRows / dbAllRowsCount) * 100).toFixed(1) : '0.0';
+    const pctArea =
+      dbTotalCarpableArea > 0 ? ((tabFilteredStats.carpableArea / dbTotalCarpableArea) * 100).toFixed(1) : '0.0';
 
-  const summaryRowHtml = `
+    const summaryRowHtml = `
     <section class="kpi-grid kpi-grid-2">
       <div class="kpi-card highlight">
         <div class="kpi-label">Total LHs</div>
         <div class="kpi-primary num">${totalRows.toLocaleString()} LHs</div>
         <div class="kpi-secondary num">
-          ${
-            isFilteredScope
-              ? `of ${dbAllRowsCount.toLocaleString()} total LHs (${pctLhs}%)`
-              : `${dbFilteredAssignedCount.toLocaleString()} assigned to Milestone Target`
-          }
+          ${isFilteredScope
+        ? `of ${dbAllRowsCount.toLocaleString()} total LHs (${pctLhs}%)`
+        : `${dbFilteredAssignedCount.toLocaleString()} assigned to Milestone Target`
+      }
         </div>
         <div class="kpi-meta">${isFilteredScope ? 'Filtered Database landholdings' : 'Active Database master landholdings'}</div>
       </div>
@@ -5455,18 +5387,17 @@ function renderOptoolKpiCardsHtml(vm) {
         <div class="kpi-label">Area (CARPable)</div>
         <div class="kpi-primary num">${fmtArea(tabFilteredStats.carpableArea)} HAS</div>
         <div class="kpi-secondary num" style="color:var(--dar-blue)">
-          ${
-            isFilteredScope
-              ? `of ${fmtArea(dbTotalCarpableArea)} HAS total CARPable (${pctArea}%)`
-              : `Sum of CARPable column across ${dbAllRowsCount.toLocaleString()} LH(s)`
-          }
+          ${isFilteredScope
+        ? `of ${fmtArea(dbTotalCarpableArea)} HAS total CARPable (${pctArea}%)`
+        : `Sum of CARPable column across ${dbAllRowsCount.toLocaleString()} LH(s)`
+      }
         </div>
         <div class="kpi-meta">CARPable area total in hectares (4-decimal precision)</div>
       </div>
     </section>
   `;
 
-  const targetsRowHtml = `
+    const targetsRowHtml = `
     <section class="kpi-targets-section" aria-labelledby="kpi-targets-heading">
       <div class="kpi-section-header">
         <h3 id="kpi-targets-heading" class="kpi-section-title">Target per Milestone</h3>
@@ -5474,11 +5405,11 @@ function renderOptoolKpiCardsHtml(vm) {
       </div>
       <div class="kpi-grid kpi-grid-targets" aria-label="Milestone Target summary cards">
         ${targetTabs
-          .map((t) => {
-            const stat = dbTargetStats[t] || { lhs: 0, carpableArea: 0 };
-            const meta = TARGET_CARD_META[t] || { label: t, variantClass: 'highlight' };
-            const isSelected = targetFilter.toLowerCase() === t.toLowerCase();
-            return `
+        .map((t) => {
+          const stat = dbTargetStats[t] || { lhs: 0, carpableArea: 0 };
+          const meta = TARGET_CARD_META[t] || { label: t, variantClass: 'highlight' };
+          const isSelected = targetFilter.toLowerCase() === t.toLowerCase();
+          return `
               <button
                 type="button"
                 class="kpi-card kpi-target-card ${meta.variantClass} ${isSelected ? 'active-target-card' : ''}"
@@ -5491,36 +5422,35 @@ function renderOptoolKpiCardsHtml(vm) {
                 <div class="kpi-meta">${isSelected ? 'Active target filter (click to clear)' : 'Target CARPable • Click to filter'}</div>
               </button>
             `;
-          })
-          .join('')}
+        })
+        .join('')}
       </div>
     </section>
   `;
 
-  return `${summaryRowHtml}${targetsRowHtml}`;
-}
-
-function renderOptoolBodyRowsHtml(vm) {
-  const { currentTab, pagedRows, displayCols, targetTabs, showMoreCol, hiddenColsCount, totalColSpan, dbByLhid } = vm;
-  if (pagedRows.length === 0) {
-    return `<tr><td colspan="${totalColSpan}" style="text-align:center;padding:28px;color:var(--text-muted)">No matching rows in <strong>${esc(currentTab)}</strong>. Adjust filters or click <strong>+ Add ${esc(currentTab)} Row</strong>.</td></tr>`;
+    return `${summaryRowHtml}${targetsRowHtml}`;
   }
-  return pagedRows
-    .map(({ row, idx }) => {
-      const rowLhidClean = formatLhidDisplay(row.lhid);
-      const rowTarget = String(row.milestoneTarget || '').trim();
-      const targetSelectHtml =
-        currentTab === 'Database'
-          ? `<select class="target-action-select ${rowTarget ? 'has-target' : ''}" data-milestone-target="${idx}" aria-label="Select Milestone Target" title="Select Milestone Target"><option value="">Milestone Target…</option>${targetTabs
+
+  function renderOptoolBodyRowsHtml(vm) {
+    const { currentTab, pagedRows, displayCols, targetTabs, showMoreCol, hiddenColsCount, totalColSpan, dbByLhid } = vm;
+    if (pagedRows.length === 0) {
+      return `<tr><td colspan="${totalColSpan}" style="text-align:center;padding:28px;color:var(--text-muted)">No matching rows in <strong>${esc(currentTab)}</strong>. Adjust filters or click <strong>+ Add ${esc(currentTab)} Row</strong>.</td></tr>`;
+    }
+    return pagedRows
+      .map(({ row, idx }) => {
+        const rowLhidClean = formatLhidDisplay(row.lhid);
+        const rowTarget = String(row.milestoneTarget || '').trim();
+        const targetSelectHtml =
+          currentTab === 'Database'
+            ? `<select class="target-action-select ${rowTarget ? 'has-target' : ''}" data-milestone-target="${idx}" aria-label="Select Milestone Target" title="Select Milestone Target"><option value="">Milestone Target…</option>${targetTabs
               .map(
                 (t) =>
-                  `<option value="${esc(t)}" ${
-                    rowTarget.toLowerCase() === t.toLowerCase() ? 'selected' : ''
+                  `<option value="${esc(t)}" ${rowTarget.toLowerCase() === t.toLowerCase() ? 'selected' : ''
                   }>${esc(t)}</option>`
               )
               .join('')}</select>`
-          : '';
-      return `
+            : '';
+        return `
         <tr>
           ${displayCols
             .map((c) => {
@@ -5530,17 +5460,18 @@ function renderOptoolBodyRowsHtml(vm) {
                 const displayLhid = formatLhidDisplay(val);
                 return `<td><button type="button" class="link-btn" data-lhid="${esc(displayLhid)}">${esc(displayLhid)}</button></td>`;
               }
-              if (c.key === 'pdfFile') {
-                if (val && typeof val === 'string' && val.trim() !== '') {
+              if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
+                const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
+                if (isPdfAttached) {
                   return `<td style="white-space:nowrap">
                     <div style="display:inline-flex;gap:4px;align-items:center;">
                       <a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;font-weight:600;"><span style="font-size:12px;">📄</span> View PDF</a>
-                      <button type="button" class="btn btn-secondary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" title="Replace or re-upload PDF" style="padding:2px 6px;font-size:11px;">⬆</button>
+                      <button type="button" class="btn btn-secondary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-col="${esc(c.key)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" title="Replace or re-upload PDF" style="padding:2px 6px;font-size:11px;">⬆</button>
                     </div>
                   </td>`;
                 }
                 return `<td style="white-space:nowrap">
-                  <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
+                  <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-col="${esc(c.key)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
                 </td>`;
               }
               if (c.type === 'checkbox') {
@@ -5570,10 +5501,9 @@ function renderOptoolBodyRowsHtml(vm) {
               return `<td${linkedCls ? ` class="${linkedCls}"` : ''}>${esc(val || '—')}</td>`;
             })
             .join('')}
-          ${
-            showMoreCol
-              ? `<td><span class="badge badge-gray">+${hiddenColsCount} cols</span></td>`
-              : ''
+          ${showMoreCol
+            ? `<td><span class="badge badge-gray">+${hiddenColsCount} cols</span></td>`
+            : ''
           }
           <td class="center col-actions-sticky" style="white-space:nowrap">
             ${targetSelectHtml}<button class="btn btn-secondary btn-sm" data-edit-optool="${idx}">Edit / View All</button>
@@ -5581,25 +5511,25 @@ function renderOptoolBodyRowsHtml(vm) {
           </td>
         </tr>
       `;
-    })
-    .join('');
-}
+      })
+      .join('');
+  }
 
-function renderOptoolPaginationHtml(vm) {
-  const {
-    showingFrom,
-    showingTo,
-    totalRows,
-    optoolPageSize,
-    isShowAllRows,
-    optoolColMode,
-    safeColPage,
-    totalColPages,
-    pageButtons,
-    safeRowPage,
-    totalRowPages
-  } = vm;
-  return `
+  function renderOptoolPaginationHtml(vm) {
+    const {
+      showingFrom,
+      showingTo,
+      totalRows,
+      optoolPageSize,
+      isShowAllRows,
+      optoolColMode,
+      safeColPage,
+      totalColPages,
+      pageButtons,
+      safeRowPage,
+      totalRowPages
+    } = vm;
+    return `
     <div class="pagination-group">
       <span class="num" style="color:var(--text-muted)">
         Showing <strong>${showingFrom.toLocaleString()}–${showingTo.toLocaleString()}</strong> of <strong>${totalRows.toLocaleString()}</strong>
@@ -5614,15 +5544,14 @@ function renderOptoolPaginationHtml(vm) {
       </select>
       <button type="button" class="page-btn" data-hscroll="-360" title="Scroll table left">◀ Left</button>
       <button type="button" class="page-btn" data-hscroll="360" title="Scroll table right">Right ▶</button>
-      ${
-        optoolColMode === 'paged'
-          ? `
+      ${optoolColMode === 'paged'
+        ? `
         <span class="page-ellipsis">|</span>
         <button type="button" class="page-btn" data-optool-col-page="${safeColPage - 1}" ${safeColPage <= 1 ? 'disabled' : ''}>◀ Cols</button>
         <span class="num" style="font-weight:600">Cols ${safeColPage}/${totalColPages}</span>
         <button type="button" class="page-btn" data-optool-col-page="${safeColPage + 1}" ${safeColPage >= totalColPages ? 'disabled' : ''}>Cols ▶</button>
       `
-          : ''
+        : ''
       }
     </div>
 
@@ -5640,55 +5569,55 @@ function renderOptoolPaginationHtml(vm) {
       <button type="button" class="page-btn" data-optool-page="${totalRowPages}" ${safeRowPage >= totalRowPages ? 'disabled' : ''} title="Last page">⟫</button>
     </div>
   `;
-}
+  }
 
-export function renderOptoolPartial(ctx) {
-  const vm = buildOptoolViewModel(ctx);
-  return {
-    kpiCardsHtml: renderOptoolKpiCardsHtml(vm),
-    tbodyHtml: renderOptoolBodyRowsHtml(vm),
-    paginationHtml: renderOptoolPaginationHtml(vm),
-    badgeText: `${vm.indexedRows.length} row(s) • ${vm.displayCols.length}/${vm.cols.length} cols`,
-    hasAnyFilter: vm.hasAnyFilter
-  };
-}
+  export function renderOptoolPartial(ctx) {
+    const vm = buildOptoolViewModel(ctx);
+    return {
+      kpiCardsHtml: renderOptoolKpiCardsHtml(vm),
+      tbodyHtml: renderOptoolBodyRowsHtml(vm),
+      paginationHtml: renderOptoolPaginationHtml(vm),
+      badgeText: `${vm.indexedRows.length} row(s) • ${vm.displayCols.length}/${vm.cols.length} cols`,
+      hasAnyFilter: vm.hasAnyFilter
+    };
+  }
 
-export function renderOptoolView(ctx) {
-  const { state, searchTerm } = ctx;
-  const vm = buildOptoolViewModel(ctx);
-  const {
-    tabNames,
-    currentTab,
-    cols,
-    previewCols,
-    displayCols,
-    targetTabs,
-    targetFilter,
-    optoolColFilters,
-    hasAnyFilter,
-    indexedRows,
-    optoolColMode,
-    showMoreCol
-  } = vm;
+  export function renderOptoolView(ctx) {
+    const { state, searchTerm } = ctx;
+    const vm = buildOptoolViewModel(ctx);
+    const {
+      tabNames,
+      currentTab,
+      cols,
+      previewCols,
+      displayCols,
+      targetTabs,
+      targetFilter,
+      optoolColFilters,
+      hasAnyFilter,
+      indexedRows,
+      optoolColMode,
+      showMoreCol
+    } = vm;
 
-  const hasGroupHeader = currentTab === 'Survey';
-  const groupSpans = hasGroupHeader ? buildOptoolGroupSpans(displayCols, showMoreCol) : [];
+    const hasGroupHeader = currentTab === 'Survey';
+    const groupSpans = hasGroupHeader ? buildOptoolGroupSpans(displayCols, showMoreCol) : [];
 
-  return `
+    return `
     ${renderEmptyWorkspaceCallout(state)}
     <div class="optool-kpi-stack" id="optool-kpi-cards">${renderOptoolKpiCardsHtml(vm)}</div>
     <div class="panel" id="panel-optool">
       <div class="tab-strip">
         ${tabNames
-          .map(
-            (t) => `
+        .map(
+          (t) => `
           <button type="button" class="tab-btn ${t === currentTab ? 'active' : ''}" data-optool-tab="${esc(t)}">
             <span>${esc(t)}</span>
             <span class="tab-count">${(state.optool[t] || []).length}</span>
           </button>
         `
-          )
-          .join('')}
+        )
+        .join('')}
       </div>
 
       <div class="toolbar">
@@ -5700,22 +5629,21 @@ export function renderOptoolView(ctx) {
             placeholder="Search LHID, Title, Landowner, Municipality…"
             value="${esc(searchTerm)}"
           />
-          ${
-            currentTab === 'Database'
-              ? `
+          ${currentTab === 'Database'
+        ? `
             <select id="optool-target-filter" class="toolbar-select" aria-label="Filter by Milestone Target">
               <option value="ALL" ${targetFilter === 'ALL' ? 'selected' : ''}>All Milestone Targets</option>
               <option value="ASSIGNED" ${targetFilter === 'ASSIGNED' ? 'selected' : ''}>Assigned Only</option>
               <option value="UNASSIGNED" ${targetFilter === 'UNASSIGNED' ? 'selected' : ''}>Unassigned</option>
               ${targetTabs
-                .map(
-                  (t) => `<option value="${esc(t)}" ${targetFilter === t ? 'selected' : ''}>${esc(t)}</option>`
-                )
-                .join('')}
+          .map(
+            (t) => `<option value="${esc(t)}" ${targetFilter === t ? 'selected' : ''}>${esc(t)}</option>`
+          )
+          .join('')}
             </select>
           `
-              : ''
-          }
+        : ''
+      }
           <select id="optool-col-mode" class="toolbar-select" aria-label="Horizontal column mode">
             <option value="preview" ${optoolColMode === 'preview' ? 'selected' : ''}>Key Columns (${previewCols.length})</option>
             <option value="paged" ${optoolColMode === 'paged' ? 'selected' : ''}>Horizontal Col Pages (${cols.length})</option>
@@ -5741,25 +5669,24 @@ export function renderOptoolView(ctx) {
       <div class="table-wrap table-scroll-xy" id="optool-table-wrap">
         <table id="optool-table"${hasGroupHeader ? ' class="has-col-groups"' : ''}>
           <thead id="optool-thead">
-            ${
-              hasGroupHeader
-                ? `
+            ${hasGroupHeader
+        ? `
             <tr class="optool-head-groups">
               ${groupSpans
-                .map((g) => `<th colspan="${g.span}" class="col-group-th ${g.variant}">${esc(g.label)}</th>`)
-                .join('')}
+          .map((g) => `<th colspan="${g.span}" class="col-group-th ${g.variant}">${esc(g.label)}</th>`)
+          .join('')}
               <th rowspan="2" class="center col-actions-sticky optool-actions-rowspan">Actions</th>
             </tr>
             `
-                : ''
-            }
+        : ''
+      }
             <tr class="optool-head-titles">
               ${displayCols
-                .map((c) => {
-                  const spec = optoolColFilters[c.key];
-                  const label = getColumnFilterLabel(spec, c.type);
-                  const isActive = label !== 'All';
-                  return `
+        .map((c) => {
+          const spec = optoolColFilters[c.key];
+          const label = getColumnFilterLabel(spec, c.type);
+          const isActive = label !== 'All';
+          return `
                     <th${c.linkedFromDb ? ' class="th-linked-db"' : ''}>
                       <button
                         type="button"
@@ -5769,9 +5696,8 @@ export function renderOptoolView(ctx) {
                         data-col-type="${esc(c.type || 'text')}"
                         aria-haspopup="listbox"
                         aria-label="Filter ${esc(c.label)}"
-                        title="${isActive ? `${esc(c.label)}: ${esc(label)}` : `Filter ${esc(c.label)}`}${
-                          c.linkedFromDb ? ' (Database linked by LHID)' : ''
-                        }"
+                        title="${isActive ? `${esc(c.label)}: ${esc(label)}` : `Filter ${esc(c.label)}`}${c.linkedFromDb ? ' (Database linked by LHID)' : ''
+            }"
                       >
                         <span class="col-filter-col-title">${esc(c.label)}</span>
                         <span class="col-filter-btn-text" ${isActive ? '' : 'hidden'}>${isActive ? esc(label) : ''}</span>
@@ -5779,8 +5705,8 @@ export function renderOptoolView(ctx) {
                       </button>
                     </th>
                   `;
-                })
-                .join('')}
+        })
+        .join('')}
               ${showMoreCol ? '<th>More Fields</th>' : ''}
               ${hasGroupHeader ? '' : '<th class="center col-actions-sticky">Actions</th>'}
             </tr>
@@ -5796,44 +5722,40 @@ export function renderOptoolView(ctx) {
       </div>
     </div>
   `;
-}
+  }
 
-export function renderSyncView(ctx) {
-  const { state, schemas, gasScript, gasHtml, provinceScope } = ctx;
-  const snap = state.liveHubSnapshot || {};
-  const nodeStatuses = state.nodeStatuses || {};
-  const isScoped = Boolean(provinceScope?.code);
+  export function renderSyncView(ctx) {
+    const { state, schemas, gasScript, gasHtml, provinceScope } = ctx;
+    const snap = state.liveHubSnapshot || {};
+    const nodeStatuses = state.nodeStatuses || {};
+    const isScoped = Boolean(provinceScope?.code);
 
-  return `
+    return `
     <!-- Section 1: Regional Google Sheets Data Source Repository -->
     <div class="panel">
       <div class="panel-header">
         <div>
-          <h3 class="panel-title">1. ${
-            isScoped
-              ? `${esc(provinceScope.provinceName)} Google Sheet Node`
-              : 'Regional Google Sheets Data Source Repository'
-          }</h3>
-          <p class="panel-subtitle">${
-            isScoped
-              ? `Assigned Provincial Ledger: ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
-              : 'Central Aggregator Hub + 6 Provincial Nodes (DAR Region VIII Active Registry)'
-          }</p>
+          <h3 class="panel-title">1. ${isScoped
+        ? `${esc(provinceScope.provinceName)} Google Sheet Node`
+        : 'Regional Google Sheets Data Source Repository'
+      }</h3>
+          <p class="panel-subtitle">${isScoped
+        ? `Assigned Provincial Ledger: ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
+        : 'Central Aggregator Hub + 6 Provincial Nodes (DAR Region VIII Active Registry)'
+      }</p>
         </div>
         <div class="toolbar-left">
-          ${
-            isScoped
-              ? ''
-              : `
+          ${isScoped
+        ? ''
+        : `
                 <button class="btn btn-secondary btn-sm" id="btn-sync-probe">Verify Live Hub Connection</button>
                 <button class="btn btn-secondary btn-sm" id="btn-sync-pull-hub">Sync &amp; Merge Live Hub Sheet</button>
               `
-          }
-          <button class="btn btn-primary btn-sm" id="btn-sync-all-nodes">${
-            isScoped
-              ? `Sync ${esc(provinceScope.provinceName)} Sheet`
-              : 'Sync All 7 Google Sheets'
-          }</button>
+      }
+          <button class="btn btn-primary btn-sm" id="btn-sync-all-nodes">${isScoped
+        ? `Sync ${esc(provinceScope.provinceName)} Sheet`
+        : 'Sync All 7 Google Sheets'
+      }</button>
         </div>
       </div>
 
@@ -5851,29 +5773,29 @@ export function renderSyncView(ctx) {
           </thead>
           <tbody>
             ${schemas.registry
-              .map((node) => {
-                const isHub = node.role === 'Central Aggregator';
-                const ns = nodeStatuses[node.code];
-                let statusBadge = '';
-                if (ns) {
-                  if (ns.status === 'synced') {
-                    statusBadge = `<span class="badge badge-green">Synced (${ns.importedRows} rows)</span>`;
-                  } else if (ns.status === 'unauthorized') {
-                    statusBadge = '<span class="badge badge-amber">401 Restricted (Share Link or GAS)</span>';
-                  } else {
-                    statusBadge = '<span class="badge badge-red">Connection Error</span>';
-                  }
-                } else {
-                  statusBadge = isHub
-                    ? snap.reachable === true
-                      ? '<span class="badge badge-green">Public XLSX Reachable</span>'
-                      : snap.reachable === false
-                      ? '<span class="badge badge-red">Connection Error</span>'
-                      : '<span class="badge badge-gray">Not Checked Yet</span>'
-                    : '<span class="badge badge-amber">DAR Private / GAS ETL Node</span>';
-                }
+        .map((node) => {
+          const isHub = node.role === 'Central Aggregator';
+          const ns = nodeStatuses[node.code];
+          let statusBadge = '';
+          if (ns) {
+            if (ns.status === 'synced') {
+              statusBadge = `<span class="badge badge-green">Synced (${ns.importedRows} rows)</span>`;
+            } else if (ns.status === 'unauthorized') {
+              statusBadge = '<span class="badge badge-amber">401 Restricted (Share Link or GAS)</span>';
+            } else {
+              statusBadge = '<span class="badge badge-red">Connection Error</span>';
+            }
+          } else {
+            statusBadge = isHub
+              ? snap.reachable === true
+                ? '<span class="badge badge-green">Public XLSX Reachable</span>'
+                : snap.reachable === false
+                  ? '<span class="badge badge-red">Connection Error</span>'
+                  : '<span class="badge badge-gray">Not Checked Yet</span>'
+              : '<span class="badge badge-amber">DAR Private / GAS ETL Node</span>';
+          }
 
-                return `
+          return `
                   <tr>
                     <td class="mono" style="font-weight:800">${esc(node.code)}</td>
                     <td style="font-weight:600">${esc(node.jurisdiction)}</td>
@@ -5892,26 +5814,24 @@ export function renderSyncView(ctx) {
                     </td>
                   </tr>
                 `;
-              })
-              .join('')}
+        })
+        .join('')}
           </tbody>
         </table>
       </div>
-      ${
-        snap.checkedAt
-          ? `
+      ${snap.checkedAt
+        ? `
         <div class="panel-body" style="border-top:1px solid var(--border);background:var(--surface-alt)">
           <strong>Last Live Regional Hub Probe (${esc(new Date(snap.checkedAt).toLocaleString())}):</strong>
-          ${
-            snap.reachable
-              ? `Detected tabs: ${Object.entries(snap.tabRowCounts || {})
-                  .map(([tab, cnt]) => `<span class="badge badge-blue" style="margin-left:6px">${esc(tab)}: ${cnt} rows</span>`)
-                  .join('')}`
-              : `<span class="badge badge-red">${esc(snap.error)}</span>`
-          }
+          ${snap.reachable
+          ? `Detected tabs: ${Object.entries(snap.tabRowCounts || {})
+            .map(([tab, cnt]) => `<span class="badge badge-blue" style="margin-left:6px">${esc(tab)}: ${cnt} rows</span>`)
+            .join('')}`
+          : `<span class="badge badge-red">${esc(snap.error)}</span>`
+        }
         </div>
       `
-          : ''
+        : ''
       }
     </div>
 
@@ -5940,25 +5860,23 @@ export function renderSyncView(ctx) {
               <input type="file" accept=".xlsx" id="xlsx-file-upload" class="hidden" />
             </label>
           </div>
-          ${
-            isScoped
-              ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">Imports are automatically filtered to <strong>${esc(
-                  provinceScope.provinceName
-                )} (${esc(provinceScope.code)})</strong> records.</p>`
-              : `
+          ${isScoped
+        ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">Imports are automatically filtered to <strong>${esc(
+          provinceScope.provinceName
+        )} (${esc(provinceScope.code)})</strong> records.</p>`
+        : `
                 <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">
                   <button class="btn btn-secondary btn-sm" id="btn-reset-sample">Restore Sample Staging Data</button>
                   <button class="btn btn-danger btn-sm" id="btn-clear-workspace">Clear to Empty Live Workspace</button>
                 </div>
               `
-          }
+      }
         </div>
       </div>
 
-      ${
-        isScoped
-          ? ''
-          : `
+      ${isScoped
+        ? ''
+        : `
       <div class="panel">
         <div class="panel-header">
           <div>
@@ -6030,8 +5948,7 @@ export function renderSyncView(ctx) {
       </div>
     </div>
 
-    ${
-      isScoped
+    ${isScoped
         ? ''
         : `
     <!-- Section 3: Ready-to-Deploy GAS ETL Pipeline Code -->
@@ -6066,7 +5983,7 @@ export function renderSyncView(ctx) {
       </div>
     </div>
     `
-    }
+      }
 
     <!-- Section 4: Sync & Consolidation Audit Log -->
     <div class="panel">
@@ -6088,45 +6005,44 @@ export function renderSyncView(ctx) {
           </thead>
           <tbody>
             ${(state.syncLogs || [])
-              .map(
-                (log) => `
+        .map(
+          (log) => `
               <tr>
                 <td class="mono" style="white-space:nowrap;font-size:11.5px">${esc(new Date(log.timestamp).toLocaleString())}</td>
                 <td style="font-weight:600">${esc(log.source)}</td>
                 <td>
-                  <span class="badge ${
-                    log.status === 'success'
-                      ? 'badge-green'
-                      : log.status === 'error'
-                      ? 'badge-red'
-                      : 'badge-blue'
-                  }">${esc(log.status.toUpperCase())}</span>
+                  <span class="badge ${log.status === 'success'
+              ? 'badge-green'
+              : log.status === 'error'
+                ? 'badge-red'
+                : 'badge-blue'
+            }">${esc(log.status.toUpperCase())}</span>
                 </td>
                 <td>${esc(log.message)}</td>
               </tr>
             `
-              )
-              .join('')}
+        )
+        .join('')}
           </tbody>
         </table>
       </div>
     </div>
   `;
-}
+  }
 
-/** Render Administrator Account Confirmation & User Directory view. */
-export function renderUsersView({ users = [], currentUser = null }) {
-  const pendingCount = users.filter((u) => u.status === 'pending').length;
-  const approvedCount = users.filter((u) => u.status === 'approved').length;
-  const rejectedCount = users.filter((u) => u.status === 'rejected').length;
+  /** Render Administrator Account Confirmation & User Directory view. */
+  export function renderUsersView({ users = [], currentUser = null }) {
+    const pendingCount = users.filter((u) => u.status === 'pending').length;
+    const approvedCount = users.filter((u) => u.status === 'approved').length;
+    const rejectedCount = users.filter((u) => u.status === 'rejected').length;
 
-  const statusBadge = (status) => {
-    if (status === 'approved') return '<span class="badge badge-green">CONFIRMED</span>';
-    if (status === 'rejected') return '<span class="badge badge-red">DECLINED</span>';
-    return '<span class="badge badge-amber">PENDING CONFIRMATION</span>';
-  };
+    const statusBadge = (status) => {
+      if (status === 'approved') return '<span class="badge badge-green">CONFIRMED</span>';
+      if (status === 'rejected') return '<span class="badge badge-red">DECLINED</span>';
+      return '<span class="badge badge-amber">PENDING CONFIRMATION</span>';
+    };
 
-  return `
+    return `
     <div class="view-header">
       <div>
         <h2>Account Confirmations &amp; User Access</h2>
@@ -6186,16 +6102,15 @@ export function renderUsersView({ users = [], currentUser = null }) {
             </tr>
           </thead>
           <tbody>
-            ${
-              users.length === 0
-                ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">No user accounts found.</td></tr>'
-                : users
-                    .map((u) => {
-                      const isSelf = currentUser && currentUser.id === u.id;
-                      const createdText = u.createdAt
-                        ? new Date(u.createdAt).toLocaleString()
-                        : '—';
-                      return `
+            ${users.length === 0
+        ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">No user accounts found.</td></tr>'
+        : users
+          .map((u) => {
+            const isSelf = currentUser && currentUser.id === u.id;
+            const createdText = u.createdAt
+              ? new Date(u.createdAt).toLocaleString()
+              : '—';
+            return `
                         <tr>
                           <td>
                             <strong>${esc(u.name)}</strong>
@@ -6210,67 +6125,61 @@ export function renderUsersView({ users = [], currentUser = null }) {
                           <td>${statusBadge(u.status)}</td>
                           <td class="mono" style="font-size:11.5px;white-space:nowrap">${esc(createdText)}</td>
                           <td style="text-align:right;white-space:nowrap">
-                            ${
-                              u.status !== 'approved'
-                                ? `<button class="btn btn-primary btn-sm" data-user-action="approve" data-user-id="${esc(u.id)}">✓ Confirm</button>`
-                                : ''
-                            }
-                            ${
-                              u.status !== 'rejected' && !isSelf
-                                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="reject" data-user-id="${esc(u.id)}">Decline</button>`
-                                : ''
-                            }
-                            ${
-                              u.status === 'approved' && !isSelf
-                                ? `<button class="btn btn-secondary btn-sm" style="margin-left:4px" data-user-action="${
-                                    u.role === 'admin' ? 'demote' : 'promote'
-                                  }" data-user-id="${esc(u.id)}">${
-                                    u.role === 'admin' ? 'Set User' : 'Make Admin'
-                                  }</button>`
-                                : ''
-                            }
-                            ${
-                              !isSelf
-                                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="delete" data-user-id="${esc(
-                                    u.id
-                                  )}" data-user-name="${esc(u.name || u.email)}">Delete</button>`
-                                : ''
-                            }
+                            ${u.status !== 'approved'
+                ? `<button class="btn btn-primary btn-sm" data-user-action="approve" data-user-id="${esc(u.id)}">✓ Confirm</button>`
+                : ''
+              }
+                            ${u.status !== 'rejected' && !isSelf
+                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="reject" data-user-id="${esc(u.id)}">Decline</button>`
+                : ''
+              }
+                            ${u.status === 'approved' && !isSelf
+                ? `<button class="btn btn-secondary btn-sm" style="margin-left:4px" data-user-action="${u.role === 'admin' ? 'demote' : 'promote'
+                }" data-user-id="${esc(u.id)}">${u.role === 'admin' ? 'Set User' : 'Make Admin'
+                }</button>`
+                : ''
+              }
+                            ${!isSelf
+                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="delete" data-user-id="${esc(
+                  u.id
+                )}" data-user-name="${esc(u.name || u.email)}">Delete</button>`
+                : ''
+              }
                           </td>
                         </tr>
                       `;
-                    })
-                    .join('')
-            }
+          })
+          .join('')
+      }
           </tbody>
         </table>
       </div>
     </div>
   `;
-}
-
-export function renderSurveySupportListModalHtml({
-  rows = [],
-  province = 'ALL',
-  status = 'ALL',
-  stageKey = '',
-  stageLabel = '',
-  targetYear = 'ALL',
-  totalArea = 0,
-  mode = 'accomplished',
-  balanceArea = ''
-}) {
-  const isBalanceMode = mode === 'balance' || mode === 'pending';
-  const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
-  let statusDisplay = '';
-  if (isBalanceMode) {
-    statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
-  } else {
-    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
   }
-  const totalCount = rows.length;
 
-  return `
+  export function renderSurveySupportListModalHtml({
+    rows = [],
+    province = 'ALL',
+    status = 'ALL',
+    stageKey = '',
+    stageLabel = '',
+    targetYear = 'ALL',
+    totalArea = 0,
+    mode = 'accomplished',
+    balanceArea = ''
+  }) {
+    const isBalanceMode = mode === 'balance' || mode === 'pending';
+    const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
+    let statusDisplay = '';
+    if (isBalanceMode) {
+      statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
+    } else {
+      statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
+    }
+    const totalCount = rows.length;
+
+    return `
     <div class="survey-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
       <!-- Summary Header Banner -->
       <div style="background:${isBalanceMode ? '#fefce8' : '#f0fdf4'};border:1px solid ${isBalanceMode ? '#fde047' : '#bbf7d0'};border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -6343,26 +6252,23 @@ export function renderSurveySupportListModalHtml({
             </tr>
           </thead>
           <tbody>
-            ${
-              rows.length === 0
-                ? `
+            ${rows.length === 0
+        ? `
               <tr>
                 <td colspan="14" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
-                  <div style="font-size:14px;font-weight:700;color:var(--text);">${
-                    isBalanceMode
-                      ? `All current Survey records for ${esc(provLabel)} have completed this milestone!`
-                      : 'No landholdings found for this selection'
-                  }</div>
-                  ${
-                    isBalanceMode && balanceArea
-                      ? `<div style="font-size:12.5px;margin-top:6px;color:var(--text-muted);">To fulfill the remaining quota balance (<strong>${esc(balanceArea)} HAS</strong>), assign more workable parcels from the Database into Survey.</div>`
-                      : ''
-                  }
+                  <div style="font-size:14px;font-weight:700;color:var(--text);">${isBalanceMode
+          ? `All current Survey records for ${esc(provLabel)} have completed this milestone!`
+          : 'No landholdings found for this selection'
+        }</div>
+                  ${isBalanceMode && balanceArea
+          ? `<div style="font-size:12.5px;margin-top:6px;color:var(--text-muted);">To fulfill the remaining quota balance (<strong>${esc(balanceArea)} HAS</strong>), assign more workable parcels from the Database into Survey.</div>`
+          : ''
+        }
                 </td>
               </tr>
             `
-                : rows
-                    .map((r, i) => `
+        : rows
+          .map((r, i) => `
               <tr>
                 <td class="text-muted center" style="font-size:11px;">${i + 1}</td>
                 <td>
@@ -6393,52 +6299,52 @@ export function renderSurveySupportListModalHtml({
                 </td>
               </tr>
             `)
-                    .join('')
-            }
+          .join('')
+      }
           </tbody>
         </table>
       </div>
     </div>
   `;
-}
-
-export function renderCfSupportListModalHtml({
-  rows = [],
-  province = 'ALL',
-  status = 'ALL',
-  stageKey = '',
-  stageLabel = '',
-  targetYear = 'ALL',
-  totalArea = 0,
-  mode = 'accomplished',
-  balanceArea = '',
-  tabName = 'CF(DOC)',
-  dates = null
-}) {
-  const isBalanceMode = mode === 'balance' || mode === 'pending';
-  const isTargetMode = mode === 'target';
-  const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
-  let statusDisplay = '';
-  if (isTargetMode) {
-    statusDisplay = 'NEP Target Workable Pool';
-  } else if (isBalanceMode) {
-    statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
-  } else {
-    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : `All ${tabName} Records`)) : status;
   }
-  const totalCount = rows.length;
 
-  const effectiveDates = Array.isArray(dates) && dates.length > 0
-    ? dates
-    : [
+  export function renderCfSupportListModalHtml({
+    rows = [],
+    province = 'ALL',
+    status = 'ALL',
+    stageKey = '',
+    stageLabel = '',
+    targetYear = 'ALL',
+    totalArea = 0,
+    mode = 'accomplished',
+    balanceArea = '',
+    tabName = 'CF(DOC)',
+    dates = null
+  }) {
+    const isBalanceMode = mode === 'balance' || mode === 'pending';
+    const isTargetMode = mode === 'target';
+    const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
+    let statusDisplay = '';
+    if (isTargetMode) {
+      statusDisplay = 'NEP Target Workable Pool';
+    } else if (isBalanceMode) {
+      statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
+    } else {
+      statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : `All ${tabName} Records`)) : status;
+    }
+    const totalCount = rows.length;
+
+    const effectiveDates = Array.isArray(dates) && dates.length > 0
+      ? dates
+      : [
         { key: 'dateFiConducted', shortLabel: 'Date FI Conducted' },
         { key: 'datePreparedSigned', shortLabel: 'Date Prepared & Signed' },
         { key: 'reportedMonth', shortLabel: 'Reported Month' }
       ];
 
-  const colSpanCount = 9 + effectiveDates.length + 1;
+    const colSpanCount = 9 + effectiveDates.length + 1;
 
-  return `
+    return `
     <div class="cf-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
       <!-- Summary Header Banner -->
       <div style="background:${isBalanceMode ? '#fefce8' : isTargetMode ? '#eff6ff' : '#f0fdf4'};border:1px solid ${isBalanceMode ? '#fde047' : isTargetMode ? '#93c5fd' : '#bbf7d0'};border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -6508,18 +6414,17 @@ export function renderCfSupportListModalHtml({
             </tr>
           </thead>
           <tbody>
-            ${
-              rows.length === 0
-                ? `
+            ${rows.length === 0
+        ? `
               <tr>
                 <td colspan="${colSpanCount}" class="center" style="padding:28px 16px;color:var(--text-muted);">
                   No matching landholdings found for this selection.
                 </td>
               </tr>
             `
-                : rows
-                    .map((r, idx) => {
-                      return `
+        : rows
+          .map((r, idx) => {
+            return `
                 <tr>
                   <td class="center font-mono" style="font-size:11px;color:var(--text-muted);">${idx + 1}</td>
                   <td>
@@ -6541,9 +6446,9 @@ export function renderCfSupportListModalHtml({
                     </span>
                   </td>
                   ${effectiveDates.map((d) => {
-                    const dVal = r[d.key] || r.datesMap?.[d.key];
-                    return `<td>${dVal ? `<span class="badge badge-green">✔ ${esc(dVal)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>`;
-                  }).join('')}
+              const dVal = r[d.key] || r.datesMap?.[d.key];
+              return `<td>${dVal ? `<span class="badge badge-green">✔ ${esc(dVal)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>`;
+            }).join('')}
                   <td>${r.targetYear ? `<span class="badge badge-gray">${esc(r.targetYear)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
                   <td class="right">
                     <button type="button" class="btn btn-secondary btn-xs" data-lhid="${esc(formatLhidDisplay(r.lhid))}" style="font-size:11px;padding:2px 8px;" title="View Landholding Drawer">
@@ -6552,14 +6457,14 @@ export function renderCfSupportListModalHtml({
                   </td>
                 </tr>
               `;
-                    })
-                    .join('')
-            }
+          })
+          .join('')
+      }
           </tbody>
         </table>
       </div>
     </div>
   `;
-}
+  }
 
 

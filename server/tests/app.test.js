@@ -117,7 +117,9 @@ test('Schema & Region VIII Registry integrity', () => {
   assert.equal(surveyCols[accIdx].header, 'SR Accepted by DARRO');
   assert.equal(surveyCols[accIdx].group, 'DARRO Compliance');
   const surveyChecklistCols = surveyCols.filter((c) => c.type === 'checkbox');
-  assert.equal(surveyChecklistCols.length, 15);
+  assert.equal(surveyChecklistCols.length, 14, 'Survey checklists reduced by 1 since Transmittal PDF is now a PDF file');
+  const transmittalCol = surveyCols.find((c) => c.key === 'transmittalSrPdf');
+  assert.equal(transmittalCol?.type, 'pdfFile', 'Transmittal PDF column has type pdfFile');
   assert.ok(surveyChecklistCols.every((c) => c.group === 'DARRO Compliance'));
   const remarksDarro = surveyCols.find((c) => c.key === 'remarksDarroToDarpo');
   assert.equal(remarksDarro?.fullWidth, true);
@@ -2827,4 +2829,71 @@ test('LHID Normalization & Display: parses scientific notation and float strings
   assert.ok(rendered.includes('data-lhid="805000007"'), 'Rendered table contains clean integer data-lhid 805000007');
   assert.ok(rendered.includes('>805000007<'), 'Rendered table button text displays clean integer 805000007');
   assert.ok(!rendered.includes('8.05000007E8'), 'Rendered table does not contain scientific notation');
+});
+
+test('Survey Transmittal PDF as PDF File & Serverless EROFS-Safe Upload Handling', async () => {
+  const tempDir = makeTempDir();
+  const testStore = new ConsolidatedStore(tempDir);
+
+  // Initialize a Survey row with transmittalSrPdf
+  testStore.state.optool.Survey = [
+    {
+      lhid: '805000099',
+      kindOfSurvey: 'By Admin',
+      transmittalSrPdf: '',
+      pdfFile: ''
+    }
+  ];
+  testStore.save();
+
+  const { server } = createAppServer(testStore, {
+    requireAuth: false,
+    pushToGasWebApp: async () => ({ ok: false, error: 'Simulated GAS offline' })
+  });
+
+  await new Promise((resolve) => server.listen(0, resolve));
+  const port = server.address().port;
+
+  try {
+    // 1. Upload to transmittalSrPdf column specifically
+    const uploadResp = await fetch(`http://localhost:${port}/api/upload-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tabName: 'Survey',
+        colKey: 'transmittalSrPdf',
+        index: 0,
+        lhid: '805000099',
+        fileName: 'Survey_Transmittal_805000099.pdf',
+        fileBase64: 'JVBERi0xLjQKJcTl8uXrCg=='
+      })
+    });
+
+    assert.equal(uploadResp.status, 200, 'Upload succeeds without EROFS crash');
+    const uploadData = await uploadResp.json();
+    assert.ok(uploadData.ok, 'Upload returns ok: true');
+    assert.equal(uploadData.colKey, 'transmittalSrPdf', 'Uploaded to transmittalSrPdf column');
+    assert.ok(uploadData.fileUrl, 'File URL generated');
+    assert.equal(testStore.state.optool.Survey[0].transmittalSrPdf, uploadData.fileUrl, 'Saved in Survey row transmittalSrPdf');
+
+    // 2. Verify renderOptoolView renders View PDF link and Upload button for transmittalSrPdf
+    const ctx = {
+      state: testStore.state,
+      schemas: {
+        registry: [],
+        optoolTabs: OPTOOL_SHEET_SCHEMAS,
+        optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS
+      },
+      activeOptoolTab: 'Survey',
+      filters: { province: 'ALL' },
+      optoolColMode: 'preview',
+      searchTerm: ''
+    };
+    const rendered = renderOptoolView(ctx);
+    assert.ok(rendered.includes('data-upload-pdf-col="transmittalSrPdf"'), 'Table includes transmittalSrPdf upload button');
+    assert.ok(rendered.includes('View PDF'), 'Table renders View PDF link for transmittalSrPdf');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });

@@ -2192,17 +2192,18 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
           </div>${linkedAfterLhid}
         `;
       }
-      if (c.key === 'pdfFile') {
+      if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
+        const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
         return `
           ${groupHtml}
           <div class="${fieldClass}">
             <label for="opt-${esc(c.key)}">${esc(c.label)}</label>
             <div style="display:flex;gap:6px;align-items:center;">
-              <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" class="form-control" value="${esc(val)}" placeholder="https://drive.google.com/..." style="flex:1;" />
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" style="white-space:nowrap;padding:4px 8px;font-size:12px;">
+              <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" class="form-control" value="${esc(val)}" placeholder="https://drive.google.com/... or data:..." style="flex:1;" />
+              <button type="button" class="btn btn-secondary btn-sm btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" data-upload-pdf-col="${esc(c.key)}" style="white-space:nowrap;padding:4px 8px;font-size:12px;">
                 📎 Upload PDF
               </button>
-              ${val ? `<a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm" style="white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;">📄 View</a>` : ''}
+              ${isPdfAttached ? `<a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm" style="white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;">📄 View</a>` : ''}
             </div>
           </div>${linkedAfterLhid}
         `;
@@ -5257,17 +5258,18 @@ async function init() {
   }
 
   document.addEventListener('click', (e) => {
-    const uploadBtn = e.target.closest('.btn-upload-pdf, [data-upload-pdf-tab], #btn-modal-upload-pdf');
+    const uploadBtn = e.target.closest('.btn-upload-pdf, [data-upload-pdf-tab], #btn-modal-upload-pdf, .btn-modal-upload-pdf');
     if (uploadBtn) {
       e.preventDefault();
       e.stopPropagation();
       const tabName = uploadBtn.dataset.uploadPdfTab || appState.activeOptoolTab || 'CF(DOC)';
+      const colKey = uploadBtn.dataset.uploadPdfCol || 'pdfFile';
       const idx = uploadBtn.dataset.uploadPdfIdx !== undefined && uploadBtn.dataset.uploadPdfIdx !== '' ? Number(uploadBtn.dataset.uploadPdfIdx) : -1;
       const lhid = uploadBtn.dataset.uploadPdfLhid || '';
       const province = uploadBtn.dataset.uploadPdfProvince || '';
-      const isModal = uploadBtn.id === 'btn-modal-upload-pdf';
+      const isModal = Boolean(uploadBtn.closest('.modal') || uploadBtn.id === 'btn-modal-upload-pdf' || uploadBtn.classList.contains('btn-modal-upload-pdf'));
 
-      pendingPdfUpload = { tabName, idx, lhid, province, isModal };
+      pendingPdfUpload = { tabName, colKey, idx, lhid, province, isModal };
       fileInput.value = '';
       fileInput.click();
     }
@@ -5281,7 +5283,7 @@ async function init() {
       return;
     }
 
-    const { tabName, idx, lhid, province, isModal } = pendingPdfUpload;
+    const { tabName, colKey, idx, lhid, province, isModal } = pendingPdfUpload;
     const reader = new FileReader();
     reader.onload = async () => {
       try {
@@ -5296,6 +5298,7 @@ async function init() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 tabName,
+                colKey: colKey || 'pdfFile',
                 index: idx >= 0 ? idx : 0,
                 lhid,
                 province,
@@ -5305,18 +5308,18 @@ async function init() {
             })
         );
 
-        toast(`PDF uploaded successfully: ${uploadRes.fileUrl ? 'Linked to Drive' : file.name}`);
+        toast(`PDF uploaded successfully: ${uploadRes.fileUrl ? (uploadRes.fileUrl.startsWith('http') ? 'Linked to Drive' : 'Attached PDF') : file.name}`);
 
         if (isModal) {
-          const pdfInput = document.getElementById('opt-pdfFile');
-          if (pdfInput) {
-            pdfInput.value = uploadRes.fileUrl;
-            pdfInput.dispatchEvent(new Event('input', { bubbles: true }));
+          const targetInput = document.getElementById(`opt-${colKey}`) || document.getElementById('opt-pdfFile');
+          if (targetInput) {
+            targetInput.value = uploadRes.fileUrl;
+            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
           }
         }
 
         if (idx >= 0 && appState.state.optool?.[tabName]?.[idx]) {
-          appState.state.optool[tabName][idx].pdfFile = uploadRes.fileUrl;
+          appState.state.optool[tabName][idx][colKey || 'pdfFile'] = uploadRes.fileUrl;
         }
 
         renderActiveView();
