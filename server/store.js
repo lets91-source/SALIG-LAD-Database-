@@ -739,7 +739,32 @@ export class ConsolidatedStore {
 
       for (const tabName of orderedTabs) {
         const incoming = optool[tabName];
-        if (!Array.isArray(incoming) || !OPTOOL_SHEET_SCHEMAS[tabName] || incoming.length === 0) {
+        if (!OPTOOL_SHEET_SCHEMAS[tabName]) continue;
+
+        if (options.replaceMilestoneTabs && tabName !== 'Database') {
+          const arr = Array.isArray(incoming) ? incoming : [];
+          const cleanedIncoming = arr.map((rawRow) => {
+            const lhidKey = String(rawRow?.lhid || '').trim().toLowerCase();
+            const linkedDb =
+              tabName === 'RegistrationDistribution' || tabName === 'Installation'
+                ? getDbByLhid().get(lhidKey) || null
+                : null;
+            return this.normalizeOptoolRow(tabName, rawRow, linkedDb);
+          });
+
+          if (options.scopeCode) {
+            const keepRows = (this.state.optool[tabName] || []).filter(
+              (r) => this.getOptoolRowProvinceCode(tabName, r) !== options.scopeCode
+            );
+            this.state.optool[tabName] = [...cleanedIncoming, ...keepRows];
+          } else {
+            this.state.optool[tabName] = cleanedIncoming;
+          }
+          importedCount += cleanedIncoming.length;
+          continue;
+        }
+
+        if (!Array.isArray(incoming) || incoming.length === 0) {
           continue;
         }
         const targetRows = this.state.optool[tabName];
@@ -1150,7 +1175,11 @@ export class ConsolidatedStore {
       for (const tab of Object.keys(this.state.optool)) {
         if (Array.isArray(this.state.optool[tab])) {
           const beforeTab = this.state.optool[tab].length;
-          this.state.optool[tab] = this.state.optool[tab].filter((r) => !mockLhids.has(r.lhid));
+          this.state.optool[tab] = this.state.optool[tab].filter((r) => {
+            if (mockLhids.has(r.lhid)) return false;
+            if (tab !== 'Database' && r.lhid === '805000006') return false;
+            return true;
+          });
           deletedOptoolCount += beforeTab - this.state.optool[tab].length;
         }
       }

@@ -685,27 +685,11 @@ function getHubBootstrap() {
   });
 
   // 2. Read OPTool Supportlist (CF(DOC), Survey, MOV, RegistrationDistribution, Installation)
-  // DIRECTLY from each provincial Google Sheet
+  // DIRECTLY from each provincial Google Sheet (no fallback to Regional Hub)
   const provSupport = readProvincialMilestoneSupportLists_();
   ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'].forEach(function (tab) {
     optool[tab] = provSupport.data[tab] || [];
     optoolHeaders[tab] = provSupport.headers[tab] || [];
-
-    // Also include any rows from Regional Hub for milestone tabs if any exist
-    const hubSheet = findOptoolSheet_(hub, tab);
-    if (hubSheet && hubSheet.getLastRow() > 1) {
-      const hubRows = readSheetObjects_(hubSheet);
-      hubRows.forEach(function (row) {
-        if (row.lhid) row.lhid = formatLhidString_(row.lhid);
-        if (row.LHID) row.LHID = formatLhidString_(row.LHID);
-        const exists = optool[tab].some(function (existing) {
-          return existing.lhid && row.lhid && String(existing.lhid).trim().toLowerCase() === String(row.lhid).trim().toLowerCase();
-        });
-        if (!exists) {
-          optool[tab].push(row);
-        }
-      });
-    }
   });
 
   const logs = readSheetObjects_(logSheet).slice(-30).reverse();

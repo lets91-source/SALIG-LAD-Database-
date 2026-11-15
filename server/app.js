@@ -1244,7 +1244,7 @@ export function createAppServer(dataDir, options = {}) {
             if (snapshot && snapshot.optool) {
               const count = store.importParsedDataset(
                 { optool: snapshot.optool },
-                { skipSave: true }
+                { skipSave: true, replaceMilestoneTabs: true, scopeCode }
               );
               totalImported += count;
               store.state.lastSyncAt = new Date().toISOString();
@@ -1277,10 +1277,11 @@ export function createAppServer(dataDir, options = {}) {
             });
             const parsed = filterParsedDatasetByScope(store, rawParsed, scopeCode);
             const rowCount = Object.values(parsed.optool).reduce((acc, arr) => acc + arr.length, 0);
-            if (rowCount > 0) {
-              store.importParsedDataset({ optool: parsed.optool }, { skipSave: true });
-              totalImported += rowCount;
-            }
+            store.importParsedDataset(
+              { optool: parsed.optool },
+              { skipSave: true, replaceMilestoneTabs: true, scopeCode: node.code }
+            );
+            totalImported += rowCount;
             results.push({
               code: node.code,
               jurisdiction: node.jurisdiction,
