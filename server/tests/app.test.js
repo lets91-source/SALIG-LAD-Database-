@@ -39,7 +39,8 @@ import {
   WHEREABOUTS_CONFIGS,
   renderUsersView,
   isLadBalance,
-  isTempPark
+  isTempPark,
+  renderDashboardView
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -3247,6 +3248,48 @@ test('Global Target filters strictly to LAD Balance, and OPTool Support List bre
   assert.ok(surveyTabHtml.includes('Survey — Area (CARPable)'), 'Survey tab includes Survey Area card');
   assert.ok(surveyTabHtml.includes('Global Target (LAD Balance)'), 'Survey tab includes companion Global Target (LAD Balance) breakdown card');
   assert.ok(surveyTabHtml.includes('Temp. Park'), 'Survey tab includes companion Temp. Park breakdown card');
+
+  // 5. Regional Dashboard View: Top 3 Cards, Provincial Breakdown Table, Pie Chart, and Whereabouts per Milestone
+  const dashboardCtx = {
+    state: mockState,
+    analytics: {
+      kpis: {
+        cumulativeETitles: 0,
+        cumulativeAreaHas: 0,
+        incrementalETitles: 0,
+        incrementalAreaHas: 0,
+        baselineTargetETitles: 0,
+        baselineTargetAreaHas: 0
+      },
+      provincialBreakdown: [],
+      monthlyTrend: [],
+      stageBreakdown: [],
+      optoolSummary: {
+        Database: 5,
+        'CF(DOC)': 1,
+        Survey: 0,
+        MOV: 0,
+        RegistrationDistribution: 0,
+        Installation: 0,
+        totalCarpableArea: 53.75
+      }
+    },
+    monitoringLevel: 'both',
+    measurementLogic: 'both',
+    provinceScope: null
+  };
+  const dashHtml = renderDashboardView(dashboardCtx);
+  assert.ok(dashHtml.includes('Global Target (LAD Balance)'), 'Dashboard includes Top Global Target (LAD Balance) card');
+  assert.ok(dashHtml.includes('Temp. Park'), 'Dashboard includes Top Temp. Park card');
+  assert.ok(dashHtml.includes('Total Database (All Records)'), 'Dashboard includes Top Total Database card');
+  assert.ok(dashHtml.includes('Provincial Breakdown'), 'Dashboard includes Provincial Breakdown table');
+  assert.ok(dashHtml.includes('LAD Balance vs. Registered Titles'), 'Dashboard includes LAD Balance vs Registered Titles Pie panel');
+  assert.ok(dashHtml.includes('Whereabouts per Milestone'), 'Dashboard includes Whereabouts per Milestone section');
+  assert.ok(dashHtml.includes('data-nav="cf-whereabouts"'), 'Dashboard includes CF Whereabouts navigation link');
+  assert.ok(dashHtml.includes('data-nav="survey-whereabouts"'), 'Dashboard includes Survey Whereabouts navigation link');
+  assert.ok(dashHtml.includes('data-nav="mov-whereabouts"'), 'Dashboard includes MOV Whereabouts navigation link');
+  assert.ok(dashHtml.includes('data-nav="regdist-whereabouts"'), 'Dashboard includes Registration Whereabouts navigation link');
+  assert.ok(dashHtml.includes('data-nav="installation-whereabouts"'), 'Dashboard includes Installation Whereabouts navigation link');
 });
 
 test('API responses enforce no-cache headers, and deleting OPTool rows or milestones returns full fresh state and invalidates cache', async () => {

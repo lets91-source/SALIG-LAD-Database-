@@ -2,7 +2,8 @@ import {
   renderTrendChartSvg,
   renderProvincialComparisonSvg,
   renderWhereaboutsProvincialGraphSvg,
-  renderWhereaboutsMonthlyGraphSvg
+  renderWhereaboutsMonthlyGraphSvg,
+  renderLadBalanceVsRegisteredPieSvg
 } from './charts.js';
 import {
   getReportedMonthOptions,
@@ -4427,8 +4428,343 @@ export function renderDashboardView(ctx) {
 
   const maxStageCount = Math.max(1, ...stageBreakdown.map((s) => s.count));
 
+  // 1. Calculate Top 3 Cards from Master Database matching attached layout
+  const allDbRows = state.optool?.Database || [];
+  const dbScopeRows = provinceScope
+    ? allDbRows.filter((r) => matchProvinceName(r.province, provinceScope.provinceName) || matchProvinceName(r.province, provinceScope.code))
+    : allDbRows;
+
+  const ladRows = dbScopeRows.filter((r) => isLadBalance(r));
+  const tempRows = dbScopeRows.filter((r) => isTempPark(r));
+
+  const totalLadLhs = ladRows.length;
+  const totalLadArea = ladRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || 0), 0);
+  const totalTempLhs = tempRows.length;
+  const totalTempArea = tempRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || 0), 0);
+  const totalDbLhs = dbScopeRows.length;
+  const totalDbArea = dbScopeRows.reduce((sum, r) => sum + parseNumericValue(r.carpable || 0), 0);
+
+  const pctLadLhs = totalDbLhs > 0 ? ((totalLadLhs / totalDbLhs) * 100).toFixed(1) : '0.0';
+  const pctTempLhs = totalDbLhs > 0 ? ((totalTempLhs / totalDbLhs) * 100).toFixed(1) : '0.0';
+  const scopeBadge = provinceScope ? provinceScope.provinceName : 'Region VIII';
+
+  const totalRegLhs = kpis.cumulativeETitles || 0;
+  const totalRegArea = kpis.cumulativeAreaHas || 0;
+
+  // 2. Provincial Breakdown Table
+  const provBreakdownRows = DEFAULT_CF_PROVINCES.map((p) => {
+    const provDb = allDbRows.filter((r) => matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
+    const pLad = provDb.filter((r) => isLadBalance(r));
+    const pTemp = provDb.filter((r) => isTempPark(r));
+
+    const ladLhs = pLad.length;
+    const ladArea = pLad.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0);
+    const tempLhs = pTemp.length;
+    const tempArea = pTemp.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0);
+    const dbLhs = provDb.length;
+    const dbArea = provDb.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0);
+
+    const pProv = (provincialBreakdown || []).find((pb) => pb.code === p.code || matchProvinceName(pb.provinceName, p.name));
+    const regTitles = pProv ? pProv.cumulativeETitles : 0;
+    const regArea = pProv ? pProv.cumulativeAreaHas : 0;
+    const pct = ladArea > 0 ? ((regArea / ladArea) * 100).toFixed(1) : (ladLhs > 0 ? ((regTitles / ladLhs) * 100).toFixed(1) : '0.0');
+
+    return {
+      code: p.code,
+      name: p.name,
+      ladLhs,
+      ladArea,
+      tempLhs,
+      tempArea,
+      dbLhs,
+      dbArea,
+      regTitles,
+      regArea,
+      pct
+    };
+  });
+
+  const provTotals = {
+    ladLhs: provBreakdownRows.reduce((s, p) => s + p.ladLhs, 0),
+    ladArea: provBreakdownRows.reduce((s, p) => s + p.ladArea, 0),
+    tempLhs: provBreakdownRows.reduce((s, p) => s + p.tempLhs, 0),
+    tempArea: provBreakdownRows.reduce((s, p) => s + p.tempArea, 0),
+    totalLhs: provBreakdownRows.reduce((s, p) => s + p.dbLhs, 0),
+    totalArea: provBreakdownRows.reduce((s, p) => s + p.dbArea, 0),
+    regTitles: provBreakdownRows.reduce((s, p) => s + p.regTitles, 0),
+    regArea: provBreakdownRows.reduce((s, p) => s + p.regArea, 0)
+  };
+  provTotals.pct = provTotals.ladArea > 0 ? ((provTotals.regArea / provTotals.ladArea) * 100).toFixed(1) : '0.0';
+
+  // 3. Milestone Whereabouts Data
+  const milestoneWhereaboutsData = [
+    {
+      key: 'cf-whereabouts',
+      tabName: 'CF(DOC)',
+      label: 'CF(DOC)',
+      navKey: 'cf-whereabouts',
+      count: (state.optool?.['CF(DOC)'] || []).length,
+      area: (state.optool?.['CF(DOC)'] || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      stageLabel: 'FI Conducted & Prepared',
+      subtext: 'Field Investigation & Documentation'
+    },
+    {
+      key: 'survey-whereabouts',
+      tabName: 'Survey',
+      label: 'Survey',
+      navKey: 'survey-whereabouts',
+      count: (state.optool?.Survey || []).length,
+      area: (state.optool?.Survey || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      stageLabel: 'RSS & Field Survey Return',
+      subtext: 'Survey Verification & DARRO/DENR'
+    },
+    {
+      key: 'mov-whereabouts',
+      tabName: 'MOV',
+      label: 'MOV',
+      navKey: 'mov-whereabouts',
+      count: (state.optool?.MOV || []).length,
+      area: (state.optool?.MOV || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      stageLabel: 'Land Valuation & LBP/AOC',
+      subtext: 'Memorandum of Valuation'
+    },
+    {
+      key: 'regdist-whereabouts',
+      tabName: 'RegistrationDistribution',
+      label: 'Registration / Distribution',
+      navKey: 'regdist-whereabouts',
+      count: (state.optool?.RegistrationDistribution || []).length,
+      area: (state.optool?.RegistrationDistribution || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      stageLabel: 'ROD Registration & ARB Distribution',
+      subtext: 'eTitles & ARB Distribution'
+    },
+    {
+      key: 'installation-whereabouts',
+      tabName: 'Installation',
+      label: 'Installation',
+      navKey: 'installation-whereabouts',
+      count: (state.optool?.Installation || []).length,
+      area: (state.optool?.Installation || []).reduce((s, r) => s + parseNumericValue(r.carpable || r.areaHas || 0), 0),
+      stageLabel: 'On-Ground Physical Installation',
+      subtext: 'Agrarian Reform Beneficiaries Installed'
+    }
+  ];
+
   return `
     ${renderEmptyWorkspaceCallout(state)}
+
+    <!-- TOP SECTION: Global Target Breakdown (The 3 Dark Green Cards from screenshot) -->
+    <section class="kpi-grid kpi-grid-3" aria-label="Global Target Breakdown" style="margin-bottom: 16px;">
+      <!-- Card 1: Global Target (LAD Balance) -->
+      <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+        <div class="cf-kpi-header">
+          <span class="cf-kpi-title">Global Target (LAD Balance)</span>
+          <span class="cf-kpi-badge">${esc(scopeBadge)}</span>
+        </div>
+        <div class="cf-kpi-body">
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">LHs</span>
+            <span class="cf-kpi-val">${totalLadLhs.toLocaleString()}</span>
+          </div>
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">Area</span>
+            <span class="cf-kpi-val area">${fmtArea(totalLadArea)}<span class="cf-kpi-unit">HAS</span></span>
+          </div>
+        </div>
+        <div class="cf-kpi-meta-sub">
+          Active LAD Balance landholdings (${pctLadLhs}% of Database)
+        </div>
+      </div>
+
+      <!-- Card 2: Temp. Park -->
+      <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+        <div class="cf-kpi-header">
+          <span class="cf-kpi-title">Temp. Park</span>
+          <span class="cf-kpi-badge">${esc(scopeBadge)}</span>
+        </div>
+        <div class="cf-kpi-body">
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">LHs</span>
+            <span class="cf-kpi-val">${totalTempLhs.toLocaleString()}</span>
+          </div>
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">Area</span>
+            <span class="cf-kpi-val area">${fmtArea(totalTempArea)}<span class="cf-kpi-unit">HAS</span></span>
+          </div>
+        </div>
+        <div class="cf-kpi-meta-sub">
+          Temporarily parked landholdings (${pctTempLhs}% of Database)
+        </div>
+      </div>
+
+      <!-- Card 3: Total Database (All Records) -->
+      <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+        <div class="cf-kpi-header">
+          <span class="cf-kpi-title">Total Database (All Records)</span>
+          <span class="cf-kpi-badge">${esc(scopeBadge)}</span>
+        </div>
+        <div class="cf-kpi-body">
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">LHs</span>
+            <span class="cf-kpi-val">${totalDbLhs.toLocaleString()}</span>
+          </div>
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">Area</span>
+            <span class="cf-kpi-val area">${fmtArea(totalDbArea)}<span class="cf-kpi-unit">HAS</span></span>
+          </div>
+        </div>
+        <div class="cf-kpi-meta-sub">
+          Master Database Portfolio across Region VIII
+        </div>
+      </div>
+    </section>
+
+    <!-- MIDDLE SECTION: Provincial Breakdown Table + PIE Chart (LAD Balance vs Registered Titles) -->
+    <section class="grid-2" style="grid-template-columns: 1.45fr 1fr; margin-bottom: 16px;">
+      <!-- Panel 1: Table with Provincial Breakdown -->
+      <div class="panel">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div>
+            <h3 class="panel-title">${esc(scopeBadge)} Provincial Breakdown</h3>
+            <p class="panel-subtitle">LAD Balance target, Temp. Park, master parcels &amp; registered titles per province</p>
+          </div>
+          <button type="button" class="btn btn-secondary btn-xs" data-nav="optool">Open OPTool Support List</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Province / Node</th>
+                <th class="right">LAD Target (LHs)</th>
+                <th class="right">LAD Area (HAS)</th>
+                <th class="right">Temp. Park</th>
+                <th class="right">Total DB</th>
+                <th class="right">Registered (HAS)</th>
+                <th class="right">% Attained</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${provBreakdownRows.map((p) => `
+                <tr>
+                  <td>
+                    <strong>${esc(p.name)}</strong>
+                    <span class="mono" style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${esc(p.code)})</span>
+                  </td>
+                  <td class="right num"><strong>${p.ladLhs.toLocaleString()}</strong></td>
+                  <td class="right mono num">${fmtArea(p.ladArea)}</td>
+                  <td class="right num"><span class="badge badge-amber">${p.tempLhs.toLocaleString()}</span></td>
+                  <td class="right num"><span class="badge badge-gray">${p.dbLhs.toLocaleString()}</span></td>
+                  <td class="right mono num" style="color:var(--dar-blue);font-weight:700;">${fmtArea(p.regArea)}</td>
+                  <td class="right num">
+                    <span class="badge ${p.pct >= 50 ? 'badge-green' : p.pct > 0 ? 'badge-blue' : 'badge-gray'}">
+                      ${p.pct}%
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr style="font-weight:700;background:var(--bg-light,#f8fafc);border-top:2px solid var(--border);">
+                <td>Region VIII Total</td>
+                <td class="right num">${provTotals.ladLhs.toLocaleString()}</td>
+                <td class="right mono num">${fmtArea(provTotals.ladArea)}</td>
+                <td class="right num"><span class="badge badge-amber">${provTotals.tempLhs.toLocaleString()}</span></td>
+                <td class="right num"><span class="badge badge-gray">${provTotals.totalLhs.toLocaleString()}</span></td>
+                <td class="right mono num" style="color:var(--dar-blue);font-weight:800;">${fmtArea(provTotals.regArea)}</td>
+                <td class="right num"><span class="badge badge-green">${provTotals.pct}%</span></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Panel 2: PIE Combined with LAD Balance VS Registered Titles -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="panel-title">LAD Balance vs. Registered Titles</h3>
+            <p class="panel-subtitle">Portfolio distribution of active target balance vs. registered accomplishment</p>
+          </div>
+        </div>
+        <div class="panel-body" style="padding: 12px 16px;">
+          ${renderLadBalanceVsRegisteredPieSvg({
+            ladArea: totalLadArea,
+            registeredArea: totalRegArea,
+            tempArea: totalTempArea,
+            ladLhs: totalLadLhs,
+            registeredLhs: totalRegLhs,
+            tempLhs: totalTempLhs
+          })}
+        </div>
+      </div>
+    </section>
+
+    <!-- BOTTOM SECTION: Whereabouts per Milestone -->
+    <section class="panel" style="margin-bottom: 16px;" aria-label="Whereabouts per Milestone">
+      <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h3 class="panel-title">Whereabouts per Milestone</h3>
+          <p class="panel-subtitle">Tracking documentation, surveys, valuations, and registration across Region VIII operational worksheets</p>
+        </div>
+        <span class="badge badge-green">5 Operational Milestones</span>
+      </div>
+      <div class="panel-body" style="padding: 16px;">
+        <!-- 5 Milestone Cards across the grid -->
+        <div class="kpi-grid kpi-grid-targets" style="margin-bottom: 16px;" aria-label="Milestone Whereabouts Summary Cards">
+          ${milestoneWhereaboutsData.map((m) => `
+            <div class="cf-kpi-card cf-kpi-card-sm kpi-card" style="cursor:pointer;" data-nav="${esc(m.navKey)}" title="Click to view full ${esc(m.label)} Whereabouts ledger">
+              <div class="cf-kpi-header">
+                <span class="cf-kpi-title">${esc(m.label)}</span>
+                <span class="cf-kpi-badge">${esc(scopeBadge)}</span>
+              </div>
+              <div class="cf-kpi-body">
+                <div class="cf-kpi-stat">
+                  <span class="cf-kpi-label">LHs</span>
+                  <span class="cf-kpi-val">${m.count.toLocaleString()}</span>
+                </div>
+                <div class="cf-kpi-stat">
+                  <span class="cf-kpi-label">Area</span>
+                  <span class="cf-kpi-val area">${fmtArea(m.area)}<span class="cf-kpi-unit">HAS</span></span>
+                </div>
+              </div>
+              <div class="cf-kpi-meta-sub">${esc(m.stageLabel)}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Consolidated Milestone Performance Table -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Operational Milestone</th>
+                <th class="right">Database Target (LHs)</th>
+                <th class="right">Target Area (HAS)</th>
+                <th class="right">Active in Milestone</th>
+                <th class="right">Milestone Area (HAS)</th>
+                <th>Workflow Focus</th>
+                <th class="center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${milestoneWhereaboutsData.map((m) => `
+                <tr>
+                  <td><strong>${esc(m.label)}</strong></td>
+                  <td class="right num">${totalLadLhs.toLocaleString()}</td>
+                  <td class="right mono num">${fmtArea(totalLadArea)}</td>
+                  <td class="right num"><span class="badge ${m.count > 0 ? 'badge-green' : 'badge-gray'}">${m.count.toLocaleString()} LHs</span></td>
+                  <td class="right mono num">${fmtArea(m.area)}</td>
+                  <td><span style="font-size:12px;color:var(--text-muted);">${esc(m.subtext)}</span></td>
+                  <td class="center">
+                    <button type="button" class="btn btn-secondary btn-xs" data-nav="${esc(m.navKey)}">Open Whereabouts</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
     <!-- KPI Grid -->
     <section class="kpi-grid">

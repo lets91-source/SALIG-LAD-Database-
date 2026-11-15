@@ -374,4 +374,111 @@ export function renderWhereaboutsMonthlyGraphSvg(monthSummaryList, cfg = {}) {
   `;
 }
 
+function fmtAreaVal(val) {
+  const n = Number(val || 0);
+  return n.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+}
+
+export function renderLadBalanceVsRegisteredPieSvg({
+  ladArea = 0,
+  registeredArea = 0,
+  tempArea = 0,
+  ladLhs = 0,
+  registeredLhs = 0,
+  tempLhs = 0
+} = {}) {
+  const lad = Math.max(0, Number(ladArea) || 0);
+  const reg = Math.max(0, Number(registeredArea) || 0);
+  const temp = Math.max(0, Number(tempArea) || 0);
+  const total = lad + reg + temp;
+
+  const cx = 110;
+  const cy = 125;
+  const r = 85;
+  const r0 = 48;
+
+  const slices = [
+    { label: 'LAD Balance', value: lad, color: '#15803d', count: ladLhs, unit: 'LHs' },
+    { label: 'Registered Titles', value: reg, color: '#1e40af', count: registeredLhs, unit: 'Titles' },
+    { label: 'Temp. Park', value: temp, color: '#b45309', count: tempLhs, unit: 'LHs' }
+  ];
+
+  let paths = '';
+  if (total <= 0) {
+    paths = `
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="#e2e8f0" />
+      <circle cx="${cx}" cy="${cy}" r="${r0}" fill="#ffffff" />
+      <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#94a3b8">No Data</text>
+    `;
+  } else {
+    let curAngle = -Math.PI / 2;
+    paths = slices
+      .map((s) => {
+        if (s.value <= 0) return '';
+        const fraction = s.value / total;
+        if (fraction >= 0.9999) {
+          return `
+            <circle cx="${cx}" cy="${cy}" r="${r}" fill="${s.color}" />
+            <circle cx="${cx}" cy="${cy}" r="${r0}" fill="#ffffff" />
+          `;
+        }
+        const angle = fraction * 2 * Math.PI;
+        const endAngle = curAngle + angle;
+        const x1 = cx + r * Math.cos(curAngle);
+        const y1 = cy + r * Math.sin(curAngle);
+        const x2 = cx + r * Math.cos(endAngle);
+        const y2 = cy + r * Math.sin(endAngle);
+        const x3 = cx + r0 * Math.cos(endAngle);
+        const y3 = cy + r0 * Math.sin(endAngle);
+        const x4 = cx + r0 * Math.cos(curAngle);
+        const y4 = cy + r0 * Math.sin(curAngle);
+        const large = angle > Math.PI ? 1 : 0;
+        const d = `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${x3.toFixed(2)} ${y3.toFixed(2)} A ${r0} ${r0} 0 ${large} 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z`;
+        curAngle = endAngle;
+        const pctText = (fraction * 100).toFixed(1);
+        return `
+          <path d="${d}" fill="${s.color}" stroke="#ffffff" stroke-width="2">
+            <title>${esc(s.label)}: ${fmtAreaVal(s.value)} HAS (${pctText}%)</title>
+          </path>
+        `;
+      })
+      .join('');
+  }
+
+  const ladPool = lad + reg;
+  const pctRegistered = ladPool > 0 ? ((reg / ladPool) * 100).toFixed(1) : '0.0';
+
+  const legendItems = slices.map((s) => {
+    const pctOfTotal = total > 0 ? ((s.value / total) * 100).toFixed(1) : '0.0';
+    return `
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:12px;">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${s.color};margin-top:2px;flex-shrink:0;"></span>
+        <div style="min-width:0;line-height:1.25;">
+          <div style="font-weight:700;color:#1e293b;">${esc(s.label)}</div>
+          <div style="color:#64748b;font-size:11px;">
+            <strong style="color:${s.color};">${fmtAreaVal(s.value)} HAS</strong> (${pctOfTotal}%)
+          </div>
+          <div style="color:#94a3b8;font-size:10.5px;">${Number(s.count || 0).toLocaleString()} ${esc(s.unit)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:220px;">
+      <div style="flex:1;min-width:210px;display:flex;justify-content:center;position:relative;">
+        <svg viewBox="0 0 220 250" width="220" height="250" style="display:block;">
+          ${paths}
+          <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="16" font-weight="800" fill="#0f4c29">${pctRegistered}%</text>
+          <text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#64748b" text-transform="uppercase">Attained</text>
+        </svg>
+      </div>
+      <div style="flex:1.1;min-width:180px;padding:6px 0;">
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Portfolio Distribution</div>
+        ${legendItems}
+      </div>
+    </div>
+  `;
+}
+
 
