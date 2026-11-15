@@ -5467,43 +5467,77 @@ function buildDbByLhidMap(state) {
 
       return `
       <section class="kpi-grid kpi-grid-2">
-        <div class="kpi-card ${meta.variantClass}">
-          <div class="kpi-label">${esc(meta.label)} — Total LHs</div>
-          <div class="kpi-primary num">${totalRows.toLocaleString()} LHs</div>
-          <div class="kpi-secondary num">
-            ${isFilteredScope
-          ? `of ${tabAllStats.count.toLocaleString()} ${esc(meta.label)} LHs (${pctTabLhs}%)`
-          : `${pctDbLhs}% of ${dbAllRowsCount.toLocaleString()} Database LHs`
-        }
+        <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">${esc(meta.label)} — Total LHs</span>
+            <span class="cf-kpi-badge">${esc(scopeBadgeText || 'Region VIII')}</span>
           </div>
-          <div class="kpi-meta">${lhsMeta}</div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${totalRows.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Share</span>
+              <span class="cf-kpi-val">${isFilteredScope ? `${pctTabLhs}%` : `${pctDbLhs}%`}</span>
+            </div>
+          </div>
+          <div class="cf-kpi-meta-sub">${lhsMeta}</div>
         </div>
-        <div class="kpi-card blue">
-          <div class="kpi-label">${esc(meta.label)} — Area (CARPable)</div>
-          <div class="kpi-primary num">${fmtArea(tabFilteredStats.carpableArea)} HAS</div>
-          <div class="kpi-secondary num" style="color:var(--dar-blue)">
-            ${isFilteredScope
-          ? `of ${fmtArea(tabAllStats.carpableArea)} HAS ${esc(meta.label)} CARPable (${pctTabArea}%)`
-          : `${pctDbArea}% of ${fmtArea(dbTotalCarpableArea)} HAS Database CARPable`
-        }
+        <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">${esc(meta.label)} — Area (CARPable)</span>
+            <span class="cf-kpi-badge">${esc(scopeBadgeText || 'Region VIII')}</span>
           </div>
-          <div class="kpi-meta">CARPable matched from Database by LHID (${tabFilteredStats.matchedCount}/${tabFilteredStats.count} row(s))</div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(tabFilteredStats.carpableArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Share</span>
+              <span class="cf-kpi-val">${isFilteredScope ? `${pctTabArea}%` : `${pctDbArea}%`}</span>
+            </div>
+          </div>
+          <div class="cf-kpi-meta-sub">CARPable matched from Database by LHID (${tabFilteredStats.matchedCount}/${tabFilteredStats.count} row(s))</div>
         </div>
       </section>
 
       <!-- Companion Global Target Breakdown (LAD Balance vs Temp. Park) -->
       <section class="kpi-grid kpi-grid-2" style="margin-top: 10px;" aria-label="Global Target Breakdown">
-        <div class="kpi-card highlight">
-          <div class="kpi-label">Global Target (LAD Balance)</div>
-          <div class="kpi-primary num">${scopedLadLhs.toLocaleString()} LHs</div>
-          <div class="kpi-secondary num" style="color:var(--dar-green)">${fmtArea(scopedLadArea)} HAS CARPable</div>
-          <div class="kpi-meta">Active LAD Balance target for ${esc(scopeBadgeText || 'Region VIII')}</div>
+        <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Global Target (LAD Balance)</span>
+            <span class="cf-kpi-badge">${esc(scopeBadgeText || 'Region VIII')}</span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${scopedLadLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(scopedLadArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+          <div class="cf-kpi-meta-sub">Active LAD Balance target for ${esc(scopeBadgeText || 'Region VIII')}</div>
         </div>
-        <div class="kpi-card amber">
-          <div class="kpi-label">Temp. Park</div>
-          <div class="kpi-primary num">${scopedTempLhs.toLocaleString()} LHs</div>
-          <div class="kpi-secondary num" style="color:var(--dar-amber)">${fmtArea(scopedTempArea)} HAS CARPable</div>
-          <div class="kpi-meta">Temporarily parked parcels in Database</div>
+        <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title">Temp. Park</span>
+            <span class="cf-kpi-badge">${esc(scopeBadgeText || 'Region VIII')}</span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${scopedTempLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(scopedTempArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+          <div class="cf-kpi-meta-sub">Temporarily parked parcels in Database</div>
         </div>
       </section>
     `;
@@ -5525,13 +5559,22 @@ function buildDbByLhidMap(state) {
     const summaryRowHtml = `
     <section class="kpi-grid kpi-grid-3" aria-label="Global Target Breakdown">
       <!-- Card 1: Global Target (LAD Balance) -->
-      <div class="kpi-card highlight">
-        <div class="kpi-label">Global Target (LAD Balance)</div>
-        <div class="kpi-primary num">${ladLhsToDisplay.toLocaleString()} LHs</div>
-        <div class="kpi-secondary num" style="color:var(--dar-green)">
-          ${fmtArea(ladAreaToDisplay)} HAS
+      <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+        <div class="cf-kpi-header">
+          <span class="cf-kpi-title">Global Target (LAD Balance)</span>
+          <span class="cf-kpi-badge">${esc(scopeBadgeText || 'Region VIII')}</span>
         </div>
-        <div class="kpi-meta">
+        <div class="cf-kpi-body">
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">LHs</span>
+            <span class="cf-kpi-val">${ladLhsToDisplay.toLocaleString()}</span>
+          </div>
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">Area</span>
+            <span class="cf-kpi-val area">${fmtArea(ladAreaToDisplay)}<span class="cf-kpi-unit">HAS</span></span>
+          </div>
+        </div>
+        <div class="cf-kpi-meta-sub">
           ${isFilteredScope
             ? `of ${scopedLadLhs.toLocaleString()} LAD Balance LHs (${scopedLadLhs > 0 ? ((ladLhsToDisplay / scopedLadLhs) * 100).toFixed(1) : '0.0'}%)`
             : `Active LAD Balance landholdings (${scopedDbRowsCount > 0 ? ((ladLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
@@ -5539,13 +5582,22 @@ function buildDbByLhidMap(state) {
       </div>
 
       <!-- Card 2: Temp. Park -->
-      <div class="kpi-card amber">
-        <div class="kpi-label">Temp. Park</div>
-        <div class="kpi-primary num">${tempLhsToDisplay.toLocaleString()} LHs</div>
-        <div class="kpi-secondary num" style="color:var(--dar-amber)">
-          ${fmtArea(tempAreaToDisplay)} HAS
+      <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+        <div class="cf-kpi-header">
+          <span class="cf-kpi-title">Temp. Park</span>
+          <span class="cf-kpi-badge">${esc(scopeBadgeText || 'Region VIII')}</span>
         </div>
-        <div class="kpi-meta">
+        <div class="cf-kpi-body">
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">LHs</span>
+            <span class="cf-kpi-val">${tempLhsToDisplay.toLocaleString()}</span>
+          </div>
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">Area</span>
+            <span class="cf-kpi-val area">${fmtArea(tempAreaToDisplay)}<span class="cf-kpi-unit">HAS</span></span>
+          </div>
+        </div>
+        <div class="cf-kpi-meta-sub">
           ${isFilteredScope
             ? `of ${scopedTempLhs.toLocaleString()} Temp. Park LHs (${scopedTempLhs > 0 ? ((tempLhsToDisplay / scopedTempLhs) * 100).toFixed(1) : '0.0'}%)`
             : `Temporarily parked landholdings (${scopedDbRowsCount > 0 ? ((tempLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
@@ -5553,13 +5605,22 @@ function buildDbByLhidMap(state) {
       </div>
 
       <!-- Card 3: Total Database (All Records) -->
-      <div class="kpi-card blue">
-        <div class="kpi-label">Total Database (All Records)</div>
-        <div class="kpi-primary num">${totalRows.toLocaleString()} LHs</div>
-        <div class="kpi-secondary num" style="color:var(--dar-blue)">
-          ${fmtArea(tabFilteredStats.carpableArea)} HAS
+      <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
+        <div class="cf-kpi-header">
+          <span class="cf-kpi-title">Total Database (All Records)</span>
+          <span class="cf-kpi-badge">${esc(scopeBadgeText || 'Region VIII')}</span>
         </div>
-        <div class="kpi-meta">
+        <div class="cf-kpi-body">
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">LHs</span>
+            <span class="cf-kpi-val">${totalRows.toLocaleString()}</span>
+          </div>
+          <div class="cf-kpi-stat">
+            <span class="cf-kpi-label">Area</span>
+            <span class="cf-kpi-val area">${fmtArea(tabFilteredStats.carpableArea)}<span class="cf-kpi-unit">HAS</span></span>
+          </div>
+        </div>
+        <div class="cf-kpi-meta-sub">
           ${isFilteredScope
             ? `of ${(scopedDbRowsCount || dbAllRowsCount).toLocaleString()} total LHs (${pctLhs}%)`
             : `${dbFilteredAssignedCount.toLocaleString()} assigned to Milestone Target`}
@@ -5583,14 +5644,25 @@ function buildDbByLhidMap(state) {
           return `
               <button
                 type="button"
-                class="kpi-card kpi-target-card ${meta.variantClass} ${isSelected ? 'active-target-card' : ''}"
+                class="cf-kpi-card cf-kpi-card-sm kpi-card kpi-target-card ${isSelected ? 'active-target-card' : ''}"
                 data-kpi-target="${esc(t)}"
                 title="${isSelected ? `Showing ${meta.label} — click to clear target filter` : `Filter Database by ${meta.label}`}"
               >
-                <div class="kpi-label">${esc(meta.label)}</div>
-                <div class="kpi-primary num">${stat.lhs.toLocaleString()} LHs</div>
-                <div class="kpi-secondary num">${fmtArea(stat.carpableArea)} HAS</div>
-                <div class="kpi-meta">${isSelected ? 'Active target filter (click to clear)' : 'Target CARPable • Click to filter'}</div>
+                <div class="cf-kpi-header">
+                  <span class="cf-kpi-title">${esc(meta.label)}</span>
+                  ${isSelected ? '<span class="cf-kpi-badge">FILTERED</span>' : ''}
+                </div>
+                <div class="cf-kpi-body">
+                  <div class="cf-kpi-stat">
+                    <span class="cf-kpi-label">LHs</span>
+                    <span class="cf-kpi-val">${stat.lhs.toLocaleString()}</span>
+                  </div>
+                  <div class="cf-kpi-stat">
+                    <span class="cf-kpi-label">Area</span>
+                    <span class="cf-kpi-val area">${fmtArea(stat.carpableArea)}<span class="cf-kpi-unit">HAS</span></span>
+                  </div>
+                </div>
+                <div class="cf-kpi-meta-sub">${isSelected ? 'Active filter (click to clear)' : 'Target CARPable • Click to filter'}</div>
               </button>
             `;
         })
