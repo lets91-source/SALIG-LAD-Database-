@@ -3736,110 +3736,28 @@ th:hover .q-toggle-pill {
 .cf-kpi-global-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .cf-kpi-year-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
-/* ==========================================================================
-   Grouped Whereabouts KPI Sections (Target Quota vs Milestone Accomplishments)
-   ========================================================================== */
-.cf-kpi-split-sections {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 18px;
-  align-items: stretch;
-  flex-wrap: wrap;
+.mov-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  margin-bottom: 14px !important;
 }
 
-.cf-kpi-section-target {
-  flex: 0 0 260px;
-  min-width: 230px;
-  display: flex;
-  flex-direction: column;
-}
-
-.cf-kpi-section-milestones {
-  flex: 1 1 500px;
-  min-width: 320px;
-  display: flex;
-  flex-direction: column;
-}
-
-.cf-kpi-section-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--text, #132018);
-}
-
-.cf-kpi-section-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
-
-.cf-kpi-section-tag.tag-target {
-  background: #e0f2fe;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
-}
-
-.cf-kpi-section-tag.tag-actual {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-}
-
-.cf-kpi-milestones-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 14px;
-  flex: 1;
-}
-
-.cf-kpi-section-target .cf-kpi-card {
-  flex: 1;
-  height: 100%;
-}
-
-.cf-kpi-section-target .cf-kpi-card .cf-kpi-body {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-}
-
-.cf-kpi-milestones-grid .cf-kpi-card {
-  height: 100%;
-}
-
-@media (max-width: 1024px) {
-  .cf-kpi-split-sections {
-    flex-direction: column;
+@media (max-width: 900px) {
+  .mov-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
-  .cf-kpi-section-target {
-    flex: 1 1 100%;
-  }
-}
-
-@media (max-width: 992px) {
   .cf-kpi-year-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3847,55 +3765,62 @@ th:hover .q-toggle-pill {
 
 @media (max-width: 576px) {
   .cf-kpi-global-grid,
-  .cf-kpi-year-grid {
-    grid-template-columns: 1fr;
+  .cf-kpi-year-grid,
+  .mov-kpi-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 
-.cf-kpi-card {
+.cf-kpi-card,
+.cf-kpi-card-sm {
   background: linear-gradient(135deg, #0a361d 0%, #0d4a27 100%);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
-  padding: 16px 20px;
-  box-shadow: 0 4px 14px rgba(10, 54, 29, 0.18);
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 3px 10px rgba(10, 54, 29, 0.15);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.cf-kpi-card:hover {
+.cf-kpi-card:hover,
+.cf-kpi-card-sm:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(10, 54, 29, 0.28);
+  box-shadow: 0 5px 14px rgba(10, 54, 29, 0.24);
 }
 
 .cf-kpi-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .cf-kpi-title {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   color: #ffffff;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cf-kpi-global-grid .cf-kpi-title {
-  font-size: 16.5px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .cf-kpi-badge {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.18);
   color: #86efac;
@@ -3906,7 +3831,7 @@ th:hover .q-toggle-pill {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  gap: 16px;
+  gap: 8px 12px;
   flex-wrap: wrap;
 }
 
@@ -3914,21 +3839,21 @@ th:hover .q-toggle-pill {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  min-width: 100px;
+  min-width: 60px;
 }
 
 .cf-kpi-label {
-  font-size: 11.5px;
+  font-size: 9.5px;
   font-weight: 700;
   color: #86efac;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 3px;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
 }
 
 .cf-kpi-val {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
-  font-size: 24px;
+  font-size: 17.5px;
   font-weight: 800;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
@@ -3936,13 +3861,15 @@ th:hover .q-toggle-pill {
 }
 
 .cf-kpi-val.area {
-  font-size: 19px;
+  font-size: 14px;
 }
 
 .cf-kpi-unit {
-  font-size: 11.5px;
+  font-size: 9px;
   font-weight: 600;
   color: #bbf7d0;
+  margin-left: 2px;
+}
   margin-left: 4px;
 }
 

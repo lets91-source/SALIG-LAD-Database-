@@ -2486,12 +2486,14 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   assert.ok(movHtml.includes('id="cf-status-target-year-filter"'), 'MOV panel has Target Year select');
   assert.ok(movHtml.includes('id="whereabouts-target-year-filter"'), 'MOV master ledger has Target Year filter');
   assert.ok(movHtml.includes('color:#ffffff;font-weight:800;'), 'MOV Region VIII Total footer has white font color');
-  assert.ok(movHtml.includes('cf-kpi-split-sections'), 'Row 2 uses split sections layout');
-  assert.ok(movHtml.includes('cf-kpi-section-target'), 'Section 1 Target Year container present');
-  assert.ok(movHtml.includes('TARGET YEAR QUOTA'), 'Target Year Quota label present');
-  assert.ok(movHtml.includes('cf-kpi-section-milestones'), 'Section 2 Milestone Accomplishments container present');
-  assert.ok(movHtml.includes('MILESTONE ACCOMPLISHMENTS'), 'Milestone Accomplishments label present');
-  assert.ok(movHtml.includes('cf-kpi-milestones-grid'), 'Milestone cards grid present');
+  assert.ok(movHtml.includes('mov-kpi-grid'), 'MOV KPI grid has mov-kpi-grid 3-column layout');
+  assert.ok(movHtml.includes('Target Year: ALL'), 'Row 1 has Target Year: ALL');
+  assert.ok(movHtml.includes('Total with PPU Date'), 'Row 1 has Total with PPU Date');
+  assert.ok(movHtml.includes('Total with Received DARPO'), 'Row 1 has Total with Received DARPO');
+  assert.ok(movHtml.includes('Total with Date of MOV'), 'Row 2 (below) has Total with Date of MOV');
+  assert.ok(movHtml.includes('Total with Trans to LBP/AOC'), 'Row 2 (below) has Total with Trans to LBP/AOC');
+  assert.ok(movHtml.includes('Total with Reported Month'), 'Row 2 (below) has Total with Reported Month');
+  assert.ok(movHtml.includes('cf-kpi-card-sm'), 'Compact small card styling applied');
 
   // MOV Transposed Layout
   const movTransposedHtml = renderMilestoneWhereaboutsView({ ...baseCtx, cfTableLayout: 'transposed' }, movCfg);
