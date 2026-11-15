@@ -663,6 +663,12 @@ export class ConsolidatedStore {
       }
       cleanRow[col.key] = val;
     }
+    if (rowPayload.province && !cleanRow.province) {
+      cleanRow.province = String(rowPayload.province).trim();
+    }
+    if (rowPayload.provinceCode && !cleanRow.provinceCode) {
+      cleanRow.provinceCode = String(rowPayload.provinceCode).trim();
+    }
     const resolvedLinked =
       linkedDbRow ||
       (cleanRow.lhid ? findLinkedDatabaseRow(this.state.optool.Database, cleanRow.lhid) : null);

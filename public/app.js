@@ -1259,6 +1259,29 @@ function bindOptoolViewEvents(container) {
     openOptoolModal(appState.activeOptoolTab, null, null);
   });
 
+  container.querySelector('#btn-sync-provincial-optool')?.addEventListener('click', async () => {
+    try {
+      const res = await withLoading(
+        'syncing',
+        'Syncing from Provincial Google Sheets…',
+        'Pulling CF(DOC), Survey, MOV, Registration, and Installation directly from all provincial sheets…',
+        () => api('/api/sync/provincial-optool', { method: 'POST' })
+      );
+      if (res && res.state) {
+        appState.state = { ...appState.state, ...res.state };
+      }
+      if (res && res.analytics) {
+        appState.analytics = res.analytics;
+      }
+      toast(
+        `Successfully synced ${res.totalImported || 0} records directly from Provincial Google Sheets!`
+      );
+      renderActiveView();
+    } catch (err) {
+      toast(`Sync failed: ${err.message}`, true);
+    }
+  });
+
   container.querySelector('#optool-csv-upload')?.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;

@@ -5656,6 +5656,9 @@ function buildDbByLhidMap(state) {
           </button>
         </div>
         <div class="toolbar-left">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-provincial-optool" title="Pull &amp; sync ${esc(currentTab)} directly from all Provincial Google Sheets (Biliran, Eastern Samar, Leyte, Northern Samar, Samar, Southern Leyte)">
+            🔄 Sync Provincial Sheets
+          </button>
           <label class="btn btn-secondary btn-sm" style="margin:0">
             Import CSV to ${esc(currentTab)}
             <input type="file" accept=".csv" id="optool-csv-upload" class="hidden" />

@@ -470,6 +470,13 @@ function doGet(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === 'supportlist' || action === 'provincial-optool') {
+      const res = readProvincialMilestoneSupportLists_();
+      return ContentService.createTextOutput(
+        JSON.stringify({ ok: true, optool: res.data, headers: res.headers })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
     return HtmlService.createHtmlOutputFromFile('Index')
       .setTitle('SPLIT Milestone Monitoring System — DAR Region VIII Hub')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -645,16 +652,60 @@ function getHubBootstrap() {
   const optool = {};
   const optoolHeaders = {};
   OPTOOL_TABS.forEach(function (tabName) {
-    const sh = hub.getSheetByName(tabName);
-    if (sh && sh.getLastColumn() > 0) {
-      optoolHeaders[tabName] = sh
-        .getRange(1, 1, 1, sh.getLastColumn())
-        .getValues()[0]
-        .map(function (h) { return String(h).trim(); });
-    } else {
-      optoolHeaders[tabName] = [];
+    optool[tabName] = [];
+    optoolHeaders[tabName] = [];
+  });
+
+  // 1. Read Database tab from Regional Hub (and merge any provincial Database entries)
+  const hubDbSheet = hub.getSheetByName('Database');
+  if (hubDbSheet && hubDbSheet.getLastColumn() > 0) {
+    optoolHeaders['Database'] = hubDbSheet
+      .getRange(1, 1, 1, hubDbSheet.getLastColumn())
+      .getValues()[0]
+      .map(function (h) { return String(h).trim(); });
+    optool['Database'] = readSheetObjects_(hubDbSheet);
+  }
+
+  // Also merge any Database rows from provincial nodes
+  PROVINCIAL_NODES.forEach(function (node) {
+    try {
+      const pss = SpreadsheetApp.openById(node.id);
+      const pDbSheet = pss.getSheetByName('Database');
+      if (pDbSheet && pDbSheet.getLastRow() > 1) {
+        const pRows = readSheetObjects_(pDbSheet);
+        pRows.forEach(function (row) {
+          if (row.lhid) row.lhid = formatLhidString_(row.lhid);
+          if (row.LHID) row.LHID = formatLhidString_(row.LHID);
+          if (!row.province && !row.Province) row.province = node.name;
+          if (!row.provinceCode && !row.Province_Code) row.provinceCode = node.code;
+          optool['Database'].push(row);
+        });
+      }
+    } catch (ignore) {}
+  });
+
+  // 2. Read OPTool Supportlist (CF(DOC), Survey, MOV, RegistrationDistribution, Installation)
+  // DIRECTLY from each provincial Google Sheet
+  const provSupport = readProvincialMilestoneSupportLists_();
+  ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'].forEach(function (tab) {
+    optool[tab] = provSupport.data[tab] || [];
+    optoolHeaders[tab] = provSupport.headers[tab] || [];
+
+    // Also include any rows from Regional Hub for milestone tabs if any exist
+    const hubSheet = findOptoolSheet_(hub, tab);
+    if (hubSheet && hubSheet.getLastRow() > 1) {
+      const hubRows = readSheetObjects_(hubSheet);
+      hubRows.forEach(function (row) {
+        if (row.lhid) row.lhid = formatLhidString_(row.lhid);
+        if (row.LHID) row.LHID = formatLhidString_(row.LHID);
+        const exists = optool[tab].some(function (existing) {
+          return existing.lhid && row.lhid && String(existing.lhid).trim().toLowerCase() === String(row.lhid).trim().toLowerCase();
+        });
+        if (!exists) {
+          optool[tab].push(row);
+        }
+      });
     }
-    optool[tabName] = readSheetObjects_(sh);
   });
 
   const logs = readSheetObjects_(logSheet).slice(-30).reverse();
@@ -950,16 +1001,71 @@ function normalizeHeaderKey_(val) {
 }
 
 function findOptoolSheet_(ss, tabName) {
+  if (!ss) return null;
   const exact = ss.getSheetByName(tabName);
   if (exact) return exact;
   const targetNorm = normalizeHeaderKey_(tabName);
   const sheets = ss.getSheets();
   for (let i = 0; i < sheets.length; i++) {
-    if (normalizeHeaderKey_(sheets[i].getName()) === targetNorm) {
+    const sNorm = normalizeHeaderKey_(sheets[i].getName());
+    if (sNorm === targetNorm) return sheets[i];
+    if (targetNorm === 'cfdoc' && (sNorm === 'cf' || sNorm === 'cfdoc')) return sheets[i];
+    if (
+      targetNorm === 'registrationdistribution' &&
+      (sNorm === 'registration' || sNorm === 'distribution' || sNorm === 'regdist' || sNorm === 'registrationdistribution')
+    ) {
       return sheets[i];
     }
+    if (targetNorm === 'survey' && (sNorm === 'survey' || sNorm === 'asp')) return sheets[i];
+    if (targetNorm === 'installation' && (sNorm === 'installation' || sNorm === 'inst')) return sheets[i];
+    if (targetNorm === 'database' && (sNorm === 'database' || sNorm === 'db' || sNorm.indexOf('database') >= 0)) return sheets[i];
   }
   return null;
+}
+
+/**
+ * Reads OPTool Supportlist in CF(DOC), Survey, MOV, Registration, Installation
+ * DIRECTLY from each provincial Google Sheet (PROVINCIAL_NODES) instead of relying on the Regional Hub.
+ */
+function readProvincialMilestoneSupportLists_() {
+  const MILESTONE_SUPPORT_TABS = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'];
+  const optoolData = {};
+  const optoolHeaders = {};
+
+  MILESTONE_SUPPORT_TABS.forEach(function (tab) {
+    optoolData[tab] = [];
+    optoolHeaders[tab] = [];
+  });
+
+  PROVINCIAL_NODES.forEach(function (node) {
+    try {
+      const pss = SpreadsheetApp.openById(node.id);
+      MILESTONE_SUPPORT_TABS.forEach(function (tabName) {
+        const pSheet = findOptoolSheet_(pss, tabName);
+        if (!pSheet || pSheet.getLastRow() <= 1) return;
+
+        if (!optoolHeaders[tabName] || opttoolHeaders[tabName].length === 0) {
+          optoolHeaders[tabName] = pSheet
+            .getRange(1, 1, 1, pSheet.getLastColumn())
+            .getValues()[0]
+            .map(function (h) { return String(h).trim(); });
+        }
+
+        const pRows = readSheetObjects_(pSheet);
+        pRows.forEach(function (row) {
+          if (row.lhid) row.lhid = formatLhidString_(row.lhid);
+          if (row.LHID) row.LHID = formatLhidString_(row.LHID);
+          if (!row.province && !row.Province) row.province = node.name;
+          if (!row.provinceCode && !row.Province_Code) row.provinceCode = node.code;
+          optoolData[tabName].push(row);
+        });
+      });
+    } catch (err) {
+      Logger.log('Error reading provincial sheet for ' + node.code + ' (' + node.name + '): ' + err.message);
+    }
+  });
+
+  return { data: optoolData, headers: optoolHeaders };
 }
 
 function isColumnEmptyBelowHeader_(sheet, colOneBased) {

@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import {
   REGIONAL_REGISTRY,
   MILESTONE_TARGET_TABS,
@@ -2957,4 +2961,75 @@ test('PDF Viewer Streaming Endpoint, Drive Preview URL & Gate Exemption', async 
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+test('Direct Provincial Google Sheets Sync for OPTool Supportlist (CF, Survey, MOV, Registration, Installation)', async () => {
+  const { matchOptoolTabName } = await import('../sheetsSync.js');
+
+  // 1. Verify flexible tab name matching
+  assert.equal(matchOptoolTabName('CF(DOC)'), 'CF(DOC)');
+  assert.equal(matchOptoolTabName('CF (DOC)'), 'CF(DOC)');
+  assert.equal(matchOptoolTabName('CF'), 'CF(DOC)');
+  assert.equal(matchOptoolTabName('cf_doc'), 'CF(DOC)');
+  assert.equal(matchOptoolTabName('Survey'), 'Survey');
+  assert.equal(matchOptoolTabName('survey'), 'Survey');
+  assert.equal(matchOptoolTabName('MOV'), 'MOV');
+  assert.equal(matchOptoolTabName('RegistrationDistribution'), 'RegistrationDistribution');
+  assert.equal(matchOptoolTabName('Registration / Distribution'), 'RegistrationDistribution');
+  assert.equal(matchOptoolTabName('Registration'), 'RegistrationDistribution');
+  assert.equal(matchOptoolTabName('Installation'), 'Installation');
+  assert.equal(matchOptoolTabName('Database'), 'Database');
+  assert.equal(matchOptoolTabName('UnknownSheet'), null);
+
+  // 2. Test POST /api/sync/provincial-optool endpoint
+  const tempDir = makeTempDir();
+  const testStore = new ConsolidatedStore(tempDir);
+  for (const t of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
+    testStore.state.optool[t] = [];
+  }
+  const mockGasSnapshot = {
+    optool: {
+      'CF(DOC)': [{ lhid: '805000001', province: 'Leyte', provinceCode: 'LEY', target: 'Current' }],
+      Survey: [{ lhid: '805000002', province: 'Biliran', provinceCode: 'BIL', kindOfSurvey: 'By Admin' }],
+      MOV: [{ lhid: '805000003', province: 'Eastern Samar', provinceCode: 'ESA', target: 'Current' }],
+      RegistrationDistribution: [{ lhid: '805000004', province: 'Samar', provinceCode: 'SAM', eTitleNo: 'eT-001' }],
+      Installation: [{ lhid: '805000005', province: 'Southern Leyte', provinceCode: 'SLE', installStatus: 'Completed' }]
+    }
+  };
+
+  testStore.state.gasWebAppUrl = 'https://script.google.com/macros/s/TEST/exec';
+  testStore.save();
+
+  const { server } = createAppServer(testStore, {
+    requireAuth: false,
+    pullFromGasWebApp: async () => mockGasSnapshot
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const port = server.address().port;
+
+  try {
+    const syncResp = await fetch(`http://localhost:${port}/api/sync/provincial-optool`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    assert.equal(syncResp.status, 200, 'Sync endpoint returns 200');
+    const syncData = await syncResp.json();
+    assert.ok(syncData.ok, 'Sync ok');
+    assert.equal(syncData.totalImported, 5, 'Imported all 5 milestone records across provincial sheets');
+    assert.equal(testStore.state.optool['CF(DOC)'].length, 1);
+    assert.equal(testStore.state.optool.Survey.length, 1);
+    assert.equal(testStore.state.optool.MOV.length, 1);
+    assert.equal(testStore.state.optool.RegistrationDistribution.length, 1);
+    assert.equal(testStore.state.optool.Installation.length, 1);
+    assert.equal(testStore.state.optool['CF(DOC)'][0].province, 'Leyte');
+    assert.equal(testStore.state.optool.Survey[0].province, 'Biliran');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+
+  // 3. Verify GAS Code.gs includes provincial milestone reading functions
+  const gasCode = fs.readFileSync(path.join(__dirname, '..', '..', 'gas', 'Code.gs'), 'utf8');
+  assert.ok(gasCode.includes('readProvincialMilestoneSupportLists_'), 'GAS Code.gs includes readProvincialMilestoneSupportLists_');
+  assert.ok(gasCode.includes('findOptoolSheet_'), 'GAS Code.gs includes findOptoolSheet_');
 });

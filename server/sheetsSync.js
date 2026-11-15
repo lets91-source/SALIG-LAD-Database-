@@ -20,6 +20,39 @@ function normalizeHeader(value) {
     .toLowerCase();
 }
 
+/**
+ * Flexible matcher for OPTool worksheet names supporting spacing, punctuation,
+ * and common naming variations across provincial spreadsheets.
+ */
+export function matchOptoolTabName(rawName) {
+  if (!rawName) return null;
+  const str = String(rawName).trim();
+  const clean = str.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+  for (const tab of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
+    if (tab.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === clean) {
+      return tab;
+    }
+  }
+
+  if (clean === 'cf' || clean === 'cfdoc') return 'CF(DOC)';
+  if (clean === 'survey' || clean === 'asp') return 'Survey';
+  if (clean === 'mov') return 'MOV';
+  if (
+    clean === 'registration' ||
+    clean === 'distribution' ||
+    clean === 'regdist' ||
+    clean === 'regdistribution' ||
+    clean === 'registrationdistribution'
+  ) {
+    return 'RegistrationDistribution';
+  }
+  if (clean === 'installation' || clean === 'inst') return 'Installation';
+  if (clean === 'database' || clean.includes('database') || clean === 'db') return 'Database';
+
+  return null;
+}
+
 function buildHeaderMapping(headerRowValues, schemaCols) {
   const usedSchemaIndices = new Set();
   const colIndexToField = new Map();
@@ -53,7 +86,7 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
   return colIndexToField;
 }
 
-export async function parseWorkbookBuffer(buffer) {
+export async function parseWorkbookBuffer(buffer, options = {}) {
   const worksheets = readXlsxWorkbook(buffer);
 
   const result = {
@@ -175,9 +208,7 @@ export async function parseWorkbookBuffer(buffer) {
       continue;
     }
 
-    const matchedOptoolTab = Object.keys(OPTOOL_SHEET_SCHEMAS).find(
-      (t) => normalizeHeader(t) === normalizeHeader(name)
-    );
+    const matchedOptoolTab = matchOptoolTabName(name);
 
     if (matchedOptoolTab) {
       const schemaCols = OPTOOL_SHEET_SCHEMAS[matchedOptoolTab];
@@ -201,6 +232,12 @@ export async function parseWorkbookBuffer(buffer) {
           record[colDef.key] = val;
         }
         if (nonEmptyCount === 0) continue;
+        if (options.province && !record.province) {
+          record.province = options.province;
+        }
+        if (options.provinceCode && !record.provinceCode) {
+          record.provinceCode = options.provinceCode;
+        }
         rowCount++;
         result.optool[matchedOptoolTab].push(record);
       }
@@ -296,7 +333,7 @@ export function parseCsvText(csvText, targetTab = 'Milestone_Data') {
   return rows;
 }
 
-export async function fetchGoogleSheetXlsx(spreadsheetId) {
+export async function fetchGoogleSheetXlsx(spreadsheetId, options = {}) {
   const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export?format=xlsx`;
   const resp = await fetch(url, { redirect: 'follow' });
   if (resp.status === 401 || resp.status === 403) {
@@ -314,7 +351,7 @@ export async function fetchGoogleSheetXlsx(spreadsheetId) {
       'Received non-XLSX response (Google sign-in redirect). Ensure link sharing is set to "Anyone with the link can view" or use GAS Web App Sync.'
     );
   }
-  return await parseWorkbookBuffer(buffer);
+  return await parseWorkbookBuffer(buffer, options);
 }
 
 export async function buildConsolidatedWorkbookBuffer(state, analytics) {

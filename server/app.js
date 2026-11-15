@@ -1032,7 +1032,10 @@ export function createAppServer(dataDir, options = {}) {
         }
 
         try {
-          const rawParsed = await fetchGoogleSheetXlsx(spreadsheetId);
+          const rawParsed = await fetchGoogleSheetXlsx(spreadsheetId, {
+            province: matchedNode?.provinceName,
+            provinceCode: matchedNode?.code
+          });
           const parsed = filterParsedDatasetByScope(store, rawParsed, scopeCode);
           const totalImportedRows =
             parsed.milestoneData.length +
@@ -1146,7 +1149,10 @@ export function createAppServer(dataDir, options = {}) {
 
         for (const node of nodesToSync) {
           try {
-            const rawParsed = await fetchGoogleSheetXlsx(node.spreadsheetId);
+            const rawParsed = await fetchGoogleSheetXlsx(node.spreadsheetId, {
+              province: node.provinceName,
+              provinceCode: node.code
+            });
             const parsed = filterParsedDatasetByScope(store, rawParsed, scopeCode);
             const rowCount =
               parsed.milestoneData.length +
@@ -1218,6 +1224,94 @@ export function createAppServer(dataDir, options = {}) {
           ok: true,
           results,
           totalImported,
+          state: buildScopedStatePayload(store, scopeCode, false),
+          analytics: computeScopedAnalytics(store, query, scopeCode)
+        });
+      }
+
+      // Sync OPTool Supportlist milestone tabs directly from each provincial Google Sheet
+      if (req.method === 'POST' && pathname === '/api/sync/provincial-optool') {
+        const results = [];
+        let totalImported = 0;
+        const nodesToSync = scopeCode
+          ? REGIONAL_REGISTRY.filter((n) => n.code === scopeCode)
+          : REGIONAL_REGISTRY.filter((n) => n.code !== 'HUB');
+
+        // 1. Try pulling directly from GAS Web App if configured
+        if (store.state.gasWebAppUrl) {
+          try {
+            const snapshot = await gasPullFn(store.state.gasWebAppUrl);
+            if (snapshot && snapshot.optool) {
+              const count = store.importParsedDataset(
+                { optool: snapshot.optool },
+                { skipSave: true }
+              );
+              totalImported += count;
+              store.state.lastSyncAt = new Date().toISOString();
+              store.state.dataSourceMode = 'live';
+              store.addSyncLog(
+                'Provincial OPTool GAS Sync',
+                'success',
+                `Pulled ${count} records directly from provincial Google Sheets via GAS Web App.`
+              );
+              store.save();
+              return sendJson(res, 200, {
+                ok: true,
+                totalImported,
+                via: 'gas',
+                state: buildScopedStatePayload(store, scopeCode, false),
+                analytics: computeScopedAnalytics(store, query, scopeCode)
+              });
+            }
+          } catch (_) {
+            // fallback to direct sheet fetch
+          }
+        }
+
+        // 2. Direct fetch from provincial spreadsheets
+        for (const node of nodesToSync) {
+          try {
+            const rawParsed = await fetchGoogleSheetXlsx(node.spreadsheetId, {
+              province: node.provinceName,
+              provinceCode: node.code
+            });
+            const parsed = filterParsedDatasetByScope(store, rawParsed, scopeCode);
+            const rowCount = Object.values(parsed.optool).reduce((acc, arr) => acc + arr.length, 0);
+            if (rowCount > 0) {
+              store.importParsedDataset({ optool: parsed.optool }, { skipSave: true });
+              totalImported += rowCount;
+            }
+            results.push({
+              code: node.code,
+              jurisdiction: node.jurisdiction,
+              status: 'synced',
+              importedRows: rowCount,
+              tabRowCounts: parsed.tabRowCounts
+            });
+          } catch (err) {
+            results.push({
+              code: node.code,
+              jurisdiction: node.jurisdiction,
+              status: 'error',
+              error: err.message
+            });
+          }
+        }
+
+        store.state.lastSyncAt = new Date().toISOString();
+        if (totalImported > 0) store.state.dataSourceMode = 'live';
+        store.addSyncLog(
+          'Provincial OPTool Direct Sync',
+          totalImported > 0 ? 'success' : 'info',
+          `Synced Supportlist tabs (CF, Survey, MOV, RegDist, Installation) across ${results.length} provincial sheets: ${totalImported} rows imported.`,
+          results
+        );
+        store.save();
+
+        return sendJson(res, 200, {
+          ok: true,
+          totalImported,
+          results,
           state: buildScopedStatePayload(store, scopeCode, false),
           analytics: computeScopedAnalytics(store, query, scopeCode)
         });
