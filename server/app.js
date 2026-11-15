@@ -111,6 +111,9 @@ function sendJson(res, status, data, extraHeaders = {}) {
   const body = JSON.stringify(data);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,X-Filename',
@@ -857,6 +860,7 @@ export function createAppServer(dataDir, options = {}) {
           ok: true,
           gasPushResult,
           milestoneData: store.getScopedState(scopeCode).milestoneData,
+          state: store.getScopedState(scopeCode),
           analytics: computeScopedAnalytics(store, query, scopeCode)
         });
       }
@@ -1010,10 +1014,13 @@ export function createAppServer(dataDir, options = {}) {
                 gasPushFn
               )
             : null;
+          const scopedState = store.getScopedState(scopeCode);
           return sendJson(res, 200, {
             ok: true,
             gasPushResult,
             rows: store.getScopedOptoolTabRows(tabName, scopeCode),
+            optool: scopedState.optool,
+            state: scopedState,
             analytics: computeScopedAnalytics(store, query, scopeCode)
           });
         }

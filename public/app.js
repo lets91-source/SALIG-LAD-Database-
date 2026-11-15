@@ -600,7 +600,7 @@ function showAppShell() {
 }
 
 async function api(path, options = {}) {
-  const resp = await fetch(path, { credentials: 'same-origin', ...options });
+  const resp = await fetch(path, { credentials: 'same-origin', cache: 'no-store', ...options });
   const contentType = resp.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     const data = await resp.json();
@@ -1079,9 +1079,18 @@ function bindMilestonesViewEvents(container) {
           `Removing ${id} & syncing Regional Google Sheet…`,
           () => api(`/api/milestones/${encodeURIComponent(id)}`, { method: 'DELETE' })
         );
-        appState.state.milestoneData = res.milestoneData;
-        await refreshAnalytics();
-        toast(`Deleted ${id}`);
+        if (res.state) {
+          appState.state = res.state;
+        } else if (res.milestoneData) {
+          appState.state.milestoneData = res.milestoneData;
+        }
+        if (res.analytics) {
+          appState.analytics = res.analytics;
+        } else {
+          await refreshAnalytics();
+        }
+        renderActiveView();
+        toast(`Deleted ${id}${formatGasPushSuffix(res)}`);
       } catch (err) {
         toast(err.message, true);
       }
@@ -1337,9 +1346,26 @@ function bindOptoolViewEvents(container) {
               { method: 'DELETE' }
             )
         );
-        appState.state.optool[appState.activeOptoolTab] = res.rows;
-        await refreshAnalytics();
-        toast(`Deleted row from ${appState.activeOptoolTab}`);
+        if (res.state) {
+          appState.state = res.state;
+        } else if (res.optool) {
+          appState.state.optool = res.optool;
+        } else if (res.rows) {
+          appState.state.optool[appState.activeOptoolTab] = res.rows;
+        }
+        if (res.analytics) {
+          appState.analytics = res.analytics;
+        } else {
+          await refreshAnalytics();
+        }
+        const remainingRows = appState.state.optool[appState.activeOptoolTab] || [];
+        const pageSize = Number(appState.optoolPageSize) || 50;
+        const maxPages = Math.max(1, Math.ceil(remainingRows.length / pageSize));
+        if (appState.optoolPage > maxPages) {
+          appState.optoolPage = maxPages;
+        }
+        renderActiveView();
+        toast(`Deleted row from ${appState.activeOptoolTab}${formatGasPushSuffix(res)}`);
       } catch (err) {
         toast(err.message, true);
       }
@@ -2011,6 +2037,7 @@ async function openMilestoneModal(existing) {
       appState.state.milestoneData = res.milestoneData;
       closeModal();
       await refreshAnalytics();
+      renderActiveView();
       toast(`Saved ${res.record.Record_ID}${formatGasPushSuffix(res)}`);
     } catch (err) {
       toast(err.message, true);
@@ -2371,6 +2398,7 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       }
       closeModal();
       await refreshAnalytics();
+      renderActiveView();
       toast(`Saved row in ${tabName}${formatGasPushSuffix(res)}`);
     } catch (err) {
       toast(err.message, true);
@@ -2448,6 +2476,7 @@ function openBaselinesModal() {
       appState.state.baselines = res.baselines;
       closeModal();
       await refreshAnalytics();
+      renderActiveView();
       toast('Updated Region VIII cumulative baseline targets');
     } catch (err) {
       toast(err.message, true);

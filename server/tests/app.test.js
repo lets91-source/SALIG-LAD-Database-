@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -3217,4 +3218,84 @@ test('Global Target filters strictly to LAD Balance, and OPTool Support List bre
   assert.ok(surveyTabHtml.includes('Survey — Area (CARPable)'), 'Survey tab includes Survey Area card');
   assert.ok(surveyTabHtml.includes('Global Target (LAD Balance)'), 'Survey tab includes companion Global Target (LAD Balance) breakdown card');
   assert.ok(surveyTabHtml.includes('Temp. Park'), 'Survey tab includes companion Temp. Park breakdown card');
+});
+
+test('API responses enforce no-cache headers, and deleting OPTool rows or milestones returns full fresh state and invalidates cache', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-del-cache-test-'));
+  const tempFile = path.join(tempDir, 'store.json');
+  const { server } = createAppServer(tempFile, {
+    requireAuth: false,
+    pushToGasWebApp: async () => ({ ok: true })
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const port = server.address().port;
+  const baseUrl = `http://localhost:${port}`;
+
+  try {
+    // 1. Verify Cache-Control header is set on responses
+    const resBoot = await fetch(`${baseUrl}/api/bootstrap`);
+    assert.equal(resBoot.status, 200);
+    const cc = resBoot.headers.get('cache-control') || '';
+    assert.ok(cc.includes('no-store'), 'Responses must include no-store in Cache-Control');
+    assert.ok(cc.includes('no-cache'), 'Responses must include no-cache in Cache-Control');
+
+    // 2. Add a test row to Database
+    const addRes = await fetch(`${baseUrl}/api/optool/Database`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        row: { lhid: '999999999', province: 'Western Samar', carpable: '7.5000', ladStatus: 'LAD Balance' }
+      })
+    });
+    assert.equal(addRes.status, 200);
+    const addData = await addRes.json();
+    const targetIdx = addData.rows.findIndex((r) => r.lhid === '999999999');
+    assert.ok(targetIdx >= 0, 'Added row found in Database');
+
+    // 3. DELETE /api/optool/Database/:idx returns fresh state and optool
+    const delRes = await fetch(`${baseUrl}/api/optool/Database/${targetIdx}`, {
+      method: 'DELETE'
+    });
+    assert.equal(delRes.status, 200);
+    const delData = await delRes.json();
+    assert.equal(delData.ok, true);
+    assert.ok(delData.rows, 'Includes updated rows');
+    assert.ok(delData.optool, 'Includes updated optool object');
+    assert.ok(delData.state, 'Includes updated state object');
+    assert.ok(delData.analytics, 'Includes updated analytics');
+    assert.equal(delData.rows.some((r) => r.lhid === '999999999'), false, 'Deleted row is not in rows');
+    assert.equal(delData.optool.Database.some((r) => r.lhid === '999999999'), false, 'Deleted row is not in optool.Database');
+
+    // 4. Milestone creation and deletion returns full fresh state
+    const addMs = await fetch(`${baseUrl}/api/milestones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Province_Code: 'SAM',
+        Municipality: 'Catbalogan City',
+        Land_Allocation_ID: 'LA-DEL-CACHE-01',
+        eTitle_No: 'eT-2026-99991',
+        Area_HAS: '1.2500',
+        Milestone_Stage: 'eTitle Registered',
+        Milestone_Date: '2026-11-15'
+      })
+    });
+    assert.equal(addMs.status, 200);
+    const msData = await addMs.json();
+    const recordId = msData.record.Record_ID;
+
+    const delMs = await fetch(`${baseUrl}/api/milestones/${encodeURIComponent(recordId)}`, {
+      method: 'DELETE'
+    });
+    assert.equal(delMs.status, 200);
+    const delMsData = await delMs.json();
+    assert.equal(delMsData.ok, true);
+    assert.ok(delMsData.milestoneData, 'Includes updated milestoneData');
+    assert.ok(delMsData.state, 'Includes updated state');
+    assert.ok(delMsData.analytics, 'Includes updated analytics');
+    assert.equal(delMsData.milestoneData.some((m) => m.Record_ID === recordId), false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });
