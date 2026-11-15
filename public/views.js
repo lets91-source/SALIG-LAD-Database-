@@ -2709,7 +2709,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             const s = r.stages[st.key];
             return `
               <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
-              <td class="right">${s.balLhs.toLocaleString()}</td>
+              <td class="right">${
+                s.balLhs > 0
+                  ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+                  : s.balLhs.toLocaleString()
+              }</td>
             `;
           }).join('')}
         `;
@@ -2722,7 +2726,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             const s = r.stages[st.key];
             return `
               <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-              <td class="right">${fmtArea(s.balArea)}</td>
+              <td class="right">${
+                s.balArea > 0
+                  ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+                  : fmtArea(s.balArea)
+              }</td>
             `;
           }).join('')}
         `;
@@ -2737,8 +2745,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           return `
             <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
             <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-            <td class="right">${s.balLhs.toLocaleString()}</td>
-            <td class="right">${fmtArea(s.balArea)}</td>
+            <td class="right">${
+              s.balLhs > 0
+                ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+                : s.balLhs.toLocaleString()
+            }</td>
+            <td class="right">${
+              s.balArea > 0
+                ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+                : fmtArea(s.balArea)
+            }</td>
           `;
         }).join('')}
       `;
@@ -2753,7 +2769,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             const s = totals.stages[st.key];
             return `
               <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
-              <td class="right">${s.balLhs.toLocaleString()}</td>
+              <td class="right">${
+                s.balLhs > 0
+                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+                  : s.balLhs.toLocaleString()
+              }</td>
             `;
           }).join('')}
         `;
@@ -2766,7 +2786,11 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             const s = totals.stages[st.key];
             return `
               <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-              <td class="right">${fmtArea(s.balArea)}</td>
+              <td class="right">${
+                s.balArea > 0
+                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+                  : fmtArea(s.balArea)
+              }</td>
             `;
           }).join('')}
         `;
@@ -2781,8 +2805,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           return `
             <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
             <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
-            <td class="right">${s.balLhs.toLocaleString()}</td>
-            <td class="right">${fmtArea(s.balArea)}</td>
+            <td class="right">${
+              s.balLhs > 0
+                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
+                : s.balLhs.toLocaleString()
+            }</td>
+            <td class="right">${
+              s.balArea > 0
+                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
+                : fmtArea(s.balArea)
+            }</td>
           `;
         }).join('')}
       `;
@@ -5526,36 +5558,54 @@ export function renderSurveySupportListModalHtml({
   stageKey = '',
   stageLabel = '',
   targetYear = 'ALL',
-  totalArea = 0
+  totalArea = 0,
+  mode = 'accomplished',
+  balanceArea = ''
 }) {
+  const isBalanceMode = mode === 'balance' || mode === 'pending';
   const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
-  const statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
+  let statusDisplay = '';
+  if (isBalanceMode) {
+    statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
+  } else {
+    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
+  }
   const totalCount = rows.length;
 
   return `
     <div class="survey-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
       <!-- Summary Header Banner -->
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div style="background:${isBalanceMode ? '#fefce8' : '#f0fdf4'};border:1px solid ${isBalanceMode ? '#fde047' : '#bbf7d0'};border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span class="badge badge-green" style="font-size:12px;font-weight:700;padding:4px 10px;">
+          <span class="badge ${isBalanceMode ? 'badge-amber' : 'badge-green'}" style="font-size:12px;font-weight:700;padding:4px 10px;">
             🏛️ ${esc(provLabel)}
           </span>
-          <span class="badge badge-blue" style="font-size:12px;font-weight:700;padding:4px 10px;">
-            📌 ${esc(statusDisplay)}
+          <span class="badge ${isBalanceMode ? 'badge-amber' : 'badge-blue'}" style="font-size:12px;font-weight:700;padding:4px 10px;">
+            ${isBalanceMode ? '⏳' : '📌'} ${esc(statusDisplay)}
           </span>
           ${targetYear && targetYear !== 'ALL' ? `
             <span class="badge badge-gray" style="font-size:12px;font-weight:700;padding:4px 10px;">
               🗓️ Target Year: ${esc(targetYear)}
             </span>
           ` : ''}
+          ${isBalanceMode && balanceArea ? `
+            <span class="badge badge-red" style="font-size:12px;font-weight:700;padding:4px 10px;" title="Quota Balance Needed to Reach Target">
+              🎯 NEP Quota Balance: ${esc(balanceArea)} HAS
+            </span>
+          ` : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="font-size:13px;color:#166534;font-weight:700;">
-            <strong>${totalCount.toLocaleString()}</strong> Landholding${totalCount === 1 ? '' : 's'} • <strong>${fmtArea(totalArea)}</strong> HAS
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="font-size:13px;color:${isBalanceMode ? '#854d0e' : '#166534'};font-weight:700;">
+            <strong>${totalCount.toLocaleString()}</strong> ${isBalanceMode ? 'Pending ' : ''}Landholding${totalCount === 1 ? '' : 's'} • <strong>${fmtArea(totalArea)}</strong> HAS
           </div>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-export-support-list-csv" style="font-size:12px;padding:4px 10px;" title="Export this Support List to CSV">
             ⬇ Export CSV
           </button>
+          ${isBalanceMode ? `
+            <button type="button" class="btn btn-primary btn-sm" id="btn-open-database-balance" data-province="${esc(province)}" style="font-size:12px;padding:4px 10px;" title="View workable parcels in Database to assign to Survey">
+              ➕ View Database Workable Pool
+            </button>
+          ` : ''}
         </div>
       </div>
 
@@ -5600,7 +5650,16 @@ export function renderSurveySupportListModalHtml({
                 ? `
               <tr>
                 <td colspan="14" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
-                  <div style="font-size:14px;font-weight:700;">No landholdings found for this selection</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text);">${
+                    isBalanceMode
+                      ? `All current Survey records for ${esc(provLabel)} have completed this milestone!`
+                      : 'No landholdings found for this selection'
+                  }</div>
+                  ${
+                    isBalanceMode && balanceArea
+                      ? `<div style="font-size:12.5px;margin-top:6px;color:var(--text-muted);">To fulfill the remaining quota balance (<strong>${esc(balanceArea)} HAS</strong>), assign more workable parcels from the Database into Survey.</div>`
+                      : ''
+                  }
                 </td>
               </tr>
             `

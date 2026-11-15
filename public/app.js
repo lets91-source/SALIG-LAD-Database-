@@ -4022,7 +4022,9 @@ function bindWhereaboutsEvents(container, viewKey) {
       const st = btn.dataset.status || 'ALL';
       const stageKey = btn.dataset.stageKey || '';
       const stageLabel = btn.dataset.stageLabel || '';
-      openSurveySupportListModal({ province: prov, status: st, stageKey, stageLabel });
+      const mode = btn.dataset.mode || 'accomplished';
+      const balanceArea = btn.dataset.balanceArea || '';
+      openSurveySupportListModal({ province: prov, status: st, stageKey, stageLabel, mode, balanceArea });
     });
   });
 
@@ -4188,11 +4190,19 @@ function getSurveySupportRows(appState) {
   });
 }
 
-function openSurveySupportListModal({ province = 'ALL', status = 'ALL', stageKey = '', stageLabel = '' }) {
+function openSurveySupportListModal({
+  province = 'ALL',
+  status = 'ALL',
+  stageKey = '',
+  stageLabel = '',
+  mode = 'accomplished',
+  balanceArea = ''
+}) {
   const allRows = getSurveySupportRows(appState);
   const curYear = new Date().getFullYear();
   const targetYear = appState.whereaboutsTargetYearFilter?.['survey-whereabouts'] || 'ALL';
   const q = String(appState.whereaboutsSearch?.['survey-whereabouts'] || '').trim().toLowerCase();
+  const isBalanceMode = mode === 'balance' || mode === 'pending';
 
   const matchedRows = allRows.filter((r) => {
     if (targetYear !== 'ALL') {
@@ -4213,7 +4223,12 @@ function openSurveySupportListModal({ province = 'ALL', status = 'ALL', stageKey
       }
     }
     if (stageKey) {
-      if (!String(r[stageKey] || r.datesMap?.[stageKey] || '').trim()) return false;
+      const hasDate = Boolean(String(r[stageKey] || r.datesMap?.[stageKey] || '').trim());
+      if (isBalanceMode) {
+        if (hasDate) return false;
+      } else {
+        if (!hasDate) return false;
+      }
     }
     if (q) {
       const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.stage} ${r.currentStatus}`.toLowerCase();
@@ -4224,7 +4239,12 @@ function openSurveySupportListModal({ province = 'ALL', status = 'ALL', stageKey
 
   const totalArea = matchedRows.reduce((sum, r) => sum + r.carpable, 0);
   const provLabel = province === 'ALL' ? 'Region VIII' : province;
-  const statusLabel = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
+  let statusLabel = '';
+  if (isBalanceMode) {
+    statusLabel = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending';
+  } else {
+    statusLabel = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
+  }
   const modalTitle = `Support List: ${provLabel} • ${statusLabel}`;
 
   const modalHtml = renderSurveySupportListModalHtml({
@@ -4234,11 +4254,13 @@ function openSurveySupportListModal({ province = 'ALL', status = 'ALL', stageKey
     stageKey,
     stageLabel,
     targetYear,
-    totalArea
+    totalArea,
+    mode,
+    balanceArea
   });
 
   showModal(modalTitle, modalHtml);
-  bindSupportListModalEvents(matchedRows, { province, status, stageKey, targetYear });
+  bindSupportListModalEvents(matchedRows, { province, status, stageKey, targetYear, mode, balanceArea });
 }
 
 function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey, targetYear }) {
@@ -4266,6 +4288,18 @@ function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey
 
   modalEl.querySelector('#btn-export-support-list-csv')?.addEventListener('click', () => {
     exportSupportListCsv(allMatchedRows, { province, status, targetYear });
+  });
+
+  modalEl.querySelector('#btn-open-database-balance')?.addEventListener('click', (e) => {
+    closeModal();
+    const prov = e.currentTarget.dataset.province;
+    appState.activeOptoolTab = 'Database';
+    appState.view = 'optool';
+    if (prov && prov !== 'ALL') {
+      appState.optoolProvinceFilter = prov;
+    }
+    appState.optoolPage = 1;
+    renderActiveView();
   });
 
   modalEl.querySelectorAll('[data-lhid]').forEach((btn) => {

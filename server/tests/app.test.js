@@ -2216,6 +2216,26 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   assert.ok(supportModalHtml.includes('MAYORGA'), 'Municipality present in support list modal');
   assert.ok(supportModalHtml.includes('btn-export-support-list-csv'), 'Export CSV button present in support list modal');
   assert.ok(supportModalHtml.includes('support-list-search'), 'In-modal search input present in support list modal');
+
+  // Test Balance Mode in renderSurveySupportListModalHtml
+  const balanceModalHtml = renderSurveySupportListModalHtml({
+    rows: mockSupportRows,
+    province: 'LEYTE',
+    status: 'ALL',
+    stageKey: 'dateRss',
+    stageLabel: 'With RSS',
+    targetYear: '2025',
+    totalArea: 3.0906,
+    mode: 'balance',
+    balanceArea: '1048.1088'
+  });
+  assert.ok(balanceModalHtml.includes('Balance / Pending: With RSS'), 'Balance label in modal banner');
+  assert.ok(balanceModalHtml.includes('NEP Quota Balance: 1048.1088 HAS'), 'NEP Quota Balance badge in modal banner');
+  assert.ok(balanceModalHtml.includes('id="btn-open-database-balance"'), 'Database workable pool button in balance modal');
+
+  // Test Balance button attributes in Survey Monitoring summary table
+  assert.ok(html2025.includes('data-mode="balance"'), 'Summary table must have clickable balance buttons with data-mode="balance"');
+  assert.ok(html2025.includes('data-balance-area='), 'Summary table balance buttons must include data-balance-area');
 });
 
 test('CF Whereabouts Target Year filter in toolbar after All Records, removed standalone bar', () => {
