@@ -388,6 +388,88 @@ textarea.form-control {
   cursor: default;
 }
 
+/* Merged Single Textbox for PDF Links & File Uploads */
+.form-control-merged {
+  display: flex;
+  align-items: stretch;
+  height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-control-merged:focus-within {
+  border-color: var(--dar-green, #0f4c29);
+  outline: 2px solid rgba(15, 76, 41, 0.25);
+}
+
+.form-control-merged .form-control-inner {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.form-control-merged .form-control-inner::placeholder {
+  color: var(--text-muted, #9ca3af);
+  font-size: 12.5px;
+}
+
+.form-control-merged .btn-modal-upload-pdf {
+  border: none;
+  border-left: 1px solid var(--border);
+  background: #f8fafc;
+  color: var(--text);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  height: 100%;
+  transition: background 0.15s, color 0.15s;
+}
+
+.form-control-merged .btn-modal-upload-pdf:hover {
+  background: #e2e8f0;
+  color: var(--dar-green, #0f4c29);
+}
+
+.form-control-merged .btn-modal-upload-pdf:active {
+  background: #cbd5e1;
+}
+
+.form-control-merged .pdf-link-merged {
+  border-left: 1px solid var(--border);
+  background: #ecfdf5;
+  color: #15803d;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  text-decoration: none;
+  white-space: nowrap;
+  height: 100%;
+  transition: background 0.15s;
+}
+
+.form-control-merged .pdf-link-merged:hover {
+  background: #d1fae5;
+  color: #047857;
+}
+
 /* Status Banner */
 .status-banner {
   margin: 14px 24px 0;

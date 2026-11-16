@@ -2278,12 +2278,12 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
               <span>${esc(c.label)}</span>
               ${isMarkedYes && !isPdfAttached ? `<span class="badge badge-blue" style="font-size:11px;padding:1px 6px;">✔ Marked in Checklist</span>` : ''}
             </label>
-            <div style="display:flex;gap:6px;align-items:center;">
-              <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" class="form-control" value="${esc(displayVal)}" placeholder="https://drive.google.com/... or data:..." style="flex:1;" />
-              <button type="button" class="btn btn-secondary btn-sm btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" data-upload-pdf-col="${esc(c.key)}" style="white-space:nowrap;padding:4px 8px;font-size:12px;">
+            <div class="form-control-merged">
+              <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" class="form-control-inner" value="${esc(displayVal)}" placeholder="https://drive.google.com/... or data:..." />
+              <button type="button" class="btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" data-upload-pdf-col="${esc(c.key)}" title="Upload PDF">
                 📎 Upload PDF
               </button>
-              ${isPdfAttached ? `<a href="${esc(normalizePdfUrl(val))}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm pdf-link" style="white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;" title="${esc(val)}">📄 View</a>` : ''}
+              ${isPdfAttached ? `<a href="${esc(normalizePdfUrl(val))}" target="_blank" rel="noopener noreferrer" class="pdf-link-merged pdf-link" title="${esc(val)}">📄 View</a>` : ''}
             </div>
           </div>${linkedAfterLhid}
         `;
@@ -5426,10 +5426,14 @@ async function init() {
               let viewLink = parentDiv.querySelector('.pdf-link');
               if (!viewLink) {
                 viewLink = document.createElement('a');
-                viewLink.className = 'btn btn-success btn-sm pdf-link';
+                viewLink.className = parentDiv.classList.contains('form-control-merged')
+                  ? 'pdf-link-merged pdf-link'
+                  : 'btn btn-success btn-sm pdf-link';
                 viewLink.target = '_blank';
                 viewLink.rel = 'noopener noreferrer';
-                viewLink.style.cssText = 'white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;';
+                if (!parentDiv.classList.contains('form-control-merged')) {
+                  viewLink.style.cssText = 'white-space:nowrap;padding:4px 8px;font-size:12px;text-decoration:none;';
+                }
                 viewLink.innerHTML = '📄 View';
                 parentDiv.appendChild(viewLink);
               }
