@@ -2916,21 +2916,21 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
           <thead>
             <tr>
               <th rowspan="2" class="sticky-col-province" style="vertical-align:bottom;">Province</th>
-              <th colspan="3" class="center nep-modal-col-lhs" style="background:#f1f5f3;border-left:1px solid var(--border);border-right:1px solid var(--border);">LHS (Landholdings)</th>
-              <th colspan="3" class="center nep-modal-col-area" style="background:#eef6f2;border-right:1px solid var(--border);">AREA (HAS)</th>
-              <th colspan="3" class="center nep-modal-col-arbs" style="background:#f6f8fa;border-right:1px solid var(--border);">ARBs (Beneficiaries)</th>
+              <th colspan="3" class="center nep-modal-col-lhs">LHS (Landholdings)</th>
+              <th colspan="3" class="center nep-modal-col-area">AREA (HAS)</th>
+              <th colspan="3" class="center nep-modal-col-arbs">ARBs (Beneficiaries)</th>
               <th rowspan="2" class="center" style="vertical-align:bottom;">Year</th>
             </tr>
             <tr>
-              <th class="center nep-modal-col-lhs" style="border-left:1px solid var(--border);">NEP Total</th>
-              <th class="center nep-modal-col-lhs" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
-              <th class="center nep-modal-col-lhs" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
+              <th class="center nep-modal-col-lhs">NEP Total</th>
+              <th class="center nep-modal-col-lhs nep-th-sem1">1st Sem</th>
+              <th class="center nep-modal-col-lhs nep-th-sem2">2nd Sem (Auto)</th>
               <th class="center nep-modal-col-area">NEP Total</th>
-              <th class="center nep-modal-col-area" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
-              <th class="center nep-modal-col-area" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
+              <th class="center nep-modal-col-area nep-th-sem1">1st Sem</th>
+              <th class="center nep-modal-col-area nep-th-sem2">2nd Sem (Auto)</th>
               <th class="center nep-modal-col-arbs">NEP Total</th>
-              <th class="center nep-modal-col-arbs" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
-              <th class="center nep-modal-col-arbs" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
+              <th class="center nep-modal-col-arbs nep-th-sem1">1st Sem</th>
+              <th class="center nep-modal-col-arbs nep-th-sem2">2nd Sem (Auto)</th>
             </tr>
           </thead>
           <tbody>
@@ -3341,16 +3341,16 @@ function openNepTargetsModal() {
           <thead>
             <tr>
               <th rowspan="2" class="sticky-col-province" style="vertical-align:bottom;">Milestone</th>
-              <th colspan="3" class="center" style="background:#f1f5f3;border-left:1px solid var(--border);border-right:1px solid var(--border);">Lots / eTitles</th>
-              <th colspan="3" class="center" style="background:#eef6f2;border-right:1px solid var(--border);">Area (HAS)</th>
+              <th colspan="3" class="center">Lots / eTitles</th>
+              <th colspan="3" class="center">Area (HAS)</th>
             </tr>
             <tr>
-              <th class="center" style="border-left:1px solid var(--border);">NEP Total</th>
-              <th class="center" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
-              <th class="center" style="color:var(--dar-amber,#b45309);border-right:1px solid var(--border);">2nd Sem (Auto)</th>
               <th class="center">NEP Total</th>
-              <th class="center" style="color:var(--dar-blue,#1d4ed8);">1st Sem</th>
-              <th class="center" style="color:var(--dar-amber,#b45309);">2nd Sem (Auto)</th>
+              <th class="center nep-th-sem1">1st Sem</th>
+              <th class="center nep-th-sem2">2nd Sem (Auto)</th>
+              <th class="center">NEP Total</th>
+              <th class="center nep-th-sem1">1st Sem</th>
+              <th class="center nep-th-sem2">2nd Sem (Auto)</th>
             </tr>
           </thead>
           <tbody>
