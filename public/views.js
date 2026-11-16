@@ -4643,23 +4643,23 @@ export function renderDashboardView(ctx) {
           <button type="button" class="btn btn-secondary btn-xs" data-nav="optool">Open OPTool Support List</button>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="prov-breakdown-table">
             <thead>
-              <tr>
-                <th rowspan="2" style="vertical-align:middle;">Province / Node</th>
-                <th colspan="2" class="center" style="border-bottom:1px solid var(--border);background:rgba(16,185,129,0.08);color:var(--dar-green, #10b981);font-weight:700;">LAD Balance</th>
-                <th colspan="2" class="center" style="border-bottom:1px solid var(--border);background:rgba(245,158,11,0.08);color:#b45309;font-weight:700;">Temp. Park</th>
-                <th colspan="2" class="center" style="border-bottom:1px solid var(--border);background:rgba(100,116,139,0.08);color:var(--text-muted);font-weight:700;">Total Database</th>
-                <th rowspan="2" class="right" style="vertical-align:middle;">Registered (HAS)</th>
-                <th rowspan="2" class="right" style="vertical-align:middle;">% Attained</th>
+              <tr style="background:var(--dar-green-dark, #0a361d);">
+                <th rowspan="2" style="vertical-align:middle;background:var(--dar-green-dark, #0a361d);color:#ffffff;border-right:1px solid rgba(255,255,255,0.15);">Province / Node</th>
+                <th colspan="2" class="center" style="background:var(--dar-green-dark, #0a361d);color:#ffffff;border-bottom:1px solid rgba(255,255,255,0.15);border-right:1px solid rgba(255,255,255,0.15);font-weight:700;">LAD Balance</th>
+                <th colspan="2" class="center" style="background:var(--dar-green-dark, #0a361d);color:#ffffff;border-bottom:1px solid rgba(255,255,255,0.15);border-right:1px solid rgba(255,255,255,0.15);font-weight:700;">Temp. Park</th>
+                <th colspan="2" class="center" style="background:var(--dar-green-dark, #0a361d);color:#ffffff;border-bottom:1px solid rgba(255,255,255,0.15);border-right:1px solid rgba(255,255,255,0.15);font-weight:700;">Total Database</th>
+                <th rowspan="2" class="right" style="vertical-align:middle;background:var(--dar-green-dark, #0a361d);color:#ffffff;border-right:1px solid rgba(255,255,255,0.15);">Registered (HAS)</th>
+                <th rowspan="2" class="right" style="vertical-align:middle;background:var(--dar-green-dark, #0a361d);color:#ffffff;">% Attained</th>
               </tr>
-              <tr style="font-size:11px;">
-                <th class="right" style="background:rgba(16,185,129,0.04);">LHs</th>
-                <th class="right" style="background:rgba(16,185,129,0.04);">Area (HAS)</th>
-                <th class="right" style="background:rgba(245,158,11,0.04);">LHs</th>
-                <th class="right" style="background:rgba(245,158,11,0.04);">Area (HAS)</th>
-                <th class="right" style="background:rgba(100,116,139,0.04);">LHs</th>
-                <th class="right" style="background:rgba(100,116,139,0.04);">Area (HAS)</th>
+              <tr style="background:#0d4324;font-size:11px;">
+                <th class="right" style="background:#0d4324;color:#ffffff;font-size:11px;border-right:1px solid rgba(255,255,255,0.12);">LHs</th>
+                <th class="right" style="background:#0d4324;color:#ffffff;font-size:11px;border-right:1px solid rgba(255,255,255,0.15);">Area (HAS)</th>
+                <th class="right" style="background:#0d4324;color:#ffffff;font-size:11px;border-right:1px solid rgba(255,255,255,0.12);">LHs</th>
+                <th class="right" style="background:#0d4324;color:#ffffff;font-size:11px;border-right:1px solid rgba(255,255,255,0.15);">Area (HAS)</th>
+                <th class="right" style="background:#0d4324;color:#ffffff;font-size:11px;border-right:1px solid rgba(255,255,255,0.12);">LHs</th>
+                <th class="right" style="background:#0d4324;color:#ffffff;font-size:11px;border-right:1px solid rgba(255,255,255,0.15);">Area (HAS)</th>
               </tr>
             </thead>
             <tbody>

@@ -1937,6 +1937,35 @@ tr[style*="font-weight:700"] td.sticky-col-province {
   padding: 6px 8px;
 }
 
+/* Provincial Breakdown Table Headers in Regional Dashboard */
+.prov-breakdown-table thead tr:first-child th {
+  background: var(--dar-green-dark, #0a361d) !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+  padding: 8px 10px;
+}
+
+.prov-breakdown-table thead tr:nth-child(2) th {
+  background: #0d4324 !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-bottom: 2px solid #072915 !important;
+  padding: 6px 8px;
+}
+
 .nep-modal-table thead th.nep-th-sem1,
 .nep-targets-table thead th.nep-th-sem1 {
   color: #93c5fd !important; /* Soft, highly-legible sky blue on dark green */
