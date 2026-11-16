@@ -2269,12 +2269,17 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       }
       if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
         const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/api/pdf/') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
+        const isMarkedYes = val === 'Yes' || val === true || val === 'true';
+        const displayVal = isPdfAttached ? val : (isMarkedYes ? '' : val);
         return `
           ${groupHtml}
           <div class="${fieldClass}">
-            <label for="opt-${esc(c.key)}">${esc(c.label)}</label>
+            <label for="opt-${esc(c.key)}" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>${esc(c.label)}</span>
+              ${isMarkedYes && !isPdfAttached ? `<span class="badge badge-blue" style="font-size:11px;padding:1px 6px;">✔ Marked in Checklist</span>` : ''}
+            </label>
             <div style="display:flex;gap:6px;align-items:center;">
-              <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" class="form-control" value="${esc(val)}" placeholder="https://drive.google.com/... or data:..." style="flex:1;" />
+              <input id="opt-${esc(c.key)}" name="${esc(c.key)}" type="text" class="form-control" value="${esc(displayVal)}" placeholder="https://drive.google.com/... or data:..." style="flex:1;" />
               <button type="button" class="btn btn-secondary btn-sm btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" data-upload-pdf-col="${esc(c.key)}" style="white-space:nowrap;padding:4px 8px;font-size:12px;">
                 📎 Upload PDF
               </button>
@@ -2375,6 +2380,13 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       if (c.type === 'checkbox') {
         const checkInput = document.getElementById(`opt-${c.key}`);
         row[c.key] = checkInput && checkInput.checked ? 'Yes' : '';
+      } else if (c.type === 'pdfFile' || c.key === 'pdfFile' || c.key === 'transmittalSrPdf') {
+        const inputVal = formData.get(c.key) ?? '';
+        if (inputVal === '' && (existingRow?.[c.key] === 'Yes' || existingRow?.[c.key] === true)) {
+          row[c.key] = 'Yes';
+        } else {
+          row[c.key] = inputVal;
+        }
       } else {
         row[c.key] = formData.get(c.key) ?? '';
       }

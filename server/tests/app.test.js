@@ -155,28 +155,42 @@ test('Schema & Region VIII Registry integrity', () => {
     );
   }
   const cfChecklistCols = OPTOOL_SHEET_SCHEMAS['CF(DOC)'].filter((c) => c.type === 'checkbox');
-  assert.equal(cfChecklistCols.length, 16);
+  assert.equal(cfChecklistCols.length, 11);
   assert.deepEqual(
     cfChecklistCols.map((c) => c.key),
     [
-      'certificateOfTitle',
       'denrCertification',
-      'taxDeclaration',
-      'carperLadForm1And2',
-      'carperLadForm3',
       'asp',
       'carperLadForm18',
       'carperLadForm20',
       'marpoCert',
       'firCarperLadForm46',
-      'landUsePerFi',
       'copyOfAdvSp',
       'carperLadNo49',
       'carperLadNo37',
-      'carperLadForm47',
+      'carperLadForm42',
       'approvedSubdivisionPlan'
     ]
   );
+  const cfPdfCols = OPTOOL_SHEET_SCHEMAS['CF(DOC)'].filter((c) => c.type === 'pdfFile');
+  assert.equal(cfPdfCols.length, 6);
+  assert.deepEqual(
+    cfPdfCols.map((c) => c.key),
+    [
+      'certificateOfTitle',
+      'taxDeclaration',
+      'carperLadForm1And2',
+      'carperLadForm3',
+      'landUsePerFi',
+      'pdfFile'
+    ]
+  );
+  const form42Col = OPTOOL_SHEET_SCHEMAS['CF(DOC)'].find((c) => c.key === 'carperLadForm42');
+  assert.equal(form42Col.label, 'CARPER LAD Form 42');
+  assert.equal(form42Col.type, 'checkbox');
+  const form46Col = OPTOOL_SHEET_SCHEMAS['CF(DOC)'].find((c) => c.key === 'pdfFile');
+  assert.equal(form46Col.label, 'Upload CARPER LAD Form 46');
+  assert.equal(form46Col.type, 'pdfFile');
   assert.deepEqual(OPTOOL_PREVIEW_COLUMNS.Database, [
     'lhid',
     'titleNumber',

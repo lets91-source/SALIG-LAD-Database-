@@ -99,14 +99,17 @@ const OPTOOL_SCHEMA_HEADERS = {
     'NewLandSize', 'Lad Status', 'Workability', 'Milestone Target', 'Year'
   ],
   'CF(DOC)': [
-    'LHID', 'Certificate of TItle', 'DENR Certification', 'Tax Declaration',
-    'Carper Lad Form 1&2', 'Carper Lad Form 3', 'ASP', 'Carper Lad form 18',
+    'LHID', 'DENR Certification', 'ASP', 'Carper Lad form 18',
     'Carper LAD form 20', 'MARPO Cert.', 'FIR Carper LAD Form 46',
-    'Land use per FI', 'Copy of the AdvSP', 'Carper LAD No. 49',
-    'Carper LAD No. 37/oathe of ARB', 'Carper LAD form 47',
-    'Approved Subdivision/Segregation Plan', 'DATE FI CONDUCTED',
-    'DATE PREPARED & SIGNED', 'TARGET\n (Current/ Previous)',
-    'Reported Month', 'REMARKS', 'PDF File', 'Target Year'
+    'Copy of the AdvSP', 'Carper LAD No. 49',
+    'Carper LAD No. 37/oathe of ARB', 'Carper LAD Form 42',
+    'Approved Subdivision/Segregation Plan',
+    'Upload Certificate of Titles', 'Upload Tax Declaration',
+    'Upload CARPER LAD Form 1 & 2', 'Upload CARPER LAD Form 3',
+    'Upload Land Use per FI', 'Upload CARPER LAD Form 46',
+    'DATE FI CONDUCTED', 'DATE PREPARED & SIGNED',
+    'TARGET\n (Current/ Previous)', 'Reported Month',
+    'REMARKS', 'Target Year'
   ],
   Survey: [
     'LHID', 'Kind of Survey', 'Date RSS', 'Field Work Start Date',

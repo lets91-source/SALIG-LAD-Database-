@@ -5813,8 +5813,12 @@ function buildDbByLhidMap(state) {
                     </div>
                   </td>`;
                 }
+                const isMarkedYes = val === 'Yes' || val === true || val === 'true';
                 return `<td style="white-space:nowrap">
-                  <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-col="${esc(c.key)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
+                  <div style="display:inline-flex;gap:4px;align-items:center;">
+                    ${isMarkedYes ? `<span class="badge badge-blue" style="font-size:10px;padding:2px 5px;" title="Marked in checklist">✔ Marked</span>` : ''}
+                    <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-col="${esc(c.key)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
+                  </div>
                 </td>`;
               }
               if (c.type === 'checkbox') {

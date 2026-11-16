@@ -73,7 +73,14 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
           (normalizeHeader(col.label) === norm ||
             normalizeHeader(col.key) === norm ||
             (col.key === 'ladStatus' && (norm === 'lad' || norm === 'ladcolumn' || norm === 'ladstatus')) ||
-            (col.key === 'workability' && norm === 'workability'))
+            (col.key === 'workability' && norm === 'workability') ||
+            (col.key === 'carperLadForm42' && (norm.includes('form42') || norm.includes('form47'))) ||
+            (col.key === 'pdfFile' && (norm.includes('form46') || norm.includes('pdffile') || norm === 'pdf')) ||
+            (col.key === 'certificateOfTitle' && norm.includes('certificateoftitle')) ||
+            (col.key === 'taxDeclaration' && norm.includes('taxdeclaration')) ||
+            (col.key === 'carperLadForm1And2' && (norm.includes('form12') || norm.includes('form1and2') || norm.includes('form1&2'))) ||
+            (col.key === 'carperLadForm3' && norm.includes('form3')) ||
+            (col.key === 'landUsePerFi' && norm.includes('landuse')))
       );
     }
 
@@ -227,6 +234,12 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
             if (Number.isFinite(num)) val = num.toFixed(4);
           } else if (colDef.type === 'checkbox') {
             val = normalizeChecklistValue(val);
+          } else if (colDef.type === 'pdfFile') {
+            if (val === 'Yes' || val === 'true' || val === 'TRUE' || val === true) {
+              val = 'Yes';
+            } else if (val === 'false' || val === 'FALSE' || val === false) {
+              val = '';
+            }
           }
           if (val !== '') nonEmptyCount++;
           record[colDef.key] = val;
@@ -319,6 +332,14 @@ export function parseCsvText(csvText, targetTab = 'Milestone_Data') {
         obj[colDef.key] = formatArea4(raw);
       } else if (colDef.type === 'checkbox') {
         obj[colDef.key] = normalizeChecklistValue(raw);
+      } else if (colDef.type === 'pdfFile') {
+        if (raw === 'Yes' || raw === 'true' || raw === 'TRUE' || raw === true) {
+          obj[colDef.key] = 'Yes';
+        } else if (raw === 'false' || raw === 'FALSE' || raw === false) {
+          obj[colDef.key] = '';
+        } else {
+          obj[colDef.key] = raw;
+        }
       } else {
         obj[colDef.key] = raw;
       }

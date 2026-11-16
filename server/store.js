@@ -445,18 +445,28 @@ export class ConsolidatedStore {
             row.titleNumber = String(row.titleNumber).trim().split('.')[0];
             dirty = true;
           }
-          for (const k of ['pdfFile', 'transmittalSrPdf']) {
-            if (row[k] && String(row[k]).startsWith('data:application/pdf')) {
-              const fileId = `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-              const rawStr = String(row[k]);
-              const base64Data = rawStr.split(',')[1] || '';
-              this.state.uploadedFiles[fileId] = {
-                fileName: `${tab}_${k}.pdf`,
-                data: base64Data,
-                createdAt: new Date().toISOString()
-              };
-              row[k] = `/api/pdf/${fileId}`;
-              dirty = true;
+          if (tab === 'CF(DOC)' && Object.prototype.hasOwnProperty.call(row, 'carperLadForm47')) {
+            if (!row.carperLadForm42 && row.carperLadForm47) {
+              row.carperLadForm42 = row.carperLadForm47;
+            }
+            delete row.carperLadForm47;
+            dirty = true;
+          }
+          for (const col of schemaCols) {
+            const k = col.key;
+            if (col.type === 'pdfFile' || k === 'pdfFile' || k === 'transmittalSrPdf') {
+              if (row[k] && String(row[k]).startsWith('data:application/pdf')) {
+                const fileId = `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+                const rawStr = String(row[k]);
+                const base64Data = rawStr.split(',')[1] || '';
+                this.state.uploadedFiles[fileId] = {
+                  fileName: `${tab}_${k}.pdf`,
+                  data: base64Data,
+                  createdAt: new Date().toISOString()
+                };
+                row[k] = `/api/pdf/${fileId}`;
+                dirty = true;
+              }
             }
           }
           if (Object.prototype.hasOwnProperty.call(row, 'test')) {
@@ -653,11 +663,22 @@ export class ConsolidatedStore {
     const cleanRow = {};
     for (const col of schema) {
       let val = rowPayload[col.key] ?? rowPayload[col.header] ?? '';
+      if (col.key === 'carperLadForm42' && (!val || val === '')) {
+        val = rowPayload.carperLadForm47 ?? rowPayload['Carper LAD form 47'] ?? '';
+      }
       if (col.type === 'decimal' && val !== '' && val !== null && val !== undefined) {
         const num = Number(val);
         val = Number.isFinite(num) ? num.toFixed(4) : String(val);
       } else if (col.type === 'checkbox') {
         val = normalizeChecklistValue(val);
+      } else if (col.type === 'pdfFile') {
+        if (val === true || val === 'true' || val === 'TRUE') {
+          val = 'Yes';
+        } else if (val === false || val === 'false' || val === 'FALSE') {
+          val = '';
+        } else {
+          val = String(val ?? '').trim();
+        }
       } else {
         val = String(val ?? '').trim();
       }
@@ -678,7 +699,8 @@ export class ConsolidatedStore {
 
   upsertOptoolRow(tabName, rowPayload, index = null, options = {}) {
     const { skipSave = false } = options;
-    if (!OPTOOL_SHEET_SCHEMAS[tabName]) {
+    const schema = OPTOOL_SHEET_SCHEMAS[tabName];
+    if (!schema) {
       throw new Error(`Unknown OPTool tab: ${tabName}`);
     }
     const cleanRow = this.normalizeOptoolRow(tabName, rowPayload);
@@ -687,10 +709,18 @@ export class ConsolidatedStore {
     if (index !== null && Number.isInteger(index) && index >= 0 && index < rows.length) {
       rows[index] = cleanRow;
     } else {
+      const areRowsEqual = (a, b) => {
+        if (!a || !b) return false;
+        if (JSON.stringify(a) === JSON.stringify(b)) return true;
+        for (const col of schema) {
+          if ((a[col.key] ?? '') !== (b[col.key] ?? '')) return false;
+        }
+        return true;
+      };
       const existingIdx =
         tabName === 'Database' && cleanRow.lhid
           ? rows.findIndex((r) => r.lhid && r.lhid === cleanRow.lhid)
-          : rows.findIndex((r) => JSON.stringify(r) === JSON.stringify(cleanRow));
+          : rows.findIndex((r) => areRowsEqual(r, cleanRow));
       if (existingIdx >= 0) {
         rows[existingIdx] = cleanRow;
       } else {
