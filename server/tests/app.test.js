@@ -3317,6 +3317,10 @@ test('Global Target filters strictly to LAD Balance, and OPTool Support List bre
   assert.ok(dashHtml.includes('Temp. Park'), 'Dashboard includes Top Temp. Park card');
   assert.ok(dashHtml.includes('Total Database (All Records)'), 'Dashboard includes Top Total Database card');
   assert.ok(dashHtml.includes('Provincial Breakdown'), 'Dashboard includes Provincial Breakdown table');
+  assert.ok(dashHtml.includes('LAD Balance</th>'), 'Provincial table header includes LAD Balance group');
+  assert.ok(dashHtml.includes('Temp. Park</th>'), 'Provincial table header includes Temp. Park group');
+  assert.ok(dashHtml.includes('Total Database</th>'), 'Provincial table header includes Total Database group');
+  assert.ok(dashHtml.includes('Area (HAS)'), 'Provincial table header breaks down Area (HAS) for LAD Balance and Temp Park');
   assert.ok(dashHtml.includes('LAD Balance vs. Registered Titles'), 'Dashboard includes LAD Balance vs Registered Titles Pie panel');
   assert.ok(dashHtml.includes('Whereabouts per Milestone'), 'Dashboard includes Whereabouts per Milestone section');
   assert.ok(dashHtml.includes('data-nav="cf-whereabouts"'), 'Dashboard includes CF Whereabouts navigation link');

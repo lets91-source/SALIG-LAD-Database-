@@ -1420,15 +1420,15 @@ export function matchProvinceName(rowProv, targetProv) {
   const isTargetSouthern = t.includes('SOUTHERN') || t === 'SLE';
   const isTargetNorthern = t.includes('NORTHERN') || t === 'NSA';
   const isTargetEastern = t.includes('EASTERN') || t === 'ESA';
-  const isTargetWesternOrSamar = (t.includes('WESTERN') || t.includes('SAMAR')) && !isTargetNorthern && !isTargetEastern;
-  const isTargetLeyte = t.includes('LEYTE') && !isTargetSouthern;
+  const isTargetWesternOrSamar = (t.includes('WESTERN') || t.includes('SAMAR') || t === 'SAM' || t === 'WSAM') && !isTargetNorthern && !isTargetEastern;
+  const isTargetLeyte = (t.includes('LEYTE') || t === 'LEY') && !isTargetSouthern;
   const isTargetBiliran = t.includes('BILIRAN') || t === 'BIL';
 
   const isRowSouthern = p.includes('SOUTHERN') || p === 'SLE';
   const isRowNorthern = p.includes('NORTHERN') || p === 'NSA';
   const isRowEastern = p.includes('EASTERN') || p === 'ESA';
-  const isRowWesternOrSamar = (p.includes('WESTERN') || p.includes('SAMAR')) && !isRowNorthern && !isRowEastern;
-  const isRowLeyte = p.includes('LEYTE') && !isRowSouthern;
+  const isRowWesternOrSamar = (p.includes('WESTERN') || p.includes('SAMAR') || p === 'SAM' || p === 'WSAM') && !p.includes('NORTHERN') && !p.includes('EASTERN');
+  const isRowLeyte = (p.includes('LEYTE') || p === 'LEY') && !isRowSouthern;
   const isRowBiliran = p.includes('BILIRAN') || p === 'BIL';
 
   if (isTargetSouthern) return isRowSouthern;
@@ -4418,7 +4418,7 @@ export function renderInstallationWhereaboutsView(ctx) {
 }
 
 export function renderDashboardView(ctx) {
-  const { state, analytics, provinceScope } = ctx;
+  const { state, analytics, provinceScope, schemas } = ctx;
   const { kpis = {}, provincialBreakdown = [] } = analytics || {};
 
   // 1. Calculate Top 3 Cards from Master Database matching attached layout
@@ -4446,7 +4446,10 @@ export function renderDashboardView(ctx) {
 
   // 2. Provincial Breakdown Table
   const provBreakdownRows = DEFAULT_CF_PROVINCES.map((p) => {
-    const provDb = allDbRows.filter((r) => matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
+    const provDb = allDbRows.filter((r) => {
+      const code = resolveProvinceCode(r.province, schemas);
+      return code ? code === p.code : (matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
+    });
     const pLad = provDb.filter((r) => isLadBalance(r));
     const pTemp = provDb.filter((r) => isTempPark(r));
 
@@ -4629,7 +4632,7 @@ export function renderDashboardView(ctx) {
     </section>
 
     <!-- MIDDLE SECTION: Provincial Breakdown Table + PIE Chart (LAD Balance vs Registered Titles) -->
-    <section class="grid-2" style="grid-template-columns: 1.45fr 1fr; margin-bottom: 16px;">
+    <section class="grid-2" style="grid-template-columns: 1.55fr 1fr; margin-bottom: 16px;">
       <!-- Panel 1: Table with Provincial Breakdown -->
       <div class="panel">
         <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -4643,13 +4646,20 @@ export function renderDashboardView(ctx) {
           <table>
             <thead>
               <tr>
-                <th>Province / Node</th>
-                <th class="right">LAD Target (LHs)</th>
-                <th class="right">LAD Area (HAS)</th>
-                <th class="right">Temp. Park</th>
-                <th class="right">Total DB</th>
-                <th class="right">Registered (HAS)</th>
-                <th class="right">% Attained</th>
+                <th rowspan="2" style="vertical-align:middle;">Province / Node</th>
+                <th colspan="2" class="center" style="border-bottom:1px solid var(--border);background:rgba(16,185,129,0.08);color:var(--dar-green, #10b981);font-weight:700;">LAD Balance</th>
+                <th colspan="2" class="center" style="border-bottom:1px solid var(--border);background:rgba(245,158,11,0.08);color:#b45309;font-weight:700;">Temp. Park</th>
+                <th colspan="2" class="center" style="border-bottom:1px solid var(--border);background:rgba(100,116,139,0.08);color:var(--text-muted);font-weight:700;">Total Database</th>
+                <th rowspan="2" class="right" style="vertical-align:middle;">Registered (HAS)</th>
+                <th rowspan="2" class="right" style="vertical-align:middle;">% Attained</th>
+              </tr>
+              <tr style="font-size:11px;">
+                <th class="right" style="background:rgba(16,185,129,0.04);">LHs</th>
+                <th class="right" style="background:rgba(16,185,129,0.04);">Area (HAS)</th>
+                <th class="right" style="background:rgba(245,158,11,0.04);">LHs</th>
+                <th class="right" style="background:rgba(245,158,11,0.04);">Area (HAS)</th>
+                <th class="right" style="background:rgba(100,116,139,0.04);">LHs</th>
+                <th class="right" style="background:rgba(100,116,139,0.04);">Area (HAS)</th>
               </tr>
             </thead>
             <tbody>
@@ -4662,7 +4672,9 @@ export function renderDashboardView(ctx) {
                   <td class="right num"><strong>${p.ladLhs.toLocaleString()}</strong></td>
                   <td class="right mono num">${fmtArea(p.ladArea)}</td>
                   <td class="right num"><span class="badge badge-amber">${p.tempLhs.toLocaleString()}</span></td>
+                  <td class="right mono num" style="color:#b45309;">${fmtArea(p.tempArea)}</td>
                   <td class="right num"><span class="badge badge-gray">${p.dbLhs.toLocaleString()}</span></td>
+                  <td class="right mono num">${fmtArea(p.dbArea)}</td>
                   <td class="right mono num" style="color:var(--dar-blue);font-weight:700;">${fmtArea(p.regArea)}</td>
                   <td class="right num">
                     <span class="badge ${p.pct >= 50 ? 'badge-green' : p.pct > 0 ? 'badge-blue' : 'badge-gray'}">
@@ -4678,7 +4690,9 @@ export function renderDashboardView(ctx) {
                 <td class="right num">${provTotals.ladLhs.toLocaleString()}</td>
                 <td class="right mono num">${fmtArea(provTotals.ladArea)}</td>
                 <td class="right num"><span class="badge badge-amber">${provTotals.tempLhs.toLocaleString()}</span></td>
+                <td class="right mono num" style="color:#b45309;">${fmtArea(provTotals.tempArea)}</td>
                 <td class="right num"><span class="badge badge-gray">${provTotals.totalLhs.toLocaleString()}</span></td>
+                <td class="right mono num">${fmtArea(provTotals.totalArea)}</td>
                 <td class="right mono num" style="color:var(--dar-blue);font-weight:800;">${fmtArea(provTotals.regArea)}</td>
                 <td class="right num"><span class="badge badge-green">${provTotals.pct}%</span></td>
               </tr>
