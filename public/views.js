@@ -1578,6 +1578,8 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     const brgyName = db.barangay || row.barangay || '—';
     const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
     const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
+    const lotNum = db.lotNumber || row.lotNumber || row.lotNo || '—';
+    const subLotNum = db.subLotNumber || row.subLotNumber || '—';
 
     const datesMap = {};
     let populatedDatesCount = 0;
@@ -1608,6 +1610,8 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
+      lotNumber: lotNum,
+      subLotNumber: subLotNum,
       totalArea: carpableNum,
       carpable: carpableNum,
       areaHas: carpableNum,
@@ -1667,7 +1671,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     }
     if (searchVal) {
       const dateText = Object.values(r.datesMap).join(' ');
-      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.lotNumber} ${r.subLotNumber} ${dateText} ${r.stage}`.toLowerCase();
       if (!hay.includes(searchVal.toLowerCase())) return false;
     }
     return true;
@@ -1810,6 +1814,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const brgyName = db.barangay || row.barangay || '—';
     const titleNum = db.titleNumber || row.titleNumber || row.rodTitleNo || row.titleOrTaxDecNo || '—';
     const landOwner = db.landOwner || row.landOwner || (row.loLastName ? `${row.loLastName}, ${row.loFirstName || ''}` : '') || row.arbName || '—';
+    const lotNum = db.lotNumber || row.lotNumber || row.lotNo || '—';
+    const subLotNum = db.subLotNumber || row.subLotNumber || '—';
 
     // Dates map
     const datesMap = {};
@@ -1841,6 +1847,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
+      lotNumber: lotNum,
+      subLotNumber: subLotNum,
       totalArea: carpableNum,
       carpable: carpableNum,
       areaHas: carpableNum,
@@ -1904,7 +1912,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   if (q) {
     scopeRows = scopeRows.filter((r) => {
       const dateText = Object.values(r.datesMap).join(' ');
-      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
+      const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.lotNumber} ${r.subLotNumber} ${dateText} ${r.stage}`.toLowerCase();
       return hay.includes(q);
     });
   }
@@ -3561,7 +3569,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     if (q) {
       matrixScopeRows = matrixScopeRows.filter((r) => {
         const dateText = Object.values(r.datesMap || {}).join(' ');
-        const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${dateText} ${r.stage}`.toLowerCase();
+        const hay = `${r.lhid} ${r.province} ${r.municipality} ${r.barangay} ${r.landOwner} ${r.titleNumber} ${r.lotNumber} ${r.subLotNumber} ${dateText} ${r.stage}`.toLowerCase();
         return hay.includes(q);
       });
     }
@@ -5052,6 +5060,7 @@ export const LINKED_DB_PROFILE_FIELDS = [
   { key: 'barangay', label: 'BarangayName', type: 'text' },
   { key: 'surveyNumber', label: 'SurveyNumber', type: 'text' },
   { key: 'lotNumber', label: 'LotNumber', type: 'text' },
+  { key: 'subLotNumber', label: 'SubLotNumber', type: 'text' },
   { key: 'carpable', label: 'CARPable', type: 'decimal', isArea: true }
 ];
 
@@ -6793,7 +6802,7 @@ function buildDbByLhidMap(state) {
                   <td>${esc(r.barangay || '—')}</td>
                   <td>
                     <div style="font-weight:600;font-size:12px;">${esc(r.landOwner || '—')}</div>
-                    <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber || '—')}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber || '—')}${r.lotNumber && r.lotNumber !== '—' ? ` • Lot: ${esc(r.lotNumber)}` : ''}${r.subLotNumber && r.subLotNumber !== '—' ? ` • Sub-Lot: ${esc(r.subLotNumber)}` : ''}</div>
                   </td>
                   <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.totalArea || r.carpable || 0)} HAS</td>
                   <td>

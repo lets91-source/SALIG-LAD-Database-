@@ -80,7 +80,9 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
             (col.key === 'taxDeclaration' && norm.includes('taxdeclaration')) ||
             (col.key === 'carperLadForm1And2' && (norm.includes('form12') || norm.includes('form1and2') || norm.includes('form1&2'))) ||
             (col.key === 'carperLadForm3' && norm.includes('form3')) ||
-            (col.key === 'landUsePerFi' && norm.includes('landuse')))
+            (col.key === 'landUsePerFi' && norm.includes('landuse')) ||
+            (col.key === 'subLotNumber' && (norm.includes('sublot') || norm.includes('sub lot') || norm.includes('sub-lot'))) ||
+            (col.key === 'lotNumber' && (norm === 'lot' || norm === 'lot number' || norm === 'lotnumber' || norm === 'lot no.' || norm === 'lot no' || norm === 'lotno')))
       );
     }
 

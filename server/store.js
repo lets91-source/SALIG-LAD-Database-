@@ -172,18 +172,24 @@ const DATABASE_TO_TARGET_MAP = {
   },
   MOV: {
     lhid: 'lhid',
+    lotNumber: 'lotNumber',
+    subLotNumber: 'subLotNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
     targetYear: (r) => String(r.year || r.targetYear || '').trim()
   },
   'Land Valuation': {
     lhid: 'lhid',
+    lotNumber: 'lotNumber',
+    subLotNumber: 'subLotNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
     targetYear: (r) => String(r.year || r.targetYear || '').trim()
   },
   'Land valuation': {
     lhid: 'lhid',
+    lotNumber: 'lotNumber',
+    subLotNumber: 'subLotNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
     targetYear: (r) => String(r.year || r.targetYear || '').trim()
@@ -467,6 +473,10 @@ export class ConsolidatedStore {
           }
           if (row.lotNumber && /^\d+\.0+$/.test(String(row.lotNumber).trim())) {
             row.lotNumber = String(row.lotNumber).trim().split('.')[0];
+            dirty = true;
+          }
+          if (row.subLotNumber && /^\d+\.0+$/.test(String(row.subLotNumber).trim())) {
+            row.subLotNumber = String(row.subLotNumber).trim().split('.')[0];
             dirty = true;
           }
           if (row.titleNumber && /^\d+\.0+$/.test(String(row.titleNumber).trim())) {
@@ -833,7 +843,7 @@ export class ConsolidatedStore {
             if (lhid) {
               return `${lhid}|${prov}`;
             }
-            return `${String(r?.titleNumber || '').trim().toLowerCase()}|${String(r?.lotNumber || '').trim().toLowerCase()}|${String(r?.landOwner || '').trim().toLowerCase()}`;
+            return `${String(r?.titleNumber || '').trim().toLowerCase()}|${String(r?.lotNumber || '').trim().toLowerCase()}|${String(r?.subLotNumber || '').trim().toLowerCase()}|${String(r?.landOwner || '').trim().toLowerCase()}`;
           }
           return `${String(r?.lhid || '').trim().toLowerCase()}|${JSON.stringify(r)}`;
         };

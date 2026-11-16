@@ -63,7 +63,14 @@ test('Schema & Region VIII Registry integrity', () => {
   assert.equal(REGIONAL_REGISTRY.length, 7);
   assert.equal(REGIONAL_REGISTRY[0].spreadsheetId, '1jTVJSQlUcWyZFxm6Pxqj9L62q9NtLyhUy1ifYqqb0Lw');
 
-  assert.equal(OPTOOL_SHEET_SCHEMAS.Database.length, 27);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.Database.length, 28);
+  const subLotCol = OPTOOL_SHEET_SCHEMAS.Database.find((c) => c.key === 'subLotNumber');
+  assert.equal(subLotCol?.header, 'Sub Lot Number');
+  assert.equal(subLotCol?.label, 'Sub Lot Number');
+  assert.equal(subLotCol?.group, 'Parcel Details');
+  const dbLotIdx = OPTOOL_SHEET_SCHEMAS.Database.findIndex((c) => c.key === 'lotNumber');
+  const dbSubLotIdx = OPTOOL_SHEET_SCHEMAS.Database.findIndex((c) => c.key === 'subLotNumber');
+  assert.equal(dbSubLotIdx, dbLotIdx + 1, 'Sub Lot Number must immediately follow LotNumber in Database schema');
   const ladCol = OPTOOL_SHEET_SCHEMAS.Database.find((c) => c.key === 'ladStatus');
   assert.equal(ladCol?.type, 'select');
   assert.deepEqual(ladCol?.options, ['LAD Balance', 'Temp. Park', 'For Inclusion']);
@@ -72,7 +79,18 @@ test('Schema & Region VIII Registry integrity', () => {
   assert.deepEqual(workCol?.options, ['Workable', 'For Replacement', 'Replacement']);
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 24);
   assert.equal(OPTOOL_SHEET_SCHEMAS.Survey.length, 44);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 13);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 15);
+  const movDateMovIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'dateOfMov');
+  const movLotIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'lotNumber');
+  const movSubLotIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'subLotNumber');
+  assert.equal(movLotIdx, movDateMovIdx + 1, 'Lot Number must immediately follow Date of MOV in MOV schema');
+  assert.equal(movSubLotIdx, movDateMovIdx + 2, 'Sub Lot Number must immediately follow Lot Number in MOV schema');
+  const movLotCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'lotNumber');
+  assert.equal(movLotCol?.header, 'Lot Number');
+  assert.equal(movLotCol?.group, 'Compensation & LBP');
+  const movSubLotCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'subLotNumber');
+  assert.equal(movSubLotCol?.header, 'Sub Lot Number');
+  assert.equal(movSubLotCol?.group, 'Compensation & LBP');
   assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.some((c) => c.key === 'currentStatus' || c.key === 'currentDate'), false);
   const ppuCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'ppuReviewResult');
   assert.equal(ppuCol?.type, 'select');
@@ -203,6 +221,7 @@ test('Schema & Region VIII Registry integrity', () => {
     'totalArea',
     'computedArea',
     'lotNumber',
+    'subLotNumber',
     'carpable',
     'ladStatus',
     'workability'
@@ -330,7 +349,7 @@ test('HTTP Server end-to-end API routes', async () => {
     assert.equal(bootRes.status, 200);
     const boot = await bootRes.json();
     assert.equal(boot.schemas.registry.length, 7);
-    assert.equal(boot.schemas.optoolPreviewCols.Database.length, 14);
+    assert.equal(boot.schemas.optoolPreviewCols.Database.length, 15);
     assert.ok(boot.gasScript.includes('runRegionalETL'));
     assert.ok(boot.gasHtml.includes('getHubBootstrap'));
 
@@ -568,7 +587,7 @@ test('OPTool table displays linked Database columns right after LHID for CF(DOC)
     ).map((m) => ({ span: Number(m[1]), label: m[2] }));
     assert.deepEqual(groupBands, [
       { span: 1, label: 'Identification' },
-      { span: 10, label: 'Database Parcel Details' },
+      { span: 11, label: 'Database Parcel Details' },
       { span: 6, label: 'DARPO Compliance' },
       { span: 18, label: 'DARRO Compliance' },
       { span: 1, label: 'DARPO Compliance' },

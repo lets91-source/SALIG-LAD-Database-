@@ -2333,6 +2333,16 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
         const m = String(rawYr).match(/\b(20\d{2})\b/);
         targetYearInput.value = m ? m[1] : (targetYearInput.value || '');
       }
+      if (tabName === 'MOV') {
+        const lotInput = document.getElementById('opt-lotNumber');
+        const subLotInput = document.getElementById('opt-subLotNumber');
+        if (lotInput && (!lotInput.value || !isEdit) && dbRow?.lotNumber) {
+          lotInput.value = dbRow.lotNumber;
+        }
+        if (subLotInput && (!subLotInput.value || !isEdit) && dbRow?.subLotNumber) {
+          subLotInput.value = dbRow.subLotNumber;
+        }
+      }
     };
     populateLinkedDbFields(existingRow?.lhid ?? '');
     document.getElementById('opt-lhid')?.addEventListener('input', (e) => {

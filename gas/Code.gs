@@ -94,7 +94,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'LHID', 'Title Number', 'Land Owner', 'MOA', 'Phase',
     'RegionName', 'Province', 'Municipality', 'Barangay',
     'SurveyStatus', 'TargetYear', 'PipelineYear', 'problematic',
-    'Total Area', 'ComputedArea', 'DistributedArea', 'SurveyNumber', 'LotNumber',
+    'Total Area', 'ComputedArea', 'DistributedArea', 'SurveyNumber', 'LotNumber', 'Sub Lot Number',
     'CARPable', 'NONCARPable', 'Optool Status', 'CurrentStatusDesc',
     'NewLandSize', 'Lad Status', 'Workability', 'Milestone Target', 'Year'
   ],
@@ -139,6 +139,7 @@ const OPTOOL_SCHEMA_HEADERS = {
   MOV: [
     'LHID', 'PPU Date', 'PPU Review Result\n(PASSED/FAILED)',
     'Date Received at DARPO', 'Compensation Amount', 'Date of MOV',
+    'Lot Number', 'Sub Lot Number',
     'Date Trans to LBP/AOC', 'LBP Claim Number', 'AOC Number',
     'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File', 'Target Year'
   ],
