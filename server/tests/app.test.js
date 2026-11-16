@@ -77,7 +77,11 @@ test('Schema & Region VIII Registry integrity', () => {
   const workCol = OPTOOL_SHEET_SCHEMAS.Database.find((c) => c.key === 'workability');
   assert.equal(workCol?.type, 'select');
   assert.deepEqual(workCol?.options, ['Workable', 'For Replacement', 'Replacement']);
-  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 24);
+  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 20);
+  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadForm18'), false);
+  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadForm20'), false);
+  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadNo49'), false);
+  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'approvedSubdivisionPlan'), false);
   assert.equal(OPTOOL_SHEET_SCHEMAS.Survey.length, 44);
   assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 15);
   const movDateMovIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'dateOfMov');
@@ -173,21 +177,17 @@ test('Schema & Region VIII Registry integrity', () => {
     );
   }
   const cfChecklistCols = OPTOOL_SHEET_SCHEMAS['CF(DOC)'].filter((c) => c.type === 'checkbox');
-  assert.equal(cfChecklistCols.length, 11);
+  assert.equal(cfChecklistCols.length, 7);
   assert.deepEqual(
     cfChecklistCols.map((c) => c.key),
     [
       'denrCertification',
       'asp',
-      'carperLadForm18',
-      'carperLadForm20',
       'marpoCert',
       'firCarperLadForm46',
       'copyOfAdvSp',
-      'carperLadNo49',
       'carperLadNo37',
-      'carperLadForm42',
-      'approvedSubdivisionPlan'
+      'carperLadForm42'
     ]
   );
   const cfPdfCols = OPTOOL_SHEET_SCHEMAS['CF(DOC)'].filter((c) => c.type === 'pdfFile');

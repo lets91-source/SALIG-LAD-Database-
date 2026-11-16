@@ -99,11 +99,10 @@ const OPTOOL_SCHEMA_HEADERS = {
     'NewLandSize', 'Lad Status', 'Workability', 'Milestone Target', 'Year'
   ],
   'CF(DOC)': [
-    'LHID', 'DENR Certification', 'ASP', 'Carper Lad form 18',
-    'Carper LAD form 20', 'MARPO Cert.', 'FIR Carper LAD Form 46',
-    'Copy of the AdvSP', 'Carper LAD No. 49',
+    'LHID', 'DENR Certification', 'ASP',
+    'MARPO Cert.', 'FIR Carper LAD Form 46',
+    'Copy of the AdvSP',
     'Carper LAD No. 37/oathe of ARB', 'Carper LAD Form 42',
-    'Approved Subdivision/Segregation Plan',
     'Upload Certificate of Titles', 'Upload Tax Declaration',
     'Upload CARPER LAD Form 1 & 2', 'Upload CARPER LAD Form 3',
     'Upload Land Use per FI', 'Upload CARPER LAD Form 46',
