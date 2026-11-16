@@ -766,7 +766,7 @@ function updateHeaderTitles() {
       'Land Survey Tracking • Field Work Dates • SR Forwarded • DENR-SMD Acceptance • ASP Date • Reported Month'
     ],
     'mov-whereabouts': [
-      `${scopeLabel} MOV Whereabouts & Land Valuation`,
+      `${scopeLabel} Land Valuation Whereabouts`,
       'Memorandum of Valuation Tracking • PPU Date • Received at DARPO • Date of MOV • Transmitted to LBP/AOC • Reported Month'
     ],
     'regdist-whereabouts': [

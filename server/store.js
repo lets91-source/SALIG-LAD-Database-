@@ -149,6 +149,14 @@ function applySurveyCurrentStatus(row) {
   return changed;
 }
 
+export function resolveTargetTab(target) {
+  const norm = String(target || '').trim();
+  if (norm.toLowerCase() === 'land valuation' || norm.toLowerCase() === 'mov') {
+    return 'MOV';
+  }
+  return norm;
+}
+
 const DATABASE_TO_TARGET_MAP = {
   'CF(DOC)': {
     lhid: 'lhid',
@@ -163,6 +171,18 @@ const DATABASE_TO_TARGET_MAP = {
     targetYear: (r) => String(r.year || r.targetYear || '').trim()
   },
   MOV: {
+    lhid: 'lhid',
+    target: (r) => resolveTargetFromDatabaseRow(r),
+    reportedMonth: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+  },
+  'Land Valuation': {
+    lhid: 'lhid',
+    target: (r) => resolveTargetFromDatabaseRow(r),
+    reportedMonth: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+  },
+  'Land valuation': {
     lhid: 'lhid',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
@@ -413,6 +433,14 @@ export class ConsolidatedStore {
       }
     }
     if (!this.state.optool) this.state.optool = {};
+    if (!this.state.optool['Land Valuation']) {
+      Object.defineProperty(this.state.optool, 'Land Valuation', {
+        get() { return this.MOV; },
+        set(v) { this.MOV = v; },
+        enumerable: false,
+        configurable: true
+      });
+    }
     let dirty = false;
     const dbByLhid = new Map();
     for (const r of (Array.isArray(this.state.optool.Database) ? this.state.optool.Database : [])) {
@@ -894,8 +922,9 @@ export class ConsolidatedStore {
    * Ensure a Database parcel with a valid Milestone Target has a linked row in that target tab.
    */
   syncDatabaseRowToTargetTab(dbRow) {
-    const targetTab = String(dbRow?.milestoneTarget || '').trim();
-    const fieldMap = DATABASE_TO_TARGET_MAP[targetTab];
+    const rawTarget = String(dbRow?.milestoneTarget || '').trim();
+    const targetTab = resolveTargetTab(rawTarget);
+    const fieldMap = DATABASE_TO_TARGET_MAP[targetTab] || DATABASE_TO_TARGET_MAP[rawTarget];
     if (!fieldMap) return false;
 
     const lhidKey = String(dbRow.lhid || '').trim().toLowerCase();
@@ -938,17 +967,19 @@ export class ConsolidatedStore {
       throw new Error('Database row not found');
     }
     const normalized = String(milestoneTarget ?? '').trim();
-    if (normalized !== '' && !MILESTONE_TARGET_TABS.includes(normalized)) {
+    const validTargets = [...MILESTONE_TARGET_TABS, 'MOV', 'Land Valuation', 'Land valuation'];
+    if (normalized !== '' && !validTargets.includes(normalized)) {
       throw new Error(`Invalid Milestone Target: ${normalized}`);
     }
 
     const row = rows[index];
     row.milestoneTarget = normalized;
+    const targetTab = resolveTargetTab(normalized);
     const createdInTab = normalized ? this.syncDatabaseRowToTargetTab(row) : false;
     if (!createdInTab) {
       this.save();
     }
-    return { row, targetTab: normalized, createdInTab };
+    return { row, targetTab, createdInTab };
   }
 
   getLandholding360(lhid) {
@@ -1066,6 +1097,7 @@ export class ConsolidatedStore {
     for (const tabName of Object.keys(OPTOOL_SHEET_SCHEMAS)) {
       scopedOptool[tabName] = this.getScopedOptoolTabRows(tabName, scopeCode, dbLhidMap);
     }
+    scopedOptool['Land Valuation'] = scopedOptool.MOV;
     const scopedBaselines = {};
     if (this.state.baselines?.[scopeCode]) {
       scopedBaselines[scopeCode] = this.state.baselines[scopeCode];

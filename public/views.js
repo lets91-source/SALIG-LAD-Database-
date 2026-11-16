@@ -1238,7 +1238,7 @@ export const WHEREABOUTS_CONFIGS = {
     tabName: 'MOV',
     viewKey: 'mov-whereabouts',
     badgeIcon: '⚖️',
-    title: 'MOV (Land Valuation) Whereabouts & Date Summary',
+    title: 'Land Valuation Whereabouts & Date Summary',
     subtitle: 'Memorandum of Valuation Tracking • PPU Date • Received at DARPO • Date of MOV • Transmitted to LBP/AOC • Reported Month',
     openTabName: 'MOV',
     dates: [
@@ -4522,7 +4522,7 @@ export function renderDashboardView(ctx) {
     {
       key: 'mov-whereabouts',
       tabName: 'MOV',
-      label: 'MOV',
+      label: 'Land Valuation',
       navKey: 'mov-whereabouts',
       count: (state.optool?.MOV || []).length,
       area: computeMilestoneTotalArea(state.optool?.MOV),
@@ -5217,10 +5217,13 @@ function buildDbByLhidMap(state) {
           if (targetFilter === 'UNASSIGNED' && rowTarget) return false;
           if (
             targetFilter !== 'ASSIGNED' &&
-            targetFilter !== 'UNASSIGNED' &&
-            rowTarget.toLowerCase() !== targetFilter.toLowerCase()
+            targetFilter !== 'UNASSIGNED'
           ) {
-            return false;
+            const normFilter = targetFilter.toLowerCase();
+            const normRow = rowTarget.toLowerCase();
+            const isMatch = normRow === normFilter ||
+              ((normFilter === 'land valuation' || normFilter === 'mov') && (normRow === 'land valuation' || normRow === 'mov'));
+            if (!isMatch) return false;
           }
         }
         for (const [colKey, filterSpec] of activeColEntries) {
@@ -5305,7 +5308,7 @@ function buildDbByLhidMap(state) {
     const targetTabs = schemas.milestoneTargetTabs || [
       'CF(DOC)',
       'Survey',
-      'MOV',
+      'Land Valuation',
       'RegistrationDistribution',
       'Installation'
     ];
@@ -5427,6 +5430,7 @@ function buildDbByLhidMap(state) {
       }
       const targetScopedRows = filterOptoolRows(allRows, { ...ctx, optoolTargetFilter: 'ALL' }, 'milestoneTarget', dbByLhid);
       const targetLookup = new Map(targetTabs.map((t) => [t.toLowerCase(), t]));
+      targetLookup.set('mov', targetTabs.find((t) => t.toLowerCase() === 'land valuation') || 'Land Valuation');
       for (const { row } of targetScopedRows) {
         const canonical = targetLookup.get(String(row.milestoneTarget || '').trim().toLowerCase());
         if (canonical) {
@@ -5524,7 +5528,8 @@ function buildDbByLhidMap(state) {
   const TARGET_CARD_META = {
     'CF(DOC)': { label: 'CF(DOC)', variantClass: 'highlight' },
     Survey: { label: 'Survey', variantClass: 'blue' },
-    MOV: { label: 'MOV', variantClass: 'amber' },
+    'Land Valuation': { label: 'Land Valuation', variantClass: 'amber' },
+    MOV: { label: 'Land Valuation', variantClass: 'amber' },
     RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'highlight' },
     Installation: { label: 'Installation', variantClass: 'highlight' }
   };
@@ -5984,7 +5989,7 @@ function buildDbByLhidMap(state) {
               <option value="UNASSIGNED" ${targetFilter === 'UNASSIGNED' ? 'selected' : ''}>Unassigned</option>
               ${targetTabs
           .map(
-            (t) => `<option value="${esc(t)}" ${targetFilter === t ? 'selected' : ''}>${esc(t)}</option>`
+            (t) => `<option value="${esc(t)}" ${targetFilter === t ? 'selected' : ''}>${esc((TARGET_CARD_META[t] || {}).label || t)}</option>`
           )
           .join('')}
             </select>

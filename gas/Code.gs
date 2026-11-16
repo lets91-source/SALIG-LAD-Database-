@@ -1256,7 +1256,7 @@ function applyMilestoneTargetYearFormula_(sheet, tabName) {
   } else if (normTab === 'survey') {
     targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Survey", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'mov') {
-    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="MOV", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
+    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="MOV", VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Land Valuation", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'registrationdistribution') {
     targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Registration/Distribution", VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="RegistrationDistribution", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'installation') {

@@ -136,7 +136,7 @@ export const BATCH_CATEGORIES = [
 export const MILESTONE_TARGET_TABS = [
   'CF(DOC)',
   'Survey',
-  'MOV',
+  'Land Valuation',
   'RegistrationDistribution',
   'Installation'
 ];

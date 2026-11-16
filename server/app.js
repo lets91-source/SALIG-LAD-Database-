@@ -271,8 +271,9 @@ function filterParsedDatasetByScope(store, parsed, scopeCode) {
 
 async function pushRoutedTargetRow(store, targetTab, lhid, gasPushFn) {
   if (!targetTab) return null;
+  const resolvedTab = (targetTab === 'Land Valuation' || targetTab === 'Land valuation') ? 'MOV' : targetTab;
   const lhidKey = String(lhid || '').trim().toLowerCase();
-  const targetRow = (store.state.optool[targetTab] || []).find(
+  const targetRow = (store.state.optool[resolvedTab] || []).find(
     (r) => String(r.lhid || '').trim().toLowerCase() === lhidKey
   );
   if (!targetRow) return null;
@@ -280,12 +281,12 @@ async function pushRoutedTargetRow(store, targetTab, lhid, gasPushFn) {
     store,
     {
       action: 'upsertOptoolRow',
-      tabName: targetTab,
-      headers: getOptoolHeadersSpec(targetTab),
+      tabName: resolvedTab,
+      headers: getOptoolHeadersSpec(resolvedTab),
       row: targetRow,
       provinceCode: inferOptoolRowProvinceCode(store, targetRow)
     },
-    `Routed ${targetRow.lhid || 'parcel'} into Google Sheet tab ${targetTab}.`,
+    `Routed ${targetRow.lhid || 'parcel'} into Google Sheet tab ${resolvedTab}.`,
     gasPushFn
   );
 }
@@ -907,12 +908,14 @@ export function createAppServer(dataDir, options = {}) {
               await pushRoutedTargetRow(store, result.targetTab, result.row.lhid, gasPushFn);
             }
             const scopedState = store.getScopedState(scopeCode);
+            const responseOptool = { ...scopedState.optool };
+            responseOptool['Land Valuation'] = responseOptool.MOV;
             return sendJson(res, 200, {
               ok: true,
               ...result,
               gasPushResult,
               rows: scopedState.optool.Database,
-              optool: scopedState.optool,
+              optool: responseOptool,
               analytics: computeScopedAnalytics(store, query, scopeCode)
             });
           } catch (err) {
@@ -964,8 +967,9 @@ export function createAppServer(dataDir, options = {}) {
               ? store.state.optool[tabName]?.[globalIdx] || null
               : null;
           const saved = store.upsertOptoolRow(tabName, rowPayload, globalIdx);
+          const isTargetTab = MILESTONE_TARGET_TABS.includes(saved.milestoneTarget) || saved.milestoneTarget === 'MOV' || saved.milestoneTarget === 'Land Valuation';
           const createdInTab =
-            tabName === 'Database' && MILESTONE_TARGET_TABS.includes(saved.milestoneTarget)
+            tabName === 'Database' && isTargetTab
               ? store.syncDatabaseRowToTargetTab(saved)
               : false;
           const gasPushResult = await pushMutationToGas(
@@ -985,11 +989,13 @@ export function createAppServer(dataDir, options = {}) {
             await pushRoutedTargetRow(store, saved.milestoneTarget, saved.lhid, gasPushFn);
           }
           const scopedState = store.getScopedState(scopeCode);
+          const responseOptool = { ...scopedState.optool };
+          responseOptool['Land Valuation'] = responseOptool.MOV;
           return sendJson(res, 200, {
             row: saved,
             gasPushResult,
             rows: scopedState.optool[tabName],
-            optool: scopedState.optool,
+            optool: responseOptool,
             analytics: computeScopedAnalytics(store, query, scopeCode)
           });
         }

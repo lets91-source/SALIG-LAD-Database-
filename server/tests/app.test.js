@@ -397,7 +397,7 @@ test('HTTP Server end-to-end API routes', async () => {
     assert.equal(optJson.row.ladStatus, 'LAD Balance');
     assert.equal(optJson.row.workability, 'Workable');
 
-    // Milestone Target routing from Database -> CF(DOC), Survey, MOV, RegistrationDistribution, Installation
+    // Milestone Target routing from Database -> CF(DOC), Survey, Land Valuation, RegistrationDistribution, Installation
     for (const targetTab of MILESTONE_TARGET_TABS) {
       const mtRes = await fetch(`${baseUrl}/api/optool/Database/milestone-target`, {
         method: 'POST',
@@ -408,8 +408,9 @@ test('HTTP Server end-to-end API routes', async () => {
       const mtJson = await mtRes.json();
       assert.equal(mtJson.row.milestoneTarget, targetTab);
       assert.equal(mtJson.createdInTab, true);
+      const targetOptoolRows = mtJson.optool[targetTab] || (targetTab === 'Land Valuation' ? mtJson.optool.MOV : null);
       assert.ok(
-        mtJson.optool[targetTab].some((r) => r.lhid === 'LH-0837-9999'),
+        targetOptoolRows && targetOptoolRows.some((r) => r.lhid === 'LH-0837-9999'),
         `Expected LHID to be routed into ${targetTab}`
       );
       if (targetTab === 'CF(DOC)') {
