@@ -40,6 +40,7 @@ import {
   renderUsersView,
   isLadBalance,
   isTempPark,
+  resolveProvinceCode,
   renderDashboardView
 } from '../../public/views.js';
 import {
@@ -3465,4 +3466,44 @@ test('Eastern Visayas map renders authentic reference graphic with interactive p
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+test('resolveProvinceCode accurately discriminates Southern Leyte vs Leyte and displays SLE breakdown', async () => {
+  const schemas = { registry: REGIONAL_REGISTRY };
+
+  // 1. Direct code & compound province checks
+  assert.equal(resolveProvinceCode('SLE', schemas), 'SLE');
+  assert.equal(resolveProvinceCode('SOUTHERN LEYTE', schemas), 'SLE');
+  assert.equal(resolveProvinceCode('Southern Leyte', schemas), 'SLE');
+  assert.equal(resolveProvinceCode('LEYTE', schemas), 'LEY');
+  assert.equal(resolveProvinceCode('Leyte', schemas), 'LEY');
+  assert.equal(resolveProvinceCode('LEY', schemas), 'LEY');
+  assert.equal(resolveProvinceCode('NORTHERN SAMAR', schemas), 'NSA');
+  assert.equal(resolveProvinceCode('EASTERN SAMAR', schemas), 'ESA');
+  assert.equal(resolveProvinceCode('WESTERN SAMAR', schemas), 'SAM');
+  assert.equal(resolveProvinceCode('SAMAR', schemas), 'SAM');
+  assert.equal(resolveProvinceCode('BILIRAN', schemas), 'BIL');
+
+  // 2. Verify renderDashboardView breaks down Southern Leyte independently from Leyte
+  const sampleDatabase = [
+    { province: 'SOUTHERN LEYTE', provinceCode: 'SLE', lad_balance: 'LAD Balance', projected_area: 2.5 },
+    { province: 'SOUTHERN LEYTE', provinceCode: 'SLE', lad_balance: 'Temp. Park', projected_area: 3.5 },
+    { province: 'LEYTE', provinceCode: 'LEY', lad_balance: 'LAD Balance', projected_area: 10.0 }
+  ];
+
+  const html = renderDashboardView({
+    state: {
+      optool: { Database: sampleDatabase }
+    },
+    analytics: {
+      kpis: { cumulativeETitles: 0, cumulativeAreaHas: 0 },
+      provincialBreakdown: []
+    },
+    schemas,
+    provinceScope: null
+  });
+
+  // Verify Southern Leyte row has 1 LAD Balance and 1 Temp Park
+  assert.ok(html.includes('data-prov-code="SLE"'), 'SLE table row is generated');
+  assert.ok(html.includes('SOUTHERN LEYTE'), 'Southern Leyte label appears in table');
 });

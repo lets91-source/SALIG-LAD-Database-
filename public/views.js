@@ -1445,20 +1445,34 @@ export function matchProvinceName(rowProv, targetProv) {
 export function resolveProvinceCode(provNameOrCode, schemas) {
   if (!provNameOrCode || provNameOrCode === 'ALL') return null;
   const pUpper = String(provNameOrCode).trim().toUpperCase();
+
+  // 1. Direct code or exact name match
+  if (pUpper === 'SLE' || pUpper === 'SOUTHERN LEYTE') return 'SLE';
+  if (pUpper === 'NSA' || pUpper === 'NORTHERN SAMAR') return 'NSA';
+  if (pUpper === 'ESA' || pUpper === 'EASTERN SAMAR') return 'ESA';
+  if (pUpper === 'BIL' || pUpper === 'BILIRAN') return 'BIL';
+  if (pUpper === 'LEY' || pUpper === 'LEYTE') return 'LEY';
+  if (pUpper === 'SAM' || pUpper === 'WSAM' || pUpper === 'WESTERN SAMAR' || pUpper === 'SAMAR') return 'SAM';
+
+  // 2. Specific multi-word compound checks first (prevent Leyte matching Southern Leyte, or Samar matching Eastern/Northern)
+  if (pUpper.includes('SOUTHERN LEYTE') || pUpper.includes('SLE')) return 'SLE';
+  if (pUpper.includes('NORTHERN SAMAR') || pUpper.includes('NSA')) return 'NSA';
+  if (pUpper.includes('EASTERN SAMAR') || pUpper.includes('ESA')) return 'ESA';
+  if (pUpper.includes('WESTERN SAMAR') || pUpper.includes('WSAM')) return 'SAM';
+  if (pUpper.includes('BILIRAN') || pUpper.includes('BIL')) return 'BIL';
+
+  // 3. Single-word checks with exclusion of compound provinces
+  if (pUpper.includes('LEYTE') && !pUpper.includes('SOUTHERN')) return 'LEY';
+  if (pUpper.includes('SAMAR') && !pUpper.includes('NORTHERN') && !pUpper.includes('EASTERN') && !pUpper.includes('WESTERN')) return 'SAM';
+
+  // 4. Registry fallback if registry has exact custom matches
   const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
   for (const n of provNodes) {
     if (n.code.toUpperCase() === pUpper) return n.code;
     const nName = n.provinceName.toUpperCase();
-    if (pUpper === nName || pUpper.includes(nName) || nName.includes(pUpper)) {
-      return n.code;
-    }
+    if (pUpper === nName) return n.code;
   }
-  if (pUpper.includes('SOUTHERN LEYTE') || pUpper.includes('SLE')) return 'SLE';
-  if (pUpper.includes('LEYTE')) return 'LEY';
-  if (pUpper.includes('BILIRAN') || pUpper.includes('BIL')) return 'BIL';
-  if (pUpper.includes('EASTERN') || pUpper.includes('ESA')) return 'ESA';
-  if (pUpper.includes('NORTHERN') || pUpper.includes('NSA')) return 'NSA';
-  if (pUpper.includes('SAMAR') || pUpper.includes('SAM') || pUpper.includes('WSAM')) return 'SAM';
+
   return null;
 }
 
@@ -4564,7 +4578,7 @@ export function renderDashboardView(ctx) {
   // 2. Provincial Breakdown Table
   const provBreakdownRows = DEFAULT_CF_PROVINCES.map((p) => {
     const provDb = allDbRows.filter((r) => {
-      const code = resolveProvinceCode(r.province, schemas);
+      const code = resolveProvinceCode(r.provinceCode || r.province, schemas);
       return code ? code === p.code : (matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
     });
     const pLad = provDb.filter((r) => isLadBalance(r));
