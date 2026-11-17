@@ -3330,6 +3330,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       ' | ' +
       now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
+    const surveyGlobalRateArea = finalSurveyGlobalTargetArea > 0 ? Number(((surveyGlobalAccompArea / finalSurveyGlobalTargetArea) * 100).toFixed(2)) : 0;
+
     surveyKpiHtml = `
       <!-- Row 1: Global Target & Global Accomplishment -->
       <section class="cf-kpi-global-grid">
@@ -3353,7 +3355,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <div class="cf-kpi-card cf-kpi-card-sm">
           <div class="cf-kpi-header">
             <span class="cf-kpi-title">Global Accomplishment</span>
-            <span class="cf-kpi-badge">${esc(targetBadgeText)}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="badge ${surveyGlobalRateArea >= 100 ? 'badge-green' : surveyGlobalRateArea >= 50 ? 'badge-blue' : surveyGlobalRateArea > 0 ? 'badge-amber' : 'badge-gray'}" style="font-size:10.5px;font-weight:700;">Rate: ${surveyGlobalRateArea.toFixed(2)}%</span>
+              <span class="cf-kpi-badge">${esc(targetBadgeText)}</span>
+            </div>
           </div>
           <div class="cf-kpi-body">
             <div class="cf-kpi-stat">
@@ -3440,17 +3445,69 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       </section>
     `;
 
+    function renderSurveyRateBadge(rateVal, isTotal = false, province = 'ALL', stageKey = '', stageLabel = '') {
+      const rate = Number(rateVal || 0);
+      const formatted = `${rate.toFixed(2)}%`;
+      if (isTotal) {
+        if (rate <= 0) {
+          return `<span style="color:#ffffff !important;font-weight:700;">${formatted}</span>`;
+        }
+        const color = rate >= 100 ? '#86efac' : rate >= 50 ? '#93c5fd' : '#fde047';
+        if (!stageKey) {
+          return `<span style="color:${color} !important;font-weight:800;">${formatted}</span>`;
+        }
+        return `
+          <button
+            type="button"
+            class="btn-figure-link font-bold text-white"
+            style="color:${color} !important;text-decoration:underline !important;text-underline-offset:2px;background:none;border:none;padding:0;cursor:pointer;"
+            data-open-survey-support-list
+            data-province="ALL"
+            data-status="ALL"
+            data-stage-key="${esc(stageKey)}"
+            data-stage-label="${esc(stageLabel)}"
+            title="Click to view Accomplished Survey Support List across Region VIII (${formatted})"
+          >
+            ${formatted}
+          </button>
+        `;
+      }
+      if (rate <= 0) {
+        return `<span style="color:#9ca3af;font-size:12px;">0.00%</span>`;
+      }
+      const tone = rate >= 100 ? 'badge-green' : rate >= 50 ? 'badge-blue' : 'badge-amber';
+      if (!stageKey) {
+        return `<span class="badge ${tone} num" style="font-size:11px;font-weight:700;">${formatted}</span>`;
+      }
+      return `
+        <button
+          type="button"
+          class="btn-figure-link"
+          style="background:transparent;border:none;padding:0;cursor:pointer;line-height:1;"
+          data-open-survey-support-list
+          data-province="${esc(province)}"
+          data-status="ALL"
+          data-stage-key="${esc(stageKey)}"
+          data-stage-label="${esc(stageLabel)}"
+          title="Click to view Accomplished Survey Support List for ${esc(province)} (${formatted})"
+        >
+          <span class="badge ${tone} num" style="font-size:11px;font-weight:700;">${formatted}</span>
+        </button>
+      `;
+    }
+
     function renderGroupThead(stages, metricMode) {
       if (metricMode === 'lhs') {
         return `
           <tr class="survey-th-l1">
             <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
             <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
-            ${stages.map((st) => `<th colspan="2" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
+            ${stages.map((st) => `<th colspan="3" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
           </tr>
           <tr class="survey-th-l2">
             ${stages.map(() => `
               <th class="right">ACCOMPLISHMENT</th>
+              <th class="right">RATE OF ACCOMP.</th>
               <th class="right">BALANCE</th>
             `).join('')}
           </tr>
@@ -3461,11 +3518,12 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <tr class="survey-th-l1">
             <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
             <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
-            ${stages.map((st) => `<th colspan="2" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
+            ${stages.map((st) => `<th colspan="3" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
           </tr>
           <tr class="survey-th-l2">
             ${stages.map(() => `
               <th class="right">ACCOMPLISHMENT (HAS)</th>
+              <th class="right">RATE OF ACCOMP.</th>
               <th class="right">BALANCE (HAS)</th>
             `).join('')}
           </tr>
@@ -3476,18 +3534,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <tr class="survey-th-l1">
           <th rowspan="3" class="survey-th-unit">OPERATING UNIT</th>
           <th colspan="2" class="survey-th-nep center">NEP TARGET</th>
-          ${stages.map((st) => `<th colspan="4" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
+          ${stages.map((st) => `<th colspan="6" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
         </tr>
         <tr class="survey-th-l2">
           <th rowspan="2" class="right">LHS</th>
           <th rowspan="2" class="right">AREA(HAS)</th>
           ${stages.map(() => `
             <th colspan="2" class="center">ACCOMPLISHMENT</th>
+            <th colspan="2" class="center">RATE OF ACCOMP.</th>
             <th colspan="2" class="center">BALANCE</th>
           `).join('')}
         </tr>
         <tr class="survey-th-l3">
           ${stages.map(() => `
+            <th class="right">LHS</th>
+            <th class="right">AREA(HAS)</th>
             <th class="right">LHS</th>
             <th class="right">AREA(HAS)</th>
             <th class="right">LHS</th>
@@ -3504,8 +3565,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="right">${r.targetLhs.toLocaleString()}</td>
           ${stages.map((st) => {
           const s = r.stages[st.key];
+          const rateLhs = r.targetLhs > 0 ? Number(((s.lhs / r.targetLhs) * 100).toFixed(2)) : 0;
           return `
               <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
+              <td class="right">${renderSurveyRateBadge(rateLhs, false, r.name, st.dKey, st.label)}</td>
               <td class="right">${s.balLhs > 0
               ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
               : s.balLhs.toLocaleString()
@@ -3520,8 +3583,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="right">${fmtArea(r.targetArea)}</td>
           ${stages.map((st) => {
           const s = r.stages[st.key];
+          const rateArea = r.targetArea > 0 ? Number(((s.area / r.targetArea) * 100).toFixed(2)) : 0;
           return `
               <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
+              <td class="right">${renderSurveyRateBadge(rateArea, false, r.name, st.dKey, st.label)}</td>
               <td class="right">${s.balArea > 0
               ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
               : fmtArea(s.balArea)
@@ -3537,9 +3602,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <td class="right">${fmtArea(r.targetArea)}</td>
         ${stages.map((st) => {
         const s = r.stages[st.key];
+        const rateLhs = r.targetLhs > 0 ? Number(((s.lhs / r.targetLhs) * 100).toFixed(2)) : 0;
+        const rateArea = r.targetArea > 0 ? Number(((s.area / r.targetArea) * 100).toFixed(2)) : 0;
         return `
             <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
             <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
+            <td class="right">${renderSurveyRateBadge(rateLhs, false, r.name, st.dKey, st.label)}</td>
+            <td class="right">${renderSurveyRateBadge(rateArea, false, r.name, st.dKey, st.label)}</td>
             <td class="right">${s.balLhs > 0
             ? `<button type="button" class="btn-figure-link font-bold" style="color:#b45309;" data-open-survey-support-list data-province="${esc(r.name)}" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List for ${esc(r.name)} (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
             : s.balLhs.toLocaleString()
@@ -3560,8 +3629,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="right">${totals.targetLhs.toLocaleString()}</td>
           ${stages.map((st) => {
           const s = totals.stages[st.key];
+          const totRateLhs = totals.targetLhs > 0 ? Number(((s.lhs / totals.targetLhs) * 100).toFixed(2)) : 0;
           return `
               <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
+              <td class="right">${renderSurveyRateBadge(totRateLhs, true, 'ALL', st.dKey, st.label)}</td>
               <td class="right">${s.balLhs > 0
               ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
               : s.balLhs.toLocaleString()
@@ -3576,8 +3647,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <td class="right">${fmtArea(totals.targetArea)}</td>
           ${stages.map((st) => {
           const s = totals.stages[st.key];
+          const totRateArea = totals.targetArea > 0 ? Number(((s.area / totals.targetArea) * 100).toFixed(2)) : 0;
           return `
               <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
+              <td class="right">${renderSurveyRateBadge(totRateArea, true, 'ALL', st.dKey, st.label)}</td>
               <td class="right">${s.balArea > 0
               ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${fmtArea(s.balArea)} HAS)">${fmtArea(s.balArea)}</button>`
               : fmtArea(s.balArea)
@@ -3593,9 +3666,13 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         <td class="right">${fmtArea(totals.targetArea)}</td>
         ${stages.map((st) => {
         const s = totals.stages[st.key];
+        const totRateLhs = totals.targetLhs > 0 ? Number(((s.lhs / totals.targetLhs) * 100).toFixed(2)) : 0;
+        const totRateArea = totals.targetArea > 0 ? Number(((s.area / totals.targetArea) * 100).toFixed(2)) : 0;
         return `
             <td class="right">${s.lhs > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${s.lhs} LHs)">${s.lhs.toLocaleString()}</button>` : '0'}</td>
             <td class="right">${s.area > 0 ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" title="Click to view Support List across Region VIII (${fmtArea(s.area)} HAS)">${fmtArea(s.area)}</button>` : '0.0000'}</td>
+            <td class="right">${renderSurveyRateBadge(totRateLhs, true, 'ALL', st.dKey, st.label)}</td>
+            <td class="right">${renderSurveyRateBadge(totRateArea, true, 'ALL', st.dKey, st.label)}</td>
             <td class="right">${s.balLhs > 0
             ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="ALL" data-stage-key="${esc(st.dKey)}" data-stage-label="${esc(st.label)}" data-mode="balance" data-balance-area="${fmtArea(s.balArea)}" title="Click to view Balance / Pending List across Region VIII (${s.balLhs} LHs)">${s.balLhs.toLocaleString()}</button>`
             : s.balLhs.toLocaleString()

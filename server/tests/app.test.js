@@ -2235,6 +2235,14 @@ test('Survey Whereabouts Target Year filtering, NEP target alignment, and Accomp
   assert.ok(pToolbar > 0, 'Toolbar panel should be present');
   assert.ok(pToolbar > pMonitoring, 'Toolbar panel should be below Survey Status Monitoring panel');
 
+  // Rate of Accomplishment in Survey Status Monitoring table
+  assert.ok(htmlAll.includes('RATE OF ACCOMP.'), 'Survey Status Monitoring table must include RATE OF ACCOMP. header');
+  assert.ok(htmlAll.includes('Rate:'), 'Survey Global Accomplishment KPI card displays Rate badge');
+  const surveyHtmlLhs = renderMilestoneWhereaboutsView({ ...ctxAll, surveyMetricMode: 'lhs' }, cfg);
+  assert.ok(surveyHtmlLhs.includes('RATE OF ACCOMP.'), 'Survey table in LHS mode includes RATE OF ACCOMP.');
+  const surveyHtmlArea = renderMilestoneWhereaboutsView({ ...ctxAll, surveyMetricMode: 'area' }, cfg);
+  assert.ok(surveyHtmlArea.includes('RATE OF ACCOMP.'), 'Survey table in Area mode includes RATE OF ACCOMP.');
+
   // Test column AP Current Status options in status dropdown
   assert.ok(htmlAll.includes('01 - With RSS'), 'Column AP 01 - With RSS status should be in dropdown');
   assert.ok(htmlAll.includes('12 - WITH ASP'), 'Column AP 12 - WITH ASP should be in dropdown');
