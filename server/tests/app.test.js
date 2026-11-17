@@ -3507,3 +3507,109 @@ test('resolveProvinceCode accurately discriminates Southern Leyte vs Leyte and d
   assert.ok(html.includes('data-prov-code="SLE"'), 'SLE table row is generated');
   assert.ok(html.includes('SOUTHERN LEYTE'), 'Southern Leyte label appears in table');
 });
+
+test('Registered Data dynamically calculates per province from Google Sheet Column M (Date Registered) and Column J (Area HAS)', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-reg-test-'));
+  const store = new ConsolidatedStore(tempDir);
+  const schemas = { registry: REGIONAL_REGISTRY };
+
+  // Setup RegistrationDistribution rows matching Google Sheet headers (Column M Date Registered, Column J Area HAS)
+  store.state.optool.RegistrationDistribution = [
+    {
+      lhid: '805000001',
+      province: 'Southern Leyte',
+      provinceCode: 'SLE',
+      'AREA (HAs)': '5.5000',
+      'DATE REGISTERED': '2026-03-15'
+    },
+    {
+      lhid: '805000002',
+      province: 'Southern Leyte',
+      provinceCode: 'SLE',
+      'AREA (HAs)': '2.2500',
+      'DATE REGISTERED': '2026-04-20'
+    },
+    {
+      lhid: '805000003',
+      province: 'Southern Leyte',
+      provinceCode: 'SLE',
+      'AREA (HAs)': '10.0000',
+      'DATE REGISTERED': '' // Unregistered row - must be ignored
+    },
+    {
+      lhid: '803000001',
+      province: 'Leyte',
+      provinceCode: 'LEY',
+      areaHas: '12.0000',
+      dateRegistered: '2026-05-10'
+    },
+    {
+      lhid: '801000001',
+      province: 'Biliran',
+      provinceCode: 'BIL',
+      areaHas: '3.4000',
+      dateRegistered: '-' // Dash placeholder - must be ignored
+    }
+  ];
+  store.save();
+
+  // 1. Verify getRegisteredOptoolRecords extracts only rows with valid Date Registered in Column M
+  const regRecords = store.getRegisteredOptoolRecords('ALL');
+  assert.equal(regRecords.length, 3, 'Only 3 rows have valid Date Registered in Column M');
+  const sleRecords = store.getRegisteredOptoolRecords('SLE');
+  assert.equal(sleRecords.length, 2, 'Southern Leyte has 2 registered records');
+
+  // 2. Verify getRegisteredSummaryByProvince sums Column J Area HAS per province
+  const summary = store.getRegisteredSummaryByProvince();
+  assert.equal(summary.byProvince.SLE.registeredCount, 2);
+  assert.equal(summary.byProvince.SLE.registeredAreaHas, 7.75); // 5.5 + 2.25
+  assert.equal(summary.byProvince.LEY.registeredCount, 1);
+  assert.equal(summary.byProvince.LEY.registeredAreaHas, 12.0);
+  assert.equal(summary.byProvince.BIL.registeredCount, 0, 'Biliran with dash date is 0');
+  assert.equal(summary.totalCount, 3);
+  assert.equal(summary.totalArea, 19.75);
+
+  // 3. Verify computeAnalytics KPI and provincialBreakdown reflect Column M and Column J sums
+  const analytics = store.getAnalytics({ province: 'ALL' });
+  assert.equal(analytics.kpis.cumulativeETitles, 3);
+  assert.equal(analytics.kpis.cumulativeAreaHas, 19.75);
+
+  const pbSle = analytics.provincialBreakdown.find((p) => p.code === 'SLE');
+  assert.equal(pbSle.cumulativeETitles, 2);
+  assert.equal(pbSle.cumulativeAreaHas, 7.75);
+
+  const pbLey = analytics.provincialBreakdown.find((p) => p.code === 'LEY');
+  assert.equal(pbLey.cumulativeETitles, 1);
+  assert.equal(pbLey.cumulativeAreaHas, 12.0);
+
+  // 4. Verify renderDashboardView displays these dynamic sums in the table
+  const html = renderDashboardView({
+    state: store.state,
+    analytics,
+    schemas,
+    provinceScope: null
+  });
+
+  assert.ok(html.includes('7.7500'), 'Dashboard table outputs 7.7500 registered area for Southern Leyte');
+  assert.ok(html.includes('12.0000'), 'Dashboard table outputs 12.0000 registered area for Leyte');
+  assert.ok(html.includes('19.7500'), 'Dashboard table outputs 19.7500 for Region VIII Total');
+
+  // 5. Verify /api/registered-summary HTTP endpoint
+  const { server } = createAppServer(tempDir, { requireAuth: false });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/registered-summary`);
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.ok, true);
+    assert.equal(data.totalCount, 3);
+    assert.equal(data.totalArea, 19.75);
+    assert.equal(data.byProvince.SLE.registeredAreaHas, 7.75);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});

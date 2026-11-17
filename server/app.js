@@ -795,6 +795,11 @@ export function createAppServer(dataDir, options = {}) {
         return sendJson(res, 200, computeScopedAnalytics(store, query, scopeCode));
       }
 
+      if (req.method === 'GET' && pathname === '/api/registered-summary') {
+        const summary = store.getRegisteredSummaryByProvince();
+        return sendJson(res, 200, { ok: true, ...summary });
+      }
+
       if (req.method === 'GET' && pathname === '/api/milestones/next-id') {
         const recordId = store.generateNextRecordId(
           scopeCode || query.provinceCode || 'LEY',

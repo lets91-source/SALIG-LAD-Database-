@@ -345,6 +345,72 @@ function runRegionalETL() {
         }
       }
 
+      // 1b. Also extract Registered Data from Registration/Distribution tab (Column M Date Registered, Column J AREA (HAs))
+      const regTab = findOptoolSheet_(ss, 'RegistrationDistribution');
+      if (regTab && regTab.getLastRow() > 1) {
+        const regValues = regTab.getDataRange().getValues();
+        const regHeaders = regValues[0].map(function (h) { return String(h).trim(); });
+
+        let areaColIdx = 9; // Column J (0-based 9)
+        let dateRegColIdx = 12; // Column M (0-based 12)
+        let lhidColIdx = 0; // Column A (0-based 0)
+        let muniColIdx = 5; // Column F (0-based 5)
+        let titleColIdx = 11; // Column L (0-based 11)
+        let targetColIdx = 18; // Column S (0-based 18)
+
+        regHeaders.forEach(function (h, idx) {
+          const norm = normalizeHeaderKey_(h);
+          if (norm.indexOf('areaha') >= 0 || norm === 'areahas' || norm === 'area') areaColIdx = idx;
+          if (norm.indexOf('datereg') >= 0 || norm === 'dateregistered') dateRegColIdx = idx;
+          if (norm.indexOf('lhid') >= 0) lhidColIdx = idx;
+          if (norm === 'municipality') muniColIdx = idx;
+          if (norm.indexOf('rodtitle') >= 0 || norm.indexOf('titleno') >= 0) titleColIdx = idx;
+          if (norm.indexOf('targetyear') >= 0 || norm === 'target') targetColIdx = idx;
+        });
+
+        for (let r = 1; r < regValues.length; r++) {
+          const row = regValues[r];
+          if (row.every(function (v) { return String(v).trim() === ''; })) continue;
+
+          const rawDateReg = row[dateRegColIdx];
+          const dateRegStr = rawDateReg instanceof Date
+            ? Utilities.formatDate(rawDateReg, 'Asia/Manila', 'yyyy-MM-dd')
+            : String(rawDateReg || '').trim();
+
+          if (!dateRegStr || dateRegStr === '-' || dateRegStr === 'N/A') continue;
+
+          const rawArea = row[areaColIdx];
+          const areaNum = typeof rawArea === 'number'
+            ? rawArea
+            : (parseFloat(String(rawArea || '').replace(/,/g, '')) || 0);
+
+          const rawLhid = String(row[lhidColIdx] || '').trim();
+          const cleanLhid = formatLhidString_(rawLhid);
+          const rodTitle = String(row[titleColIdx] || '').trim();
+          const muni = String(row[muniColIdx] || '').trim();
+          const targetYr = String(row[targetColIdx] || 'ADMIN BATCH 1').trim();
+
+          const ym = /^\d{4}-\d{2}/.test(dateRegStr)
+            ? dateRegStr.slice(0, 7).replace('-', '')
+            : Utilities.formatDate(new Date(), 'Asia/Manila', 'yyyyMM');
+          const recId = node.code + '-REG-' + (cleanLhid || ym + '-' + String(r).padStart(4, '0'));
+
+          consolidatedMilestones.set(recId, [
+            recId,
+            node.code,
+            muni,
+            cleanLhid,
+            rodTitle,
+            Number(areaNum.toFixed(4)),
+            'eTitle Registered',
+            dateRegStr,
+            targetYr,
+            cleanLhid
+          ]);
+          msCount++;
+        }
+      }
+
       // 2. Extract OPTool standardized tabs
       let optoolCount = 0;
       OPTOOL_TABS.forEach(function (tabName) {
@@ -478,6 +544,12 @@ function doGet(e) {
       return ContentService.createTextOutput(
         JSON.stringify({ ok: true, optool: res.data, headers: res.headers })
       ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'registered' || action === 'registered-summary') {
+      const regRes = getRegisteredDataSummaryFromSheets();
+      return ContentService.createTextOutput(JSON.stringify(regRes))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
     return HtmlService.createHtmlOutputFromFile('Index')
@@ -1040,12 +1112,37 @@ function readProvincialMilestoneSupportLists_() {
 
         const pRows = readSheetObjects_(pSheet);
         pRows.forEach(function (row) {
-          if (row.lhid) row.lhid = formatLhidString_(row.lhid);
-          if (row.LHID) row.LHID = formatLhidString_(row.LHID);
-          const rowLhid = String(row.lhid || row.LHID || '').trim();
-          if (!rowLhid) return; // Skip stray formula / empty rows without LHID
+          const rawLhid = row.lhid || row.LHID || row['LHID/ Sequence No.'] || row['LHID / Sequence No.'] || row['LHID'] || '';
+          if (rawLhid) {
+            row.lhid = formatLhidString_(rawLhid);
+            row.LHID = row.lhid;
+          }
+          const rowLhid = String(row.lhid || '').trim();
+          const hasAnyData = Object.values(row).some(function (v) { return String(v || '').trim() !== ''; });
+          if (!rowLhid && !hasAnyData) return;
           if (!row.province && !row.Province) row.province = node.name;
           if (!row.provinceCode && !row.Province_Code) row.provinceCode = node.code;
+
+          // Normalize RegistrationDistribution area and date registered fields
+          if (tabName === 'RegistrationDistribution') {
+            if (!row.areaHas) {
+              row.areaHas =
+                row['AREA (HAs)'] ||
+                row['AREA\n(HAs)'] ||
+                row['AREA(HAS)'] ||
+                row['Area (HAs)'] ||
+                row['Area (HAS)'] ||
+                row['Area'] ||
+                '';
+            }
+            if (!row.dateRegistered) {
+              row.dateRegistered =
+                row['DATE REGISTERED'] ||
+                row['Date Registered'] ||
+                row.date_registered ||
+                '';
+            }
+          }
           optoolData[tabName].push(row);
         });
       });
@@ -1055,6 +1152,75 @@ function readProvincialMilestoneSupportLists_() {
   });
 
   return { data: optoolData, headers: optoolHeaders };
+}
+
+/**
+ * Reads all provincial Google Sheets Registration/Distribution sheets,
+ * identifies rows with Date Registered in Column M, and sums Area in Column J (AREA(HAs)).
+ */
+function getRegisteredDataSummaryFromSheets() {
+  const summary = {};
+  let totalRegisteredCount = 0;
+  let totalRegisteredArea = 0;
+
+  PROVINCIAL_NODES.forEach(function (node) {
+    summary[node.code] = {
+      code: node.code,
+      provinceName: node.name,
+      registeredCount: 0,
+      registeredAreaHas: 0
+    };
+    try {
+      const ss = SpreadsheetApp.openById(node.id);
+      const regTab = findOptoolSheet_(ss, 'RegistrationDistribution');
+      if (!regTab || regTab.getLastRow() <= 1) return;
+
+      const values = regTab.getDataRange().getValues();
+      const headers = values[0].map(function (h) { return String(h).trim(); });
+
+      let areaColIdx = 9; // Column J (0-based 9)
+      let dateRegColIdx = 12; // Column M (0-based 12)
+      headers.forEach(function (h, idx) {
+        const norm = normalizeHeaderKey_(h);
+        if (norm.indexOf('areaha') >= 0 || norm === 'areahas' || norm === 'area') areaColIdx = idx;
+        if (norm.indexOf('datereg') >= 0 || norm === 'dateregistered') dateRegColIdx = idx;
+      });
+
+      for (let r = 1; r < values.length; r++) {
+        const row = values[r];
+        if (row.every(function (v) { return String(v).trim() === ''; })) continue;
+
+        const rawDate = row[dateRegColIdx];
+        const dateStr = rawDate instanceof Date
+          ? Utilities.formatDate(rawDate, 'Asia/Manila', 'yyyy-MM-dd')
+          : String(rawDate || '').trim();
+
+        if (!dateStr || dateStr === '-' || dateStr === 'N/A') continue;
+
+        const rawArea = row[areaColIdx];
+        const areaNum = typeof rawArea === 'number'
+          ? rawArea
+          : (parseFloat(String(rawArea || '').replace(/,/g, '')) || 0);
+
+        summary[node.code].registeredCount++;
+        summary[node.code].registeredAreaHas += areaNum;
+        totalRegisteredCount++;
+        totalRegisteredArea += areaNum;
+      }
+
+      summary[node.code].registeredAreaHas = Number(summary[node.code].registeredAreaHas.toFixed(4));
+    } catch (err) {
+      Logger.log('Error reading registered data for ' + node.code + ': ' + err.message);
+    }
+  });
+
+  return {
+    ok: true,
+    fetchedAt: new Date().toISOString(),
+    totalRegisteredCount: totalRegisteredCount,
+    totalRegisteredArea: Number(totalRegisteredArea.toFixed(4)),
+    byProvince: summary
+  };
 }
 
 function isColumnEmptyBelowHeader_(sheet, colOneBased) {

@@ -516,9 +516,25 @@ export class ConsolidatedStore {
             dirty = true;
           }
           for (const col of schemaCols) {
-            if (!Object.prototype.hasOwnProperty.call(row, col.key)) {
-              row[col.key] = '';
-              dirty = true;
+            if (!Object.prototype.hasOwnProperty.call(row, col.key) || row[col.key] === '') {
+              const altVal =
+                row[col.header] ??
+                (col.key === 'areaHas'
+                  ? (row['AREA (HAs)'] ?? row['AREA(HAS)'] ?? row['Area (HAs)'] ?? row['AREA'])
+                  : undefined) ??
+                (col.key === 'dateRegistered'
+                  ? (row['DATE REGISTERED'] ?? row['Date Registered'])
+                  : undefined) ??
+                (col.key === 'lhid'
+                  ? (row['LHID/ Sequence No.'] ?? row['LHID / Sequence No.'])
+                  : undefined);
+              if (altVal !== undefined && altVal !== '') {
+                row[col.key] = altVal;
+                dirty = true;
+              } else if (!Object.prototype.hasOwnProperty.call(row, col.key)) {
+                row[col.key] = '';
+                dirty = true;
+              }
             } else if (col.type === 'checkbox') {
               const normalized = normalizeChecklistValue(row[col.key]);
               if (row[col.key] !== normalized) {
@@ -703,6 +719,35 @@ export class ConsolidatedStore {
       let val = rowPayload[col.key] ?? rowPayload[col.header] ?? '';
       if (col.key === 'carperLadForm42' && (!val || val === '')) {
         val = rowPayload.carperLadForm47 ?? rowPayload['Carper LAD form 47'] ?? '';
+      }
+      if (col.key === 'areaHas' && (!val || val === '')) {
+        val =
+          rowPayload['AREA (HAs)'] ??
+          rowPayload['AREA(HAS)'] ??
+          rowPayload['Area (HAs)'] ??
+          rowPayload['Area (HAS)'] ??
+          rowPayload['AREA\n(HAs)'] ??
+          rowPayload['Area\n (HAs) 2'] ??
+          rowPayload['AREA'] ??
+          rowPayload.area ??
+          rowPayload.totalArea ??
+          '';
+      }
+      if (col.key === 'dateRegistered' && (!val || val === '')) {
+        val =
+          rowPayload['DATE REGISTERED'] ??
+          rowPayload['Date Registered'] ??
+          rowPayload.date_registered ??
+          rowPayload['Date registered'] ??
+          '';
+      }
+      if ((col.key === 'lhid' || col.key === 'LHID') && (!val || val === '')) {
+        val =
+          rowPayload['LHID/ Sequence No.'] ??
+          rowPayload['LHID / Sequence No.'] ??
+          rowPayload['LHID'] ??
+          rowPayload.lhid ??
+          '';
       }
       if (col.type === 'decimal' && val !== '' && val !== null && val !== undefined) {
         const num = Number(val);
@@ -1052,9 +1097,11 @@ export class ConsolidatedStore {
     return map;
   }
 
-  /** Resolve province code for any OPTool tab row via province, municipality, or Database LHID link. */
+  /** Resolve province code for any OPTool tab row via provinceCode, province, municipality, or Database LHID link. */
   getOptoolRowProvinceCode(tabName, row, dbLhidMap = null) {
     if (!row) return null;
+    const directCode = String(row.provinceCode || row.Province_Code || '').trim().toUpperCase();
+    if (PROVINCE_CODES.includes(directCode)) return directCode;
     if (row.province) {
       const fromProv = inferProvinceCodeFromText(row.province);
       if (fromProv) return fromProv;
@@ -1069,6 +1116,101 @@ export class ConsolidatedStore {
       if (lookup.has(lhidKey)) return lookup.get(lhidKey);
     }
     return inferProvinceCodeFromText(row.lhid) || null;
+  }
+
+  /**
+   * Extract all registered records from Google Sheets RegistrationDistribution tab
+   * based on Column M (Date Registered non-empty) and Column J (Area HAS sum).
+   */
+  getRegisteredOptoolRecords(provinceFilter = 'ALL') {
+    const regRows = this.state.optool?.RegistrationDistribution || this.state.optool?.['Registration/Distribution'] || [];
+    const dbLhidMap = this.buildDbLhidProvinceMap();
+    const result = [];
+
+    for (const r of regRows) {
+      const dateReg = String(
+        r.dateRegistered ||
+        r['DATE REGISTERED'] ||
+        r['Date Registered'] ||
+        r.date_registered ||
+        ''
+      ).trim();
+
+      // Must have Date Registered in Column M (non-empty, not '-', not 'N/A')
+      if (!dateReg || dateReg === '-' || dateReg === 'N/A' || dateReg.toLowerCase() === 'null') {
+        continue;
+      }
+
+      const rawArea =
+        r.areaHas ||
+        r['AREA\n(HAs)'] ||
+        r['AREA (HAs)'] ||
+        r['AREA(HAS)'] ||
+        r['Area (HAs)'] ||
+        r['AREA'] ||
+        r.area ||
+        r.totalArea ||
+        r.carpable ||
+        0;
+
+      const areaNum = typeof rawArea === 'number'
+        ? rawArea
+        : (parseFloat(String(rawArea).replace(/,/g, '')) || 0);
+
+      const provCode =
+        this.getOptoolRowProvinceCode('RegistrationDistribution', r, dbLhidMap) ||
+        (r.lhid ? dbLhidMap.get(String(r.lhid).trim().toLowerCase()) : null) ||
+        'LEY';
+
+      if (provinceFilter && provinceFilter !== 'ALL' && provCode !== provinceFilter) {
+        continue;
+      }
+
+      const monthKey = /^\d{4}-\d{2}/.test(dateReg) ? dateReg.slice(0, 7) : 'Unknown';
+
+      result.push({
+        Record_ID: String(r.lhid || r.rodTitleNo || r.epOrCloaSerialNo || `REG-${result.length + 1}`).trim(),
+        Province_Code: provCode,
+        Municipality: String(r.municipality || '').trim(),
+        Land_Allocation_ID: String(r.epOrCloaSerialNo || r.rodTitleNo || '').trim(),
+        eTitle_No: String(r.rodTitleNo || r.epOrCloaSerialNo || '').trim(),
+        Area_HAS: areaNum.toFixed(4),
+        Area_Num: areaNum,
+        Milestone_Stage: 'eTitle Registered',
+        Milestone_Date: dateReg,
+        Month_Key: monthKey,
+        Batch_Category: String(r.targetYear || r.target || 'ADMIN BATCH 1').trim(),
+        LHID: String(r.lhid || '').trim(),
+        dateRegistered: dateReg,
+        areaHas: areaNum
+      });
+    }
+
+    return result;
+  }
+
+  /** Return per-province registered summary (Count of rows with Date Reg in Col M, sum of Col J Area HAS). */
+  getRegisteredSummaryByProvince() {
+    const regRecords = this.getRegisteredOptoolRecords('ALL');
+    const summary = {};
+    for (const code of PROVINCE_CODES) {
+      const node = REGIONAL_REGISTRY.find((n) => n.code === code);
+      const provRows = regRecords.filter((r) => r.Province_Code === code);
+      const sumArea = provRows.reduce((acc, r) => acc + r.Area_Num, 0);
+      summary[code] = {
+        code,
+        provinceName: node ? node.provinceName : code,
+        registeredCount: provRows.length,
+        registeredAreaHas: Number(sumArea.toFixed(4))
+      };
+    }
+    const totalCount = regRecords.length;
+    const totalArea = regRecords.reduce((acc, r) => acc + r.Area_Num, 0);
+    return {
+      byProvince: summary,
+      totalCount,
+      totalArea: Number(totalArea.toFixed(4))
+    };
   }
 
   /** Return rows for a single OPTool tab filtered to `scopeCode` when provided. */
@@ -1667,6 +1809,10 @@ export class ConsolidatedStore {
     };
   }
 
+  getAnalytics(filters = {}) {
+    return this.computeAnalytics({ useOptoolRegistration: true, ...filters });
+  }
+
   computeAnalytics(filters = {}) {
     const {
       province = 'ALL',
@@ -1674,20 +1820,31 @@ export class ConsolidatedStore {
       batch = 'ALL',
       stage = 'ALL',
       milestoneYear = 'ALL',
-      restrictToProvince = false
+      restrictToProvince = false,
+      useOptoolRegistration = false,
+      registrationSource = ''
     } = filters;
 
-    const allMilestones = this.state.milestoneData.map((row) => {
+    // Registered accomplishment: dynamically sourced from Google Sheets RegistrationDistribution
+    // (records with Column M Date Registered and Column J Area HAS) when requested or in live mode.
+    const shouldUseOptool =
+      Boolean(useOptoolRegistration || registrationSource === 'optool') ||
+      (this.state.dataSourceMode === 'live' && (this.state.optool?.RegistrationDistribution?.length || 0) > 0);
+    const optoolRegistered = shouldUseOptool ? this.getRegisteredOptoolRecords(restrictToProvince ? province : 'ALL') : [];
+    const sourceMilestones = optoolRegistered.length > 0 ? optoolRegistered : this.state.milestoneData;
+
+    const allMilestones = sourceMilestones.map((row) => {
       const provCode =
+        row.Province_Code ||
         this.getMilestoneProvinceCode(row) || 'LEY';
-      const monthKey = /^\d{4}-\d{2}/.test(String(row.Milestone_Date || ''))
-        ? String(row.Milestone_Date).slice(0, 7)
-        : 'Unknown';
+      const monthKey = /^\d{4}-\d{2}/.test(String(row.Milestone_Date || row.dateRegistered || ''))
+        ? String(row.Milestone_Date || row.dateRegistered).slice(0, 7)
+        : (row.Month_Key || 'Unknown');
       return {
         ...row,
         Province_Code: provCode,
         Month_Key: monthKey,
-        Area_Num: Number(row.Area_HAS) || 0
+        Area_Num: typeof row.Area_Num === 'number' ? row.Area_Num : (Number(row.Area_HAS || row.areaHas || 0) || 0)
       };
     });
 
@@ -1969,6 +2126,7 @@ export class ConsolidatedStore {
         areaVarianceHas: Number((cumulativeAreaHas - baselineTargetAreaHas).toFixed(4))
       },
       provincialBreakdown,
+      registeredSummary: this.getRegisteredSummaryByProvince(),
       databaseByProvince,
       monthlyTrend,
       stageBreakdown,
