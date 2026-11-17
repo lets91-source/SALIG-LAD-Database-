@@ -1703,8 +1703,9 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
     store.upsertOptoolRow('CF(DOC)', { lhid: 'LH-Q1', reportedMonth: '2026-02-15' });
     store.upsertOptoolRow('CF(DOC)', { lhid: 'LH-Q3', reportedMonth: 'August 2026' });
 
-    // Land Survey: 1 in Q2 via currentDate
-    store.upsertOptoolRow('Survey', { lhid: 'LH-Q2', currentDate: '2026-05-19' });
+    // Land Survey: 1 in Q2 via Column AC (Date Accepted by DENR-SMD), plus 1 with empty Column AC (must be excluded from accomplishment)
+    store.upsertOptoolRow('Survey', { lhid: 'LH-Q2', dateAcceptedDenrSmd: '2026-05-19' });
+    store.upsertOptoolRow('Survey', { lhid: 'LH-Q3', currentDate: '2026-05-19', dateAcceptedDenrSmd: '' });
 
     // Land Valuation: 1 in Q4 via dateTransLbpAoc
     store.upsertOptoolRow('MOV', { lhid: 'LH-Q1', dateTransLbpAoc: '2026-10-12' });
@@ -3637,6 +3638,96 @@ test('Registered Data dynamically calculates per province from Google Sheet Colu
   assert.ok(emptyHtml.includes('0.0000 HAS'), 'Map detail card displays 0.0000 HAS');
   assert.ok(!emptyHtml.includes('43.3850'), 'No mock 43.3850 milestone data rendered on dashboard');
   assert.ok(!emptyHtml.includes('11.6950'), 'No mock 11.6950 milestone data rendered on dashboard');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
+test('Survey Accomplishment counts strictly and only when Column AC (Date Accepted by DENR-SMD) is not empty', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-survey-test-'));
+  const store = new ConsolidatedStore(tempDir);
+
+  // Setup Database parcels for area calculation
+  store.state.optool.Database = [
+    { lhid: '803000001', province: 'Leyte', carpable: '5.5000' },
+    { lhid: '803000002', province: 'Leyte', carpable: '12.0000' },
+    { lhid: '803000003', province: 'Leyte', carpable: '8.2500' },
+    { lhid: '806000001', province: 'Samar', carpable: '3.7500' },
+    { lhid: '806000002', province: 'Samar', carpable: '6.0000' }
+  ];
+
+  // Setup Survey rows with varying Column AC (Date Accepted by DENR-SMD) states
+  store.state.optool.Survey = [
+    // 1. Valid ISO date in Column AC -> Accompolished in Q1 (March)
+    {
+      lhid: '803000001',
+      province: 'Leyte',
+      provinceCode: 'LEY',
+      'Date Accepted by DENR-SMD\nDATE': '2026-03-15',
+      kindOfSurvey: 'By Admin'
+    },
+    // 2. Valid US slash date in Column AC -> Accomplished in Q3 (July)
+    {
+      lhid: '806000001',
+      province: 'Samar',
+      provinceCode: 'SAM',
+      dateAcceptedDenrSmd: '7/20/2026',
+      fieldWorkStartDate: '2/10/2026' // Earlier date must NOT override Column AC
+    },
+    // 3. Empty Column AC (with earlier workflow dates filled) -> Must NOT be counted as accomplishment
+    {
+      lhid: '803000002',
+      province: 'Leyte',
+      provinceCode: 'LEY',
+      dateAcceptedDenrSmd: '',
+      fieldWorkStartDate: '2026-01-20',
+      fieldWorkCompletionDate: '2026-02-15',
+      kindOfSurvey: 'By Admin'
+    },
+    // 4. Dash placeholder in Column AC -> Must NOT be counted
+    {
+      lhid: '803000003',
+      province: 'Leyte',
+      provinceCode: 'LEY',
+      'Date Accepted by DENR-SMD\nDATE': '-',
+      kindOfSurvey: 'By Admin'
+    },
+    // 5. 'N/A' placeholder in Column AC -> Must NOT be counted
+    {
+      lhid: '806000002',
+      province: 'Samar',
+      provinceCode: 'SAM',
+      dateAcceptedDenrSmd: 'N/A',
+      currentDate: '2026-04-10'
+    }
+  ];
+  store.save();
+
+  // Set NEP targets for land_survey
+  store.state.nepTargets = {
+    land_survey: { targetCount: 10, targetAreaHas: 50.0 }
+  };
+
+  const analytics = store.getAnalytics({ province: 'ALL' });
+  const surveyMs = analytics.milestoneNepBreakdown.find((m) => m.key === 'land_survey');
+  assert.ok(surveyMs, 'Land Survey milestone breakdown exists');
+
+  // Total count must be exactly 2 (only rows 1 & 2 where Column AC is not empty)
+  assert.equal(surveyMs.total.count, 2, 'Only 2 rows with non-empty Column AC are counted in Survey accomplishment');
+  assert.equal(surveyMs.total.areaHas, 9.25, 'Total area is 5.5000 + 3.7500 = 9.2500 HAS');
+
+  // Breakdown by quarter: Q1 = 1 (March), Q3 = 1 (July), Q2 = 0, Q4 = 0, undated = 0
+  assert.equal(surveyMs.q1.count, 1, 'Row 1 is counted in Q1');
+  assert.equal(surveyMs.q1.areaHas, 5.5);
+  assert.equal(surveyMs.q2.count, 0, 'No accomplishment in Q2');
+  assert.equal(surveyMs.q3.count, 1, 'Row 2 is counted in Q3');
+  assert.equal(surveyMs.q3.areaHas, 3.75);
+  assert.equal(surveyMs.q4.count, 0, 'No accomplishment in Q4');
+  assert.equal(surveyMs.undated.count, 0, 'No undated accomplishment because non-AC rows are excluded');
+
+  // Provincial breakdown: Leyte = 1 (Row 1), Samar = 1 (Row 2), Other provinces = 0
+  assert.equal(surveyMs.provinceBreakdown.LEY.count, 1, 'Leyte has exactly 1 accomplished survey');
+  assert.equal(surveyMs.provinceBreakdown.SAM.count, 1, 'Samar has exactly 1 accomplished survey');
+  assert.equal(surveyMs.provinceBreakdown.BIL.count, 0, 'Biliran has 0 accomplished surveys');
 
   fs.rmSync(tempDir, { recursive: true, force: true });
 });

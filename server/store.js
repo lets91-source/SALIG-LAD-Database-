@@ -313,6 +313,32 @@ function getDbParcelArea(dbRow) {
   );
 }
 
+export function isSurveyAccomplished(r) {
+  if (!r) return false;
+  const colAcVal = String(
+    r.dateAcceptedDenrSmd ??
+    r['Date Accepted by DENR-SMD\nDATE'] ??
+    r['Date Accepted by DENR-SMD DATE'] ??
+    r['Date Accepted by DENR-SMD'] ??
+    r['Date accepted by DENR-SMD'] ??
+    r.date_accepted_denr_smd ??
+    r.dateAcceptedDenr ??
+    r.dateAccepted ??
+    r.AC ??
+    r['Column AC'] ??
+    (Array.isArray(r) ? r[28] : '') ??
+    ''
+  ).trim();
+
+  return (
+    colAcVal !== '' &&
+    colAcVal !== '-' &&
+    colAcVal !== 'N/A' &&
+    colAcVal.toLowerCase() !== 'null' &&
+    colAcVal.toLowerCase() !== 'undefined'
+  );
+}
+
 const MILESTONE_ANALYTICS_SPECS = {
   cf_doc: {
     tabName: 'CF(DOC)',
@@ -324,19 +350,17 @@ const MILESTONE_ANALYTICS_SPECS = {
   land_survey: {
     tabName: 'Survey',
     dateKeys: [
+      'dateAcceptedDenrSmd',
+      'Date Accepted by DENR-SMD\nDATE',
+      'Date Accepted by DENR-SMD DATE',
+      'Date Accepted by DENR-SMD',
+      'Date accepted by DENR-SMD',
       'reportedMonth',
       'currentDate',
-      'aspDate',
-      'dateAcceptedDenrSmd',
-      'srTransmittedDenrSmdDate',
-      'srAcceptedByDarro',
-      'srForwardedToDarro',
-      'finalizedSrDate',
-      'fieldWorkCompletionDate',
-      'fieldWorkStartDate',
-      'dateRss'
+      'aspDate'
     ],
-    include: () => true,
+    // Accomplishment rule: count only if Column AC (Date Accepted by DENR-SMD) is not empty
+    include: (r) => isSurveyAccomplished(r),
     getCount: () => 1,
     getArea: (_r, db) => getDbParcelArea(db)
   },
@@ -350,10 +374,10 @@ const MILESTONE_ANALYTICS_SPECS = {
   ep_cloa_registration: {
     tabName: 'RegistrationDistribution',
     dateKeys: ['dateRegistered', 'monthReported'],
-    include: (r) =>
-      String(r?.dateRegistered || '').trim() !== '' ||
-      String(r?.rodTitleNo || '').trim() !== '' ||
-      String(r?.dateOfDistribution || '').trim() === '',
+    include: (r) => {
+      const d = String(r?.dateRegistered || r?.['DATE REGISTERED'] || r?.['Date Registered'] || r?.date_registered || '').trim();
+      return d !== '' && d !== '-' && d !== 'N/A' && d.toLowerCase() !== 'null';
+    },
     getCount: (r) => Math.max(1, Number.parseInt(r?.noOfTitles, 10) || 1),
     getArea: (r, db) => parseMetricNumber(r?.areaHas) || getDbParcelArea(db)
   },
@@ -739,6 +763,20 @@ export class ConsolidatedStore {
           rowPayload['Date Registered'] ??
           rowPayload.date_registered ??
           rowPayload['Date registered'] ??
+          '';
+      }
+      if (col.key === 'dateAcceptedDenrSmd' && (!val || val === '')) {
+        val =
+          rowPayload['Date Accepted by DENR-SMD\nDATE'] ??
+          rowPayload['Date Accepted by DENR-SMD DATE'] ??
+          rowPayload['Date Accepted by DENR-SMD'] ??
+          rowPayload['Date accepted by DENR-SMD'] ??
+          rowPayload.dateAcceptedDenrSmd ??
+          rowPayload.date_accepted_denr_smd ??
+          rowPayload.dateAcceptedDenr ??
+          rowPayload.dateAccepted ??
+          rowPayload.AC ??
+          rowPayload['Column AC'] ??
           '';
       }
       if ((col.key === 'lhid' || col.key === 'LHID') && (!val || val === '')) {

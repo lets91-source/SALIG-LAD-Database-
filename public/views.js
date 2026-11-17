@@ -1211,9 +1211,9 @@ export const WHEREABOUTS_CONFIGS = {
       { key: 'srAcceptedByDarro', label: 'SR ACCEPTED BY DARRO', shortLabel: 'SR Accepted DARRO', badgeClass: 'badge-green', icon: '✔' },
       { key: 'srReturnedDarroToDarpoDate', label: 'SR RETURNED DARRO TO DARPO', shortLabel: 'Returned DARRO->DARPO', badgeClass: 'badge-amber', icon: '↩' },
       { key: 'srResubmittedDarroDate', label: 'SR RE-SUBMITTED TO DARRO', shortLabel: 'Re-submitted DARRO', badgeClass: 'badge-blue', icon: '✔' },
-      { key: 'dateAcceptedDenrSmd', label: 'ACCEPTED BY DENR-SMD', shortLabel: 'Accepted DENR-SMD', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'dateAcceptedDenrSmd', label: 'ACCEPTED BY DENR-SMD (COL AC)', shortLabel: 'Accepted DENR-SMD', badgeClass: 'badge-purple', icon: '✔', isKeyMilestone: true },
       { key: 'srReturnedDenrToDarroDate', label: 'SR RETURNED DENR TO DARRO', shortLabel: 'Returned DENR->DARRO', badgeClass: 'badge-amber', icon: '↩' },
-      { key: 'aspDate', label: 'ASP DATE', shortLabel: 'ASP Date', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
+      { key: 'aspDate', label: 'ASP DATE', shortLabel: 'ASP Date', badgeClass: 'badge-green', icon: '✔' },
       { key: 'reportedMonth', label: 'REPORTED MONTH', shortLabel: 'Reported Month', badgeClass: 'badge-amber', isMonth: true }
     ],
     resolveStage: (row) => {
@@ -1599,7 +1599,20 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     const datesMap = {};
     let populatedDatesCount = 0;
     for (const d of cfg.dates) {
-      const rawVal = String(row[d.key] || '').trim();
+      let rawVal = String(row[d.key] || '').trim();
+      if (!rawVal && d.key === 'dateAcceptedDenrSmd') {
+        rawVal = String(
+          row['Date Accepted by DENR-SMD\nDATE'] ||
+          row['Date Accepted by DENR-SMD DATE'] ||
+          row['Date Accepted by DENR-SMD'] ||
+          row['Date accepted by DENR-SMD'] ||
+          row.date_accepted_denr_smd ||
+          row.dateAcceptedDenr ||
+          row.dateAccepted ||
+          row.AC ||
+          ''
+        ).trim();
+      }
       datesMap[d.key] = rawVal;
       if (rawVal) populatedDatesCount++;
     }
@@ -1836,7 +1849,20 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const datesMap = {};
     let populatedDatesCount = 0;
     for (const d of cfg.dates) {
-      const rawVal = String(row[d.key] || '').trim();
+      let rawVal = String(row[d.key] || '').trim();
+      if (!rawVal && d.key === 'dateAcceptedDenrSmd') {
+        rawVal = String(
+          row['Date Accepted by DENR-SMD\nDATE'] ||
+          row['Date Accepted by DENR-SMD DATE'] ||
+          row['Date Accepted by DENR-SMD'] ||
+          row['Date accepted by DENR-SMD'] ||
+          row.date_accepted_denr_smd ||
+          row.dateAcceptedDenr ||
+          row.dateAccepted ||
+          row.AC ||
+          ''
+        ).trim();
+      }
       datesMap[d.key] = rawVal;
       if (rawVal) populatedDatesCount++;
     }
@@ -3124,8 +3150,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const finalSurveyGlobalTargetLhs = surveyDbLadLhs > 0 ? surveyDbLadLhs : surveyGlobalTargetLhs;
     const finalSurveyGlobalTargetArea = surveyDbLadLhs > 0 ? surveyDbLadArea : surveyGlobalTargetArea;
 
-    const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.lhs, 0);
-    const surveyGlobalAccompArea = Number(activeBenchmarkRows.reduce((s, r) => s + r.stages.completed.area, 0).toFixed(4));
+    // Accomplishment for Survey is strictly based on Column AC (Accepted by DENR-SMD)
+    const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + (r.stages.acceptedDenr ? r.stages.acceptedDenr.lhs : 0), 0);
+    const surveyGlobalAccompArea = Number(activeBenchmarkRows.reduce((s, r) => s + (r.stages.acceptedDenr ? r.stages.acceptedDenr.area : 0), 0).toFixed(4));
 
     const surveyTargetYearLhs = surveyGlobalTargetLhs;
     const surveyTargetYearArea = surveyGlobalTargetArea;

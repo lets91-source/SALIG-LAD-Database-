@@ -1143,6 +1143,28 @@ function readProvincialMilestoneSupportLists_() {
                 '';
             }
           }
+          // Normalize Survey Column AC (Date Accepted by DENR-SMD)
+          if (tabName === 'Survey') {
+            if (!row.dateAcceptedDenrSmd) {
+              row.dateAcceptedDenrSmd =
+                row['Date Accepted by DENR-SMD\nDATE'] ||
+                row['Date Accepted by DENR-SMD DATE'] ||
+                row['Date Accepted by DENR-SMD'] ||
+                row['Date accepted by DENR-SMD'] ||
+                row.date_accepted_denr_smd ||
+                '';
+            }
+            if (!row.dateAcceptedDenrSmd) {
+              const keys = Object.keys(row);
+              for (let k = 0; k < keys.length; k++) {
+                const normK = normalizeHeaderKey_(keys[k]);
+                if (normK.indexOf('dateaccepted') >= 0 || (normK.indexOf('accepted') >= 0 && normK.indexOf('denr') >= 0)) {
+                  row.dateAcceptedDenrSmd = row[keys[k]];
+                  break;
+                }
+              }
+            }
+          }
           optoolData[tabName].push(row);
         });
       });
