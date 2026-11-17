@@ -301174,6 +301174,22 @@
       "updatedAt": "2026-11-14T10:18:13.870Z",
       "approvedAt": null,
       "approvedBy": null
+    },
+    {
+      "id": "usr-2cf9a78074c5",
+      "name": "nel",
+      "email": "junnel.ilagan19@gmail.com",
+      "province": "Eastern Samar",
+      "contactNumber": "99787234434",
+      "passwordHash": "ec2c5b4b043e71969f6df227b5406148:57013a9e17d15961951bd72cbd025af4409a762802e6f6e390193879119b5a98158cad37695790d7b294747471f67c9d6c3178cddf5bf64c06f2be05c4c34496",
+      "emailVerified": true,
+      "emailVerifiedAt": "2026-11-16T00:27:33.653Z",
+      "role": "admin",
+      "status": "approved",
+      "createdAt": "2026-11-16T00:27:33.653Z",
+      "updatedAt": "2026-11-17T08:24:32.739Z",
+      "approvedAt": "2026-11-17T08:24:32.739Z",
+      "approvedBy": "admin@dar8.gov.ph"
     }
   ],
   "pendingOtps": {},

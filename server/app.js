@@ -699,9 +699,11 @@ export function createAppServer(dataDir, options = {}) {
         }
         const rawId = pathname.slice('/api/auth/users/'.length, -'/status'.length);
         const userId = decodeURIComponent(rawId);
+        const emailHint = query.email ? decodeURIComponent(query.email).trim() : '';
         try {
+          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
           const body = await readJsonBody(req);
-          const user = store.updateUserStatus(userId, body, sessionUser || 'admin');
+          const user = store.updateUserStatus(userId || emailHint, body, sessionUser || 'admin');
           const fullRecord = store.findUserById(user.id);
           const gasPushResult = fullRecord
             ? await pushMutationToGas(
@@ -729,12 +731,37 @@ export function createAppServer(dataDir, options = {}) {
         }
         const rawId = pathname.slice('/api/auth/users/'.length);
         const userId = decodeURIComponent(rawId);
+        const emailHint = query.email ? decodeURIComponent(query.email).trim() : '';
         try {
-          const deletedUser = store.deleteUserAccount(userId, sessionUser);
+          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
+          let targetUser = store.findUserById(userId) || (emailHint ? store.findUserByEmail(emailHint) : null);
+          if (!targetUser && userId.includes('@')) {
+            targetUser = store.findUserByEmail(userId);
+          }
+
+          let deletedUser;
+          if (targetUser) {
+            deletedUser = store.deleteUserAccount(targetUser.id, sessionUser);
+          } else {
+            // Self-delete protection check even if record was only pending in GAS
+            if (
+              sessionUser &&
+              (sessionUser.id === userId ||
+                (emailHint && String(sessionUser.email || '').toLowerCase() === emailHint.toLowerCase()))
+            ) {
+              return sendJson(res, 400, { error: 'You cannot delete your own active Administrator account.' });
+            }
+            deletedUser = {
+              id: userId,
+              email: emailHint || (userId.includes('@') ? userId : ''),
+              name: emailHint || userId
+            };
+          }
+
           const gasPushResult = await pushMutationToGas(
             store,
             { action: 'deleteUserAccount', userId: deletedUser.id, email: deletedUser.email },
-            `Deleted User_Accounts entry (${deletedUser.email}) from Regional Hub Google Sheet.`,
+            `Deleted User_Accounts entry (${deletedUser.email || deletedUser.id}) from Regional Hub Google Sheet.`,
             gasPushFn
           );
           return sendJson(res, 200, {

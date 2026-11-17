@@ -2187,11 +2187,19 @@ export class ConsolidatedStore {
     ) || null;
   }
 
-  /** Find a persisted user record by ID. */
+  /** Find a persisted user record by ID or Email. */
   findUserById(id) {
     const target = String(id || '').trim();
     if (!target) return null;
-    return (this.state.users || []).find((u) => u.id === target) || null;
+    const targetLower = target.toLowerCase();
+    return (
+      (this.state.users || []).find(
+        (u) =>
+          u.id === target ||
+          String(u.id || '').trim().toLowerCase() === targetLower ||
+          String(u.email || '').trim().toLowerCase() === targetLower
+      ) || null
+    );
   }
 
   /** List sanitized public user records ordered with pending requests first. */
@@ -2489,21 +2497,36 @@ export class ConsolidatedStore {
   /** Permanently delete a user account while preventing self-delete or removing the last admin. */
   deleteUserAccount(id, actingAdmin = null) {
     const targetId = String(id || '').trim();
-    const idx = (this.state.users || []).findIndex((u) => u.id === targetId);
+    const targetLower = targetId.toLowerCase();
+    const idx = (this.state.users || []).findIndex(
+      (u) =>
+        u.id === targetId ||
+        String(u.id || '').trim().toLowerCase() === targetLower ||
+        String(u.email || '').trim().toLowerCase() === targetLower
+    );
     if (idx < 0) {
       const err = new Error('Account not found.');
       err.statusCode = 404;
       throw err;
     }
     const target = this.state.users[idx];
-    if (actingAdmin && typeof actingAdmin === 'object' && actingAdmin.id === target.id) {
+    if (
+      actingAdmin &&
+      typeof actingAdmin === 'object' &&
+      (actingAdmin.id === target.id ||
+        String(actingAdmin.email || '').trim().toLowerCase() === String(target.email || '').trim().toLowerCase())
+    ) {
       const err = new Error('You cannot delete your own active Administrator account.');
       err.statusCode = 400;
       throw err;
     }
     if (target.role === 'admin' && target.status === 'approved') {
       const otherAdmins = this.state.users.filter(
-        (u) => u.id !== target.id && u.role === 'admin' && u.status === 'approved'
+        (u) =>
+          u.id !== target.id &&
+          String(u.email || '').trim().toLowerCase() !== String(target.email || '').trim().toLowerCase() &&
+          u.role === 'admin' &&
+          u.status === 'approved'
       );
       if (otherAdmins.length === 0) {
         const err = new Error('Cannot delete the last active Administrator account.');

@@ -6702,23 +6702,23 @@ function buildDbByLhidMap(state) {
                           <td class="mono" style="font-size:11.5px;white-space:nowrap">${esc(createdText)}</td>
                           <td style="text-align:right;white-space:nowrap">
                             ${u.status !== 'approved'
-                ? `<button class="btn btn-primary btn-sm" data-user-action="approve" data-user-id="${esc(u.id)}">✓ Confirm</button>`
+                ? `<button class="btn btn-primary btn-sm" data-user-action="approve" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">✓ Confirm</button>`
                 : ''
               }
                             ${u.status !== 'rejected' && !isSelf
-                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="reject" data-user-id="${esc(u.id)}">Decline</button>`
+                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="reject" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">Decline</button>`
                 : ''
               }
                             ${u.status === 'approved' && !isSelf
                 ? `<button class="btn btn-secondary btn-sm" style="margin-left:4px" data-user-action="${u.role === 'admin' ? 'demote' : 'promote'
-                }" data-user-id="${esc(u.id)}">${u.role === 'admin' ? 'Set User' : 'Make Admin'
+                }" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">${u.role === 'admin' ? 'Set User' : 'Make Admin'
                 }</button>`
                 : ''
               }
                             ${!isSelf
                 ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="delete" data-user-id="${esc(
                   u.id
-                )}" data-user-name="${esc(u.name || u.email)}">Delete</button>`
+                )}" data-user-email="${esc(u.email)}" data-user-name="${esc(u.name || u.email)}">Delete</button>`
                 : ''
               }
                           </td>

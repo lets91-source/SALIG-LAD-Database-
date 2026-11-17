@@ -1671,6 +1671,31 @@ test('User_Accounts two-way sync with Regional Account Hub GAS Web App', async (
     assert.equal(delPedroJson.gasPushResult.ok, true);
     assert.equal(store.findUserByEmail('pedro.samar@dar8.gov.ph'), null);
     assert.equal(sheetUsers.some((u) => u.email === 'pedro.samar@dar8.gov.ph'), false);
+
+    // 6. Test deleting a user who is in Google Sheets but not yet in local store (cold lambda / out of sync instance)
+    const remoteUser = {
+      id: 'usr-remote-test-123',
+      name: 'Remote User',
+      email: 'remote.user@dar8.gov.ph',
+      province: 'Eastern Samar',
+      role: 'user',
+      status: 'approved',
+      passwordHash: 'hash:123'
+    };
+    sheetUsers.push(remoteUser);
+    assert.equal(store.findUserById(remoteUser.id), null);
+
+    const delRemoteRes = await fetch(
+      `${baseUrl}/api/auth/users/${encodeURIComponent(remoteUser.id)}?email=${encodeURIComponent(remoteUser.email)}`,
+      {
+        method: 'DELETE',
+        headers: { Cookie: adminCookie }
+      }
+    );
+    assert.equal(delRemoteRes.status, 200);
+    const delRemoteJson = await delRemoteRes.json();
+    assert.equal(delRemoteJson.ok, true);
+    assert.equal(sheetUsers.some((u) => u.email === remoteUser.email), false);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

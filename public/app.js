@@ -3954,9 +3954,11 @@ function bindUsersViewEvents(container) {
   container.querySelectorAll('[data-user-action]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const userId = btn.dataset.userId;
+      const userEmail = btn.dataset.userEmail || '';
       const action = btn.dataset.userAction;
+      const queryParam = userEmail ? `?email=${encodeURIComponent(userEmail)}` : '';
       if (action === 'delete') {
-        const label = btn.dataset.userName || userId;
+        const label = btn.dataset.userName || userEmail || userId;
         if (!confirm(`Permanently delete account "${label}"? This removes the user from SALIG and User_Accounts.`)) {
           return;
         }
@@ -3965,7 +3967,7 @@ function bindUsersViewEvents(container) {
             'saving',
             'Deleting Account…',
             `Removing ${label} from SALIG & Regional Hub User_Accounts…`,
-            () => api(`/api/auth/users/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+            () => api(`/api/auth/users/${encodeURIComponent(userId)}${queryParam}`, { method: 'DELETE' })
           );
           appState.usersList = res.users || [];
           appState.pendingUserCount = res.pendingCount || 0;
@@ -3991,7 +3993,7 @@ function bindUsersViewEvents(container) {
           'Saving Account Confirmation…',
           'Updating user approval status and permissions…',
           () =>
-            api(`/api/auth/users/${encodeURIComponent(userId)}/status`, {
+            api(`/api/auth/users/${encodeURIComponent(userId)}/status${queryParam}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
