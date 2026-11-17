@@ -3323,6 +3323,14 @@ test('Global Target filters strictly to LAD Balance, and OPTool Support List bre
   assert.ok(dashHtml.includes('Temp. Park</th>'), 'Provincial table header includes Temp. Park group');
   assert.ok(dashHtml.includes('Total Database</th>'), 'Provincial table header includes Total Database group');
   assert.ok(dashHtml.includes('Area (HAS)'), 'Provincial table header breaks down Area (HAS) for LAD Balance and Temp Park');
+  assert.ok(dashHtml.includes('Eastern Visayas Map &amp; Target Explorer'), 'Dashboard includes Eastern Visayas Map panel');
+  assert.ok(dashHtml.includes('ev-map-svg'), 'Dashboard renders SVG map of Eastern Visayas');
+  assert.ok(dashHtml.includes('data-map-province="LEY"'), 'Map includes interactive Leyte province path');
+  assert.ok(dashHtml.includes('data-map-province="SAM"'), 'Map includes interactive Samar province path');
+  assert.ok(dashHtml.includes('data-map-province-pill'), 'Map includes quick province filter pills');
+  assert.ok(dashHtml.includes('dash-map-detail-card'), 'Dashboard includes Target detail card container');
+  assert.ok(dashHtml.includes('LAD Balance'), 'Detail card displays LAD Balance');
+  assert.ok(dashHtml.includes('Temp. Park'), 'Detail card displays Temp. Park');
   assert.ok(dashHtml.includes('LAD Balance vs. Registered Titles'), 'Dashboard includes LAD Balance vs Registered Titles Pie panel');
   assert.ok(dashHtml.includes('Whereabouts per Milestone'), 'Dashboard includes Whereabouts per Milestone section');
   assert.ok(dashHtml.includes('data-nav="cf-whereabouts"'), 'Dashboard includes CF Whereabouts navigation link');

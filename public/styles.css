@@ -1966,6 +1966,110 @@ tr[style*="font-weight:700"] td.sticky-col-province {
   padding: 6px 8px;
 }
 
+/* Eastern Visayas Interactive Map Styling */
+.ev-map-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 75%);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.ev-map-svg {
+  display: block;
+  width: 100%;
+  max-width: 250px;
+  height: auto;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12));
+}
+
+.ev-map-group {
+  outline: none;
+}
+
+.ev-map-province {
+  cursor: pointer;
+  stroke: #ffffff;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ev-map-province:hover {
+  filter: brightness(1.2) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+.ev-map-province.is-active {
+  stroke: #f59e0b !important;
+  stroke-width: 3.2 !important;
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.65)) !important;
+}
+
+.ev-map-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  fill: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  user-select: none;
+  text-anchor: middle;
+  letter-spacing: 0.04em;
+}
+
+.ev-map-sublabel {
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ev-map-water-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 600;
+  fill: #94a3b8;
+  opacity: 0.75;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.05em;
+}
+
+.ev-map-pill {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface, #ffffff);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ev-map-pill:hover {
+  background: var(--bg-light, #f1f5f9);
+  color: var(--text-main);
+  border-color: #cbd5e1;
+}
+
+.ev-map-pill.active {
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
+  border-color: var(--dar-green-dark, #0a361d);
+  box-shadow: 0 2px 4px rgba(10, 54, 29, 0.25);
+}
+
+.tr-highlighted {
+  background: rgba(245, 158, 11, 0.14) !important;
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+}
+
 .nep-modal-table thead th.nep-th-sem1,
 .nep-targets-table thead th.nep-th-sem1 {
   color: #93c5fd !important; /* Soft, highly-legible sky blue on dark green */

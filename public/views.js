@@ -1,7 +1,8 @@
 import {
   renderWhereaboutsProvincialGraphSvg,
   renderWhereaboutsMonthlyGraphSvg,
-  renderLadBalanceVsRegisteredPieSvg
+  renderLadBalanceVsRegisteredPieSvg,
+  renderEasternVisayasMapSvg
 } from './charts.js';
 import {
   getReportedMonthOptions,
@@ -4417,6 +4418,117 @@ export function renderInstallationWhereaboutsView(ctx) {
   return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['installation-whereabouts']);
 }
 
+export function renderMapDetailCardInner(selectedCode, provRows = [], provTotals = {}) {
+  const isAll = !selectedCode || selectedCode === 'ALL';
+  const p = isAll ? null : (provRows || []).find((r) => r.code === selectedCode);
+
+  const title = p ? `${p.name} (${p.code})` : 'Region VIII Consolidated';
+  const subtitle = p ? 'Provincial LAD Target & Park Breakdown' : 'All 6 Provincial Nodes Active Portfolio';
+  const ladLhs = p ? p.ladLhs : (provTotals.ladLhs || 0);
+  const ladArea = p ? p.ladArea : (provTotals.ladArea || 0);
+  const tempLhs = p ? p.tempLhs : (provTotals.tempLhs || 0);
+  const tempArea = p ? p.tempArea : (provTotals.tempArea || 0);
+  const dbLhs = p ? p.dbLhs : (provTotals.totalLhs || 0);
+  const dbArea = p ? p.dbArea : (provTotals.totalArea || 0);
+  const regArea = p ? p.regArea : (provTotals.regArea || 0);
+  const pct = p ? p.pct : (provTotals.pct || '0.0');
+
+  const badgeClass = isAll ? 'badge-blue' : 'badge-green';
+  const badgeText = isAll ? 'Region Wide' : `${p.code} Active`;
+  const pctBadgeClass = Number(pct) >= 50 ? 'badge-green' : Number(pct) > 0 ? 'badge-blue' : 'badge-gray';
+
+  return `
+    <div style="background:var(--surface,#ffffff);border:1px solid var(--border);border-radius:8px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:16px;">📍</span>
+          <div>
+            <h4 style="margin:0;font-size:13px;font-weight:800;color:var(--dar-green-dark,#0a361d);">${esc(title)}</h4>
+            <span style="font-size:10.5px;color:var(--text-muted);">${esc(subtitle)}</span>
+          </div>
+        </div>
+        <span class="badge ${badgeClass}" style="font-size:10.5px;">${esc(badgeText)}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <!-- LAD Balance Box -->
+        <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.22);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:var(--dar-green,#059669);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">
+            🎯 LAD Balance
+          </div>
+          <div style="font-size:15px;font-weight:800;color:#0f172a;line-height:1.2;">
+            ${ladLhs.toLocaleString()} <span style="font-size:10.5px;font-weight:600;color:var(--text-muted);">LHs</span>
+          </div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--dar-green,#059669);margin-top:2px;">
+            ${fmtArea(ladArea)} <span style="font-size:9.5px;font-weight:600;">HAS</span>
+          </div>
+        </div>
+
+        <!-- Temp. Park Box -->
+        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:#b45309;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">
+            ⏳ Temp. Park
+          </div>
+          <div style="font-size:15px;font-weight:800;color:#0f172a;line-height:1.2;">
+            ${tempLhs.toLocaleString()} <span style="font-size:10.5px;font-weight:600;color:var(--text-muted);">LHs</span>
+          </div>
+          <div style="font-size:11.5px;font-weight:700;color:#b45309;margin-top:2px;">
+            ${fmtArea(tempArea)} <span style="font-size:9.5px;font-weight:600;">HAS</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding-top:8px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:4px;font-size:11px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--text-muted);">Total Master Database:</span>
+          <strong>${dbLhs.toLocaleString()} LHs (${fmtArea(dbArea)} HAS)</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--text-muted);">Registered Accomplishment:</span>
+          <div>
+            <strong style="color:var(--dar-blue,#1e40af);">${fmtArea(regArea)} HAS</strong>
+            <span class="badge ${pctBadgeClass}" style="margin-left:4px;font-size:10px;">${pct}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {}, selectedCode = 'ALL' } = {}) {
+  const isAll = !selectedCode || selectedCode === 'ALL';
+
+  const pillButtons = [
+    { code: 'ALL', label: '🌐 All Region VIII' },
+    ...DEFAULT_CF_PROVINCES.map((p) => ({ code: p.code, label: p.name }))
+  ].map((pill) => {
+    const activeClass = (selectedCode === pill.code || (isAll && pill.code === 'ALL')) ? 'active' : '';
+    return `<button type="button" class="ev-map-pill ${activeClass}" data-map-province-pill="${pill.code}">${esc(pill.label)}</button>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <!-- Quick Filter Pills -->
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+        ${pillButtons}
+      </div>
+
+      <!-- Map + Detail Card Body -->
+      <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:12px;align-items:center;min-height:260px;">
+        <!-- Left: SVG Map -->
+        <div style="display:flex;justify-content:center;align-items:center;">
+          ${renderEasternVisayasMapSvg({ provRows, selectedCode })}
+        </div>
+
+        <!-- Right: Target Detail Card -->
+        <div id="dash-map-detail-card" style="display:flex;flex-direction:column;justify-content:center;">
+          ${renderMapDetailCardInner(selectedCode, provRows, provTotals)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function renderDashboardView(ctx) {
   const { state, analytics, provinceScope, schemas } = ctx;
   const { kpis = {}, provincialBreakdown = [] } = analytics || {};
@@ -4491,6 +4603,17 @@ export function renderDashboardView(ctx) {
     regArea: provBreakdownRows.reduce((s, p) => s + p.regArea, 0)
   };
   provTotals.pct = provTotals.ladArea > 0 ? ((provTotals.regArea / provTotals.ladArea) * 100).toFixed(1) : '0.0';
+
+  const activeMapCode = ctx.dashboardMapProvince || 'ALL';
+  const dashRightTab = ctx.dashboardRightPanelTab || 'map';
+
+  if (typeof window !== 'undefined') {
+    window.__DASHBOARD_PROV_DATA__ = {
+      rows: provBreakdownRows,
+      totals: provTotals,
+      scopeBadge
+    };
+  }
 
   // 3. Milestone Whereabouts Data
   const dbMap = new Map();
@@ -4631,8 +4754,8 @@ export function renderDashboardView(ctx) {
       </div>
     </section>
 
-    <!-- MIDDLE SECTION: Provincial Breakdown Table + PIE Chart (LAD Balance vs Registered Titles) -->
-    <section class="grid-2" style="grid-template-columns: 1.55fr 1fr; margin-bottom: 16px;">
+    <!-- MIDDLE SECTION: Provincial Breakdown Table + Eastern Visayas Map & Target Explorer -->
+    <section class="grid-2" style="grid-template-columns: 1.35fr 1fr; margin-bottom: 16px;">
       <!-- Panel 1: Table with Provincial Breakdown -->
       <div class="panel">
         <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -4664,7 +4787,7 @@ export function renderDashboardView(ctx) {
             </thead>
             <tbody>
               ${provBreakdownRows.map((p) => `
-                <tr>
+                <tr data-prov-code="${esc(p.code)}" class="${activeMapCode === p.code ? 'tr-highlighted' : ''}" style="cursor:pointer;" title="Click to display ${esc(p.name)} target breakdown on the map">
                   <td>
                     <strong>${esc(p.name)}</strong>
                     <span class="mono" style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${esc(p.code)})</span>
@@ -4701,23 +4824,34 @@ export function renderDashboardView(ctx) {
         </div>
       </div>
 
-      <!-- Panel 2: PIE Combined with LAD Balance VS Registered Titles -->
-      <div class="panel">
-        <div class="panel-header">
+      <!-- Panel 2: Eastern Visayas Map & Target Explorer + Portfolio Pie -->
+      <div class="panel" id="dash-map-container">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div>
-            <h3 class="panel-title">LAD Balance vs. Registered Titles</h3>
-            <p class="panel-subtitle">Portfolio distribution of active target balance vs. registered accomplishment</p>
+            <h3 class="panel-title">Eastern Visayas Map &amp; Target Explorer</h3>
+            <p class="panel-subtitle">Interactive Region VIII Map • LAD Balance vs. Registered Titles</p>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <button type="button" class="btn btn-xs ${dashRightTab === 'map' ? 'btn-primary' : 'btn-secondary'}" data-dash-right-tab="map" title="Interactive Eastern Visayas Map">🗺️ Map</button>
+            <button type="button" class="btn btn-xs ${dashRightTab === 'pie' ? 'btn-primary' : 'btn-secondary'}" data-dash-right-tab="pie" title="LAD Balance vs Registered Titles Donut Chart">🍩 Portfolio Pie</button>
           </div>
         </div>
         <div class="panel-body" style="padding: 12px 16px;">
-          ${renderLadBalanceVsRegisteredPieSvg({
-            ladArea: totalLadArea,
-            registeredArea: totalRegArea,
-            tempArea: totalTempArea,
-            ladLhs: totalLadLhs,
-            registeredLhs: totalRegLhs,
-            tempLhs: totalTempLhs
-          })}
+          ${dashRightTab === 'pie'
+            ? renderLadBalanceVsRegisteredPieSvg({
+                ladArea: totalLadArea,
+                registeredArea: totalRegArea,
+                tempArea: totalTempArea,
+                ladLhs: totalLadLhs,
+                registeredLhs: totalRegLhs,
+                tempLhs: totalTempLhs
+              })
+            : renderEasternVisayasMapPanelHtml({
+                provRows: provBreakdownRows,
+                provTotals,
+                selectedCode: activeMapCode
+              })
+          }
         </div>
       </div>
     </section>

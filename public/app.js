@@ -5,6 +5,7 @@ import {
   getGroupVariantClass,
   LINKED_DB_PROFILE_FIELDS,
   renderDashboardView,
+  renderMapDetailCardInner,
   renderMilestonesView,
   renderOptoolView,
   renderOptoolPartial,
@@ -45,6 +46,8 @@ const appState = {
   view: 'dashboard',
   currentUser: null,
   provinceScope: null,
+  dashboardMapProvince: 'ALL',
+  dashboardRightPanelTab: 'map',
   usersList: [],
   pendingUserCount: 0,
   schemas: null,
@@ -872,7 +875,9 @@ function renderActiveView() {
     nepDisplayMode: appState.nepDisplayMode || 'table',
     nepColVisibility: appState.nepColVisibility || { lhs: true, area: true, arbs: true },
     filters: appState.filters,
-    activeOptoolTab: appState.activeOptoolTab
+    activeOptoolTab: appState.activeOptoolTab,
+    dashboardMapProvince: appState.dashboardMapProvince || 'ALL',
+    dashboardRightPanelTab: appState.dashboardRightPanelTab || 'map'
   };
 
   if (appState.view === 'dashboard') {
@@ -2506,7 +2511,78 @@ function openBaselinesModal() {
   });
 }
 
+function updateDashboardMapSelection(container, code) {
+  appState.dashboardMapProvince = code;
+
+  // 1. Update active class on SVG province paths
+  container.querySelectorAll('.ev-map-province').forEach((path) => {
+    const isThisProv = path.dataset.mapProvince === code;
+    path.classList.toggle('is-active', isThisProv);
+    if (code !== 'ALL') {
+      path.style.opacity = isThisProv ? '1' : '0.62';
+    } else {
+      path.style.opacity = '1';
+    }
+  });
+
+  // 2. Update active class on quick pills
+  container.querySelectorAll('[data-map-province-pill]').forEach((pill) => {
+    const isAct = pill.dataset.mapProvincePill === code || (!code && pill.dataset.mapProvincePill === 'ALL');
+    pill.classList.toggle('active', isAct);
+  });
+
+  // 3. Update the Target Breakdown card details
+  const cardEl = container.querySelector('#dash-map-detail-card');
+  if (cardEl && typeof window !== 'undefined' && window.__DASHBOARD_PROV_DATA__) {
+    const { rows, totals } = window.__DASHBOARD_PROV_DATA__;
+    cardEl.innerHTML = renderMapDetailCardInner(code, rows, totals);
+  }
+
+  // 4. Highlight the corresponding table row in Provincial Breakdown
+  const table = container.querySelector('.prov-breakdown-table');
+  if (table) {
+    table.querySelectorAll('tbody tr').forEach((tr) => {
+      const trCode = tr.dataset.provCode;
+      if (code === 'ALL' || !code) {
+        tr.classList.remove('tr-highlighted');
+      } else {
+        tr.classList.toggle('tr-highlighted', trCode === code);
+      }
+    });
+  }
+}
+
 function bindDashboardViewEvents(container) {
+  // Eastern Visayas Map & Target Breakdown Events
+  container.querySelectorAll('[data-map-province]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = el.dataset.mapProvince;
+      updateDashboardMapSelection(container, code);
+    });
+  });
+
+  container.querySelectorAll('[data-map-province-pill]').forEach((pill) => {
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = pill.dataset.mapProvincePill;
+      updateDashboardMapSelection(container, code);
+    });
+  });
+
+  container.querySelectorAll('.prov-breakdown-table tbody tr[data-prov-code]').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      const code = tr.dataset.provCode;
+      updateDashboardMapSelection(container, code);
+    });
+  });
+
+  container.querySelectorAll('[data-dash-right-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.dashboardRightPanelTab = btn.dataset.dashRightTab;
+      renderActiveView();
+    });
+  });
   container.querySelectorAll('[data-nep-metric]').forEach((btn) => {
     btn.addEventListener('click', () => {
       appState.nepMetricMode = btn.dataset.nepMetric;
