@@ -3419,3 +3419,50 @@ test('API responses enforce no-cache headers, and deleting OPTool rows or milest
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test('Eastern Visayas map renders authentic reference graphic with interactive province overlays and static asset serving', async () => {
+  const { renderEasternVisayasMapSvg, EV_MAP_PROVINCES } = await import('../../public/charts.js');
+
+  // 1. Verify EV_MAP_PROVINCES has all 6 official Region VIII provinces
+  const expectedCodes = ['NSA', 'SAM', 'ESA', 'BIL', 'LEY', 'SLE'];
+  assert.equal(EV_MAP_PROVINCES.length, 6);
+  for (const code of expectedCodes) {
+    const prov = EV_MAP_PROVINCES.find((p) => p.code === code);
+    assert.ok(prov, `EV_MAP_PROVINCES contains ${code}`);
+    assert.ok(prov.d && prov.d.startsWith('M '), `${code} has valid SVG path d`);
+  }
+
+  // 2. Verify renderEasternVisayasMapSvg renders authoritative reference image and dim layer
+  const mapHtmlAll = renderEasternVisayasMapSvg({ selectedCode: 'ALL' });
+  assert.ok(mapHtmlAll.includes('<image'), 'Renders SVG image tag');
+  assert.ok(mapHtmlAll.includes('/assets/eastern-visayas-map.png'), 'Links to authoritative reference graphic');
+  assert.ok(mapHtmlAll.includes('class="ev-map-dim-layer"'), 'Includes backdrop dim layer');
+  assert.ok(mapHtmlAll.includes('display:none'), 'Dim layer is hidden when ALL is selected');
+
+  for (const code of expectedCodes) {
+    assert.ok(mapHtmlAll.includes(`data-map-province="${code}"`), `Overlay exists for ${code}`);
+  }
+
+  // 3. Verify single province selection sets active class and shows dim layer
+  const mapHtmlLey = renderEasternVisayasMapSvg({ selectedCode: 'LEY' });
+  assert.ok(mapHtmlLey.includes('display:block'), 'Dim layer is visible when single province is selected');
+  assert.ok(mapHtmlLey.includes('data-map-province="LEY"'), 'LEY overlay present');
+
+  // 4. Verify HTTP static file serving returns image/png for eastern-visayas-map.png
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-map-asset-test-'));
+  const { server } = createAppServer(tempDir, { requireAuth: false });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/assets/eastern-visayas-map.png`);
+    assert.equal(res.status, 200, 'HTTP 200 for eastern-visayas-map.png');
+    assert.equal(res.headers.get('content-type'), 'image/png', 'Content-Type is image/png');
+    const buf = await res.arrayBuffer();
+    assert.ok(buf.byteLength > 10000, 'Image payload is non-empty');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});

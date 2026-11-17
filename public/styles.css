@@ -1973,17 +1973,20 @@ tr[style*="font-weight:700"] td.sticky-col-province {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 75%);
+  background: #98bdf9;
   border-radius: 8px;
-  padding: 6px;
+  padding: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .ev-map-svg {
   display: block;
   width: 100%;
-  max-width: 250px;
+  max-width: 256px;
   height: auto;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12));
+  border-radius: 6px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.12));
 }
 
 .ev-map-group {
@@ -1992,20 +1995,32 @@ tr[style*="font-weight:700"] td.sticky-col-province {
 
 .ev-map-province {
   cursor: pointer;
-  stroke: #ffffff;
-  stroke-width: 1.8;
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 1.5;
   stroke-linejoin: round;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ev-map-province:hover {
-  filter: brightness(1.2) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+  fill: rgba(255, 255, 255, 0.28) !important;
+  stroke: #ef4444 !important;
+  stroke-width: 2.2 !important;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6)) !important;
 }
 
 .ev-map-province.is-active {
+  fill: rgba(245, 158, 11, 0.38) !important;
   stroke: #f59e0b !important;
-  stroke-width: 3.2 !important;
-  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.65)) !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.9)) !important;
+}
+
+.ev-map-province.is-active:hover {
+  fill: rgba(245, 158, 11, 0.45) !important;
+  stroke: #f59e0b !important;
+  stroke-width: 3.5 !important;
+  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 1)) !important;
 }
 
 .ev-map-label {

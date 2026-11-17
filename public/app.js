@@ -2525,6 +2525,12 @@ function updateDashboardMapSelection(container, code) {
     }
   });
 
+  // 1b. Update backdrop dim layer for map focus
+  const dimLayer = container.querySelector('.ev-map-dim-layer');
+  if (dimLayer) {
+    dimLayer.style.display = (code && code !== 'ALL') ? 'block' : 'none';
+  }
+
   // 2. Update active class on quick pills
   container.querySelectorAll('[data-map-province-pill]').forEach((pill) => {
     const isAct = pill.dataset.mapProvincePill === code || (!code && pill.dataset.mapProvincePill === 'ALL');

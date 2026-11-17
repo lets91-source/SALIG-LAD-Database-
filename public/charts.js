@@ -485,62 +485,50 @@ export const EV_MAP_PROVINCES = [
   {
     code: 'NSA',
     name: 'Northern Samar',
-    d: 'M 88 82 C 102 54, 134 38, 175 32 C 218 30, 260 38, 292 52 C 308 60, 318 70, 318 82 C 316 95, 308 108, 296 118 C 275 118, 250 114, 225 112 C 192 110, 162 112, 132 116 C 110 112, 94 98, 88 82 Z',
-    labelX: 195,
-    labelY: 74,
-    subX: 195,
-    subY: 86,
-    color: '#15803d'
+    d: 'M 25 45 L 30 30 L 55 30 L 74 30 L 88 26 L 105 23 L 125 6 L 128 8 L 133 22 L 146 27 L 158 42 L 165 68 L 148 70 L 138 62 L 102 80 L 75 78 L 55 78 L 42 72 L 35 60 L 25 45 Z',
+    labelX: 86,
+    labelY: 45,
+    color: '#eed4ea'
   },
   {
     code: 'SAM',
     name: 'Samar',
-    d: 'M 132 116 C 162 112, 192 110, 225 112 C 235 142, 240 178, 244 212 C 248 228, 260 236, 270 240 C 246 248, 222 240, 194 232 C 176 216, 162 192, 150 168 C 136 142, 130 128, 132 116 Z',
-    labelX: 188,
-    labelY: 172,
-    subX: 188,
-    subY: 184,
-    color: '#166534'
+    d: 'M 70 80 L 102 80 L 138 62 L 146 78 L 142 102 L 152 115 L 154 138 L 148 155 L 158 178 L 154 190 L 152 218 L 150 248 L 122 228 L 116 196 L 106 185 L 118 160 L 116 144 L 90 146 L 82 138 L 72 132 L 70 118 L 85 105 L 70 80 Z',
+    labelX: 120,
+    labelY: 116,
+    color: '#d5ffd1'
   },
   {
     code: 'ESA',
     name: 'Eastern Samar',
-    d: 'M 225 112 C 250 114, 275 118, 296 118 C 308 108, 316 95, 318 82 C 324 114, 322 148, 328 185 C 334 222, 350 258, 370 295 C 378 312, 372 318, 360 306 C 340 274, 318 246, 270 240 C 260 236, 248 228, 244 212 C 240 178, 235 142, 225 112 Z',
-    labelX: 295,
-    labelY: 190,
-    subX: 295,
-    subY: 202,
-    color: '#14532d'
+    d: 'M 138 62 L 148 70 L 165 68 L 180 66 L 190 132 L 205 134 L 195 160 L 185 165 L 200 186 L 228 242 L 225 268 L 214 268 L 186 220 L 164 260 L 152 246 L 152 218 L 154 190 L 158 178 L 148 155 L 154 138 L 142 102 L 146 78 L 138 62 Z',
+    labelX: 180,
+    labelY: 140,
+    color: '#ffd0cd'
   },
   {
     code: 'BIL',
     name: 'Biliran',
-    d: 'M 108 182 C 122 174, 134 180, 132 194 C 130 208, 115 214, 105 206 C 98 198, 100 188, 108 182 Z',
-    labelX: 118,
-    labelY: 195,
-    subX: 118,
-    subY: 205,
-    color: '#0f766e'
+    d: 'M 42 138 L 52 138 L 62 144 L 70 146 L 68 156 L 74 172 L 74 178 L 58 176 L 54 178 L 42 178 L 35 172 L 35 146 L 42 138 Z',
+    labelX: 48,
+    labelY: 154,
+    color: '#ffd0cd'
   },
   {
     code: 'LEY',
     name: 'Leyte',
-    d: 'M 82 242 C 86 228, 108 216, 134 214 C 158 220, 188 226, 212 232 C 222 238, 224 258, 220 282 C 216 312, 210 336, 202 348 C 194 352, 188 353, 184 354 C 168 346, 156 322, 145 290 C 122 270, 94 260, 82 242 Z',
-    labelX: 160,
-    labelY: 278,
-    subX: 160,
-    subY: 290,
-    color: '#166534'
+    d: 'M 26 150 L 38 150 L 68 190 L 76 170 L 95 152 L 115 156 L 126 150 L 144 150 L 144 178 L 145 198 L 124 224 L 123 246 L 134 276 L 142 285 L 118 298 L 114 306 L 108 316 L 98 332 L 88 332 L 78 252 L 46 324 L 32 324 L 25 310 L 25 280 L 42 244 L 38 220 L 38 196 L 28 170 L 26 150 Z',
+    labelX: 90,
+    labelY: 226,
+    color: '#fffecd'
   },
   {
     code: 'SLE',
     name: 'Southern Leyte',
-    d: 'M 184 354 C 188 353, 194 352, 202 348 C 216 358, 228 374, 234 394 C 236 418, 228 430, 218 432 C 208 416, 202 396, 196 376 C 188 386, 180 404, 174 382 C 176 372, 180 362, 184 354 Z',
-    labelX: 208,
-    labelY: 395,
-    subX: 208,
-    subY: 406,
-    color: '#15803d'
+    d: 'M 88 332 L 98 332 L 108 316 L 114 306 L 118 298 L 142 285 L 144 302 L 148 314 L 165 314 L 165 324 L 156 332 L 140 332 L 158 375 L 152 375 L 138 355 L 128 332 L 116 358 L 106 348 L 94 344 L 88 332 Z',
+    labelX: 135,
+    labelY: 320,
+    color: '#eed4ea'
   }
 ];
 
@@ -553,9 +541,7 @@ export function renderEasternVisayasMapSvg({ provRows = [], selectedCode = 'ALL'
     const ladLhs = provData.ladLhs || 0;
     const ladArea = provData.ladArea ? provData.ladArea.toFixed(2) : '0.00';
     const tempLhs = provData.tempLhs || 0;
-    const tooltipText = `${p.name} (${p.code})&#10;LAD Balance: ${ladLhs.toLocaleString()} LHs (${ladArea} HAS)&#10;Temp. Park: ${tempLhs.toLocaleString()} LHs&#10;Click to view breakdown`;
-
-    const opacity = isAll || isSelected ? '1' : '0.62';
+    const tooltipText = `${p.name} (${p.code})\nLAD Balance: ${ladLhs.toLocaleString()} LHs (${ladArea} HAS)\nTemp. Park: ${tempLhs.toLocaleString()} LHs\nClick to view breakdown`;
 
     return `
       <g class="ev-map-group" data-map-province="${p.code}" style="cursor:pointer;" tabindex="0" role="button" aria-label="${esc(p.name)}">
@@ -563,37 +549,39 @@ export function renderEasternVisayasMapSvg({ provRows = [], selectedCode = 'ALL'
           class="ev-map-province ${isSelected ? 'is-active' : ''}"
           data-map-province="${p.code}"
           d="${p.d}"
-          fill="${p.color}"
-          style="opacity:${opacity};"
         >
-          <title>${tooltipText}</title>
+          <title>${esc(tooltipText)}</title>
         </path>
-        <text x="${p.labelX}" y="${p.labelY}" class="ev-map-label">${esc(p.code)}</text>
-        <text x="${p.subX}" y="${p.subY}" class="ev-map-sublabel" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.92)" font-weight="700">${esc(p.name)}</text>
       </g>
     `;
   }).join('');
 
   return `
     <div class="ev-map-wrap">
-      <svg viewBox="0 0 380 450" class="ev-map-svg" aria-label="Eastern Visayas Region VIII Map">
-        <defs>
-          <filter id="ev-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
+      <svg viewBox="0 0 256 395" class="ev-map-svg" aria-label="Eastern Visayas Region VIII Map">
+        <!-- Exact Authoritative Administrative Reference Map -->
+        <image
+          href="/assets/eastern-visayas-map.png"
+          xlink:href="/assets/eastern-visayas-map.png"
+          x="0"
+          y="0"
+          width="256"
+          height="395"
+          preserveAspectRatio="xMidYMid meet"
+        />
 
-        <!-- Subtle Geographic Water Labels -->
-        <text x="14" y="24" font-size="11" font-weight="800" fill="#064e3b" letter-spacing="0.06em">REGION VIII</text>
-        <text x="14" y="37" font-size="8.5" font-weight="600" fill="#64748b">Eastern Visayas</text>
+        <!-- Subtle backdrop dim layer when a single province is selected -->
+        <rect
+          class="ev-map-dim-layer"
+          x="0"
+          y="0"
+          width="256"
+          height="395"
+          fill="rgba(15, 23, 42, 0.28)"
+          style="display:${isAll ? 'none' : 'block'};pointer-events:none;transition:opacity 0.2s ease;"
+        />
 
-        <text x="24" y="155" class="ev-map-water-label">Samar Sea</text>
-        <text x="240" y="280" class="ev-map-water-label">Leyte Gulf</text>
-        <text x="20" y="375" class="ev-map-water-label">Camotes Sea</text>
-        <text x="235" y="440" class="ev-map-water-label">Surigao Strait</text>
-
-        <!-- Province Shapes & Labels -->
+        <!-- Interactive Clickable Province Overlays -->
         ${provinceSvgElements}
       </svg>
     </div>
