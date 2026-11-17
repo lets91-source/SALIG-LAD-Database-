@@ -4357,11 +4357,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       <button
                         type="button"
                         class="link-btn lhid-chip"
-                        data-lhid="${esc(r.lhid)}"
                         data-lhid="${esc(formatLhidDisplay(r.lhid))}"
                         title="Click to view Landholding Profile &amp; Milestones"
                       >
-                        ${esc(r.lhid)}
                         ${esc(formatLhidDisplay(r.lhid))}
                       </button>
                     </td>
