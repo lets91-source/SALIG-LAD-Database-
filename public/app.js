@@ -27,6 +27,7 @@ import {
   getWhereaboutsRowDisplayValue,
   renderSurveySupportListModalHtml,
   renderCfSupportListModalHtml,
+  generateOptoolSupportListCsv,
   WHEREABOUTS_CONFIGS
 } from './views.js';
 import {
@@ -1509,6 +1510,10 @@ function bindOptoolViewEvents(container) {
     }
   });
 
+  container.querySelector('#btn-optool-export-csv')?.addEventListener('click', () => {
+    exportOptoolSupportlistCsv();
+  });
+
   container.querySelector('#optool-csv-upload')?.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -2047,6 +2052,33 @@ function exportMilestoneCsv() {
   a.href = URL.createObjectURL(blob);
   a.download = `Region8_Milestone_Data_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
+}
+
+function exportOptoolSupportlistCsv() {
+  const currentTab = appState.activeOptoolTab || 'CF(DOC)';
+  const { csvText, filename, rowCount } = generateOptoolSupportListCsv({
+    state: appState.state,
+    schemas: appState.schemas,
+    activeOptoolTab: currentTab,
+    searchTerm: appState.optoolSearch,
+    optoolTargetFilter: appState.optoolTargetFilter,
+    optoolColFilters: appState.optoolColFilters,
+    optoolPage: 1,
+    optoolPageSize: 'ALL',
+    optoolColMode: 'all',
+    optoolColPage: 1,
+    filters: appState.filters,
+    provinceScope: appState.provinceScope
+  });
+
+  const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast(`Exported ${rowCount} ${currentTab} supportlist record(s) to CSV`);
 }
 
 // Modals

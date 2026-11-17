@@ -5570,7 +5570,7 @@ function buildDbByLhidMap(state) {
     };
   }
 
-  function getOptoolCellValue(row, col, dbByLhid) {
+  export function getOptoolCellValue(row, col, dbByLhid) {
     if (col?.dbKey) {
       const rawKey = String(row?.lhid || '').trim().toLowerCase();
       const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
@@ -5720,7 +5720,7 @@ function buildDbByLhidMap(state) {
     return { col, blankCount, totalRows: matching.length, values };
   }
 
-  function buildOptoolViewModel(ctx) {
+  export function buildOptoolViewModel(ctx) {
     const {
       state,
       schemas,
@@ -6444,10 +6444,9 @@ function buildDbByLhidMap(state) {
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-provincial-optool" title="Pull &amp; sync ${esc(currentTab)} directly from all Provincial Google Sheets (Biliran, Eastern Samar, Leyte, Northern Samar, Samar, Southern Leyte)">
             🔄 Sync Provincial Sheets
           </button>
-          <label class="btn btn-secondary btn-sm" style="margin:0">
-            Import CSV to ${esc(currentTab)}
-            <input type="file" accept=".csv" id="optool-csv-upload" class="hidden" />
-          </label>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-optool-export-csv" data-tab="${esc(currentTab)}" title="Export ${esc(currentTab)} Supportlist to CSV">
+            ⬇ Export Supportlist
+          </button>
           <button class="btn btn-primary btn-sm" id="btn-optool-add">+ Add ${esc(currentTab)} Row</button>
           <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-optool" title="Full Screen Table">
             <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
@@ -6511,6 +6510,45 @@ function buildDbByLhidMap(state) {
       </div>
     </div>
   `;
+  }
+
+  export function generateOptoolSupportListCsv(ctx) {
+    const vm = buildOptoolViewModel(ctx);
+    const { currentTab, cols, indexedRows, dbByLhid } = vm;
+
+    const escapeCsv = (val) => {
+      const s = String(val ?? '');
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+
+    const headers = cols.map((c) => c.label || c.header || c.key);
+    const csvLines = [headers.map(escapeCsv).join(',')];
+
+    indexedRows.forEach(({ row }) => {
+      const rowVals = [];
+      for (const c of cols) {
+        let val = getOptoolCellValue(row, c, dbByLhid);
+        if (val === null || val === undefined || val === '—') val = '';
+        if (c.type === 'decimal' && val !== '') {
+          const num = parseFloat(String(val).replace(/,/g, ''));
+          val = !isNaN(num) ? num.toFixed(4) : val;
+        }
+        if (c.key === 'lhid' && val) {
+          val = formatLhidDisplay(val);
+        }
+        rowVals.push(val);
+      }
+      csvLines.push(rowVals.map(escapeCsv).join(','));
+    });
+
+    const safeTab = currentTab.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Supportlist_${safeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+    return {
+      csvText: csvLines.join('\r\n'),
+      filename,
+      rowCount: indexedRows.length,
+      currentTab
+    };
   }
 
   export function renderSyncView(ctx) {

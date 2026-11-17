@@ -28,6 +28,7 @@ import { createAppServer } from '../app.js';
 import vercelHandler from '../../api/index.js';
 import {
   renderOptoolView,
+  generateOptoolSupportListCsv,
   getColumnFilterValues,
   isChecklistChecked,
   LINKED_DB_PROFILE_FIELDS,
@@ -551,6 +552,16 @@ test('OPTool table displays linked Database columns right after LHID for CF(DOC)
       const titleDd = getColumnFilterValues(ctx, '__db_titleNumber');
       assert.equal(titleDd.col?.dbKey, 'titleNumber');
       assert.ok(titleDd.values.length > 0, `Expected dropdown filter values for __db_titleNumber on ${tab}`);
+
+      // Verify Export Supportlist replaced Import CSV on supportlist tables
+      assert.ok(html.includes('id="btn-optool-export-csv"'), `Expected Export Supportlist button on ${tab}`);
+      assert.ok(html.includes('Export Supportlist'), `Expected 'Export Supportlist' label on ${tab}`);
+      assert.ok(!html.includes(`Import CSV to ${tab}`), `Expected 'Import CSV to ${tab}' removed from ${tab}`);
+
+      const exportResult = generateOptoolSupportListCsv(ctx);
+      assert.ok(exportResult.csvText.includes('LHID'), `Expected LHID header in exported CSV for ${tab}`);
+      assert.ok(exportResult.filename.startsWith('Supportlist_'), `Expected Supportlist_ prefix in filename for ${tab}`);
+      assert.equal(exportResult.rowCount, (store.state.optool[tab] || []).length);
     }
 
     // Installation should not inject linked DB table columns
