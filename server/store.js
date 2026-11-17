@@ -596,6 +596,21 @@ export class ConsolidatedStore {
       this.state.users = [];
       dirty = true;
     }
+    if (!Array.isArray(this.state.deletedUserEmails)) {
+      this.state.deletedUserEmails = [];
+      dirty = true;
+    }
+    if (!Array.isArray(this.state.deletedUserIds)) {
+      this.state.deletedUserIds = [];
+      dirty = true;
+    }
+    if (this.state.deletedUserEmails.length > 0 || this.state.deletedUserIds.length > 0) {
+      const beforeCount = (this.state.users || []).length;
+      this.state.users = (this.state.users || []).filter((u) => !this.isUserDeleted(u?.email, u?.id));
+      if (this.state.users.length !== beforeCount) {
+        dirty = true;
+      }
+    }
     const hasApprovedAdmin = this.state.users.some(
       (u) => u && u.role === 'admin' && u.status === 'approved'
     );
@@ -2178,6 +2193,38 @@ export class ConsolidatedStore {
     return this.state.authSecret;
   }
 
+  /** Check if an account email or user ID has been deleted (tombstoned). */
+  isUserDeleted(email, id) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanId = String(id || '').trim();
+    const deletedEmails = Array.isArray(this.state?.deletedUserEmails) ? this.state.deletedUserEmails : [];
+    const deletedIds = Array.isArray(this.state?.deletedUserIds) ? this.state.deletedUserIds : [];
+    if (cleanEmail && deletedEmails.includes(cleanEmail)) return true;
+    if (cleanId && deletedIds.includes(cleanId)) return true;
+    return false;
+  }
+
+  /** Record a tombstone for a deleted account email/id and purge from local state. */
+  recordDeletedUserTombstone(id, email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanId = String(id || '').trim();
+    if (!Array.isArray(this.state.deletedUserEmails)) this.state.deletedUserEmails = [];
+    if (!Array.isArray(this.state.deletedUserIds)) this.state.deletedUserIds = [];
+    let changed = false;
+    if (cleanEmail && !this.state.deletedUserEmails.includes(cleanEmail)) {
+      this.state.deletedUserEmails.push(cleanEmail);
+      changed = true;
+    }
+    if (cleanId && !this.state.deletedUserIds.includes(cleanId)) {
+      this.state.deletedUserIds.push(cleanId);
+      changed = true;
+    }
+    const beforeLen = (this.state.users || []).length;
+    this.state.users = (this.state.users || []).filter((u) => !this.isUserDeleted(u?.email, u?.id));
+    if (this.state.users.length !== beforeLen) changed = true;
+    if (changed) this.save();
+  }
+
   /** Find a persisted user record by normalized email. */
   findUserByEmail(email) {
     const target = String(email || '').trim().toLowerCase();
@@ -2232,6 +2279,12 @@ export class ConsolidatedStore {
       const err = new Error('An account with that email already exists.');
       err.statusCode = 409;
       throw err;
+    }
+    if (Array.isArray(this.state.deletedUserEmails)) {
+      const delIdx = this.state.deletedUserEmails.indexOf(cleanEmail);
+      if (delIdx >= 0) {
+        this.state.deletedUserEmails.splice(delIdx, 1);
+      }
     }
 
     if (!this.state.pendingOtps || typeof this.state.pendingOtps !== 'object') {
@@ -2331,6 +2384,12 @@ export class ConsolidatedStore {
       const err = new Error('An account with that email already exists.');
       err.statusCode = 409;
       throw err;
+    }
+    if (Array.isArray(this.state.deletedUserEmails)) {
+      const delIdx = this.state.deletedUserEmails.indexOf(cleanEmail);
+      if (delIdx >= 0) {
+        this.state.deletedUserEmails.splice(delIdx, 1);
+      }
     }
     if (requireOtp) {
       this.verifyAndConsumeSignupOtp(cleanEmail, otpCode);
@@ -2436,15 +2495,19 @@ export class ConsolidatedStore {
 
     for (const raw of sheetUsers) {
       const cleanEmail = String(raw?.email || '').trim().toLowerCase();
-      if (!cleanEmail) continue;
-      const cleanId = String(raw?.id || '').trim() || `usr-${crypto.randomBytes(6).toString('hex')}`;
+      const cleanId = String(raw?.id || '').trim();
+      if (!cleanEmail && !cleanId) continue;
+      if (this.isUserDeleted(cleanEmail, cleanId)) {
+        continue;
+      }
+      const finalId = cleanId || `usr-${crypto.randomBytes(6).toString('hex')}`;
       const existing =
-        (this.state.users || []).find((u) => u.id === cleanId) ||
+        (this.state.users || []).find((u) => u.id === finalId) ||
         this.findUserByEmail(cleanEmail);
 
       if (!existing) {
         this.state.users.push({
-          id: cleanId,
+          id: finalId,
           name: String(raw.name || cleanEmail).trim(),
           email: cleanEmail,
           province: String(raw.province || 'Region VIII Hub').trim(),
@@ -2533,6 +2596,16 @@ export class ConsolidatedStore {
         err.statusCode = 400;
         throw err;
       }
+    }
+    const targetEmail = String(target.email || '').trim().toLowerCase();
+    const targetIdClean = String(target.id || '').trim();
+    if (!Array.isArray(this.state.deletedUserEmails)) this.state.deletedUserEmails = [];
+    if (!Array.isArray(this.state.deletedUserIds)) this.state.deletedUserIds = [];
+    if (targetEmail && !this.state.deletedUserEmails.includes(targetEmail)) {
+      this.state.deletedUserEmails.push(targetEmail);
+    }
+    if (targetIdClean && !this.state.deletedUserIds.includes(targetIdClean)) {
+      this.state.deletedUserIds.push(targetIdClean);
     }
     this.state.users.splice(idx, 1);
     this.save();

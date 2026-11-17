@@ -663,7 +663,7 @@ function doPost(e) {
     }
 
     if (body.action === 'syncUserAccounts' && Array.isArray(body.users)) {
-      const syncUsersRes = syncAllUserAccountsRecord_(body.users);
+      const syncUsersRes = syncAllUserAccountsRecord_(body.users, body.deletedEmails, body.deletedIds);
       return ContentService.createTextOutput(JSON.stringify(syncUsersRes))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -1822,8 +1822,18 @@ function ensureUserAccountsSheet_() {
   return sheet;
 }
 
+function findAccountColumnIndex_(headers, candidates) {
+  for (let i = 0; i < headers.length; i++) {
+    const norm = String(headers[i] || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (let c = 0; c < candidates.length; c++) {
+      if (norm === candidates[c]) return i;
+    }
+  }
+  return -1;
+}
+
 /** Read all SALIG user accounts from the Regional Hub User_Accounts tab. */
-function readUserAccountsFromHub_() {
+function readUserAccountsFromHub_(deletedEmails, deletedIds) {
   const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
   const sheet = hub.getSheetByName('User_Accounts');
   if (!sheet || sheet.getLastRow() <= 1) return [];
@@ -1831,36 +1841,55 @@ function readUserAccountsFromHub_() {
   const headers = data[0].map(function (h) {
     return String(h || '').trim();
   });
-  const colIdx = {};
-  headers.forEach(function (h, i) {
-    colIdx[h] = i;
-  });
+  const delEmails = Array.isArray(deletedEmails)
+    ? deletedEmails.map(function (e) { return String(e || '').trim().toLowerCase(); }).filter(Boolean)
+    : [];
+  const delIds = Array.isArray(deletedIds)
+    ? deletedIds.map(function (i) { return String(i || '').trim(); }).filter(Boolean)
+    : [];
 
-  const getVal = function (row, key) {
-    const idx = colIdx[key];
-    return idx !== undefined ? String(row[idx] || '').trim() : '';
+  const getCol = function (candidates) {
+    return findAccountColumnIndex_(headers, candidates);
+  };
+  const idCol = getCol(['userid', 'id', 'useridentification']);
+  const nameCol = getCol(['fullname', 'name', 'userfullname']);
+  const emailCol = getCol(['email', 'emailaddress', 'useremail', 'mail']);
+  const provCol = getCol(['province', 'prov']);
+  const phoneCol = getCol(['contactnumber', 'contact', 'phonenumber', 'phone', 'mobile']);
+  const roleCol = getCol(['role', 'userrole']);
+  const statusCol = getCol(['status', 'userstatus', 'approvalstatus']);
+  const verifiedCol = getCol(['emailverified', 'verified']);
+  const hashCol = getCol(['passwordhash', 'hash']);
+  const createdCol = getCol(['createdat', 'created']);
+  const updatedCol = getCol(['updatedat', 'updated']);
+  const appAtCol = getCol(['approvedat']);
+  const appByCol = getCol(['approvedby']);
+
+  const getCell = function (row, col) {
+    return col >= 0 ? String(row[col] || '').trim() : '';
   };
 
   const out = [];
   for (let r = 1; r < data.length; r++) {
-    const email = getVal(data[r], 'Email').toLowerCase();
-    const id = getVal(data[r], 'User_ID');
+    const email = getCell(data[r], emailCol).toLowerCase();
+    const id = getCell(data[r], idCol);
     if (!email && !id) continue;
-    const verifiedRaw = getVal(data[r], 'Email_Verified').toUpperCase();
+    if (delEmails.indexOf(email) >= 0 || (id && delIds.indexOf(id) >= 0)) continue;
+    const verifiedRaw = getCell(data[r], verifiedCol).toUpperCase();
     out.push({
       id: id || ('usr-' + email),
-      name: getVal(data[r], 'Full_Name'),
+      name: getCell(data[r], nameCol) || email,
       email: email,
-      province: getVal(data[r], 'Province'),
-      contactNumber: getVal(data[r], 'Contact_Number'),
-      role: (getVal(data[r], 'Role') || 'user').toLowerCase(),
-      status: (getVal(data[r], 'Status') || 'pending').toLowerCase(),
+      province: getCell(data[r], provCol),
+      contactNumber: getCell(data[r], phoneCol),
+      role: (getCell(data[r], roleCol) || 'user').toLowerCase(),
+      status: (getCell(data[r], statusCol) || 'pending').toLowerCase(),
       emailVerified: verifiedRaw === 'TRUE' || verifiedRaw === 'YES',
-      passwordHash: getVal(data[r], 'Password_Hash'),
-      createdAt: getVal(data[r], 'Created_At'),
-      updatedAt: getVal(data[r], 'Updated_At') || getVal(data[r], 'Created_At'),
-      approvedAt: getVal(data[r], 'Approved_At') || null,
-      approvedBy: getVal(data[r], 'Approved_By') || null
+      passwordHash: getCell(data[r], hashCol),
+      createdAt: getCell(data[r], createdCol),
+      updatedAt: getCell(data[r], updatedCol) || getCell(data[r], createdCol),
+      approvedAt: getCell(data[r], appAtCol) || null,
+      approvedBy: getCell(data[r], appByCol) || null
     });
   }
   return out;
@@ -1871,8 +1900,10 @@ function upsertUserAccountRecord_(user) {
   const sheet = ensureUserAccountsSheet_();
   const values = sheet.getDataRange().getDisplayValues();
   const headers = values[0].map(function (h) { return String(h || '').trim(); });
-  const idCol = headers.indexOf('User_ID');
-  const emailCol = headers.indexOf('Email');
+  let idCol = findAccountColumnIndex_(headers, ['userid', 'id', 'useridentification']);
+  if (idCol < 0) idCol = headers.indexOf('User_ID');
+  let emailCol = findAccountColumnIndex_(headers, ['email', 'emailaddress', 'useremail', 'mail']);
+  if (emailCol < 0) emailCol = headers.indexOf('Email');
 
   const targetId = String(user.id || '').trim();
   const targetEmail = String(user.email || '').trim().toLowerCase();
@@ -1899,7 +1930,8 @@ function upsertUserAccountRecord_(user) {
     const rEmail = emailCol >= 0 ? String(values[r][emailCol] || '').trim().toLowerCase() : '';
     if ((targetId && rId === targetId) || (targetEmail && rEmail === targetEmail)) {
       foundRow = r + 1;
-      const hashCol = headers.indexOf('Password_Hash');
+      let hashCol = findAccountColumnIndex_(headers, ['passwordhash', 'hash']);
+      if (hashCol < 0) hashCol = headers.indexOf('Password_Hash');
       if (hashCol >= 0) existingExistingHash = String(values[r][hashCol] || '').trim();
       break;
     }
@@ -1923,8 +1955,18 @@ function upsertUserAccountRecord_(user) {
 }
 
 /** Sync an array of SALIG user accounts into the Regional Hub User_Accounts tab. */
-function syncAllUserAccountsRecord_(users) {
-  if (!Array.isArray(users)) return { ok: true, synced: 0, users: readUserAccountsFromHub_() };
+function syncAllUserAccountsRecord_(users, deletedEmails, deletedIds) {
+  if (Array.isArray(deletedEmails) || Array.isArray(deletedIds)) {
+    const delEmailList = (deletedEmails || []).map(function (e) { return String(e || '').trim().toLowerCase(); }).filter(Boolean);
+    const delIdList = (deletedIds || []).map(function (i) { return String(i || '').trim(); }).filter(Boolean);
+    delEmailList.forEach(function (e) {
+      deleteUserAccountRecord_('', e);
+    });
+    delIdList.forEach(function (i) {
+      deleteUserAccountRecord_(i, '');
+    });
+  }
+  if (!Array.isArray(users)) return { ok: true, synced: 0, users: readUserAccountsFromHub_(deletedEmails, deletedIds) };
   let synced = 0;
   users.forEach(function (u) {
     if (u && u.email) {
@@ -1932,7 +1974,7 @@ function syncAllUserAccountsRecord_(users) {
       synced += 1;
     }
   });
-  return { ok: true, synced: synced, users: readUserAccountsFromHub_() };
+  return { ok: true, synced: synced, users: readUserAccountsFromHub_(deletedEmails, deletedIds) };
 }
 
 /** Delete a SALIG user account row from the Regional Hub User_Accounts tab. */
@@ -1942,16 +1984,30 @@ function deleteUserAccountRecord_(userId, email) {
   if (!sheet || sheet.getLastRow() <= 1) return false;
   const values = sheet.getDataRange().getDisplayValues();
   const headers = values[0].map(function (h) { return String(h || '').trim(); });
-  const idCol = headers.indexOf('User_ID');
-  const emailCol = headers.indexOf('Email');
+  let idCol = findAccountColumnIndex_(headers, ['userid', 'id', 'useridentification']);
+  if (idCol < 0) idCol = headers.indexOf('User_ID');
+  let emailCol = findAccountColumnIndex_(headers, ['email', 'emailaddress', 'useremail', 'mail']);
+  if (emailCol < 0) emailCol = headers.indexOf('Email');
   const targetId = String(userId || '').trim();
   const targetEmail = String(email || '').trim().toLowerCase();
 
   let deletedAny = false;
   for (let r = values.length - 1; r >= 1; r--) {
-    const rId = idCol >= 0 ? String(values[r][idCol] || '').trim() : '';
-    const rEmail = emailCol >= 0 ? String(values[r][emailCol] || '').trim().toLowerCase() : '';
-    if ((targetId && rId === targetId) || (targetEmail && rEmail === targetEmail)) {
+    const row = values[r];
+    const rId = idCol >= 0 ? String(row[idCol] || '').trim() : '';
+    const rEmail = emailCol >= 0 ? String(row[emailCol] || '').trim().toLowerCase() : '';
+    let matches = false;
+    if (targetId && rId === targetId) matches = true;
+    if (targetEmail && rEmail === targetEmail) matches = true;
+    if (!matches && targetEmail) {
+      for (let c = 0; c < row.length; c++) {
+        if (String(row[c] || '').trim().toLowerCase() === targetEmail) {
+          matches = true;
+          break;
+        }
+      }
+    }
+    if (matches) {
       sheet.deleteRow(r + 1);
       deletedAny = true;
     }

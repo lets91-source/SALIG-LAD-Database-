@@ -1707,6 +1707,24 @@ test('User_Accounts two-way sync with Regional Account Hub GAS Web App', async (
     const delRemoteJson = await delRemoteRes.json();
     assert.equal(delRemoteJson.ok, true);
     assert.equal(sheetUsers.some((u) => u.email === remoteUser.email), false);
+
+    // 7. Verify persistent tombstones prevent resurrection when Google Sheet still returns deleted account
+    assert.equal(store.isUserDeleted(remoteUser.email, remoteUser.id), true);
+    const pullResWithZombie = store.mergeUsersFromSheet([
+      remoteUser,
+      {
+        id: 'usr-new-legit',
+        name: 'Legit New User',
+        email: 'legit.new@dar8.gov.ph',
+        province: 'Leyte',
+        role: 'user',
+        status: 'pending'
+      }
+    ]);
+    assert.equal(pullResWithZombie.added, 1);
+    assert.equal(store.findUserByEmail(remoteUser.email), null);
+    assert.equal(store.findUserById(remoteUser.id), null);
+    assert.notEqual(store.findUserByEmail('legit.new@dar8.gov.ph'), null);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

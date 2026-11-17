@@ -676,7 +676,12 @@ export function createAppServer(dataDir, options = {}) {
         await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
         const gasPushResult = await pushMutationToGas(
           store,
-          { action: 'syncUserAccounts', users: store.state.users },
+          {
+            action: 'syncUserAccounts',
+            users: store.state.users,
+            deletedEmails: store.state.deletedUserEmails || [],
+            deletedIds: store.state.deletedUserIds || []
+          },
           `Synchronized ${store.state.users.length} account(s) with Regional Hub User_Accounts tab.`,
           gasPushFn
         );
@@ -733,24 +738,27 @@ export function createAppServer(dataDir, options = {}) {
         const userId = decodeURIComponent(rawId);
         const emailHint = query.email ? decodeURIComponent(query.email).trim() : '';
         try {
-          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
           let targetUser = store.findUserById(userId) || (emailHint ? store.findUserByEmail(emailHint) : null);
           if (!targetUser && userId.includes('@')) {
             targetUser = store.findUserByEmail(userId);
+          }
+
+          // Self-delete protection check
+          if (
+            sessionUser &&
+            (sessionUser.id === userId ||
+              (targetUser && sessionUser.id === targetUser.id) ||
+              (emailHint && String(sessionUser.email || '').toLowerCase() === emailHint.toLowerCase()) ||
+              (targetUser && String(sessionUser.email || '').toLowerCase() === String(targetUser.email || '').toLowerCase()))
+          ) {
+            return sendJson(res, 400, { error: 'You cannot delete your own active Administrator account.' });
           }
 
           let deletedUser;
           if (targetUser) {
             deletedUser = store.deleteUserAccount(targetUser.id, sessionUser);
           } else {
-            // Self-delete protection check even if record was only pending in GAS
-            if (
-              sessionUser &&
-              (sessionUser.id === userId ||
-                (emailHint && String(sessionUser.email || '').toLowerCase() === emailHint.toLowerCase()))
-            ) {
-              return sendJson(res, 400, { error: 'You cannot delete your own active Administrator account.' });
-            }
+            store.recordDeletedUserTombstone(userId, emailHint);
             deletedUser = {
               id: userId,
               email: emailHint || (userId.includes('@') ? userId : ''),

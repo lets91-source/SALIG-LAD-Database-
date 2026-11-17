@@ -301160,22 +301160,6 @@
       "approvedBy": "system"
     },
     {
-      "id": "usr-d4251a44ab6a",
-      "name": "Leo Adre",
-      "email": "adrejhat@gmail.com",
-      "province": "Region VIII Hub",
-      "contactNumber": "9206564007",
-      "passwordHash": "77e5a9d20dbc66094421d1d38ef52d5f:b2d94c98b9f7609e3164f6f31b84f7a468fe79bd794474039b03043782f8348deb008caa56f0e5b13f49319862d7a496a92f63aa5490f8e7d80688997b42b3d0",
-      "emailVerified": true,
-      "emailVerifiedAt": "2026-11-14T10:18:13.870Z",
-      "role": "user",
-      "status": "pending",
-      "createdAt": "2026-11-14T10:18:13.870Z",
-      "updatedAt": "2026-11-14T10:18:13.870Z",
-      "approvedAt": null,
-      "approvedBy": null
-    },
-    {
       "id": "usr-2cf9a78074c5",
       "name": "nel",
       "email": "junnel.ilagan19@gmail.com",
@@ -301764,5 +301748,11 @@
     }
   },
   "driveFolderId": "1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ",
-  "uploadedFiles": {}
+  "uploadedFiles": {},
+  "deletedUserEmails": [
+    "adrejhat@gmail.com"
+  ],
+  "deletedUserIds": [
+    "usr-d4251a44ab6a"
+  ]
 }
