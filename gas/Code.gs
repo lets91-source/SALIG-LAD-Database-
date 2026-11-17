@@ -2022,3 +2022,66 @@ function installAutomatedSyncTrigger() {
   Logger.log('Installed 5-minute automated provincial sync trigger.');
   return { ok: true, message: 'Automated 5-minute sync trigger installed successfully.' };
 }
+
+/**
+ * Real-Time Outbound Webhook to SALIG Web System:
+ * Instantly notifies the SALIG application server whenever an edit, insertion,
+ * or deletion occurs in Google Sheets, enabling instant sub-second synchronization.
+ */
+function onSpreadsheetChangeWebhook(e) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const webhookUrl = props.getProperty('SALIG_WEBHOOK_URL');
+    if (!webhookUrl) {
+      Logger.log('SALIG_WEBHOOK_URL not configured in Script Properties.');
+      return;
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = e && e.source ? e.source.getActiveSheet() : (ss ? ss.getActiveSheet() : null);
+    const sheetName = sheet ? sheet.getName() : 'Unknown';
+
+    const payload = {
+      source: 'GoogleSheet',
+      sheetName: sheetName,
+      changeType: (e && e.changeType) || 'EDIT',
+      timestamp: new Date().toISOString()
+    };
+
+    const res = UrlFetchApp.fetch(webhookUrl, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    Logger.log('Webhook dispatched to SALIG (' + res.getResponseCode() + '): ' + sheetName);
+  } catch (err) {
+    Logger.log('Error dispatching webhook to SALIG: ' + err.message);
+  }
+}
+
+/**
+ * Installs an instant onChange trigger in Google Sheets that sends
+ * immediate webhook updates to SALIG whenever any user edits the spreadsheet.
+ *
+ * @param {string} saligWebhookUrl - e.g. "https://your-domain.vercel.app/api/sync/webhook"
+ */
+function installRealTimeWebhookTrigger(saligWebhookUrl) {
+  if (saligWebhookUrl) {
+    PropertiesService.getScriptProperties().setProperty('SALIG_WEBHOOK_URL', saligWebhookUrl.trim());
+  }
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'onSpreadsheetChangeWebhook') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ScriptApp.newTrigger('onSpreadsheetChangeWebhook')
+    .forSpreadsheet(ss)
+    .onChange()
+    .create();
+  const currentUrl = saligWebhookUrl || PropertiesService.getScriptProperties().getProperty('SALIG_WEBHOOK_URL');
+  Logger.log('Real-time onChange webhook trigger installed for: ' + currentUrl);
+  return { ok: true, message: 'Real-time webhook trigger installed successfully. Target: ' + currentUrl };
+}

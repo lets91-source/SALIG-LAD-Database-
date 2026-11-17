@@ -3176,10 +3176,12 @@ test('Automatic Live Provincial Sync & Google Sheet Database Integration', async
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 
-  // 6. Verify GAS Code.gs includes scheduledProvincialSync & installAutomatedSyncTrigger
+  // 6. Verify GAS Code.gs includes scheduledProvincialSync & installAutomatedSyncTrigger & real-time webhook
   const gasCode = fs.readFileSync(path.join(__dirname, '..', '..', 'gas', 'Code.gs'), 'utf8');
   assert.ok(gasCode.includes('scheduledProvincialSync'), 'Includes scheduledProvincialSync');
   assert.ok(gasCode.includes('installAutomatedSyncTrigger'), 'Includes installAutomatedSyncTrigger');
+  assert.ok(gasCode.includes('onSpreadsheetChangeWebhook'), 'Includes onSpreadsheetChangeWebhook');
+  assert.ok(gasCode.includes('installRealTimeWebhookTrigger'), 'Includes installRealTimeWebhookTrigger');
   assert.ok(gasCode.includes('getWriteTargetSpreadsheets_(tabName'), 'Passes tabName to getWriteTargetSpreadsheets_');
 });
 

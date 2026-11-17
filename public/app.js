@@ -97,8 +97,8 @@ const appState = {
   cfTableLayout: 'standard'
 };
 
-const AUTO_SYNC_MAX_AGE_MS = 45 * 1000;
-const AUTO_SYNC_INTERVAL_MS = 60 * 1000;
+const AUTO_SYNC_MAX_AGE_MS = 20 * 1000;
+const AUTO_SYNC_INTERVAL_MS = 30 * 1000;
 
 let optoolSearchTimer = null;
 let closeColPopoverFn = null;
