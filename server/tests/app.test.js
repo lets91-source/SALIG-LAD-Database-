@@ -2460,6 +2460,9 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
   assert.ok(htmlTransposed.includes('Balance (Prepared &amp; Signed)'), 'Balance (Prepared & Signed) row exists');
   assert.ok(htmlTransposed.includes('With Reported Month'), 'With Reported Month row exists');
   assert.ok(htmlTransposed.includes('Balance (Reported Month)'), 'Balance (Reported Month) row exists');
+  assert.ok(htmlTransposed.includes('Rate of Accomp. (Conducted FI)'), 'Rate of Accomp row exists in transposed layout');
+  assert.ok(htmlTransposed.includes('Rate of Accomp. (Prepared &amp; Signed)'), 'Rate of Accomp Prep row exists in transposed layout');
+  assert.ok(htmlTransposed.includes('Rate of Accomp. (Reported Month)'), 'Rate of Accomp Month row exists in transposed layout');
 
   // 4. Clickable figure links with data-open-cf-support-list
   assert.ok(htmlTransposed.includes('data-open-cf-support-list'), 'Clickable figure links must be present');
@@ -2477,8 +2480,15 @@ test('CF Whereabouts Provincial Milestone Table: Province in rows, NEP Target, F
   assert.ok(htmlStandard.includes('WITH CONDUCTED FI'), 'Standard table has WITH CONDUCTED FI header');
   assert.ok(htmlStandard.includes('WITH PREPARED &amp; SIGNED'), 'Standard table has WITH PREPARED & SIGNED header');
   assert.ok(htmlStandard.includes('WITH REPORTED MONTH'), 'Standard table has WITH REPORTED MONTH header');
+  assert.ok(htmlStandard.includes('RATE OF ACCOMP.'), 'Standard table has RATE OF ACCOMP. header');
   assert.ok(!htmlStandard.includes('>STATUS<') && !htmlStandard.includes('STATUS (LHS)'), 'Redundant STATUS column must be removed');
   assert.ok(htmlStandard.includes('color:#ffffff;font-weight:800;'), 'Region VIII Total footer figures have white font color');
+
+  // 5a. Metric Modes: LHS and Area both include RATE OF ACCOMP.
+  const htmlLhs = renderMilestoneWhereaboutsView({ ...ctxStandard, cfMetricMode: 'lhs' }, cfg);
+  assert.ok(htmlLhs.includes('RATE OF ACCOMP.'), 'LHS mode includes RATE OF ACCOMP.');
+  const htmlArea = renderMilestoneWhereaboutsView({ ...ctxStandard, cfMetricMode: 'area' }, cfg);
+  assert.ok(htmlArea.includes('RATE OF ACCOMP.'), 'Area mode includes RATE OF ACCOMP.');
 
   // 5b. Default Layout is Standard (Rows: Province)
   const ctxDefault = {
