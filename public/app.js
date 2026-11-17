@@ -541,6 +541,7 @@ function switchAuthTab(tabName = 'login') {
 }
 
 function showAuthScreen(message = '', tone = 'info', tab = 'login') {
+  stopInactivityWatcher();
   appState.currentUser = null;
   appState.provinceScope = null;
   appState.filters.province = 'ALL';
@@ -631,6 +632,218 @@ function toast(message, isError = false) {
   el.textContent = message;
   stack.appendChild(el);
   setTimeout(() => el.remove(), 4200);
+}
+
+// =========================================================================
+// Session Inactivity Watcher (Auto-Logout after 15 minutes of inactivity)
+// =========================================================================
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes of inactivity
+const INACTIVITY_WARNING_MS = 14 * 60 * 1000; // 14 minutes (60-second countdown warning)
+const INACTIVITY_STORAGE_KEY = 'salig_last_activity';
+const INACTIVITY_CHECK_INTERVAL_MS = 1000;    // Check every second for accurate countdown and prompt response
+
+const getInactivityTimeoutMs = () =>
+  (typeof window !== 'undefined' && Number(window.__SALIG_INACTIVITY_TIMEOUT_MS__)) ||
+  INACTIVITY_TIMEOUT_MS;
+const getInactivityWarningMs = () =>
+  (typeof window !== 'undefined' && Number(window.__SALIG_INACTIVITY_WARNING_MS__)) ||
+  INACTIVITY_WARNING_MS;
+
+let inactivityCheckTimer = null;
+let lastUserActivityTs = Date.now();
+let lastThrottledRecordTs = 0;
+let isInactivityWarningVisible = false;
+let inactivityListenersAttached = false;
+
+function recordUserActivity(fromRemote = false) {
+  const now = Date.now();
+  lastUserActivityTs = now;
+  if (isInactivityWarningVisible) {
+    closeInactivityWarningModal();
+  }
+  if (!fromRemote && now - lastThrottledRecordTs > 1500) {
+    lastThrottledRecordTs = now;
+    try {
+      localStorage.setItem(INACTIVITY_STORAGE_KEY, String(now));
+    } catch (_) {}
+  }
+}
+
+function handleUserActivityEvent(e) {
+  if (!appState.currentUser) return;
+  // If user explicitly clicked "Log Out Now", do not intercept with activity reset
+  if (e?.target?.closest && e.target.closest('#btn-inactivity-logout')) return;
+  recordUserActivity(false);
+}
+
+function attachInactivityEventListeners() {
+  if (inactivityListenersAttached || typeof window === 'undefined') return;
+  inactivityListenersAttached = true;
+
+  const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'wheel'];
+  activityEvents.forEach((evt) => {
+    window.addEventListener(evt, handleUserActivityEvent, { passive: true });
+  });
+
+  // Cross-tab synchronization
+  window.addEventListener('storage', (e) => {
+    if (e.key === INACTIVITY_STORAGE_KEY && e.newValue) {
+      const remoteTs = Number(e.newValue);
+      if (remoteTs > lastUserActivityTs) {
+        lastUserActivityTs = remoteTs;
+        if (isInactivityWarningVisible) {
+          closeInactivityWarningModal();
+        }
+      }
+    }
+  });
+
+  // When tab becomes visible again or gains focus, check elapsed idle time immediately
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && appState.currentUser) {
+      checkInactivityStatus();
+    }
+  });
+  window.addEventListener('focus', () => {
+    if (appState.currentUser) {
+      checkInactivityStatus();
+    }
+  });
+
+  // Wire buttons inside warning modal
+  document.getElementById('btn-inactivity-stay')?.addEventListener('click', () => {
+    recordUserActivity(false);
+    closeInactivityWarningModal();
+    toast('Session active: Inactivity timer reset.');
+  });
+  document.getElementById('btn-inactivity-logout')?.addEventListener('click', () => {
+    performLogout({ reason: 'manual' });
+  });
+}
+
+function getLastKnownActivityTime() {
+  let stored = 0;
+  try {
+    stored = Number(localStorage.getItem(INACTIVITY_STORAGE_KEY) || 0);
+  } catch (_) {}
+  return Math.max(lastUserActivityTs, stored);
+}
+
+function checkInactivityStatus() {
+  if (!appState.currentUser) return;
+  const now = Date.now();
+  const lastActive = getLastKnownActivityTime();
+  const idleMs = now - lastActive;
+  const timeoutMs = getInactivityTimeoutMs();
+  const warningMs = getInactivityWarningMs();
+
+  if (idleMs >= timeoutMs) {
+    closeInactivityWarningModal();
+    performLogout({ reason: 'inactivity' });
+    return;
+  }
+
+  if (idleMs >= warningMs) {
+    const remainingSeconds = Math.max(1, Math.ceil((timeoutMs - idleMs) / 1000));
+    showInactivityWarningModal(remainingSeconds);
+  } else if (isInactivityWarningVisible) {
+    closeInactivityWarningModal();
+  }
+}
+
+function showInactivityWarningModal(remainingSeconds) {
+  if (!appState.currentUser) {
+    closeInactivityWarningModal();
+    return;
+  }
+  isInactivityWarningVisible = true;
+  const modalEl = document.getElementById('inactivity-warning-modal');
+  if (modalEl) {
+    modalEl.classList.remove('hidden');
+    const countEl = document.getElementById('inactivity-countdown-number');
+    if (countEl) {
+      countEl.textContent = `${remainingSeconds}s`;
+      countEl.classList.toggle('urgent', remainingSeconds <= 15);
+    }
+  }
+}
+
+function closeInactivityWarningModal() {
+  isInactivityWarningVisible = false;
+  const modalEl = document.getElementById('inactivity-warning-modal');
+  if (modalEl) {
+    modalEl.classList.add('hidden');
+  }
+}
+
+function startInactivityWatcher() {
+  stopInactivityWatcher();
+  attachInactivityEventListeners();
+  const now = Date.now();
+  lastUserActivityTs = now;
+  try {
+    localStorage.setItem(INACTIVITY_STORAGE_KEY, String(now));
+  } catch (_) {}
+  inactivityCheckTimer = setInterval(checkInactivityStatus, INACTIVITY_CHECK_INTERVAL_MS);
+}
+
+function stopInactivityWatcher() {
+  if (inactivityCheckTimer) {
+    clearInterval(inactivityCheckTimer);
+    inactivityCheckTimer = null;
+  }
+  closeInactivityWarningModal();
+}
+
+/** Global user logout handler with support for clean manual and inactivity triggers. */
+async function performLogout(options = {}) {
+  const { reason = 'manual' } = options;
+  stopAutoSync();
+  stopInactivityWatcher();
+  try {
+    localStorage.removeItem(INACTIVITY_STORAGE_KEY);
+  } catch (_) {}
+  closeInactivityWarningModal();
+  closeModal();
+
+  try {
+    if (reason === 'inactivity') {
+      await api('/api/auth/logout', {
+        method: 'POST',
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+          ? AbortSignal.timeout(1200)
+          : undefined
+      }).catch(() => null);
+    } else {
+      await withLoading(
+        'saving',
+        'Logging Out…',
+        'Closing active SALIG session…',
+        () =>
+          Promise.all([
+            api('/api/auth/logout', {
+              method: 'POST',
+              signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+                ? AbortSignal.timeout(1200)
+                : undefined
+            }).catch(() => null),
+            new Promise((resolve) => setTimeout(resolve, 600))
+          ])
+      );
+    }
+  } finally {
+    appState.usersList = [];
+    appState.pendingUserCount = 0;
+    appState.view = 'dashboard';
+    const message =
+      reason === 'inactivity'
+        ? 'You have been automatically logged out after 15 minutes of inactivity.'
+        : 'You have logged out cleanly.';
+    const tone = reason === 'inactivity' ? 'warning' : 'info';
+    showAuthScreen(message, tone, 'login');
+    syncCurrentUserUi();
+    hideLoadingOverlay(true);
+  }
 }
 
 function renderStatusBanner() {
@@ -5017,6 +5230,7 @@ async function bootAppSession() {
     if (appState.currentUser) maybeAutoSyncGoogleSheets();
   }, 2000);
   startAutoSyncLoop();
+  startInactivityWatcher();
 }
 
 /** Bind Sign In, Email OTP, Create Account, Password Toggles, and Log Out actions. */
@@ -5239,36 +5453,8 @@ function bindAuthEvents() {
     }
   });
 
-  const performLogout = async () => {
-    stopAutoSync();
-    try {
-      await withLoading(
-        'saving',
-        'Logging Out…',
-        'Closing active SALIG session…',
-        () =>
-          Promise.all([
-            api('/api/auth/logout', {
-              method: 'POST',
-              signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
-                ? AbortSignal.timeout(1200)
-                : undefined
-            }).catch(() => null),
-            new Promise((resolve) => setTimeout(resolve, 600))
-          ])
-      );
-    } finally {
-      appState.usersList = [];
-      appState.pendingUserCount = 0;
-      appState.view = 'dashboard';
-      showAuthScreen('You have logged out cleanly.', 'info', 'login');
-      syncCurrentUserUi();
-      hideLoadingOverlay(true);
-    }
-  };
-
-  document.getElementById('btn-logout')?.addEventListener('click', performLogout);
-  document.getElementById('btn-topbar-logout')?.addEventListener('click', performLogout);
+  document.getElementById('btn-logout')?.addEventListener('click', () => performLogout({ reason: 'manual' }));
+  document.getElementById('btn-topbar-logout')?.addEventListener('click', () => performLogout({ reason: 'manual' }));
 }
 
 function updateTopbarClock() {
@@ -5306,6 +5492,16 @@ async function init() {
       () => api('/api/auth/session')
     );
     if (session.authenticated || session.requireAuth === false) {
+      const timeoutMs = getInactivityTimeoutMs();
+      const lastActive = Number(localStorage.getItem(INACTIVITY_STORAGE_KEY) || 0);
+      if (session.authenticated && lastActive > 0 && Date.now() - lastActive >= timeoutMs) {
+        try {
+          localStorage.removeItem(INACTIVITY_STORAGE_KEY);
+        } catch (_) {}
+        await api('/api/auth/logout', { method: 'POST' }).catch(() => null);
+        showAuthScreen('You have been automatically logged out after 15 minutes of inactivity.', 'warning', 'login');
+        return;
+      }
       appState.currentUser = session.user || { name: 'Local Operator', role: 'admin', province: 'Region VIII Hub' };
       await bootAppSession();
     } else {

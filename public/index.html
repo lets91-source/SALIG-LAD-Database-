@@ -350,6 +350,28 @@
     </aside>
   </div>
 
+  <!-- Inactivity Auto-Logout Warning Dialog -->
+  <div class="inactivity-warning-backdrop hidden" id="inactivity-warning-modal" role="alertdialog" aria-modal="true" aria-labelledby="inactivity-modal-title">
+    <div class="inactivity-warning-card">
+      <div class="inactivity-warning-header">
+        <div class="inactivity-warning-icon" aria-hidden="true">⏳</div>
+        <div>
+          <h3 class="inactivity-warning-title" id="inactivity-modal-title">Session Inactivity Warning</h3>
+          <p class="inactivity-warning-subtitle">Your session will expire soon</p>
+        </div>
+      </div>
+      <div class="inactivity-warning-body">
+        <p>You have been inactive for 14 minutes. To protect your data, you will be automatically logged out in:</p>
+        <div class="inactivity-countdown" id="inactivity-countdown-number">60s</div>
+        <p class="inactivity-hint">Move your mouse, press any key, or click <strong>Stay Logged In</strong> below to continue.</p>
+      </div>
+      <div class="inactivity-warning-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-inactivity-logout">Log Out Now</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-inactivity-stay">Stay Logged In</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-stack" id="toast-stack"></div>
 

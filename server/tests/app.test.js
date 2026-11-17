@@ -3731,3 +3731,79 @@ test('Survey Accomplishment counts strictly and only when Column AC (Date Accept
 
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
+
+test('Session Auto-Logout after 15 minutes of inactivity and warning countdown verification', async () => {
+  const dir = makeTempDir();
+  const { server, store } = createAppServer(dir, { requireAuth: true, requireOtp: false });
+  let baseUrl;
+  try {
+    await new Promise((resolve) => server.listen(0, resolve));
+    const port = server.address().port;
+    baseUrl = `http://127.0.0.1:${port}`;
+
+    // 1. Verify static assets define the 15-minute inactivity timeout & 60s warning
+    const htmlRes = await fetch(`${baseUrl}/index.html`);
+    assert.equal(htmlRes.status, 200);
+    const htmlText = await htmlRes.text();
+    assert.match(htmlText, /id="inactivity-warning-modal"/);
+    assert.match(htmlText, /id="inactivity-countdown-number"/);
+    assert.match(htmlText, /id="btn-inactivity-stay"/);
+    assert.match(htmlText, /id="btn-inactivity-logout"/);
+
+    const appJsRes = await fetch(`${baseUrl}/app.js`);
+    assert.equal(appJsRes.status, 200);
+    const appJsText = await appJsRes.text();
+    assert.match(appJsText, /INACTIVITY_TIMEOUT_MS\s*=\s*15\s*\*\s*60\s*\*\s*1000/);
+    assert.match(appJsText, /INACTIVITY_WARNING_MS\s*=\s*14\s*\*\s*60\s*\*\s*1000/);
+    assert.match(appJsText, /startInactivityWatcher/);
+    assert.match(appJsText, /checkInactivityStatus/);
+    assert.match(appJsText, /salig_last_activity/);
+
+    const cssRes = await fetch(`${baseUrl}/styles.css`);
+    assert.equal(cssRes.status, 200);
+    const cssText = await cssRes.text();
+    assert.match(cssText, /\.inactivity-warning-backdrop/);
+    assert.match(cssText, /z-index:\s*100000/);
+    assert.match(cssText, /\.auth-feedback\.warning/);
+
+    // 2. Authenticate admin user
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD })
+    });
+    assert.equal(loginRes.status, 200);
+    const setCookie = loginRes.headers.get('set-cookie');
+    assert.ok(setCookie, 'Received session cookie on login');
+    const cookie = setCookie.split(';')[0];
+
+    // Session check returns authenticated
+    const sessionRes = await fetch(`${baseUrl}/api/auth/session`, {
+      headers: { Cookie: cookie }
+    });
+    assert.equal(sessionRes.status, 200);
+    const sessionData = await sessionRes.json();
+    assert.equal(sessionData.authenticated, true);
+    assert.equal(sessionData.user.email, DEFAULT_ADMIN_EMAIL);
+
+    // 3. Auto-logout trigger (POST /api/auth/logout) cleanly clears session cookie
+    const logoutRes = await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: { Cookie: cookie }
+    });
+    assert.equal(logoutRes.status, 200);
+    const logoutCookie = logoutRes.headers.get('set-cookie');
+    assert.match(logoutCookie, /Max-Age=0/, 'Session cookie is cleared with Max-Age=0');
+
+    // Subsequent session check is unauthenticated
+    const postLogoutSession = await fetch(`${baseUrl}/api/auth/session`, {
+      headers: { Cookie: logoutCookie.split(';')[0] }
+    });
+    assert.equal(postLogoutSession.status, 200);
+    const postLogoutData = await postLogoutSession.json();
+    assert.equal(postLogoutData.authenticated, false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -3097,6 +3097,12 @@ td.cell-check {
   color: #92400e;
 }
 
+.auth-feedback.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -4694,6 +4700,129 @@ th:hover .q-toggle-pill {
 .whereabouts-bottom-bar .page-btn:hover {
   background: #edf3ef;
 }
+
+/* Inactivity Auto-Logout Warning Modal */
+.inactivity-warning-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 20, 13, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100000;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.inactivity-warning-card {
+  background: #ffffff;
+  border-radius: 14px;
+  width: min(440px, 94vw);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(10, 54, 29, 0.12);
+  border: 1px solid rgba(19, 93, 52, 0.15);
+  overflow: hidden;
+  text-align: center;
+  padding: 24px 20px 20px;
+}
+
+.inactivity-warning-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.inactivity-warning-icon {
+  font-size: 38px;
+  line-height: 1;
+  animation: pulseIcon 1.5s infinite;
+}
+
+@keyframes pulseIcon {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.inactivity-warning-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.inactivity-warning-subtitle {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.inactivity-warning-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #334155;
+  margin-bottom: 20px;
+}
+
+.inactivity-countdown {
+  display: inline-block;
+  margin: 12px auto;
+  padding: 8px 18px;
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+  border-radius: 30px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+.inactivity-countdown.urgent {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #dc2626;
+  animation: shakeUrgent 0.5s infinite alternate;
+}
+
+@keyframes shakeUrgent {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+.inactivity-hint {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 8px;
+}
+
+.inactivity-warning-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.inactivity-warning-actions .btn {
+  min-width: 120px;
+  padding: 9px 16px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
 
 
 
