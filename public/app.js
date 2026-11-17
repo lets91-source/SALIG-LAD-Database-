@@ -2553,12 +2553,13 @@ function updateDashboardMapSelection(container, code) {
 }
 
 function bindDashboardViewEvents(container) {
-  // Eastern Visayas Map & Target Breakdown Events
+  // Eastern Visayas Map & Target Breakdown Events (Click to select, click again to unselect)
   container.querySelectorAll('[data-map-province]').forEach((el) => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       const code = el.dataset.mapProvince;
-      updateDashboardMapSelection(container, code);
+      const targetCode = (appState.dashboardMapProvince === code && code !== 'ALL') ? 'ALL' : code;
+      updateDashboardMapSelection(container, targetCode);
     });
   });
 
@@ -2566,14 +2567,16 @@ function bindDashboardViewEvents(container) {
     pill.addEventListener('click', (e) => {
       e.stopPropagation();
       const code = pill.dataset.mapProvincePill;
-      updateDashboardMapSelection(container, code);
+      const targetCode = (appState.dashboardMapProvince === code && code !== 'ALL') ? 'ALL' : code;
+      updateDashboardMapSelection(container, targetCode);
     });
   });
 
   container.querySelectorAll('.prov-breakdown-table tbody tr[data-prov-code]').forEach((tr) => {
     tr.addEventListener('click', () => {
       const code = tr.dataset.provCode;
-      updateDashboardMapSelection(container, code);
+      const targetCode = (appState.dashboardMapProvince === code && code !== 'ALL') ? 'ALL' : code;
+      updateDashboardMapSelection(container, targetCode);
     });
   });
 
