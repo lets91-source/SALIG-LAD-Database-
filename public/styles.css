@@ -970,14 +970,29 @@ textarea.form-control {
 .table-wrap {
   width: 100%;
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: clamp(340px, 68vh, 760px);
+  position: relative;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-wrap thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--dar-green-dark, #0a361d);
+  color: #ffffff;
 }
 
 .table-scroll-xy {
   width: 100%;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: clamp(280px, 56vh, 620px);
+  max-height: clamp(340px, 68vh, 780px);
+  position: relative;
   scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-scroll-xy thead tr.optool-head-titles th {
@@ -1939,6 +1954,9 @@ tr[style*="font-weight:700"] td.sticky-col-province {
 
 /* Provincial Breakdown Table Headers in Regional Dashboard */
 .prov-breakdown-table thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: var(--dar-green-dark, #0a361d) !important;
   color: #ffffff !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -1953,6 +1971,9 @@ tr[style*="font-weight:700"] td.sticky-col-province {
 }
 
 .prov-breakdown-table thead tr:nth-child(2) th {
+  position: sticky;
+  top: 35px;
+  z-index: 9;
   background: #0d4324 !important;
   color: #ffffff !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -1964,6 +1985,14 @@ tr[style*="font-weight:700"] td.sticky-col-province {
   border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-bottom: 2px solid #072915 !important;
   padding: 6px 8px;
+}
+
+.prov-breakdown-table tfoot tr {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  background: var(--bg-light, #f8fafc) !important;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* Eastern Visayas Interactive Map Styling */
@@ -3455,7 +3484,15 @@ body.has-fullscreen-panel #loading-overlay,
 }
 
 .panel.is-fullscreen .table-scroll-xy,
-.panel:fullscreen .table-scroll-xy {
+.panel:fullscreen .table-scroll-xy,
+.panel.is-fullscreen .whereabouts-table-wrap,
+.panel:fullscreen .whereabouts-table-wrap,
+.panel.is-fullscreen .survey-table-wrap,
+.panel:fullscreen .survey-table-wrap,
+.panel.is-fullscreen .survey-matrix-wrap,
+.panel:fullscreen .survey-matrix-wrap,
+.panel.is-fullscreen .nep-milestone-table-wrap,
+.panel:fullscreen .nep-milestone-table-wrap {
   max-height: calc(100vh - 160px) !important;
 }
 
@@ -4358,6 +4395,11 @@ th:hover .q-toggle-pill {
 .survey-table-wrap {
   width: 100%;
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: clamp(340px, 68vh, 740px);
+  position: relative;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 
 .survey-monitoring-table {
@@ -4369,6 +4411,9 @@ th:hover .q-toggle-pill {
 
 /* Tier 1 Header */
 .survey-monitoring-table thead tr.survey-th-l1 th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: #09341b;
   color: #ffffff;
   font-size: 12.5px;
@@ -4388,6 +4433,9 @@ th:hover .q-toggle-pill {
 
 /* Tier 2 Header */
 .survey-monitoring-table thead tr.survey-th-l2 th {
+  position: sticky;
+  top: 35px;
+  z-index: 9;
   background: #0d4424;
   color: #ffffff;
   font-size: 11px;
@@ -4560,42 +4608,85 @@ th:hover .q-toggle-pill {
   width: min(1140px, 98vw);
 }
 
-/* Whereabouts Master Ledger Table Horizontal Scroll & Scrollbar Styling */
+/* Whereabouts Master Ledger Table Horizontal & Vertical Scroll & Scrollbar Styling */
 .whereabouts-table-wrap {
   width: 100%;
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  max-height: clamp(380px, 68vh, 760px);
+  position: relative;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  border-bottom: 1px solid var(--border);
 }
 
+.whereabouts-table-wrap thead tr:first-child th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 12 !important;
+  background: var(--dar-green-dark, #0a361d) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Universal Table List Scrollbars (Vertical & Horizontal) */
+.table-wrap::-webkit-scrollbar,
+.table-scroll-xy::-webkit-scrollbar,
 .whereabouts-table-wrap::-webkit-scrollbar,
-.survey-matrix-wrap::-webkit-scrollbar {
+.survey-table-wrap::-webkit-scrollbar,
+.survey-matrix-wrap::-webkit-scrollbar,
+.nep-milestone-table-wrap::-webkit-scrollbar,
+.nep-prov-table-wrap::-webkit-scrollbar,
+.nep-modal-table-wrap::-webkit-scrollbar {
   height: 9px;
   width: 9px;
 }
 
+.table-wrap::-webkit-scrollbar-track,
+.table-scroll-xy::-webkit-scrollbar-track,
 .whereabouts-table-wrap::-webkit-scrollbar-track,
-.survey-matrix-wrap::-webkit-scrollbar-track {
+.survey-table-wrap::-webkit-scrollbar-track,
+.survey-matrix-wrap::-webkit-scrollbar-track,
+.nep-milestone-table-wrap::-webkit-scrollbar-track,
+.nep-prov-table-wrap::-webkit-scrollbar-track,
+.nep-modal-table-wrap::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 6px;
 }
 
+.table-wrap::-webkit-scrollbar-thumb,
+.table-scroll-xy::-webkit-scrollbar-thumb,
 .whereabouts-table-wrap::-webkit-scrollbar-thumb,
-.survey-matrix-wrap::-webkit-scrollbar-thumb {
+.survey-table-wrap::-webkit-scrollbar-thumb,
+.survey-matrix-wrap::-webkit-scrollbar-thumb,
+.nep-milestone-table-wrap::-webkit-scrollbar-thumb,
+.nep-prov-table-wrap::-webkit-scrollbar-thumb,
+.nep-modal-table-wrap::-webkit-scrollbar-thumb {
   background: #94a3b8;
   border-radius: 6px;
   border: 2px solid #f1f5f9;
 }
 
+.table-wrap::-webkit-scrollbar-thumb:hover,
+.table-scroll-xy::-webkit-scrollbar-thumb:hover,
 .whereabouts-table-wrap::-webkit-scrollbar-thumb:hover,
-.survey-matrix-wrap::-webkit-scrollbar-thumb:hover {
+.survey-table-wrap::-webkit-scrollbar-thumb:hover,
+.survey-matrix-wrap::-webkit-scrollbar-thumb:hover,
+.nep-milestone-table-wrap::-webkit-scrollbar-thumb:hover,
+.nep-prov-table-wrap::-webkit-scrollbar-thumb:hover,
+.nep-modal-table-wrap::-webkit-scrollbar-thumb:hover {
   background: var(--dar-green, #135d34);
 }
 
+.table-wrap,
+.table-scroll-xy,
 .whereabouts-table-wrap,
-.survey-matrix-wrap {
+.survey-table-wrap,
+.survey-matrix-wrap,
+.nep-milestone-table-wrap,
+.nep-prov-table-wrap,
+.nep-modal-table-wrap {
   scrollbar-width: thin;
   scrollbar-color: #94a3b8 #f1f5f9;
 }

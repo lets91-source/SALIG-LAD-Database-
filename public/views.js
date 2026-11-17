@@ -2849,7 +2849,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
         <div class="panel-body" style="padding:0;">
-          <div class="table-wrap survey-matrix-wrap" style="overflow-x:auto;">
+          <div class="table-wrap survey-matrix-wrap">
             ${cfTableLayout === 'standard'
         ? renderCfStandardTableHtml(cfTableRows, cfTotals, cfMetricMode)
         : renderCfTransposedTableHtml(cfTableRows, cfTotals, cfMetricMode)
@@ -3535,7 +3535,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 </div>
                 <span style="font-size: 11.5px; opacity: 0.85; font-weight: 500;">${group.stages.length} Indicator${group.stages.length > 1 ? 's' : ''}</span>
               </div>
-              <div class="table-wrap survey-table-wrap" style="border: 1px solid #166534; border-top: none; border-radius: 0 0 8px 8px; overflow-x: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+              <div class="table-wrap survey-table-wrap" style="border: 1px solid #166534; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
                 <table class="survey-monitoring-table" style="margin-bottom: 0;">
                   <thead>
                     ${renderGroupThead(group.stages, surveyMetricMode)}
@@ -3909,7 +3909,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
 
         <div class="panel-body" style="padding:14px 16px;">
-          <div class="table-wrap survey-table-wrap" style="border: 1px solid #166534; border-radius: 8px; overflow-x: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+          <div class="table-wrap survey-table-wrap" style="border: 1px solid #166534; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <table class="survey-monitoring-table" style="margin-bottom: 0;">
               <thead>
                 ${renderMatrixThead(statusCols, surveyMetricMode)}
@@ -4191,7 +4191,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       }
       </div>
 
-      <div class="table-wrap whereabouts-table-wrap" id="whereabouts-table-wrap" style="overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch;">
+      <div class="table-wrap whereabouts-table-wrap" id="whereabouts-table-wrap">
         <table class="nep-milestone-table" style="min-width:1280px;width:100%;">
           <thead>
             <tr>
