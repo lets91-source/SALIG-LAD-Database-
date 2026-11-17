@@ -3610,6 +3610,33 @@ test('Registered Data dynamically calculates per province from Google Sheet Colu
     assert.equal(data.byProvince.SLE.registeredAreaHas, 7.75);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    fs.rmSync(tempDir, { recursive: true, force: true });
   }
+
+  // 6. Zero condition: When RegistrationDistribution is empty or Column M Date Registered is blank, table and map strictly show zero
+  store.state.optool.RegistrationDistribution = [];
+  store.save();
+
+  const emptySummary = store.getRegisteredSummaryByProvince();
+  assert.equal(emptySummary.totalCount, 0, 'Empty sheet yields 0 registered titles');
+  assert.equal(emptySummary.totalArea, 0, 'Empty sheet yields 0.0000 registered area');
+  assert.equal(emptySummary.byProvince.SLE.registeredAreaHas, 0);
+  assert.equal(emptySummary.byProvince.LEY.registeredAreaHas, 0);
+
+  const emptyAnalytics = store.getAnalytics({ province: 'ALL' });
+  assert.equal(emptyAnalytics.kpis.cumulativeETitles, 0);
+  assert.equal(emptyAnalytics.kpis.cumulativeAreaHas, 0);
+
+  const emptyHtml = renderDashboardView({
+    state: store.state,
+    analytics: emptyAnalytics,
+    schemas,
+    provinceScope: null
+  });
+
+  // Table must strictly display 0.0000 for each province and 0.0%
+  assert.ok(emptyHtml.includes('0.0000 HAS'), 'Map detail card displays 0.0000 HAS');
+  assert.ok(!emptyHtml.includes('43.3850'), 'No mock 43.3850 milestone data rendered on dashboard');
+  assert.ok(!emptyHtml.includes('11.6950'), 'No mock 11.6950 milestone data rendered on dashboard');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
 });

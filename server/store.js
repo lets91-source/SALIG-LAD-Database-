@@ -1831,7 +1831,7 @@ export class ConsolidatedStore {
       Boolean(useOptoolRegistration || registrationSource === 'optool') ||
       (this.state.dataSourceMode === 'live' && (this.state.optool?.RegistrationDistribution?.length || 0) > 0);
     const optoolRegistered = shouldUseOptool ? this.getRegisteredOptoolRecords(restrictToProvince ? province : 'ALL') : [];
-    const sourceMilestones = optoolRegistered.length > 0 ? optoolRegistered : this.state.milestoneData;
+    const sourceMilestones = shouldUseOptool ? optoolRegistered : this.state.milestoneData;
 
     const allMilestones = sourceMilestones.map((row) => {
       const provCode =

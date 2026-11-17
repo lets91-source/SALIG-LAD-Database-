@@ -4573,12 +4573,10 @@ export function renderDashboardView(ctx) {
   const scopeBadge = provinceScope ? provinceScope.provinceName : 'Region VIII';
 
   // 2. Provincial Breakdown Table
-  // Registered calculation: Priority from Google Sheets RegistrationDistribution per province (Column M Date Registered, Column J Area HAS)
+  // Registered calculation: Exclusively and strictly from Google Sheets Registration/Distribution per province
+  // Column M: Date Registered (if empty, count and area must be strictly zero)
+  // Column J: Area (HAS) (summed for rows with non-empty Date Registered)
   const regDistRows = (state.optool?.RegistrationDistribution || state.optool?.['Registration/Distribution'] || []);
-  const hasRegDistData = regDistRows.some((r) => {
-    const d = String(r.dateRegistered || r['DATE REGISTERED'] || r['Date Registered'] || r.date_registered || '').trim();
-    return d !== '' && d !== '-' && d !== 'N/A' && d.toLowerCase() !== 'null';
-  });
 
   const provBreakdownRows = DEFAULT_CF_PROVINCES.map((p) => {
     const provDb = allDbRows.filter((r) => {
@@ -4595,28 +4593,20 @@ export function renderDashboardView(ctx) {
     const dbLhs = provDb.length;
     const dbArea = provDb.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || 0), 0);
 
-    let regTitles = 0;
-    let regArea = 0;
-
-    if (hasRegDistData) {
-      // Direct count of records with Column M Date Registered and sum of Column J Area (HAS)
-      const pReg = regDistRows.filter((r) => {
-        const code = resolveProvinceCode(r.provinceCode || r.province, schemas);
-        const matchCode = code ? code === p.code : (matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
-        if (!matchCode) return false;
-        const d = String(r.dateRegistered || r['DATE REGISTERED'] || r['Date Registered'] || r.date_registered || '').trim();
-        return d !== '' && d !== '-' && d !== 'N/A' && d.toLowerCase() !== 'null';
-      });
-      regTitles = pReg.length;
-      regArea = pReg.reduce((s, r) => {
-        const a = r.areaHas ?? r['AREA\n(HAs)'] ?? r['AREA (HAs)'] ?? r['AREA(HAS)'] ?? r['Area (HAs)'] ?? r.totalArea ?? r.carpable ?? 0;
-        return s + parseNumericValue(a);
-      }, 0);
-    } else {
-      const pProv = (provincialBreakdown || []).find((pb) => pb.code === p.code || matchProvinceName(pb.provinceName, p.name));
-      regTitles = pProv ? pProv.cumulativeETitles : 0;
-      regArea = pProv ? pProv.cumulativeAreaHas : 0;
-    }
+    // Direct count of records with Column M Date Registered and sum of Column J Area (HAS) from Google Sheets
+    // If Column M is empty or there are no rows in Registration/Distribution, values are strictly zero.
+    const pReg = regDistRows.filter((r) => {
+      const code = resolveProvinceCode(r.provinceCode || r.province, schemas);
+      const matchCode = code ? code === p.code : (matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
+      if (!matchCode) return false;
+      const d = String(r.dateRegistered || r['DATE REGISTERED'] || r['Date Registered'] || r.date_registered || '').trim();
+      return d !== '' && d !== '-' && d !== 'N/A' && d.toLowerCase() !== 'null';
+    });
+    const regTitles = pReg.length;
+    const regArea = pReg.reduce((s, r) => {
+      const a = r.areaHas ?? r['AREA\n(HAs)'] ?? r['AREA (HAs)'] ?? r['AREA(HAS)'] ?? r['Area (HAs)'] ?? r.totalArea ?? r.carpable ?? 0;
+      return s + parseNumericValue(a);
+    }, 0);
 
     const pct = ladArea > 0 ? ((regArea / ladArea) * 100).toFixed(1) : (ladLhs > 0 ? ((regTitles / ladLhs) * 100).toFixed(1) : '0.0');
 
