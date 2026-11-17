@@ -4508,14 +4508,19 @@ export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {
 
   return `
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <!-- Quick Filter Pills -->
-      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
-        ${pillButtons}
+      <!-- Quick Filter Pills & 3D HD Badge -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+          ${pillButtons}
+        </div>
+        <span style="font-size:10.5px;font-weight:700;color:#0369a1;background:#e0f2fe;padding:2px 8px;border-radius:999px;border:1px solid #bae6fd;display:inline-flex;align-items:center;gap:4px;letter-spacing:0.02em;">
+          ✨ 3D Relief • Ultra HD
+        </span>
       </div>
 
       <!-- Map + Detail Card Body -->
-      <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:12px;align-items:center;min-height:260px;">
-        <!-- Left: SVG Map -->
+      <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:14px;align-items:center;min-height:260px;">
+        <!-- Left: 3D HD SVG Map -->
         <div style="display:flex;justify-content:center;align-items:center;">
           ${renderEasternVisayasMapSvg({ provRows, selectedCode })}
         </div>

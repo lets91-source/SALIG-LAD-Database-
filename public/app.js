@@ -2514,15 +2514,20 @@ function openBaselinesModal() {
 function updateDashboardMapSelection(container, code) {
   appState.dashboardMapProvince = code;
 
-  // 1. Update active class on SVG province paths
+  // 1. Update active class on SVG province groups & paths for 3D elevation
+  container.querySelectorAll('.ev-map-group').forEach((grp) => {
+    const isThisProv = grp.dataset.mapProvince === code;
+    grp.classList.toggle('is-active', isThisProv);
+    if (code !== 'ALL') {
+      grp.style.opacity = isThisProv ? '1' : '0.72';
+    } else {
+      grp.style.opacity = '1';
+    }
+  });
+
   container.querySelectorAll('.ev-map-province').forEach((path) => {
     const isThisProv = path.dataset.mapProvince === code;
     path.classList.toggle('is-active', isThisProv);
-    if (code !== 'ALL') {
-      path.style.opacity = isThisProv ? '1' : '0.62';
-    } else {
-      path.style.opacity = '1';
-    }
   });
 
   // 1b. Update backdrop dim layer for map focus
