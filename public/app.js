@@ -206,6 +206,11 @@ function openColFilterPopover(triggerBtn, colKey, container) {
         placeholder="${esc(searchPlaceholder)}"
         autocomplete="off"
       />
+      <div class="col-dd-quick-actions">
+        <button type="button" class="col-dd-link-btn" id="col-dd-select-all-btn">Select All</button>
+        <span style="color:var(--border-strong)">•</span>
+        <button type="button" class="col-dd-link-btn" id="col-dd-clear-all-btn">Clear All</button>
+      </div>
     </div>
     <div class="col-dd-list" id="col-dd-list" role="listbox"></div>
     <div class="col-dd-meta" id="col-dd-meta"></div>
@@ -223,13 +228,20 @@ function openColFilterPopover(triggerBtn, colKey, container) {
   const rect = triggerBtn.getBoundingClientRect();
   const popWidth = 290;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - popWidth - 12));
+  const estimatedHeight = Math.min(380, window.innerHeight - 24);
   const spaceBelow = window.innerHeight - rect.bottom - 12;
-  const openAbove = spaceBelow < 260 && rect.top > spaceBelow;
+  const spaceAbove = rect.top - 12;
+  const openAbove = spaceBelow < 320 && spaceAbove > spaceBelow;
+
   pop.style.left = `${left}px`;
   if (openAbove) {
-    pop.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    const bottom = Math.max(8, window.innerHeight - rect.top + 4);
+    pop.style.bottom = `${bottom}px`;
+    pop.style.maxHeight = `${Math.min(estimatedHeight, rect.top - 16)}px`;
   } else {
-    pop.style.top = `${rect.bottom + 4}px`;
+    const top = Math.max(8, rect.bottom + 4);
+    pop.style.top = `${top}px`;
+    pop.style.maxHeight = `${Math.min(estimatedHeight, window.innerHeight - top - 12)}px`;
   }
 
   const listEl = pop.querySelector('#col-dd-list');
@@ -284,42 +296,42 @@ function openColFilterPopover(triggerBtn, colKey, container) {
 
     if (!q) {
       parts.push(`
-        <label class="col-dd-item col-dd-select-all">
+        <div class="col-dd-item col-dd-select-all" role="option">
           <input type="checkbox" class="col-dd-check" id="col-dd-check-all" ${isAllChecked ? 'checked' : ''} />
           <span class="col-dd-val"><strong>(Select All)</strong></span>
           <span class="col-dd-count">${totalRows}</span>
-        </label>
+        </div>
       `);
       if (blankCount > 0) {
         const isBlankChecked = selectedSet.has('__BLANK__');
         parts.push(`
-          <label class="col-dd-item ${isBlankChecked ? 'selected' : ''}">
+          <div class="col-dd-item ${isBlankChecked ? 'selected' : ''}" role="option" aria-selected="${isBlankChecked ? 'true' : 'false'}" data-item-val="__BLANK__">
             <input type="checkbox" class="col-dd-check" data-dd-val="__BLANK__" ${isBlankChecked ? 'checked' : ''} />
-            <span class="col-dd-val">${blankLabel}</span>
+            <span class="col-dd-val" title="${esc(blankLabel)}">${esc(blankLabel)}</span>
             <span class="col-dd-count">${blankCount}</span>
-            <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only ${blankLabel}">only</button>
-          </label>
+            <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only ${esc(blankLabel)}">only</button>
+          </div>
         `);
       }
     } else {
       const visibleVals = shown.map((v) => v.value);
       const allSearchChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
       parts.push(`
-        <label class="col-dd-item col-dd-select-all">
+        <div class="col-dd-item col-dd-select-all" role="option">
           <input type="checkbox" class="col-dd-check" id="col-dd-check-search-all" ${allSearchChecked ? 'checked' : ''} />
           <span class="col-dd-val"><strong>(Select All Search Results)</strong></span>
           <span class="col-dd-count">${filtered.length}</span>
-        </label>
+        </div>
       `);
       if (col.type === 'checkbox' && blankCount > 0 && 'unchecked'.includes(qLower)) {
         const isBlankChecked = selectedSet.has('__BLANK__');
         parts.push(`
-          <label class="col-dd-item ${isBlankChecked ? 'selected' : ''}">
+          <div class="col-dd-item ${isBlankChecked ? 'selected' : ''}" role="option" aria-selected="${isBlankChecked ? 'true' : 'false'}" data-item-val="__BLANK__">
             <input type="checkbox" class="col-dd-check" data-dd-val="__BLANK__" ${isBlankChecked ? 'checked' : ''} />
-            <span class="col-dd-val">${blankLabel}</span>
+            <span class="col-dd-val" title="${esc(blankLabel)}">${esc(blankLabel)}</span>
             <span class="col-dd-count">${blankCount}</span>
-            <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only ${blankLabel}">only</button>
-          </label>
+            <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only ${esc(blankLabel)}">only</button>
+          </div>
         `);
       }
     }
@@ -327,12 +339,12 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     for (const item of shown) {
       const isChecked = selectedSet.has(item.value);
       parts.push(`
-        <label class="col-dd-item ${isChecked ? 'selected' : ''}">
+        <div class="col-dd-item ${isChecked ? 'selected' : ''}" role="option" aria-selected="${isChecked ? 'true' : 'false'}" data-item-val="${esc(item.value)}">
           <input type="checkbox" class="col-dd-check" data-dd-val="${esc(item.value)}" ${isChecked ? 'checked' : ''} />
           <span class="col-dd-val" title="${esc(item.value)}">${esc(item.value)}</span>
           <span class="col-dd-count">${item.count}</span>
           <button type="button" class="col-dd-only-btn" data-only-val="${esc(item.value)}" title="Select only ${esc(item.value)}">only</button>
-        </label>
+        </div>
       `);
     }
 
@@ -369,6 +381,18 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     }
   });
 
+  pop.querySelector('#col-dd-select-all-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    allValues.forEach((v) => selectedSet.add(v));
+    renderList(searchEl.value);
+  });
+
+  pop.querySelector('#col-dd-clear-all-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    selectedSet.clear();
+    renderList(searchEl.value);
+  });
+
   listEl.addEventListener('click', (e) => {
     // 1. If clicked "only" button
     const onlyBtn = e.target.closest('.col-dd-only-btn');
@@ -385,10 +409,10 @@ function openColFilterPopover(triggerBtn, colKey, container) {
     }
 
     // 2. If clicked "Select All"
-    const selectAllLabel = e.target.closest('.col-dd-select-all');
-    if (selectAllLabel) {
+    const selectAllItem = e.target.closest('.col-dd-select-all');
+    if (selectAllItem) {
       e.preventDefault();
-      const isSearchAll = Boolean(selectAllLabel.querySelector('#col-dd-check-search-all'));
+      const isSearchAll = Boolean(selectAllItem.querySelector('#col-dd-check-search-all'));
       if (isSearchAll) {
         const visibleVals = lastFiltered.map((v) => v.value);
         const allVisibleChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
@@ -408,24 +432,26 @@ function openColFilterPopover(triggerBtn, colKey, container) {
       return;
     }
 
-    // 3. If clicked regular item label or checkbox
-    const itemLabel = e.target.closest('.col-dd-item');
-    if (!itemLabel) return;
-    const check = itemLabel.querySelector('.col-dd-check');
+    // 3. If clicked regular item row, text, or checkbox
+    const itemEl = e.target.closest('.col-dd-item');
+    if (!itemEl) return;
+    const check = itemEl.querySelector('.col-dd-check');
     if (!check) return;
     const val = check.dataset.ddVal;
     if (val === undefined) return;
 
-    if (e.target.type !== 'checkbox') {
+    if (e.target !== check) {
       check.checked = !check.checked;
     }
 
     if (check.checked) {
       selectedSet.add(val);
-      itemLabel.classList.add('selected');
+      itemEl.classList.add('selected');
+      itemEl.setAttribute('aria-selected', 'true');
     } else {
       selectedSet.delete(val);
-      itemLabel.classList.remove('selected');
+      itemEl.classList.remove('selected');
+      itemEl.setAttribute('aria-selected', 'false');
     }
 
     const checkAll = listEl.querySelector('#col-dd-check-all');
@@ -434,6 +460,20 @@ function openColFilterPopover(triggerBtn, colKey, container) {
       checkAll.indeterminate = selectedSet.size > 0 && selectedSet.size < allValues.length;
     }
     updateSummaryPill();
+  });
+
+  listEl.addEventListener('dblclick', (e) => {
+    const itemEl = e.target.closest('.col-dd-item:not(.col-dd-select-all)');
+    if (!itemEl) return;
+    const check = itemEl.querySelector('.col-dd-check');
+    if (!check) return;
+    const val = check.dataset.ddVal;
+    if (val === undefined) return;
+    applyFilter({
+      mode: 'multi',
+      values: [val],
+      value: val === '__BLANK__' ? (col.type === 'checkbox' ? '(Unchecked)' : '(Blank)') : val
+    });
   });
 
   pop.querySelector('#col-dd-apply-btn')?.addEventListener('click', () => {
@@ -4121,6 +4161,11 @@ function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container)
         placeholder="${esc(searchPlaceholder)}"
         autocomplete="off"
       />
+      <div class="col-dd-quick-actions">
+        <button type="button" class="col-dd-link-btn" id="col-dd-select-all-btn">Select All</button>
+        <span style="color:var(--border-strong)">•</span>
+        <button type="button" class="col-dd-link-btn" id="col-dd-clear-all-btn">Clear All</button>
+      </div>
     </div>
     <div class="col-dd-list" id="col-dd-list" role="listbox"></div>
     <div class="col-dd-meta" id="col-dd-meta"></div>
@@ -4138,13 +4183,20 @@ function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container)
   const rect = triggerBtn.getBoundingClientRect();
   const popWidth = 290;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - popWidth - 12));
+  const estimatedHeight = Math.min(380, window.innerHeight - 24);
   const spaceBelow = window.innerHeight - rect.bottom - 12;
-  const openAbove = spaceBelow < 260 && rect.top > spaceBelow;
+  const spaceAbove = rect.top - 12;
+  const openAbove = spaceBelow < 320 && spaceAbove > spaceBelow;
+
   pop.style.left = `${left}px`;
   if (openAbove) {
-    pop.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    const bottom = Math.max(8, window.innerHeight - rect.top + 4);
+    pop.style.bottom = `${bottom}px`;
+    pop.style.maxHeight = `${Math.min(estimatedHeight, rect.top - 16)}px`;
   } else {
-    pop.style.top = `${rect.bottom + 4}px`;
+    const top = Math.max(8, rect.bottom + 4);
+    pop.style.top = `${top}px`;
+    pop.style.maxHeight = `${Math.min(estimatedHeight, window.innerHeight - top - 12)}px`;
   }
 
   const listEl = pop.querySelector('#col-dd-list');
@@ -4215,44 +4267,44 @@ function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container)
 
     if (!q) {
       parts.push(`
-        <label class="col-dd-item col-dd-select-all">
+        <div class="col-dd-item col-dd-select-all" role="option">
           <input type="checkbox" class="col-dd-check" id="col-dd-check-all" ${isAllChecked ? 'checked' : ''} />
           <span class="col-dd-val"><strong>(Select All)</strong></span>
           <span class="col-dd-count">${totalRows}</span>
-        </label>
+        </div>
       `);
       if (blankCount > 0) {
         const isBlankChecked = selectedSet.has('__BLANK__');
         parts.push(`
-          <label class="col-dd-item ${isBlankChecked ? 'selected' : ''}">
+          <div class="col-dd-item ${isBlankChecked ? 'selected' : ''}" role="option" aria-selected="${isBlankChecked ? 'true' : 'false'}" data-item-val="__BLANK__">
             <input type="checkbox" class="col-dd-check" data-dd-val="__BLANK__" ${isBlankChecked ? 'checked' : ''} />
             <span class="col-dd-val">(Blank / Pending)</span>
             <span class="col-dd-count">${blankCount}</span>
             <button type="button" class="col-dd-only-btn" data-only-val="__BLANK__" title="Select only (Blank)">only</button>
-          </label>
+          </div>
         `);
       }
     } else {
       const visibleVals = shown.map((v) => v.value);
       const allSearchChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
       parts.push(`
-        <label class="col-dd-item col-dd-select-all">
+        <div class="col-dd-item col-dd-select-all" role="option">
           <input type="checkbox" class="col-dd-check" id="col-dd-check-search-all" ${allSearchChecked ? 'checked' : ''} />
           <span class="col-dd-val"><strong>(Select All Search Results)</strong></span>
           <span class="col-dd-count">${filtered.length}</span>
-        </label>
+        </div>
       `);
     }
 
     for (const item of shown) {
       const isChecked = selectedSet.has(item.value);
       parts.push(`
-        <label class="col-dd-item ${isChecked ? 'selected' : ''}">
+        <div class="col-dd-item ${isChecked ? 'selected' : ''}" role="option" aria-selected="${isChecked ? 'true' : 'false'}" data-item-val="${esc(item.value)}">
           <input type="checkbox" class="col-dd-check" data-dd-val="${esc(item.value)}" ${isChecked ? 'checked' : ''} />
           <span class="col-dd-val" title="${esc(item.value)}">${esc(item.value)}</span>
           <span class="col-dd-count">${item.count}</span>
           <button type="button" class="col-dd-only-btn" data-only-val="${esc(item.value)}" title="Select only ${esc(item.value)}">only</button>
-        </label>
+        </div>
       `);
     }
 
@@ -4275,6 +4327,18 @@ function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container)
 
   renderList('');
 
+  pop.querySelector('#col-dd-select-all-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    allValues.forEach((v) => selectedSet.add(v));
+    renderList(searchEl.value);
+  });
+
+  pop.querySelector('#col-dd-clear-all-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    selectedSet.clear();
+    renderList(searchEl.value);
+  });
+
   listEl.addEventListener('click', (e) => {
     // 1. If clicked "only" button
     const onlyBtn = e.target.closest('.col-dd-only-btn');
@@ -4291,10 +4355,10 @@ function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container)
     }
 
     // 2. If clicked "Select All"
-    const selectAllLabel = e.target.closest('.col-dd-select-all');
-    if (selectAllLabel) {
+    const selectAllItem = e.target.closest('.col-dd-select-all');
+    if (selectAllItem) {
       e.preventDefault();
-      const isSearchAll = Boolean(selectAllLabel.querySelector('#col-dd-check-search-all'));
+      const isSearchAll = Boolean(selectAllItem.querySelector('#col-dd-check-search-all'));
       if (isSearchAll) {
         const visibleVals = lastFiltered.map((v) => v.value);
         const allVisibleChecked = visibleVals.length > 0 && visibleVals.every((v) => selectedSet.has(v));
@@ -4314,24 +4378,26 @@ function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container)
       return;
     }
 
-    // 3. If clicked regular item label or checkbox
-    const itemLabel = e.target.closest('.col-dd-item');
-    if (!itemLabel) return;
-    const check = itemLabel.querySelector('.col-dd-check');
+    // 3. If clicked regular item row, text, or checkbox
+    const itemEl = e.target.closest('.col-dd-item');
+    if (!itemEl) return;
+    const check = itemEl.querySelector('.col-dd-check');
     if (!check) return;
     const val = check.dataset.ddVal;
     if (val === undefined) return;
 
-    if (e.target.type !== 'checkbox') {
+    if (e.target !== check) {
       check.checked = !check.checked;
     }
 
     if (check.checked) {
       selectedSet.add(val);
-      itemLabel.classList.add('selected');
+      itemEl.classList.add('selected');
+      itemEl.setAttribute('aria-selected', 'true');
     } else {
       selectedSet.delete(val);
-      itemLabel.classList.remove('selected');
+      itemEl.classList.remove('selected');
+      itemEl.setAttribute('aria-selected', 'false');
     }
 
     const checkAll = listEl.querySelector('#col-dd-check-all');
@@ -4340,6 +4406,20 @@ function openWhereaboutsColFilterPopover(triggerBtn, colKey, viewKey, container)
       checkAll.indeterminate = selectedSet.size > 0 && selectedSet.size < allValues.length;
     }
     updateSummaryPill();
+  });
+
+  listEl.addEventListener('dblclick', (e) => {
+    const itemEl = e.target.closest('.col-dd-item:not(.col-dd-select-all)');
+    if (!itemEl) return;
+    const check = itemEl.querySelector('.col-dd-check');
+    if (!check) return;
+    const val = check.dataset.ddVal;
+    if (val === undefined) return;
+    applyWhereaboutsFilter({
+      mode: 'multi',
+      values: [val],
+      value: val === '__BLANK__' ? '(Blank)' : val
+    });
   });
 
   pop.querySelector('#col-dd-apply-btn')?.addEventListener('click', () => {
