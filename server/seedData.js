@@ -574,7 +574,8 @@ export function createSeedState() {
     nepTargets,
     nepProvinceList,
     milestoneData,
-    optool
+    optool,
+    leasehold: []
   };
 }
 

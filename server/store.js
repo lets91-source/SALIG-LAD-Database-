@@ -29,7 +29,9 @@ import {
   inferProvinceCodeFromMunicipality,
   inferProvinceCodeFromText,
   formatArea4,
-  normalizeChecklistValue
+  normalizeChecklistValue,
+  LEASEHOLD_COLUMNS,
+  normalizeLeaseholdRow
 } from './schema.js';
 import { createSeedState } from './seedData.js';
 import {
@@ -657,6 +659,18 @@ export class ConsolidatedStore {
     if (!this.state.liveHubSnapshot) {
       this.state.liveHubSnapshot = { checkedAt: null, reachable: null, tabRowCounts: {} };
     }
+    if (!Array.isArray(this.state.leasehold)) {
+      this.state.leasehold = [];
+      dirty = true;
+    } else {
+      for (let i = 0; i < this.state.leasehold.length; i++) {
+        const norm = normalizeLeaseholdRow(this.state.leasehold[i]);
+        if (JSON.stringify(norm) !== JSON.stringify(this.state.leasehold[i])) {
+          this.state.leasehold[i] = norm;
+          dirty = true;
+        }
+      }
+    }
     if (dirty && fs.existsSync(this.storePath)) {
       this.save();
     }
@@ -1130,6 +1144,124 @@ export class ConsolidatedStore {
     );
   }
 
+  /** Resolve province code for a Leasehold record. */
+  getLeaseholdRowProvinceCode(row) {
+    if (!row) return null;
+    const provs = String(row.provs || row.PROVS || row.province || '').trim();
+    if (PROVINCE_CODES.includes(provs.toUpperCase())) return provs.toUpperCase();
+    const inferred = inferProvinceCodeFromText(provs);
+    if (inferred) return inferred;
+    const mun = String(row.mun || row.MUN || row.municipality || '').trim();
+    if (mun) {
+      const munInferred = inferProvinceCodeFromMunicipality(mun);
+      if (munInferred) return munInferred;
+    }
+    return null;
+  }
+
+  /** Retrieve Leasehold records filtered by province scope (or all if Regional Admin). */
+  getScopedLeaseholdRows(scopeCode) {
+    const rows = Array.isArray(this.state.leasehold) ? this.state.leasehold : [];
+    if (!scopeCode) return rows;
+    return rows.filter((r) => this.getLeaseholdRowProvinceCode(r) === scopeCode);
+  }
+
+  /** Upsert a Leasehold record. Regular users and admins can encode (create/edit). Scoped to user's province. */
+  upsertLeaseholdRow(rawRow, index = null, actingUser = null, scopeCode = null) {
+    if (!Array.isArray(this.state.leasehold)) {
+      this.state.leasehold = [];
+    }
+    const norm = normalizeLeaseholdRow(rawRow);
+    const rowProvCode = this.getLeaseholdRowProvinceCode(norm);
+
+    if (scopeCode) {
+      if (rowProvCode && rowProvCode !== scopeCode) {
+        const err = new Error(`Access restricted to ${scopeCode} records only.`);
+        err.statusCode = 403;
+        throw err;
+      }
+      if (!rowProvCode) {
+        const registryEntry = REGIONAL_REGISTRY.find((r) => r.code === scopeCode);
+        norm.provs = registryEntry ? registryEntry.provinceName : scopeCode;
+      }
+    }
+
+    let targetIdx = -1;
+    if (Number.isInteger(index) && index >= 0 && index < this.state.leasehold.length) {
+      targetIdx = index;
+    } else if (norm.id) {
+      targetIdx = this.state.leasehold.findIndex((r) => r.id === norm.id);
+    }
+
+    const nowIso = new Date().toISOString();
+    const actorName = actingUser?.name || actingUser?.email || 'User';
+
+    if (targetIdx >= 0) {
+      const existing = this.state.leasehold[targetIdx];
+      if (scopeCode && this.getLeaseholdRowProvinceCode(existing) !== scopeCode) {
+        const err = new Error(`Access restricted to ${scopeCode} records only.`);
+        err.statusCode = 403;
+        throw err;
+      }
+      const updated = {
+        ...existing,
+        ...norm,
+        id: existing.id || norm.id,
+        createdAt: existing.createdAt || norm.createdAt || nowIso,
+        encodedBy: existing.encodedBy || norm.encodedBy || actorName,
+        updatedAt: nowIso,
+        lastModifiedBy: actorName
+      };
+      this.state.leasehold[targetIdx] = updated;
+      this.save();
+      return updated;
+    } else {
+      const created = {
+        ...norm,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        encodedBy: actorName
+      };
+      this.state.leasehold.push(created);
+      this.save();
+      return created;
+    }
+  }
+
+  /** Delete a Leasehold record. Restricted to Administrator role only. */
+  deleteLeaseholdRow(idOrIndex, actingUser = null, scopeCode = null) {
+    if (actingUser?.role !== 'admin') {
+      const err = new Error('Administrator access required to delete records. Users are permitted to encode only.');
+      err.statusCode = 403;
+      throw err;
+    }
+    if (!Array.isArray(this.state.leasehold)) {
+      this.state.leasehold = [];
+      return false;
+    }
+    let targetIdx = -1;
+    if (Number.isInteger(idOrIndex) && idOrIndex >= 0 && idOrIndex < this.state.leasehold.length) {
+      targetIdx = idOrIndex;
+    } else {
+      const strId = String(idOrIndex).trim();
+      targetIdx = this.state.leasehold.findIndex((r) => r.id === strId);
+      if (targetIdx === -1 && /^\d+$/.test(strId)) {
+        const parsed = parseInt(strId, 10);
+        if (parsed >= 0 && parsed < this.state.leasehold.length) {
+          targetIdx = parsed;
+        }
+      }
+    }
+    if (targetIdx === -1) {
+      const err = new Error('Leasehold record not found.');
+      err.statusCode = 404;
+      throw err;
+    }
+    const [removed] = this.state.leasehold.splice(targetIdx, 1);
+    this.save();
+    return removed || true;
+  }
+
   /** Map normalized LHID -> province code from the master OPTool Database tab. */
   buildDbLhidProvinceMap() {
     const map = new Map();
@@ -1333,7 +1465,8 @@ export class ConsolidatedStore {
       milestoneData: (this.state.milestoneData || []).filter(
         (m) => this.getMilestoneProvinceCode(m) === scopeCode
       ),
-      optool: scopedOptool
+      optool: scopedOptool,
+      leasehold: this.getScopedLeaseholdRows(scopeCode)
     };
   }
 
@@ -2611,5 +2744,19 @@ export class ConsolidatedStore {
     this.save();
     return toPublicUser(target);
   }
+}
+
+export function getLeaseholdRowProvinceCode(row) {
+  if (!row) return null;
+  const provs = String(row.provs || row.PROVS || row.province || '').trim();
+  if (PROVINCE_CODES.includes(provs.toUpperCase())) return provs.toUpperCase();
+  const inferred = inferProvinceCodeFromText(provs);
+  if (inferred) return inferred;
+  const mun = String(row.mun || row.MUN || row.municipality || '').trim();
+  if (mun) {
+    const munInferred = inferProvinceCodeFromMunicipality(mun);
+    if (munInferred) return munInferred;
+  }
+  return null;
 }
 

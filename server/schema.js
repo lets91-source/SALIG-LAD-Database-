@@ -685,3 +685,98 @@ export function normalizeChecklistValue(value) {
   return isChecklistChecked(value) ? 'Yes' : '';
 }
 
+export const MONTH_NAMES_LIST = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+export const CONTRACT_STATUS_OPTIONS = ['New', 'Amended', 'Renewal'];
+export const TENANT_STATUS_OPTIONS = ['Alive', 'Deceased'];
+export const GENDER_OPTIONS = ['M', 'F'];
+export const RETAINED_AREA_OPTIONS = ['Y', 'N'];
+export const PROVINCES_LIST = [
+  'Biliran',
+  'Eastern Samar',
+  'Leyte',
+  'Northern Samar',
+  'Samar',
+  'Southern Leyte'
+];
+
+export const LEASEHOLD_COLUMNS = [
+  { key: 'reg', header: 'REG', label: 'Region', group: 'Location & Jurisdiction', type: 'text', default: 'Region VIII' },
+  { key: 'provs', header: 'PROVS', label: 'Province', group: 'Location & Jurisdiction', type: 'select', options: PROVINCES_LIST, required: true },
+  { key: 'mun', header: 'MUN', label: 'Municipality', group: 'Location & Jurisdiction', type: 'text', required: true },
+  { key: 'brgy', header: 'BRGY', label: 'Barangay', group: 'Location & Jurisdiction', type: 'text' },
+  { key: 'loSurname', header: 'LO SURNAME', label: 'Landowner Surname', group: 'Landowner & Title Details', type: 'text' },
+  { key: 'loFirstname', header: 'LO FIRSTNAME', label: 'Landowner First Name', group: 'Landowner & Title Details', type: 'text' },
+  { key: 'loMi', header: 'LO MI', label: 'Landowner M.I.', group: 'Landowner & Title Details', type: 'text' },
+  { key: 'titleNo', header: 'TITLE NO.', label: 'Title No.', group: 'Landowner & Title Details', type: 'text' },
+  { key: 'taxDecNo', header: 'TAX DEC NO.', label: 'Tax Dec No.', group: 'Landowner & Title Details', type: 'text' },
+  { key: 'surveyNo', header: 'SURVEY NO.', label: 'Survey No.', group: 'Landowner & Title Details', type: 'text' },
+  { key: 'lotNo', header: 'LOT NO.', label: 'Lot No.', group: 'Landowner & Title Details', type: 'text' },
+  { key: 'areaPerTitle', header: 'AREA PER TITLE (Has)', label: 'Area Per Title (Has)', group: 'Landowner & Title Details', type: 'decimal' },
+  { key: 'areaTenanted', header: 'AREA TENANTED (Has)', label: 'Area Tenanted (Has)', group: 'Landowner & Title Details', type: 'decimal' },
+  { key: 'withinRetainedArea', header: 'WITHIN RETAINED AREA (Y,N)', label: 'Within Retained Area (Y/N)', group: 'Landowner & Title Details', type: 'select', options: RETAINED_AREA_OPTIONS },
+  { key: 'leaseholderSurname', header: 'LEASEHOLDER SURNAME', label: 'Leaseholder Surname', group: 'Leaseholder / Tenant Profile', type: 'text', required: true },
+  { key: 'leaseholderFirstname', header: 'LEASEHOLDER FIRSTNAME', label: 'Leaseholder First Name', group: 'Leaseholder / Tenant Profile', type: 'text', required: true },
+  { key: 'leaseholderMi', header: 'LEASEHOLDER MI', label: 'Leaseholder M.I.', group: 'Leaseholder / Tenant Profile', type: 'text' },
+  { key: 'tenantStatus', header: 'TENANT/LESSEE STATUS (alive, deceased)', label: 'Tenant/Lessee Status', group: 'Leaseholder / Tenant Profile', type: 'select', options: TENANT_STATUS_OPTIONS },
+  { key: 'newLesseeName', header: 'NEW LESSEE NAME (for deceased Tenant/Lessee) _Surname, First Name, MI', label: 'New Lessee Name (if Deceased)', group: 'Leaseholder / Tenant Profile', type: 'text' },
+  { key: 'relationshipToTenant', header: 'RELATIONSHIP TO TENANT/LESSEE (relationship to original leaseholder)', label: 'Relationship to Tenant/Lessee', group: 'Leaseholder / Tenant Profile', type: 'text' },
+  { key: 'gender', header: 'GENDER (M, F)', label: 'Gender (M/F)', group: 'Leaseholder / Tenant Profile', type: 'select', options: GENDER_OPTIONS },
+  { key: 'noOfArbs', header: 'Number of ARBs', label: 'Number of ARBs', group: 'Leaseholder / Tenant Profile', type: 'integer' },
+  { key: 'mainCrops', header: 'MAIN CROPS', label: 'Main Crops', group: 'Crops & Tenurial Terms', type: 'text' },
+  { key: 'auxilliaryCrops', header: 'AUXILLIARY CROPS', label: 'Auxiliary Crops', group: 'Crops & Tenurial Terms', type: 'text' },
+  { key: 'sharingArrangement', header: 'SHARING ARRANGEMENT', label: 'Sharing Arrangement', group: 'Crops & Tenurial Terms', type: 'text' },
+  { key: 'tenurialArrangement', header: 'TENURIAL ARRANGEMENT', label: 'Tenurial Arrangement', group: 'Crops & Tenurial Terms', type: 'text' },
+  { key: 'statusOfContract', header: 'STATUS OF CONTRACT (New, Amended, Renewal)', label: 'Status of Contract', group: 'Contract Registration & Reporting', type: 'select', options: CONTRACT_STATUS_OPTIONS },
+  { key: 'dateContractRegistered', header: '*DATE CONTRACT REGISTERED (mm/dd/yyyy)', label: 'Date Contract Registered (mm/dd/yyyy)', group: 'Contract Registration & Reporting', type: 'date' },
+  { key: 'datePlrRegistered', header: '*DATE PLR REGISTERED (mm/dd/yyyy)', label: 'Date PLR Registered (mm/dd/yyyy)', group: 'Contract Registration & Reporting', type: 'date' },
+  { key: 'leaseRentalUnit', header: 'LEASE RENTAL UNIT', label: 'Lease Rental Unit', group: 'Crops & Tenurial Terms', type: 'text' },
+  { key: 'leaseInPesos', header: 'LEASE IN PESOS', label: 'Lease in Pesos', group: 'Crops & Tenurial Terms', type: 'decimal' },
+  { key: 'targetYear', header: 'TARGET YEAR', label: 'Target Year', group: 'Contract Registration & Reporting', type: 'text' },
+  { key: 'reportMonth', header: 'Report Month (Words)', label: 'Report Month (Words)', group: 'Contract Registration & Reporting', type: 'select', options: MONTH_NAMES_LIST },
+  { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Contract Registration & Reporting', type: 'text' }
+];
+
+export function normalizeLeaseholdRow(raw = {}) {
+  const row = { ...(raw || {}) };
+  row.id = String(row.id || '').trim() || `LH-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  row.reg = String(row.reg || row.REG || 'Region VIII').trim();
+  row.provs = String(row.provs || row.PROVS || row.province || '').trim();
+  row.mun = String(row.mun || row.MUN || row.municipality || '').trim();
+  row.brgy = String(row.brgy || row.BRGY || row.barangay || '').trim();
+  row.loSurname = String(row.loSurname || row['LO SURNAME'] || '').trim();
+  row.loFirstname = String(row.loFirstname || row['LO FIRSTNAME'] || '').trim();
+  row.loMi = String(row.loMi || row['LO MI'] || '').trim();
+  row.titleNo = String(row.titleNo || row['TITLE NO.'] || '').trim();
+  row.taxDecNo = String(row.taxDecNo || row['TAX DEC NO.'] || '').trim();
+  row.surveyNo = String(row.surveyNo || row['SURVEY NO.'] || '').trim();
+  row.lotNo = String(row.lotNo || row['LOT NO.'] || '').trim();
+  row.areaPerTitle = row.areaPerTitle !== undefined && row.areaPerTitle !== '' ? String(row.areaPerTitle).trim() : (row['AREA PER TITLE (Has)'] ? String(row['AREA PER TITLE (Has)']).trim() : '');
+  row.areaTenanted = row.areaTenanted !== undefined && row.areaTenanted !== '' ? String(row.areaTenanted).trim() : (row['AREA TENANTED (Has)'] ? String(row['AREA TENANTED (Has)']).trim() : '');
+  row.withinRetainedArea = String(row.withinRetainedArea || row['WITHIN RETAINED AREA (Y,N)'] || '').trim().toUpperCase();
+  row.leaseholderSurname = String(row.leaseholderSurname || row['LEASEHOLDER SURNAME'] || '').trim();
+  row.leaseholderFirstname = String(row.leaseholderFirstname || row['LEASEHOLDER FIRSTNAME'] || '').trim();
+  row.leaseholderMi = String(row.leaseholderMi || row['LEASEHOLDER MI'] || '').trim();
+  row.tenantStatus = String(row.tenantStatus || row['TENANT/LESSEE STATUS (alive, deceased)'] || '').trim();
+  row.newLesseeName = String(row.newLesseeName || row['NEW LESSEE NAME (for deceased Tenant/Lessee) _Surname, First Name, MI'] || '').trim();
+  row.relationshipToTenant = String(row.relationshipToTenant || row['RELATIONSHIP TO TENANT/LESSEE (relationship to original leaseholder)'] || '').trim();
+  row.gender = String(row.gender || row['GENDER (M, F)'] || '').trim().toUpperCase();
+  row.noOfArbs = row.noOfArbs !== undefined && row.noOfArbs !== '' ? String(row.noOfArbs).trim() : (row['Number of ARBs'] ? String(row['Number of ARBs']).trim() : '');
+  row.mainCrops = String(row.mainCrops || row['MAIN CROPS'] || '').trim();
+  row.auxilliaryCrops = String(row.auxilliaryCrops || row['AUXILLIARY CROPS'] || '').trim();
+  row.sharingArrangement = String(row.sharingArrangement || row['SHARING ARRANGEMENT'] || '').trim();
+  row.tenurialArrangement = String(row.tenurialArrangement || row['TENURIAL ARRANGEMENT'] || '').trim();
+  row.statusOfContract = String(row.statusOfContract || row['STATUS OF CONTRACT (New, Amended, Renewal)'] || '').trim();
+  row.dateContractRegistered = String(row.dateContractRegistered || row['*DATE CONTRACT REGISTERED (mm/dd/yyyy)'] || '').trim();
+  row.datePlrRegistered = String(row.datePlrRegistered || row['*DATE PLR REGISTERED (mm/dd/yyyy)'] || '').trim();
+  row.leaseRentalUnit = String(row.leaseRentalUnit || row['LEASE RENTAL UNIT'] || '').trim();
+  row.leaseInPesos = row.leaseInPesos !== undefined && row.leaseInPesos !== '' ? String(row.leaseInPesos).trim() : (row['LEASE IN PESOS'] ? String(row['LEASE IN PESOS']).trim() : '');
+  row.targetYear = String(row.targetYear || row['TARGET YEAR'] || '').trim();
+  row.reportMonth = String(row.reportMonth || row['Report Month (Words)'] || '').trim();
+  row.remarks = String(row.remarks || row.REMARKS || '').trim();
+  return row;
+}
+

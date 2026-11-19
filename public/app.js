@@ -20,6 +20,9 @@ import {
   renderMovWhereaboutsView,
   renderRegDistWhereaboutsView,
   renderInstallationWhereaboutsView,
+  renderLeaseholdView,
+  renderLeaseholdModalHtml,
+  generateLeaseholdCsv,
   matchesWhereaboutsTargetYear,
   matchProvinceName,
   resolveProvinceCode,
@@ -98,13 +101,20 @@ const appState = {
   whereaboutsPage: {},
   whereaboutsPageSize: {},
   cfMetricMode: 'both',
-  cfTableLayout: 'standard'
+  cfTableLayout: 'standard',
+  leaseholdSearch: '',
+  leaseholdProvinceFilter: 'ALL',
+  leaseholdStatusFilter: 'ALL',
+  leaseholdTargetYearFilter: 'ALL',
+  leaseholdPage: 1,
+  leaseholdPageSize: 25
 };
 
 const AUTO_SYNC_MAX_AGE_MS = 20 * 1000;
 const AUTO_SYNC_INTERVAL_MS = 30 * 1000;
 
 let optoolSearchTimer = null;
+let leaseholdSearchTimer = null;
 let closeColPopoverFn = null;
 let isAutoSyncRunning = false;
 let autoSyncTimer = null;
@@ -977,6 +987,8 @@ function updateNavCounts() {
   if (regdistCountEl) regdistCountEl.textContent = (appState.state.optool?.RegistrationDistribution || []).length;
   const instCountEl = document.getElementById('nav-installation-count');
   if (instCountEl) instCountEl.textContent = (appState.state.optool?.Installation || []).length;
+  const leaseholdCountEl = document.getElementById('nav-leasehold-count');
+  if (leaseholdCountEl) leaseholdCountEl.textContent = (appState.state.leasehold || []).length;
 }
 
 function updateHeaderTitles() {
@@ -1037,6 +1049,10 @@ function updateHeaderTitles() {
     nep: [
       'Regional Hub NEP Targets & Sheet',
       'Province allocations (LHS, AREA, ARBs, Year) and Regional Milestone Targets'
+    ],
+    leasehold: [
+      `${scopeLabel} Leasehold Operations & Ledger`,
+      'Agricultural Leasehold Contracts & Records • Landholdings, Profiles & Tenurial Arrangements'
     ],
     sync: [
       appState.provinceScope ? `${scopeLabel} Google Sheet Sync` : 'Google Sheets Registry & GAS ETL Hub',
@@ -1221,6 +1237,17 @@ function renderActiveView() {
       cfTableLayout: appState.whereaboutsTableLayout?.['installation-whereabouts'] || appState.cfTableLayout || 'standard'
     });
     bindWhereaboutsEvents(container, 'installation-whereabouts');
+  } else if (appState.view === 'leasehold') {
+    container.innerHTML = renderLeaseholdView({
+      ...ctx,
+      leaseholdSearch: appState.leaseholdSearch,
+      leaseholdProvinceFilter: appState.leaseholdProvinceFilter,
+      leaseholdStatusFilter: appState.leaseholdStatusFilter,
+      leaseholdTargetYearFilter: appState.leaseholdTargetYearFilter,
+      leaseholdPage: appState.leaseholdPage || 1,
+      leaseholdPageSize: appState.leaseholdPageSize || 25
+    });
+    bindLeaseholdEvents(container);
   } else if (appState.view === 'nep') {
     container.innerHTML = renderNepView(ctx);
     bindDashboardViewEvents(container);
@@ -2718,6 +2745,60 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
   });
 }
 
+function openLeaseholdModal(existingRow, rowIndex) {
+  const isEdit = existingRow !== null && existingRow !== undefined;
+  const ctx = {
+    provinceScope: appState.provinceScope,
+    currentUser: appState.currentUser,
+    schemas: appState.schemas
+  };
+
+  showFormModal(`${isEdit ? 'Edit' : 'Encode'} Leasehold Record`, {
+    formId: 'leasehold-form',
+    cancelId: 'lh-cancel',
+    submitLabel: isEdit ? 'Save Changes' : 'Encode Record',
+    contentHtml: renderLeaseholdModalHtml(existingRow, rowIndex, ctx)
+  });
+
+  const formEl = document.getElementById('leasehold-form');
+  document.getElementById('lh-cancel')?.addEventListener('click', closeModal);
+
+  formEl?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(formEl);
+    const row = {};
+    for (const [key, value] of formData.entries()) {
+      row[key] = String(value ?? '').trim();
+    }
+    const idx = rowIndex !== null && rowIndex !== undefined ? rowIndex : (row.index !== '' ? Number(row.index) : null);
+
+    try {
+      const res = await withLoading(
+        'saving',
+        `${isEdit ? 'Updating' : 'Encoding'} Leasehold Record…`,
+        'Persisting 34-field agricultural leasehold data…',
+        () =>
+          api('/api/leasehold', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ row, index: idx })
+          })
+      );
+      if (res.leasehold) {
+        appState.state.leasehold = res.leasehold;
+      } else if (res.rows) {
+        appState.state.leasehold = res.rows;
+      }
+      closeModal();
+      updateNavCounts();
+      renderActiveView();
+      toast(`Successfully encoded Leasehold record for ${row.leaseholderSurname || 'Tenant'}, ${row.leaseholderFirstname || ''}`);
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+}
+
 function openBaselinesModal() {
   const provNodes = appState.schemas.registry.filter((r) => r.role === 'Provincial Node');
   const baselines = appState.state.baselines;
@@ -4086,6 +4167,172 @@ function bindUsersViewEvents(container) {
         toast(err.message, true);
       }
     });
+  });
+}
+
+function exportLeaseholdCsv() {
+  const rawRows = Array.isArray(appState.state?.leasehold) ? appState.state.leasehold : [];
+  const effectiveScopeCode = appState.provinceScope?.code || null;
+  const effectiveScopeName = appState.provinceScope?.provinceName || null;
+  const q = String(appState.leaseholdSearch || '').trim().toLowerCase();
+
+  const filtered = rawRows.filter((r) => {
+    if (effectiveScopeCode) {
+      const rowProv = String(r.provs || r.PROVS || r.province || '').trim().toLowerCase();
+      const scopeLower = effectiveScopeName ? effectiveScopeName.toLowerCase() : '';
+      const codeLower = effectiveScopeCode.toLowerCase();
+      const matchesScope = rowProv.includes(codeLower) || (scopeLower && rowProv.includes(scopeLower));
+      if (!matchesScope) {
+        const rowMun = String(r.mun || r.MUN || r.municipality || '').trim();
+        const munProv = resolveProvinceCode(rowMun);
+        if (munProv !== effectiveScopeCode) return false;
+      }
+    }
+    if (appState.leaseholdProvinceFilter !== 'ALL') {
+      const filterLower = appState.leaseholdProvinceFilter.toLowerCase();
+      const rProv = String(r.provs || r.PROVS || r.province || '').toLowerCase();
+      if (!rProv.includes(filterLower)) return false;
+    }
+    if (appState.leaseholdStatusFilter !== 'ALL') {
+      const rStatus = String(r.statusOfContract || '').trim().toLowerCase();
+      if (rStatus !== appState.leaseholdStatusFilter.toLowerCase()) return false;
+    }
+    if (appState.leaseholdTargetYearFilter !== 'ALL') {
+      const rYear = String(r.targetYear || '').trim();
+      if (rYear !== String(appState.leaseholdTargetYearFilter).trim()) return false;
+    }
+    if (q) {
+      const searchable = [
+        r.provs, r.mun, r.brgy,
+        r.loSurname, r.loFirstname, r.loMi,
+        r.titleNo, r.taxDecNo, r.surveyNo, r.lotNo,
+        r.leaseholderSurname, r.leaseholderFirstname, r.leaseholderMi,
+        r.newLesseeName, r.mainCrops, r.auxilliaryCrops,
+        r.statusOfContract, r.targetYear, r.reportMonth, r.remarks
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!searchable.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const csvContent = generateLeaseholdCsv(filtered);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const provSuffix = effectiveScopeCode || (appState.leaseholdProvinceFilter !== 'ALL' ? appState.leaseholdProvinceFilter : 'Region8');
+  a.href = url;
+  a.download = `DAR_Region8_Leasehold_${provSuffix}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`Exported ${filtered.length} Leasehold record(s) to CSV.`);
+}
+
+function bindLeaseholdEvents(container) {
+  const searchInput = container.querySelector('#leasehold-search');
+  searchInput?.addEventListener('input', (e) => {
+    appState.leaseholdSearch = e.target.value;
+    appState.leaseholdPage = 1;
+    clearTimeout(leaseholdSearchTimer);
+    leaseholdSearchTimer = setTimeout(() => renderActiveView(), 120);
+  });
+
+  container.querySelector('#leasehold-province-filter')?.addEventListener('change', (e) => {
+    appState.leaseholdProvinceFilter = e.target.value;
+    appState.leaseholdPage = 1;
+    renderActiveView();
+  });
+
+  container.querySelector('#leasehold-status-filter')?.addEventListener('change', (e) => {
+    appState.leaseholdStatusFilter = e.target.value;
+    appState.leaseholdPage = 1;
+    renderActiveView();
+  });
+
+  container.querySelector('#leasehold-year-filter')?.addEventListener('change', (e) => {
+    appState.leaseholdTargetYearFilter = e.target.value;
+    appState.leaseholdPage = 1;
+    renderActiveView();
+  });
+
+  container.querySelector('#leasehold-page-size')?.addEventListener('change', (e) => {
+    appState.leaseholdPageSize = e.target.value;
+    appState.leaseholdPage = 1;
+    renderActiveView();
+  });
+
+  const handlePrev = () => {
+    if (appState.leaseholdPage > 1) {
+      appState.leaseholdPage--;
+      renderActiveView();
+    }
+  };
+  const handleNext = () => {
+    appState.leaseholdPage = (appState.leaseholdPage || 1) + 1;
+    renderActiveView();
+  };
+  container.querySelector('#btn-leasehold-prev')?.addEventListener('click', handlePrev);
+  container.querySelector('#btn-leasehold-bottom-prev')?.addEventListener('click', handlePrev);
+  container.querySelector('#btn-leasehold-next')?.addEventListener('click', handleNext);
+  container.querySelector('#btn-leasehold-bottom-next')?.addEventListener('click', handleNext);
+
+  container.querySelector('#btn-leasehold-add')?.addEventListener('click', () => openLeaseholdModal(null, null));
+  container.querySelector('#btn-leasehold-empty-add')?.addEventListener('click', () => openLeaseholdModal(null, null));
+
+  container.querySelector('#btn-leasehold-export-csv')?.addEventListener('click', () => {
+    exportLeaseholdCsv();
+  });
+
+  container.querySelectorAll('[data-edit-leasehold]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const rowId = btn.dataset.editLeasehold;
+      const idx = btn.dataset.index !== undefined ? Number(btn.dataset.index) : null;
+      const existing = (appState.state.leasehold || []).find((r) => r.id === rowId) ||
+        (idx !== null ? (appState.state.leasehold || [])[idx] : null);
+      if (existing) {
+        openLeaseholdModal(existing, idx);
+      }
+    });
+  });
+
+  container.querySelectorAll('[data-del-leasehold]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (appState.currentUser?.role !== 'admin') {
+        toast('Administrator access required to delete records. Users are permitted to encode only.', true);
+        return;
+      }
+      const rowId = btn.dataset.delLeasehold;
+      const idx = btn.dataset.index !== undefined ? Number(btn.dataset.index) : null;
+      const existing = (appState.state.leasehold || []).find((r) => r.id === rowId) ||
+        (idx !== null ? (appState.state.leasehold || [])[idx] : null);
+      const lhName = existing ? `${existing.leaseholderSurname || ''}, ${existing.leaseholderFirstname || ''}`.trim() : 'record';
+      if (!confirm(`Are you sure you want to delete this Leasehold record for "${lhName}"? This action cannot be undone.`)) {
+        return;
+      }
+      try {
+        const res = await withLoading(
+          'saving',
+          'Deleting Leasehold Record…',
+          `Removing leasehold record ${lhName}…`,
+          () => api(`/api/leasehold/${encodeURIComponent(rowId)}`, { method: 'DELETE' })
+        );
+        if (res.leasehold) {
+          appState.state.leasehold = res.leasehold;
+        } else if (res.rows) {
+          appState.state.leasehold = res.rows;
+        }
+        updateNavCounts();
+        renderActiveView();
+        toast('Deleted Leasehold record.');
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+  });
+
+  container.querySelector('#btn-leasehold-fullscreen')?.addEventListener('click', () => {
+    togglePanelFullscreen('leasehold-panel');
   });
 }
 

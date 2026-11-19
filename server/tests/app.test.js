@@ -14,7 +14,9 @@ import {
   OPTOOL_SHEET_SCHEMAS,
   OPTOOL_PREVIEW_COLUMNS,
   inferProvinceCodeFromMunicipality,
-  isChecklistChecked as isServerChecklistChecked
+  isChecklistChecked as isServerChecklistChecked,
+  LEASEHOLD_COLUMNS,
+  normalizeLeaseholdRow
 } from '../schema.js';
 import { ConsolidatedStore, resolveDefaultDataDir } from '../store.js';
 import { createSeedState } from '../seedData.js';
@@ -42,7 +44,10 @@ import {
   isLadBalance,
   isTempPark,
   resolveProvinceCode,
-  renderDashboardView
+  renderDashboardView,
+  renderLeaseholdView,
+  renderLeaseholdModalHtml,
+  generateLeaseholdCsv
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -3874,6 +3879,231 @@ test('Session Auto-Logout after 15 minutes of inactivity and warning countdown v
     assert.equal(postLogoutSession.status, 200);
     const postLogoutData = await postLogoutSession.json();
     assert.equal(postLogoutData.authenticated, false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Leasehold 34-Field schema, encoding modal, provincial isolation & RBAC (users encode only, admin deletes)', async () => {
+  // 1. Validate Schema: Exactly 34 Columns matching user specification
+  assert.equal(LEASEHOLD_COLUMNS.length, 34, 'LEASEHOLD_COLUMNS must have exactly 34 columns');
+  const requiredHeaders = [
+    'REG', 'PROVS', 'MUN', 'BRGY', 'LO SURNAME', 'LO FIRSTNAME', 'LO MI',
+    'TITLE NO.', 'TAX DEC NO.', 'SURVEY NO.', 'LOT NO.', 'AREA PER TITLE (Has)',
+    'AREA TENANTED (Has)', 'WITHIN RETAINED AREA (Y,N)', 'LEASEHOLDER SURNAME',
+    'LEASEHOLDER FIRSTNAME', 'LEASEHOLDER MI', 'TENANT/LESSEE STATUS (alive, deceased)',
+    'NEW LESSEE NAME (for deceased Tenant/Lessee) _Surname, First Name, MI',
+    'RELATIONSHIP TO TENANT/LESSEE (relationship to original leaseholder)',
+    'GENDER (M, F)', 'Number of ARBs', 'MAIN CROPS', 'AUXILLIARY CROPS',
+    'SHARING ARRANGEMENT', 'TENURIAL ARRANGEMENT', 'STATUS OF CONTRACT (New, Amended, Renewal)',
+    '*DATE CONTRACT REGISTERED (mm/dd/yyyy)', '*DATE PLR REGISTERED (mm/dd/yyyy)',
+    'LEASE RENTAL UNIT', 'LEASE IN PESOS', 'TARGET YEAR', 'Report Month (Words)', 'REMARKS'
+  ];
+  for (const h of requiredHeaders) {
+    const found = LEASEHOLD_COLUMNS.some((c) => c.header === h);
+    assert.ok(found, `Required column header "${h}" must exist in LEASEHOLD_COLUMNS`);
+  }
+
+  // 2. Test Store Persistence & Normalization
+  const dir = makeTempDir();
+  const store = new ConsolidatedStore(dir);
+  assert.ok(Array.isArray(store.state.leasehold), 'Store must initialize leasehold array');
+
+  const sampleRecord = {
+    reg: 'Region VIII',
+    provs: 'Eastern Samar',
+    mun: 'Lawaan',
+    brgy: 'Bolusao',
+    loSurname: 'SABULAO',
+    loFirstname: 'EUFEMIA',
+    loMi: 'C.',
+    titleNo: 'RP-1038',
+    taxDecNo: 'TD-2024-0012',
+    surveyNo: 'Cad-123',
+    lotNo: '104',
+    areaPerTitle: '2.5000',
+    areaTenanted: '1.8817',
+    withinRetainedArea: 'N',
+    leaseholderSurname: 'DELA CRUZ',
+    leaseholderFirstname: 'JUAN',
+    leaseholderMi: 'P',
+    tenantStatus: 'Alive',
+    newLesseeName: '',
+    relationshipToTenant: '',
+    gender: 'M',
+    noOfArbs: '1',
+    mainCrops: 'Palay',
+    auxilliaryCrops: 'Coconut',
+    sharingArrangement: '75-25',
+    tenurialArrangement: 'Agricultural Leasehold',
+    statusOfContract: 'New',
+    dateContractRegistered: '03/15/2026',
+    datePlrRegistered: '03/20/2026',
+    leaseRentalUnit: 'cavans',
+    leaseInPesos: '25000',
+    targetYear: '2026',
+    reportMonth: 'March',
+    remarks: 'Valid registered leasehold contract'
+  };
+
+  const savedRecord = store.upsertLeaseholdRow(sampleRecord);
+  assert.ok(savedRecord.id, 'Upserted record must receive a persistent id');
+  assert.equal(store.state.leasehold.length, 1);
+  assert.equal(store.state.leasehold[0].leaseholderSurname, 'DELA CRUZ');
+  assert.equal(store.state.leasehold[0].areaTenanted, '1.8817');
+
+  // Provincial Scoping in Store
+  const esaRows = store.getScopedLeaseholdRows('ESA');
+  assert.equal(esaRows.length, 1, 'ESA scoped view returns Eastern Samar record');
+  const leyRows = store.getScopedLeaseholdRows('LEY');
+  assert.equal(leyRows.length, 0, 'LEY scoped view returns 0 records for ESA parcel');
+
+  // 3. Test HTTP Server API Endpoints & Role Enforcement ("allow users only to encode")
+  const { server } = createAppServer(store, { requireAuth: true, requireOtp: false });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    // Admin signs in to fetch bootstrap schemas
+    const adminLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD })
+    });
+    assert.equal(adminLoginRes.status, 200);
+    const adminCookie = adminLoginRes.headers.get('set-cookie').split(';')[0];
+
+    // Bootstrap returns leasehold and leaseholdColumns
+    const bootRes = await fetch(`${baseUrl}/api/bootstrap`, {
+      headers: { Cookie: adminCookie }
+    });
+    const bootData = await bootRes.json();
+    assert.equal(bootData.schemas.leaseholdColumns.length, 34);
+    assert.ok(Array.isArray(bootData.state.leasehold));
+
+    // Sign up a regular user for Eastern Samar and approve
+    const userEmail = 'encoder.esa@dar8.gov.ph';
+    const userPass = 'ProvincePass2026!';
+    const userRes = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'ESA Leasehold Encoder',
+        email: userEmail,
+        province: 'Eastern Samar',
+        contactNumber: '0918-123-4567',
+        password: userPass
+      })
+    });
+    assert.equal(userRes.status, 201);
+    const createdUser = store.findUserByEmail(userEmail);
+    store.updateUserStatus(createdUser.id, { status: 'approved' }, 'admin');
+
+    // Sign in as provincial user
+    const loginUserRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, password: userPass })
+    });
+    assert.equal(loginUserRes.status, 200);
+    const userCookie = loginUserRes.headers.get('set-cookie').split(';')[0];
+
+    // Provincial user encodes a new leasehold record for Eastern Samar
+    const postRes = await fetch(`${baseUrl}/api/leasehold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: userCookie },
+      body: JSON.stringify({
+        row: {
+          provs: 'Eastern Samar',
+          mun: 'Guiuan',
+          brgy: 'Barangay 1',
+          loSurname: 'PEREZ',
+          loFirstname: 'MARIA',
+          leaseholderSurname: 'SANTOS',
+          leaseholderFirstname: 'PEDRO',
+          areaTenanted: '1.2500',
+          statusOfContract: 'New',
+          targetYear: '2026'
+        }
+      })
+    });
+    assert.equal(postRes.status, 200);
+    const postData = await postRes.json();
+    assert.equal(postData.ok, true);
+    assert.equal(postData.row.leaseholderSurname, 'SANTOS');
+    const createdId = postData.row.id;
+
+    // Provincial user cannot encode cross-province (e.g. Leyte)
+    const crossProvRes = await fetch(`${baseUrl}/api/leasehold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: userCookie },
+      body: JSON.stringify({
+        row: {
+          provs: 'Leyte',
+          mun: 'Palo',
+          leaseholderSurname: 'ILLEGAL',
+          leaseholderFirstname: 'CROSS'
+        }
+      })
+    });
+    assert.equal(crossProvRes.status, 403);
+
+    // CRITICAL: Regular user CANNOT delete records ("allow users only to encode")
+    const userDelRes = await fetch(`${baseUrl}/api/leasehold/${encodeURIComponent(createdId)}`, {
+      method: 'DELETE',
+      headers: { Cookie: userCookie }
+    });
+    assert.equal(userDelRes.status, 403, 'Regular users must receive 403 Forbidden when attempting delete');
+    const userDelData = await userDelRes.json();
+    assert.match(userDelData.error, /Users are permitted to encode only/i);
+
+    // Admin signs in and can delete
+    const adminDelRes = await fetch(`${baseUrl}/api/leasehold/${encodeURIComponent(createdId)}`, {
+      method: 'DELETE',
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(adminDelRes.status, 200, 'Admin can successfully delete record');
+
+    // 4. Test View Rendering & CSV Export
+    const viewHtml = renderLeaseholdView({
+      state: store.state,
+      schemas: { leaseholdColumns: LEASEHOLD_COLUMNS },
+      currentUser: { role: 'user', email: userEmail, province: 'Eastern Samar' },
+      provinceScope: { code: 'ESA', provinceName: 'Eastern Samar' },
+      leaseholdSearch: '',
+      leaseholdProvinceFilter: 'ALL',
+      leaseholdStatusFilter: 'ALL',
+      leaseholdTargetYearFilter: 'ALL',
+      leaseholdPage: 1,
+      leaseholdPageSize: 25
+    });
+    assert.ok(viewHtml.includes('Leasehold Master Ledger'), 'View renders master ledger title');
+    assert.ok(viewHtml.includes('+ Encode Leasehold Record'), 'Encode button is present for user');
+    assert.ok(viewHtml.includes('DELA CRUZ'), 'Encoded record is rendered in table');
+    // Non-admin view must NOT show delete button
+    assert.ok(!viewHtml.includes('data-del-leasehold'), 'Regular user must not see Delete button');
+
+    // Admin view DOES show delete button
+    const adminViewHtml = renderLeaseholdView({
+      state: store.state,
+      schemas: { leaseholdColumns: LEASEHOLD_COLUMNS },
+      currentUser: { role: 'admin', email: DEFAULT_ADMIN_EMAIL },
+      provinceScope: null,
+      leaseholdSearch: '',
+      leaseholdProvinceFilter: 'ALL',
+      leaseholdStatusFilter: 'ALL',
+      leaseholdTargetYearFilter: 'ALL',
+      leaseholdPage: 1,
+      leaseholdPageSize: 25
+    });
+    assert.ok(adminViewHtml.includes('data-del-leasehold'), 'Admin view includes Delete button');
+
+    // CSV generator outputs 34 headers
+    const csv = generateLeaseholdCsv(store.state.leasehold);
+    assert.ok(csv.includes('"REG","PROVS","MUN","BRGY"'), 'CSV includes standard 34 columns');
+    assert.ok(csv.includes('DELA CRUZ'), 'CSV includes data rows');
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

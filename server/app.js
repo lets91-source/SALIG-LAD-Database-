@@ -12,6 +12,7 @@ import {
   DASHBOARD_MILESTONES,
   NEP_MILESTONE_OPTIONS,
   MILESTONE_DATA_COLUMNS,
+  LEASEHOLD_COLUMNS,
   OPTOOL_SHEET_SCHEMAS,
   OPTOOL_PREVIEW_COLUMNS,
   inferProvinceCodeFromText,
@@ -226,7 +227,8 @@ function buildScopedStatePayload(store, scopeCode, includeStaticConfig = true) {
     nodeStatuses: view.nodeStatuses || {},
     syncLogs: view.syncLogs,
     milestoneData: view.milestoneData,
-    optool: view.optool
+    optool: view.optool,
+    leasehold: view.leasehold || []
   };
   if (includeStaticConfig) {
     payload.gasWebAppUrl = view.gasWebAppUrl;
@@ -816,6 +818,7 @@ export function createAppServer(dataDir, options = {}) {
             dashboardMilestones: DASHBOARD_MILESTONES,
             nepMilestoneOptions: NEP_MILESTONE_OPTIONS,
             milestoneColumns: MILESTONE_DATA_COLUMNS,
+            leaseholdColumns: LEASEHOLD_COLUMNS,
             optoolTabs: OPTOOL_SHEET_SCHEMAS,
             optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS
           },
@@ -1069,6 +1072,53 @@ export function createAppServer(dataDir, options = {}) {
             state: scopedState,
             analytics: computeScopedAnalytics(store, query, scopeCode)
           });
+        }
+      }
+
+      if (req.method === 'GET' && pathname === '/api/leasehold') {
+        const rows = store.getScopedLeaseholdRows(scopeCode);
+        return sendJson(res, 200, {
+          ok: true,
+          rows,
+          total: rows.length
+        });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/leasehold') {
+        const body = await readJsonBody(req);
+        try {
+          const rawRow = body.row || body;
+          const index = body.index !== undefined && body.index !== null ? Number(body.index) : null;
+          const saved = store.upsertLeaseholdRow(rawRow, index, sessionUser, scopeCode);
+          const scopedRows = store.getScopedLeaseholdRows(scopeCode);
+          return sendJson(res, 200, {
+            ok: true,
+            row: saved,
+            rows: scopedRows,
+            leasehold: scopedRows
+          });
+        } catch (err) {
+          return sendJson(res, err.statusCode || 400, { error: err.message });
+        }
+      }
+
+      if (req.method === 'DELETE' && pathname.startsWith('/api/leasehold/')) {
+        if (sessionUser?.role !== 'admin') {
+          return sendJson(res, 403, {
+            error: 'Administrator access required to delete records. Users are permitted to encode only.'
+          });
+        }
+        const idOrIndex = decodeURIComponent(pathname.slice('/api/leasehold/'.length));
+        try {
+          store.deleteLeaseholdRow(idOrIndex, sessionUser, scopeCode);
+          const scopedRows = store.getScopedLeaseholdRows(scopeCode);
+          return sendJson(res, 200, {
+            ok: true,
+            rows: scopedRows,
+            leasehold: scopedRows
+          });
+        } catch (err) {
+          return sendJson(res, err.statusCode || 400, { error: err.message });
         }
       }
 

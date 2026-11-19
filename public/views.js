@@ -7292,6 +7292,656 @@ function buildDbByLhidMap(state) {
       </div>
     </div>
   `;
+}
+
+export function renderLeaseholdView(ctx) {
+  const {
+    state,
+    schemas,
+    currentUser,
+    provinceScope,
+    leaseholdSearch = '',
+    leaseholdProvinceFilter = 'ALL',
+    leaseholdStatusFilter = 'ALL',
+    leaseholdTargetYearFilter = 'ALL',
+    leaseholdPage = 1,
+    leaseholdPageSize = 25
+  } = ctx;
+
+  const rawRows = Array.isArray(state?.leasehold) ? state.leasehold : [];
+  const q = String(leaseholdSearch || '').trim().toLowerCase();
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Province restriction: provincial accounts only see their province
+  const effectiveScopeCode = provinceScope?.code || null;
+  const effectiveScopeName = provinceScope?.provinceName || null;
+
+  const rows = rawRows.filter((r) => {
+    // 1. Provincial Scope check
+    if (effectiveScopeCode) {
+      const rowProv = String(r.provs || r.PROVS || r.province || '').trim().toLowerCase();
+      const scopeLower = effectiveScopeName ? effectiveScopeName.toLowerCase() : '';
+      const codeLower = effectiveScopeCode.toLowerCase();
+      const matchesScope = rowProv.includes(codeLower) || (scopeLower && rowProv.includes(scopeLower));
+      if (!matchesScope) {
+        const rowMun = String(r.mun || r.MUN || r.municipality || '').trim();
+        const munProv = resolveProvinceCode(rowMun);
+        if (munProv !== effectiveScopeCode) return false;
+      }
+    }
+
+    // 2. Toolbar Province filter (for Regional Admin)
+    if (leaseholdProvinceFilter !== 'ALL') {
+      const filterLower = leaseholdProvinceFilter.toLowerCase();
+      const rProv = String(r.provs || r.PROVS || r.province || '').toLowerCase();
+      if (!rProv.includes(filterLower)) return false;
+    }
+
+    // 3. Contract Status filter
+    if (leaseholdStatusFilter !== 'ALL') {
+      const rStatus = String(r.statusOfContract || r['STATUS OF CONTRACT (New, Amended, Renewal)'] || '').trim().toLowerCase();
+      if (rStatus !== leaseholdStatusFilter.toLowerCase()) return false;
+    }
+
+    // 4. Target Year filter
+    if (leaseholdTargetYearFilter !== 'ALL') {
+      const rYear = String(r.targetYear || r['TARGET YEAR'] || '').trim();
+      if (rYear !== String(leaseholdTargetYearFilter).trim()) return false;
+    }
+
+    // 5. Text Search filter across all 34 fields
+    if (q) {
+      const searchable = [
+        r.provs, r.mun, r.brgy,
+        r.loSurname, r.loFirstname, r.loMi,
+        r.titleNo, r.taxDecNo, r.surveyNo, r.lotNo,
+        r.leaseholderSurname, r.leaseholderFirstname, r.leaseholderMi,
+        r.newLesseeName, r.mainCrops, r.auxilliaryCrops,
+        r.statusOfContract, r.targetYear, r.reportMonth, r.remarks
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!searchable.includes(q)) return false;
+    }
+
+    return true;
+  });
+
+  // Calculate KPIs
+  const totalCount = rows.length;
+  const totalTenantedArea = rows.reduce((sum, r) => sum + (parseNumericValue(r.areaTenanted || r['AREA TENANTED (Has)']) || 0), 0);
+  const totalTitleArea = rows.reduce((sum, r) => sum + (parseNumericValue(r.areaPerTitle || r['AREA PER TITLE (Has)']) || 0), 0);
+  const totalArbs = rows.reduce((sum, r) => sum + (parseInt(r.noOfArbs || r['Number of ARBs'], 10) || 0), 0);
+  const totalLeasePesos = rows.reduce((sum, r) => sum + (parseNumericValue(r.leaseInPesos || r['LEASE IN PESOS']) || 0), 0);
+
+  // Distinct target years for filter dropdown
+  const uniqueYears = Array.from(new Set(rawRows.map((r) => String(r.targetYear || r['TARGET YEAR'] || '').trim()).filter(Boolean))).sort();
+
+  // Pagination
+  const pageSize = leaseholdPageSize === 'ALL' ? totalCount || 1 : Math.max(1, parseInt(leaseholdPageSize, 10) || 25);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const currentPage = Math.min(Math.max(1, parseInt(leaseholdPage), 1), totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = leaseholdPageSize === 'ALL' ? totalCount : Math.min(startIndex + pageSize, totalCount);
+  const pageRows = rows.slice(startIndex, endIndex);
+
+  return `
+    <div class="panel" id="leasehold-panel">
+      <!-- Header & KPIs -->
+      <div class="panel-header" style="flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="badge badge-green" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">DAR Region VIII</span>
+            <span class="badge badge-blue" style="font-size:11px;font-weight:700;">Agricultural Leasehold</span>
+            ${effectiveScopeName ? `<span class="badge badge-amber" style="font-size:11px;font-weight:700;">${esc(effectiveScopeName)}</span>` : ''}
+          </div>
+          <h2 class="panel-title" style="font-size:20px;font-weight:700;margin-top:4px;color:var(--dar-green-dark,#0a361d);">
+            Leasehold Master Ledger &amp; Encoding Operations
+          </h2>
+          <p class="panel-subtitle" style="font-size:13px;color:var(--text-muted);margin-top:2px;">
+            Standardized 34-Field Agricultural Leasehold Registry • Landholdings, Leaseholder Profiles, Contracts &amp; Tenurial Arrangements
+          </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-leasehold-export-csv" title="Export matching Leasehold records to CSV">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-leasehold-add" title="Encode new Leasehold record">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            + Encode Leasehold Record
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-leasehold-fullscreen" data-panel-fullscreen="leasehold-panel" title="Toggle Fullscreen">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="icon-expand"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            <span>Full Screen</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Metric KPI Cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
+        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;">Total Contracts</div>
+          <div style="font-size:24px;font-weight:800;color:#14532d;margin-top:2px;">${totalCount.toLocaleString()}</div>
+          <div style="font-size:11px;color:#15803d;margin-top:2px;">Registered Leasehold Contracts</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;">Area Tenanted</div>
+          <div style="font-size:24px;font-weight:800;color:#1e3a8a;margin-top:2px;">${fmtArea(totalTenantedArea)} <span style="font-size:13px;font-weight:600;">HAS</span></div>
+          <div style="font-size:11px;color:#2563eb;margin-top:2px;">Agricultural Tenanted Land</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#fefce8,#fef08a);border:1px solid #fef08a;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;">Area Per Title</div>
+          <div style="font-size:24px;font-weight:800;color:#713f12;margin-top:2px;">${fmtArea(totalTitleArea)} <span style="font-size:13px;font-weight:600;">HAS</span></div>
+          <div style="font-size:11px;color:#a16207;margin-top:2px;">Total Title Parcel Coverage</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid #e9d5ff;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:#6b21a8;text-transform:uppercase;letter-spacing:0.5px;">Beneficiaries / ARBs</div>
+          <div style="font-size:24px;font-weight:800;color:#581c87;margin-top:2px;">${totalArbs.toLocaleString()}</div>
+          <div style="font-size:11px;color:#7e22ce;margin-top:2px;">Covered Agrarian Beneficiaries</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fecaca;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px;">Lease in Pesos</div>
+          <div style="font-size:22px;font-weight:800;color:#7f1d1d;margin-top:2px;">₱${totalLeasePesos.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div style="font-size:11px;color:#b91c1c;margin-top:2px;">Total Monetary Lease Rental</div>
+        </div>
+      </div>
+
+      <!-- Toolbar & Filters -->
+      <div class="toolbar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div class="toolbar-left" style="flex:1;min-width:280px;">
+          <input
+            type="search"
+            class="search-input"
+            id="leasehold-search"
+            placeholder="Search Landowner, Leaseholder, Title No, Mun, Brgy, Crops, Remarks…"
+            value="${esc(leaseholdSearch)}"
+            style="min-width:260px;flex:1;"
+          />
+        </div>
+        <div class="toolbar-right" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${!effectiveScopeCode ? `
+            <select class="form-control" id="leasehold-province-filter" style="width:auto;font-size:12.5px;padding:4px 8px;">
+              <option value="ALL" ${leaseholdProvinceFilter === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
+              <option value="Biliran" ${leaseholdProvinceFilter === 'Biliran' ? 'selected' : ''}>Biliran</option>
+              <option value="Eastern Samar" ${leaseholdProvinceFilter === 'Eastern Samar' ? 'selected' : ''}>Eastern Samar</option>
+              <option value="Leyte" ${leaseholdProvinceFilter === 'Leyte' ? 'selected' : ''}>Leyte</option>
+              <option value="Northern Samar" ${leaseholdProvinceFilter === 'Northern Samar' ? 'selected' : ''}>Northern Samar</option>
+              <option value="Samar" ${leaseholdProvinceFilter === 'Samar' ? 'selected' : ''}>Samar</option>
+              <option value="Southern Leyte" ${leaseholdProvinceFilter === 'Southern Leyte' ? 'selected' : ''}>Southern Leyte</option>
+            </select>
+          ` : `
+            <span class="badge badge-gray" style="font-size:12px;">Prov: <strong>${esc(effectiveScopeName)}</strong></span>
+          `}
+
+          <select class="form-control" id="leasehold-status-filter" style="width:auto;font-size:12.5px;padding:4px 8px;">
+            <option value="ALL" ${leaseholdStatusFilter === 'ALL' ? 'selected' : ''}>Contract Status: All</option>
+            <option value="New" ${leaseholdStatusFilter === 'New' ? 'selected' : ''}>New</option>
+            <option value="Amended" ${leaseholdStatusFilter === 'Amended' ? 'selected' : ''}>Amended</option>
+            <option value="Renewal" ${leaseholdStatusFilter === 'Renewal' ? 'selected' : ''}>Renewal</option>
+          </select>
+
+          <select class="form-control" id="leasehold-year-filter" style="width:auto;font-size:12.5px;padding:4px 8px;">
+            <option value="ALL" ${leaseholdTargetYearFilter === 'ALL' ? 'selected' : ''}>Target Year: All</option>
+            ${uniqueYears.map((yr) => `<option value="${esc(yr)}" ${String(leaseholdTargetYearFilter) === yr ? 'selected' : ''}>${esc(yr)}</option>`).join('')}
+          </select>
+
+          <div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted);">
+            <span>Rows:</span>
+            <select class="form-control" id="leasehold-page-size" style="width:auto;font-size:12px;padding:3px 6px;">
+              <option value="10" ${String(leaseholdPageSize) === '10' ? 'selected' : ''}>10</option>
+              <option value="25" ${String(leaseholdPageSize) === '25' ? 'selected' : ''}>25</option>
+              <option value="50" ${String(leaseholdPageSize) === '50' ? 'selected' : ''}>50</option>
+              <option value="100" ${String(leaseholdPageSize) === '100' ? 'selected' : ''}>100</option>
+              <option value="ALL" ${String(leaseholdPageSize) === 'ALL' ? 'selected' : ''}>All</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination count banner -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 2px;margin-bottom:8px;font-size:12px;color:var(--text-muted);">
+        <div>
+          Showing <strong>${totalCount === 0 ? 0 : startIndex + 1}</strong> to <strong>${endIndex}</strong> of <strong>${totalCount}</strong> matching Leasehold records
+          • <strong>${fmtArea(totalTenantedArea)} HAS</strong> tenanted
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button type="button" class="btn btn-secondary btn-xs" id="btn-leasehold-prev" ${currentPage <= 1 ? 'disabled' : ''} style="padding:2px 8px;">◀ Prev</button>
+          <span>Page <strong>${currentPage}</strong> of <strong>${totalPages}</strong></span>
+          <button type="button" class="btn btn-secondary btn-xs" id="btn-leasehold-next" ${currentPage >= totalPages ? 'disabled' : ''} style="padding:2px 8px;">Next ▶</button>
+        </div>
+      </div>
+
+      <!-- Master Ledger Table with Vertical & Horizontal Scroll and Sticky Header -->
+      <div class="table-wrap" id="leasehold-table-wrap" style="max-height:clamp(380px,68vh,760px);overflow:auto;border:1px solid var(--border);border-radius:6px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
+          <thead style="position:sticky;top:0;z-index:10;background:var(--dar-green-dark,#0a361d);color:#ffffff;">
+            <tr>
+              <th style="width:38px;padding:9px 8px;text-align:center;color:#ffffff;">#</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">PROVINCE</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">MUNICIPALITY / BARANGAY</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">LANDOWNER / TITLE</th>
+              <th style="padding:9px 10px;text-align:right;color:#ffffff;">AREA TENANTED (HAS)</th>
+              <th style="padding:9px 10px;text-align:right;color:#ffffff;">AREA PER TITLE (HAS)</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">RETAINED AREA?</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">LEASEHOLDER / TENANT</th>
+              <th style="padding:9px 10px;text-align:center;color:#ffffff;">STATUS</th>
+              <th style="padding:9px 10px;text-align:center;color:#ffffff;">GENDER</th>
+              <th style="padding:9px 10px;text-align:center;color:#ffffff;">ARBs</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">CROPS &amp; TENURIAL TERMS</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">LEASE RENTAL</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">CONTRACT STATUS</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">REGISTRATION DATES</th>
+              <th style="padding:9px 10px;text-align:center;color:#ffffff;">TARGET YR / MONTH</th>
+              <th style="padding:9px 10px;text-align:left;color:#ffffff;">REMARKS</th>
+              <th class="col-actions-sticky" style="padding:9px 12px;text-align:center;color:#ffffff;position:sticky;right:0;background:var(--dar-green-dark,#0a361d);z-index:11;">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageRows.length === 0 ? `
+              <tr>
+                <td colspan="18" style="text-align:center;padding:36px 16px;color:var(--text-muted);background:#fcfdfd;">
+                  <div style="font-size:15px;font-weight:600;color:var(--dar-green-dark,#0a361d);margin-bottom:4px;">No Leasehold records found.</div>
+                  <div style="font-size:12.5px;margin-bottom:12px;">Click below to encode your first Agricultural Leasehold contract.</div>
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-leasehold-empty-add">+ Encode Leasehold Record</button>
+                </td>
+              </tr>
+            ` : pageRows.map((r, i) => {
+              const rowNum = startIndex + i + 1;
+              const globalIndex = rawRows.indexOf(r);
+              const rowId = r.id || `idx-${globalIndex}`;
+              const loFull = [r.loSurname, r.loFirstname, r.loMi].filter(Boolean).join(', ');
+              const lhFull = [r.leaseholderSurname, r.leaseholderFirstname, r.leaseholderMi].filter(Boolean).join(', ');
+              const status = String(r.statusOfContract || 'New').trim();
+              const isAlive = String(r.tenantStatus || 'Alive').toLowerCase().includes('alive');
+
+              return `
+                <tr style="border-bottom:1px solid var(--border,#e2e8f0);transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                  <td style="text-align:center;font-weight:700;color:var(--text-muted);padding:8px;">${rowNum}</td>
+                  <td style="padding:8px 10px;"><span class="badge badge-gray" style="font-weight:600;">${esc(r.provs || '—')}</span></td>
+                  <td style="padding:8px 10px;">
+                    <div style="font-weight:600;color:var(--dar-green-dark,#0a361d);">${esc(r.mun || '—')}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${esc(r.brgy || '—')}</div>
+                  </td>
+                  <td style="padding:8px 10px;">
+                    <div style="font-weight:600;">${esc(loFull || '—')}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">
+                      Title: ${esc(r.titleNo || '—')}${r.taxDecNo ? ` • Tax Dec: ${esc(r.taxDecNo)}` : ''}${r.lotNo ? ` • Lot: ${esc(r.lotNo)}` : ''}${r.surveyNo ? ` • Sur: ${esc(r.surveyNo)}` : ''}
+                    </div>
+                  </td>
+                  <td style="padding:8px 10px;text-align:right;">
+                    <span class="badge badge-blue num font-bold" style="font-size:12px;">${fmtArea(r.areaTenanted)} HAS</span>
+                  </td>
+                  <td style="padding:8px 10px;text-align:right;font-family:monospace;">${fmtArea(r.areaPerTitle)}</td>
+                  <td style="padding:8px 10px;text-align:center;">
+                    <span class="badge ${String(r.withinRetainedArea).toUpperCase() === 'Y' ? 'badge-green' : 'badge-gray'}">${esc(r.withinRetainedArea || '—')}</span>
+                  </td>
+                  <td style="padding:8px 10px;">
+                    <div style="font-weight:700;color:var(--dar-green,#135d34);">${esc(lhFull || '—')}</div>
+                    ${!isAlive && r.newLesseeName ? `<div style="font-size:10.5px;color:#b91c1c;">New: ${esc(r.newLesseeName)}${r.relationshipToTenant ? ` (${esc(r.relationshipToTenant)})` : ''}</div>` : ''}
+                  </td>
+                  <td style="padding:8px 10px;text-align:center;">
+                    <span class="badge ${isAlive ? 'badge-green' : 'badge-amber'}" style="font-size:10.5px;">${esc(r.tenantStatus || 'Alive')}</span>
+                  </td>
+                  <td style="padding:8px 10px;text-align:center;">
+                    <span class="badge badge-gray" style="font-size:10.5px;">${esc(r.gender || '—')}</span>
+                  </td>
+                  <td style="padding:8px 10px;text-align:center;font-weight:700;">
+                    ${esc(r.noOfArbs || '1')}
+                  </td>
+                  <td style="padding:8px 10px;">
+                    <div><strong>Main:</strong> ${esc(r.mainCrops || '—')}${r.auxilliaryCrops ? ` • Aux: ${esc(r.auxilliaryCrops)}` : ''}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${esc(r.tenurialArrangement || r.sharingArrangement || 'Leasehold')}</div>
+                  </td>
+                  <td style="padding:8px 10px;">
+                    <div>${r.leaseInPesos ? `₱${parseNumericValue(r.leaseInPesos).toLocaleString()}` : '—'}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${esc(r.leaseRentalUnit || '—')}</div>
+                  </td>
+                  <td style="padding:8px 10px;">
+                    <span class="badge ${status === 'New' ? 'badge-green' : status === 'Amended' ? 'badge-amber' : 'badge-blue'}">${esc(status)}</span>
+                  </td>
+                  <td style="padding:8px 10px;font-size:11px;">
+                    <div>Contract: ${esc(r.dateContractRegistered || '—')}</div>
+                    <div>PLR: ${esc(r.datePlrRegistered || '—')}</div>
+                  </td>
+                  <td style="padding:8px 10px;text-align:center;">
+                    <div><span class="badge badge-gray">${esc(r.targetYear || '—')}</span></div>
+                    <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">${esc(r.reportMonth || '—')}</div>
+                  </td>
+                  <td style="padding:8px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${esc(r.remarks)}">
+                    ${esc(r.remarks || '—')}
+                  </td>
+                  <td class="col-actions-sticky" style="padding:8px 10px;text-align:center;white-space:nowrap;position:sticky;right:0;background:#ffffff;box-shadow:-2px 0 4px rgba(0,0,0,0.04);">
+                    <button type="button" class="btn btn-secondary btn-xs" data-edit-leasehold="${esc(rowId)}" data-index="${globalIndex}" title="Edit this record">
+                      Edit
+                    </button>
+                    ${isAdmin ? `
+                      <button type="button" class="btn btn-danger btn-xs" data-del-leasehold="${esc(rowId)}" data-index="${globalIndex}" title="Delete this record (Admin only)">
+                        Delete
+                      </button>
+                    ` : `
+                      <span style="font-size:11px;color:var(--text-muted);margin-left:4px;" title="Users are permitted to encode only. Contact administrator to delete.">🔒</span>
+                    `}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bottom bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px 4px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border,#e2e8f0);margin-top:8px;">
+        <div>
+          Showing <strong>${totalCount === 0 ? 0 : startIndex + 1}</strong> to <strong>${endIndex}</strong> of <strong>${totalCount}</strong> records
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button type="button" class="btn btn-secondary btn-xs" id="btn-leasehold-bottom-prev" ${currentPage <= 1 ? 'disabled' : ''} style="padding:2px 8px;">◀ Prev</button>
+          <span>Page <strong>${currentPage}</strong> of <strong>${totalPages}</strong></span>
+          <button type="button" class="btn btn-secondary btn-xs" id="btn-leasehold-bottom-next" ${currentPage >= totalPages ? 'disabled' : ''} style="padding:2px 8px;">Next ▶</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function renderLeaseholdModalHtml(existingRow, rowIndex, ctx) {
+  const isEdit = existingRow !== null && existingRow !== undefined;
+  const { provinceScope } = ctx || {};
+  const effectiveScopeName = provinceScope?.provinceName || null;
+
+  const row = existingRow || {};
+  const currentYear = new Date().getFullYear();
+  const currentMonthName = new Date().toLocaleString('en-US', { month: 'long' });
+
+  // Default values
+  const regVal = row.reg || 'Region VIII';
+  const provVal = effectiveScopeName || row.provs || 'Leyte';
+  const targetYearVal = row.targetYear || String(currentYear);
+  const reportMonthVal = row.reportMonth || currentMonthName;
+
+  return `
+    <div style="font-size:12.5px;">
+      <!-- Section 1: Location & Jurisdiction -->
+      <div class="form-section-title" style="margin-top:0;">1. Location &amp; Jurisdiction</div>
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+        <div class="form-field">
+          <label for="lh-reg">Region (REG)</label>
+          <input type="text" id="lh-reg" name="reg" class="form-control" value="${esc(regVal)}" required />
+        </div>
+        <div class="form-field">
+          <label for="lh-provs">Province (PROVS) <span style="color:red">*</span></label>
+          ${effectiveScopeName ? `
+            <input type="text" id="lh-provs" name="provs" class="form-control form-control-readonly" value="${esc(effectiveScopeName)}" readonly required />
+          ` : `
+            <select id="lh-provs" name="provs" class="form-control" required>
+              <option value="Biliran" ${provVal === 'Biliran' ? 'selected' : ''}>Biliran</option>
+              <option value="Eastern Samar" ${provVal === 'Eastern Samar' ? 'selected' : ''}>Eastern Samar</option>
+              <option value="Leyte" ${provVal === 'Leyte' ? 'selected' : ''}>Leyte</option>
+              <option value="Northern Samar" ${provVal === 'Northern Samar' ? 'selected' : ''}>Northern Samar</option>
+              <option value="Samar" ${provVal === 'Samar' ? 'selected' : ''}>Samar</option>
+              <option value="Southern Leyte" ${provVal === 'Southern Leyte' ? 'selected' : ''}>Southern Leyte</option>
+            </select>
+          `}
+        </div>
+        <div class="form-field">
+          <label for="lh-mun">Municipality (MUN) <span style="color:red">*</span></label>
+          <input type="text" id="lh-mun" name="mun" class="form-control" value="${esc(row.mun || '')}" placeholder="e.g. Palo, Lawaan, Basey" required />
+        </div>
+        <div class="form-field">
+          <label for="lh-brgy">Barangay (BRGY)</label>
+          <input type="text" id="lh-brgy" name="brgy" class="form-control" value="${esc(row.brgy || '')}" placeholder="Barangay name" />
+        </div>
+      </div>
+
+      <!-- Section 2: Landowner & Landholding Information -->
+      <div class="form-section-title" style="margin-top:16px;">2. Landowner &amp; Landholding Details</div>
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <div class="form-field">
+          <label for="lh-loSurname">LO Surname <span style="color:red">*</span></label>
+          <input type="text" id="lh-loSurname" name="loSurname" class="form-control" value="${esc(row.loSurname || '')}" placeholder="Landowner Surname" required />
+        </div>
+        <div class="form-field">
+          <label for="lh-loFirstname">LO Firstname</label>
+          <input type="text" id="lh-loFirstname" name="loFirstname" class="form-control" value="${esc(row.loFirstname || '')}" placeholder="Landowner First Name" />
+        </div>
+        <div class="form-field">
+          <label for="lh-loMi">LO M.I.</label>
+          <input type="text" id="lh-loMi" name="loMi" class="form-control" value="${esc(row.loMi || '')}" placeholder="M.I." maxlength="5" />
+        </div>
+        <div class="form-field">
+          <label for="lh-titleNo">Title No. (TITLE NO.)</label>
+          <input type="text" id="lh-titleNo" name="titleNo" class="form-control" value="${esc(row.titleNo || '')}" placeholder="OCT/TCT No." />
+        </div>
+        <div class="form-field">
+          <label for="lh-taxDecNo">Tax Dec No. (TAX DEC NO.)</label>
+          <input type="text" id="lh-taxDecNo" name="taxDecNo" class="form-control" value="${esc(row.taxDecNo || '')}" placeholder="Tax Declaration No." />
+        </div>
+        <div class="form-field">
+          <label for="lh-surveyNo">Survey No. (SURVEY NO.)</label>
+          <input type="text" id="lh-surveyNo" name="surveyNo" class="form-control" value="${esc(row.surveyNo || '')}" placeholder="Survey Plan No." />
+        </div>
+        <div class="form-field">
+          <label for="lh-lotNo">Lot No. (LOT NO.)</label>
+          <input type="text" id="lh-lotNo" name="lotNo" class="form-control" value="${esc(row.lotNo || '')}" placeholder="Lot No." />
+        </div>
+        <div class="form-field">
+          <label for="lh-areaPerTitle">Area Per Title (Has)</label>
+          <input type="number" step="0.0001" min="0" id="lh-areaPerTitle" name="areaPerTitle" class="form-control" value="${esc(row.areaPerTitle || '')}" placeholder="0.0000" />
+        </div>
+        <div class="form-field">
+          <label for="lh-areaTenanted">Area Tenanted (Has) <span style="color:red">*</span></label>
+          <input type="number" step="0.0001" min="0" id="lh-areaTenanted" name="areaTenanted" class="form-control" value="${esc(row.areaTenanted || '')}" placeholder="0.0000" required />
+        </div>
+        <div class="form-field">
+          <label for="lh-withinRetainedArea">Within Retained Area? (Y,N)</label>
+          <select id="lh-withinRetainedArea" name="withinRetainedArea" class="form-control">
+            <option value="N" ${String(row.withinRetainedArea).toUpperCase() === 'N' ? 'selected' : ''}>N (No)</option>
+            <option value="Y" ${String(row.withinRetainedArea).toUpperCase() === 'Y' ? 'selected' : ''}>Y (Yes)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section 3: Leaseholder / Tenant Profile -->
+      <div class="form-section-title" style="margin-top:16px;">3. Leaseholder / Tenant Profile</div>
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <div class="form-field">
+          <label for="lh-leaseholderSurname">Leaseholder Surname <span style="color:red">*</span></label>
+          <input type="text" id="lh-leaseholderSurname" name="leaseholderSurname" class="form-control" value="${esc(row.leaseholderSurname || '')}" placeholder="Surname" required />
+        </div>
+        <div class="form-field">
+          <label for="lh-leaseholderFirstname">Leaseholder Firstname <span style="color:red">*</span></label>
+          <input type="text" id="lh-leaseholderFirstname" name="leaseholderFirstname" class="form-control" value="${esc(row.leaseholderFirstname || '')}" placeholder="First Name" required />
+        </div>
+        <div class="form-field">
+          <label for="lh-leaseholderMi">Leaseholder M.I.</label>
+          <input type="text" id="lh-leaseholderMi" name="leaseholderMi" class="form-control" value="${esc(row.leaseholderMi || '')}" placeholder="M.I." maxlength="5" />
+        </div>
+        <div class="form-field">
+          <label for="lh-tenantStatus">Tenant Status (alive, deceased)</label>
+          <select id="lh-tenantStatus" name="tenantStatus" class="form-control">
+            <option value="Alive" ${!row.tenantStatus || String(row.tenantStatus).toLowerCase().includes('alive') ? 'selected' : ''}>Alive</option>
+            <option value="Deceased" ${row.tenantStatus && String(row.tenantStatus).toLowerCase().includes('deceased') ? 'selected' : ''}>Deceased</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="lh-newLesseeName">New Lessee Name (if deceased)</label>
+          <input type="text" id="lh-newLesseeName" name="newLesseeName" class="form-control" value="${esc(row.newLesseeName || '')}" placeholder="Surname, First Name, MI" />
+        </div>
+        <div class="form-field">
+          <label for="lh-relationshipToTenant">Relationship to Tenant/Lessee</label>
+          <input type="text" id="lh-relationshipToTenant" name="relationshipToTenant" class="form-control" value="${esc(row.relationshipToTenant || '')}" placeholder="e.g. Surviving Spouse, Child" />
+        </div>
+        <div class="form-field">
+          <label for="lh-gender">Gender (M, F)</label>
+          <select id="lh-gender" name="gender" class="form-control">
+            <option value="M" ${!row.gender || String(row.gender).toUpperCase() === 'M' ? 'selected' : ''}>M (Male)</option>
+            <option value="F" ${String(row.gender).toUpperCase() === 'F' ? 'selected' : ''}>F (Female)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="lh-noOfArbs">Number of ARBs</label>
+          <input type="number" min="1" step="1" id="lh-noOfArbs" name="noOfArbs" class="form-control" value="${esc(row.noOfArbs || '1')}" />
+        </div>
+      </div>
+
+      <!-- Section 4: Crops & Tenurial Terms -->
+      <div class="form-section-title" style="margin-top:16px;">4. Crops &amp; Tenurial Terms</div>
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <div class="form-field">
+          <label for="lh-mainCrops">Main Crops</label>
+          <input type="text" id="lh-mainCrops" name="mainCrops" class="form-control" value="${esc(row.mainCrops || '')}" placeholder="e.g. Palay, Coconut, Corn" />
+        </div>
+        <div class="form-field">
+          <label for="lh-auxilliaryCrops">Auxilliary Crops</label>
+          <input type="text" id="lh-auxilliaryCrops" name="auxilliaryCrops" class="form-control" value="${esc(row.auxilliaryCrops || '')}" placeholder="e.g. Banana, Root crops" />
+        </div>
+        <div class="form-field">
+          <label for="lh-sharingArrangement">Sharing Arrangement</label>
+          <input type="text" id="lh-sharingArrangement" name="sharingArrangement" class="form-control" value="${esc(row.sharingArrangement || '')}" placeholder="e.g. 75-25, 25% net" />
+        </div>
+        <div class="form-field">
+          <label for="lh-tenurialArrangement">Tenurial Arrangement</label>
+          <input type="text" id="lh-tenurialArrangement" name="tenurialArrangement" class="form-control" value="${esc(row.tenurialArrangement || 'Agricultural Leasehold')}" placeholder="Agricultural Leasehold" />
+        </div>
+        <div class="form-field">
+          <label for="lh-leaseRentalUnit">Lease Rental Unit</label>
+          <input type="text" id="lh-leaseRentalUnit" name="leaseRentalUnit" class="form-control" value="${esc(row.leaseRentalUnit || '')}" placeholder="e.g. cavans / year, sacks" />
+        </div>
+        <div class="form-field">
+          <label for="lh-leaseInPesos">Lease in Pesos (₱)</label>
+          <input type="number" step="0.01" min="0" id="lh-leaseInPesos" name="leaseInPesos" class="form-control" value="${esc(row.leaseInPesos || '')}" placeholder="0.00" />
+        </div>
+      </div>
+
+      <!-- Section 5: Contract Registration & Reporting -->
+      <div class="form-section-title" style="margin-top:16px;">5. Contract Registration &amp; Reporting</div>
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <div class="form-field">
+          <label for="lh-statusOfContract">Status of Contract</label>
+          <select id="lh-statusOfContract" name="statusOfContract" class="form-control">
+            <option value="New" ${!row.statusOfContract || row.statusOfContract === 'New' ? 'selected' : ''}>New</option>
+            <option value="Amended" ${row.statusOfContract === 'Amended' ? 'selected' : ''}>Amended</option>
+            <option value="Renewal" ${row.statusOfContract === 'Renewal' ? 'selected' : ''}>Renewal</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="lh-dateContractRegistered">*Date Contract Registered (mm/dd/yyyy)</label>
+          <input type="date" id="lh-dateContractRegistered" name="dateContractRegistered" class="form-control" value="${esc(row.dateContractRegistered || '')}" />
+        </div>
+        <div class="form-field">
+          <label for="lh-datePlrRegistered">*Date PLR Registered (mm/dd/yyyy)</label>
+          <input type="date" id="lh-datePlrRegistered" name="datePlrRegistered" class="form-control" value="${esc(row.datePlrRegistered || '')}" />
+        </div>
+        <div class="form-field">
+          <label for="lh-targetYear">Target Year</label>
+          <input type="text" id="lh-targetYear" name="targetYear" class="form-control" value="${esc(targetYearVal)}" placeholder="${currentYear}" />
+        </div>
+        <div class="form-field">
+          <label for="lh-reportMonth">Report Month (Words)</label>
+          <select id="lh-reportMonth" name="reportMonth" class="form-control">
+            ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(
+              (m) => `<option value="${m}" ${reportMonthVal === m ? 'selected' : ''}>${m}</option>`
+            ).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-field" style="margin-top:12px;">
+        <label for="lh-remarks">Remarks</label>
+        <textarea id="lh-remarks" name="remarks" class="form-control" rows="2" placeholder="Operational notes, status of contract registration, MARPO validation remarks…">${esc(row.remarks || '')}</textarea>
+      </div>
+
+      <input type="hidden" id="lh-id" name="id" value="${esc(row.id || '')}" />
+      <input type="hidden" id="lh-index" name="index" value="${rowIndex !== null && rowIndex !== undefined ? rowIndex : ''}" />
+    </div>
+  `;
+}
+
+export function generateLeaseholdCsv(rows = []) {
+  const headers = [
+    'REG',
+    'PROVS',
+    'MUN',
+    'BRGY',
+    'LO SURNAME',
+    'LO FIRSTNAME',
+    'LO MI',
+    'TITLE NO.',
+    'TAX DEC NO.',
+    'SURVEY NO.',
+    'LOT NO.',
+    'AREA PER TITLE (Has)',
+    'AREA TENANTED (Has)',
+    'WITHIN RETAINED AREA (Y,N)',
+    'LEASEHOLDER SURNAME',
+    'LEASEHOLDER FIRSTNAME',
+    'LEASEHOLDER MI',
+    'TENANT/LESSEE STATUS (alive, deceased)',
+    'NEW LESSEE NAME (for deceased Tenant/Lessee) _Surname, First Name, MI',
+    'RELATIONSHIP TO TENANT/LESSEE (relationship to original leaseholder)',
+    'GENDER (M, F)',
+    'Number of ARBs',
+    'MAIN CROPS',
+    'AUXILLIARY CROPS',
+    'SHARING ARRANGEMENT',
+    'TENURIAL ARRANGEMENT',
+    'STATUS OF CONTRACT (New, Amended, Renewal)',
+    '*DATE CONTRACT REGISTERED (mm/dd/yyyy)',
+    '*DATE PLR REGISTERED (mm/dd/yyyy)',
+    'LEASE RENTAL UNIT',
+    'LEASE IN PESOS',
+    'TARGET YEAR',
+    'Report Month (Words)',
+    'REMARKS'
+  ];
+
+  const escapeCsv = (val) => {
+    const s = String(val ?? '');
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+
+  const lines = [headers.map(escapeCsv).join(',')];
+
+  for (const r of rows) {
+    const values = [
+      r.reg || 'Region VIII',
+      r.provs || '',
+      r.mun || '',
+      r.brgy || '',
+      r.loSurname || '',
+      r.loFirstname || '',
+      r.loMi || '',
+      r.titleNo || '',
+      r.taxDecNo || '',
+      r.surveyNo || '',
+      r.lotNo || '',
+      r.areaPerTitle || '',
+      r.areaTenanted || '',
+      r.withinRetainedArea || 'N',
+      r.leaseholderSurname || '',
+      r.leaseholderFirstname || '',
+      r.leaseholderMi || '',
+      r.tenantStatus || 'Alive',
+      r.newLesseeName || '',
+      r.relationshipToTenant || '',
+      r.gender || 'M',
+      r.noOfArbs || '1',
+      r.mainCrops || '',
+      r.auxilliaryCrops || '',
+      r.sharingArrangement || '',
+      r.tenurialArrangement || 'Agricultural Leasehold',
+      r.statusOfContract || 'New',
+      r.dateContractRegistered || '',
+      r.datePlrRegistered || '',
+      r.leaseRentalUnit || '',
+      r.leaseInPesos || '',
+      r.targetYear || '',
+      r.reportMonth || '',
+      r.remarks || ''
+    ];
+    lines.push(values.map(escapeCsv).join(','));
   }
+
+  return lines.join('\r\n');
+}
 
 
