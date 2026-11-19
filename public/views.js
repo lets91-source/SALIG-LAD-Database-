@@ -5180,10 +5180,10 @@ export function renderDashboardView(ctx) {
           <h3 class="panel-title">Whereabouts per Milestone</h3>
           <p class="panel-subtitle">Tracking documentation, surveys, valuations, and registration across Region VIII operational worksheets</p>
         </div>
-        <span class="badge badge-green">5 Operational Milestones</span>
+        <span class="badge badge-green">6 Operational Milestones</span>
       </div>
       <div class="panel-body" style="padding: 16px;">
-        <!-- 5 Milestone Cards across the grid -->
+        <!-- 6 Milestone Cards across the grid -->
         <div class="kpi-grid kpi-grid-targets" style="margin-bottom: 16px;" aria-label="Milestone Whereabouts Summary Cards">
           ${milestoneWhereaboutsData.map((m) => `
             <div class="cf-kpi-card cf-kpi-card-sm kpi-card" style="cursor:pointer;" data-nav="${esc(m.navKey)}" title="Click to view full ${esc(m.label)} Whereabouts ledger">
