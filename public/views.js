@@ -948,9 +948,9 @@ export function renderNepView(ctx) {
           ${hubUrl ? `<a href="${esc(hubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Open NEP Sheet ↗</a>` : ''}
           <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-nep-sheet">Sync Hub NEP Sheet</button>
           ${canEditNep
-      ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet" data-milestone="${esc(activeMilestone)}">
-                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                   Put NEP Data / Edit Figures
+      ? `<button type="button" class="btn btn-primary btn-sm" id="btn-edit-nep-sheet" data-milestone="${esc(activeMilestone)}" style="font-weight:700;">
+                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                   + Add NEP Target
                  </button>`
       : ''
     }
@@ -1021,9 +1021,13 @@ export function renderNepView(ctx) {
           </div>
 
           ${canEditNep
-      ? `<button type="button" class="btn btn-primary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;">
-                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                   Put Data / Edit Figures
+      ? `<button type="button" class="btn btn-primary btn-sm" id="btn-add-nep-target" data-milestone="${esc(activeMilestone)}" style="font-weight:700;">
+                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                   + Add NEP Target
+                 </button>
+                 <button type="button" class="btn btn-secondary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;" title="Edit provincial NEP target figures">
+                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                   Edit Figures
                  </button>`
       : ''
     }
@@ -1067,7 +1071,9 @@ export function renderNepView(ctx) {
               <div class="nep-card-footer">
                 <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
                 ${canEditNep
-              ? `<button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;color:var(--dar-green-dark);font-weight:700;">Edit Figure ↗</button>`
+              ? `<button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
+                   ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
+                 </button>`
               : '<span class="badge badge-gray">Read-Only</span>'
             }
               </div>
@@ -1103,7 +1109,8 @@ export function renderNepView(ctx) {
               ${filteredRows.length === 0 ? `
                 <tr>
                   <td colspan="${visibleColCount}" class="center" style="padding:28px 16px;color:var(--text-muted);">
-                    No provincial records found. Click <strong>Put Data / Edit Figures</strong> to set targets.
+                    <div>No provincial records found. Click <strong>+ Add NEP Target</strong> to set targets.</div>
+                    ${canEditNep ? `<button type="button" class="btn btn-primary btn-sm btn-add-nep-target-empty" data-milestone="${esc(activeMilestone)}" style="margin-top:10px;font-weight:700;">+ Add NEP Target</button>` : ''}
                   </td>
                 </tr>
               ` : filteredRows
@@ -1133,8 +1140,8 @@ export function renderNepView(ctx) {
                   <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
                   ${canEditNep
               ? `<td class="center">
-                           <button type="button" class="btn btn-ghost btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:3px 10px;font-size:12px;color:var(--dar-green-dark);font-weight:700;">
-                             Edit Figure ↗
+                           <button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:3px 10px;font-size:12px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
+                             ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
                            </button>
                          </td>`
               : ''

@@ -3096,18 +3096,18 @@ function bindDashboardViewEvents(container) {
 
   container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
   container.querySelector('#btn-sync-hub-nep')?.addEventListener('click', syncHubNepSheet);
-  container.querySelector('#btn-edit-nep-sheet')?.addEventListener('click', (e) => {
-    const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
-    openNepSheetModal(null, ms);
-  });
-  container.querySelector('#btn-card-edit-nep')?.addEventListener('click', (e) => {
-    const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
-    openNepSheetModal(null, ms);
+  container.querySelectorAll('#btn-edit-nep-sheet, #btn-card-edit-nep, #btn-add-nep-target, .btn-add-nep-target-empty').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
+      const isAdd = btn.id === 'btn-add-nep-target' || btn.classList.contains('btn-add-nep-target-empty') || btn.id === 'btn-edit-nep-sheet';
+      openNepSheetModal(null, ms, isAdd ? 'add' : 'edit');
+    });
   });
   container.querySelectorAll('.btn-edit-single-nep').forEach((btn) => {
     btn.addEventListener('click', () => {
       const ms = btn.dataset.milestone || appState.nepMilestoneFilter || 'overall';
-      openNepSheetModal(btn.dataset.prov, ms);
+      const isAdd = btn.textContent.includes('Add');
+      openNepSheetModal(btn.dataset.prov, ms, isAdd ? 'add' : 'edit');
     });
   });
   container.querySelector('#nep-milestone-filter')?.addEventListener('change', (e) => {
@@ -3161,7 +3161,7 @@ async function syncHubNepSheet() {
   }
 }
 
-function openNepSheetModal(targetProv = null, initialMilestone = null) {
+function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'add') {
   const isAdmin = appState.currentUser ? appState.currentUser.role === 'admin' : !appState.provinceScope;
   if (!isAdmin) {
     toast('Only Administrator accounts can edit the Regional Hub NEP Sheet.', true);
@@ -3351,13 +3351,20 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
     })
     .join('');
 
-  showFormModal('Regional Hub NEP Sheet — Put Data / Allocation', {
+  const msObj = milestoneOptions.find((m) => m.key === currentMilestone);
+  const milestoneTitle = msObj ? msObj.label : currentMilestone;
+  const provObj = provNodes.find((n) => n.code === targetProv);
+  const modalTitle = targetProv
+    ? `${mode === 'add' ? 'Add' : 'Edit'} NEP Target — ${provObj ? provObj.provinceName : targetProv} (${milestoneTitle})`
+    : `${mode === 'add' ? 'Add' : 'Allocate & Edit'} Regional Hub NEP Targets — ${milestoneTitle}`;
+
+  showFormModal(modalTitle, {
     formId: 'nep-sheet-form',
-    submitLabel: 'Save & Push to Hub NEP Sheet',
+    submitLabel: mode === 'add' ? '+ Add / Save NEP Targets' : 'Save & Push to Hub NEP Sheet',
     cancelId: 'nep-sheet-cancel',
     contentHtml: `
       <p style="margin:0 0 10px;font-size:12.5px;color:var(--text-muted)">
-        Enter or update NEP targets (<strong>Total NEP</strong>, <strong>1st Sem Target</strong>, automatic <strong>2nd Sem Target</strong> (<code>NEP − 1st Sem</code>) for <strong>LHS</strong>, <strong>AREA</strong>, and <strong>ARBs</strong>, plus <strong>Year</strong>) stored in the Regional Hub Google Sheet.
+        ${mode === 'add' ? 'Add official NEP targets' : 'Enter or update NEP targets'} (<strong>Total NEP</strong>, <strong>1st Sem Target</strong>, automatic <strong>2nd Sem Target</strong> (<code>NEP − 1st Sem</code>) for <strong>LHS</strong>, <strong>AREA</strong>, and <strong>ARBs</strong>, plus <strong>Target Year</strong>) stored in the Regional Hub Google Sheet.
       </p>
 
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;background:var(--surface-alt, #f8faf9);padding:10px 14px;border-radius:8px;border:1px solid var(--border);">
@@ -3662,10 +3669,25 @@ function openNepSheetModal(targetProv = null, initialMilestone = null) {
 
   if (targetProv) {
     setTimeout(() => {
-      const el = document.getElementById('nep-sheet-form')?.elements[`lhs_${targetProv}`];
+      const el =
+        document.getElementById('nep-sheet-form')?.elements[`lhs_${targetProv}`] ||
+        document.getElementById('nep-sheet-form')?.elements[`area_${targetProv}`];
       if (el) {
         el.focus();
         el.select();
+      }
+    }, 60);
+  } else {
+    setTimeout(() => {
+      const firstProv = provNodes[0]?.code;
+      if (firstProv) {
+        const el =
+          document.getElementById('nep-sheet-form')?.elements[`lhs_${firstProv}`] ||
+          document.getElementById('nep-sheet-form')?.elements[`area_${firstProv}`];
+        if (el) {
+          el.focus();
+          el.select();
+        }
       }
     }, 60);
   }
