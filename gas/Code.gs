@@ -86,7 +86,8 @@ const OPTOOL_TABS = [
   'Survey',
   'MOV',
   'RegistrationDistribution',
-  'Installation'
+  'Installation',
+  'Leasehold'
 ];
 
 const OPTOOL_SCHEMA_HEADERS = {
@@ -161,6 +162,42 @@ const OPTOOL_SCHEMA_HEADERS = {
     'DATE OF INSTALLATION (mm/dd/yyyy)', 'REMARKS (Installed - Yes/No)',
     'No. OF ARBs', 'No. OF TITLES', 'REMARKS', 'YEAR ACCOMP',
     'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'PDF File', 'Target Year'
+  ],
+  Leasehold: [
+    'REG',
+    'PROVS',
+    'MUN',
+    'BRGY',
+    'LO SURNAME',
+    'LO FIRSTNAME',
+    'LO MI',
+    'TITLE NO.',
+    'TAX DEC NO.',
+    'SURVEY NO.',
+    'LOT NO.',
+    'AREA PER TITLE (Has)',
+    'AREA TENANTED (Has)',
+    'WITHIN RETAINED AREA (Y,N)',
+    'LEASEHOLDER SURNAME',
+    'LEASEHOLDER FIRSTNAME',
+    'LEASEHOLDER MI',
+    'TENANT/LESSEE STATUS (alive, deceased)',
+    'NEW LESSEE NAME (for deceased Tenant/Lessee) _Surname, First Name, MI',
+    'RELATIONSHIP TO TENANT/LESSEE (relationship to original leaseholder)',
+    'GENDER (M, F)',
+    'Number of ARBs',
+    'MAIN CROPS',
+    'AUXILLIARY CROPS',
+    'SHARING ARRANGEMENT',
+    'TENURIAL ARRANGEMENT',
+    'STATUS OF CONTRACT (New, Amended, Renewal)',
+    '*DATE CONTRACT REGISTERED (mm/dd/yyyy)',
+    '*DATE PLR REGISTERED (mm/dd/yyyy)',
+    'LEASE RENTAL UNIT',
+    'LEASE IN PESOS',
+    'TARGET YEAR',
+    'Report Month (Words)',
+    'REMARKS'
   ]
 };
 
@@ -753,16 +790,20 @@ function getHubBootstrap() {
           if (row.LHID) row.LHID = formatLhidString_(row.LHID);
           if (!row.province && !row.Province) row.province = node.name;
           if (!row.provinceCode && !row.Province_Code) row.provinceCode = node.code;
+          if (tabName === 'Leasehold') {
+            if (!row.provs && !row.PROVS) row.provs = node.name;
+            if (!row.reg && !row.REG) row.reg = 'Region VIII';
+          }
           optool['Database'].push(row);
         });
       }
     } catch (ignore) {}
   });
 
-  // 2. Read OPTool Supportlist (CF(DOC), Survey, MOV, RegistrationDistribution, Installation)
+  // 2. Read OPTool Supportlist (CF(DOC), Survey, MOV, RegistrationDistribution, Installation, Leasehold)
   // DIRECTLY from each provincial Google Sheet (no fallback to Regional Hub)
   const provSupport = readProvincialMilestoneSupportLists_();
-  ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'].forEach(function (tab) {
+  ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation', 'Leasehold'].forEach(function (tab) {
     optool[tab] = provSupport.data[tab] || [];
     optoolHeaders[tab] = provSupport.headers[tab] || [];
   });
@@ -1078,16 +1119,17 @@ function findOptoolSheet_(ss, tabName) {
     if (targetNorm === 'survey' && (sNorm === 'survey' || sNorm === 'asp')) return sheets[i];
     if (targetNorm === 'installation' && (sNorm === 'installation' || sNorm === 'inst')) return sheets[i];
     if (targetNorm === 'database' && (sNorm === 'database' || sNorm === 'db' || sNorm.indexOf('database') >= 0)) return sheets[i];
+    if (targetNorm === 'leasehold' && (sNorm === 'leasehold' || sNorm === 'leaseholl' || sNorm === 'lease' || sNorm.indexOf('leasehold') >= 0)) return sheets[i];
   }
   return null;
 }
 
 /**
- * Reads OPTool Supportlist in CF(DOC), Survey, MOV, Registration, Installation
+ * Reads OPTool Supportlist in CF(DOC), Survey, MOV, Registration, Installation, Leasehold
  * DIRECTLY from each provincial Google Sheet (PROVINCIAL_NODES) instead of relying on the Regional Hub.
  */
 function readProvincialMilestoneSupportLists_() {
-  const MILESTONE_SUPPORT_TABS = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'];
+  const MILESTONE_SUPPORT_TABS = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation', 'Leasehold'];
   const optoolData = {};
   const optoolHeaders = {};
 
@@ -1122,6 +1164,10 @@ function readProvincialMilestoneSupportLists_() {
           if (!rowLhid && !hasAnyData) return;
           if (!row.province && !row.Province) row.province = node.name;
           if (!row.provinceCode && !row.Province_Code) row.provinceCode = node.code;
+          if (tabName === 'Leasehold') {
+            if (!row.provs && !row.PROVS) row.provs = node.name;
+            if (!row.reg && !row.REG) row.reg = 'Region VIII';
+          }
 
           // Normalize RegistrationDistribution area and date registered fields
           if (tabName === 'RegistrationDistribution') {
@@ -1513,7 +1559,7 @@ function resolveNodeIdFromRow_(provinceCode, rowObj) {
   for (let i = 0; i < PROVINCIAL_NODES.length; i++) {
     if (PROVINCIAL_NODES[i].code === rawCode) return PROVINCIAL_NODES[i].id;
   }
-  const provText = String((rowObj && (rowObj.province || rowObj.Province || rowObj.provincename || rowObj.ProvinceName)) || '').toLowerCase();
+  const provText = String((rowObj && (rowObj.province || rowObj.Province || rowObj.provincename || rowObj.ProvinceName || rowObj.provs || rowObj.PROVS)) || '').toLowerCase();
   if (provText.indexOf('biliran') !== -1) return PROVINCIAL_NODES[0].id;
   if (provText.indexOf('eastern samar') !== -1) return PROVINCIAL_NODES[1].id;
   if (provText.indexOf('northern samar') !== -1) return PROVINCIAL_NODES[3].id;
@@ -1555,7 +1601,7 @@ function resolveNodeIdFromRow_(provinceCode, rowObj) {
 }
 
 function getWriteTargetSpreadsheets_(tabName, provinceCode, rowObj) {
-  const isMilestone = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'].indexOf(tabName) !== -1;
+  const isMilestone = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation', 'Leasehold'].indexOf(tabName) !== -1;
   const provId = resolveNodeIdFromRow_(provinceCode, rowObj);
   const targets = [];
   if (provId) {
@@ -1618,6 +1664,48 @@ function formatLhidString_(raw) {
 function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
   if (sheet.getLastRow() <= 1) return -1;
   const values = sheet.getDataRange().getValues();
+
+  if (tabName === 'Leasehold') {
+    const ref = prevRow || targetRow || {};
+    let titleCol = -1, lotCol = -1, lhSurCol = -1, lhFirstCol = -1, loSurCol = -1, munCol = -1;
+    for (let c = 0; c < colMap.length; c++) {
+      if (!colMap[c]) continue;
+      const k = colMap[c].key;
+      if (k === 'titleNo') titleCol = c;
+      else if (k === 'lotNo') lotCol = c;
+      else if (k === 'leaseholderSurname') lhSurCol = c;
+      else if (k === 'leaseholderFirstname') lhFirstCol = c;
+      else if (k === 'loSurname') loSurCol = c;
+      else if (k === 'mun') munCol = c;
+    }
+    const refTitle = String(ref.titleNo || ref['TITLE NO.'] || '').trim().toLowerCase();
+    const refLot = String(ref.lotNo || ref['LOT NO.'] || '').trim().toLowerCase();
+    const refLhSur = String(ref.leaseholderSurname || ref['LEASEHOLDER SURNAME'] || '').trim().toLowerCase();
+    const refLhFirst = String(ref.leaseholderFirstname || ref['LEASEHOLDER FIRSTNAME'] || '').trim().toLowerCase();
+    const refLoSur = String(ref.loSurname || ref['LO SURNAME'] || '').trim().toLowerCase();
+    const refMun = String(ref.mun || ref['MUN'] || '').trim().toLowerCase();
+
+    for (let r = 1; r < values.length; r++) {
+      const row = values[r];
+      const rowTitle = titleCol >= 0 ? String(row[titleCol] || '').trim().toLowerCase() : '';
+      const rowLot = lotCol >= 0 ? String(row[lotCol] || '').trim().toLowerCase() : '';
+      const rowLhSur = lhSurCol >= 0 ? String(row[lhSurCol] || '').trim().toLowerCase() : '';
+      const rowLhFirst = lhFirstCol >= 0 ? String(row[lhFirstCol] || '').trim().toLowerCase() : '';
+      const rowLoSur = loSurCol >= 0 ? String(row[loSurCol] || '').trim().toLowerCase() : '';
+      const rowMun = munCol >= 0 ? String(row[munCol] || '').trim().toLowerCase() : '';
+
+      if (refTitle && refLot && rowTitle === refTitle && rowLot === refLot && (!refMun || rowMun === refMun)) {
+        return r + 1;
+      }
+      if (refLhSur && refLhFirst && rowLhSur === refLhSur && rowLhFirst === refLhFirst) {
+        if ((refTitle && rowTitle === refTitle) || (refLot && rowLot === refLot) || (refLoSur && rowLoSur === refLoSur)) {
+          return r + 1;
+        }
+      }
+    }
+    return -1;
+  }
+
   let lhidCol = -1;
   for (let c = 0; c < colMap.length; c++) {
     if (colMap[c] && colMap[c].key === 'lhid') {
@@ -1717,7 +1805,7 @@ function upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow) {
   } else {
     sheet.appendRow(outRow);
   }
-  if (tabName !== 'Database') {
+  if (tabName !== 'Database' && tabName !== 'Leasehold') {
     applyMilestoneTargetYearFormula_(sheet, tabName);
   }
   return { ok: true, tabName: tabName, updated: rowNumber > 0, rowNumber: rowNumber > 0 ? rowNumber : sheet.getLastRow() };

@@ -6674,8 +6674,8 @@ function buildDbByLhidMap(state) {
         <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
           <p style="margin:0;color:var(--text-muted);font-size:13px">
             Upload any <code>.xlsx</code> export from the Regional Hub or the 6 Provincial Nodes.
-            Automatically recognizes <strong>Milestone_Data</strong> and all 6 OPTool tabs
-            (<code>Database</code>, <code>CF(DOC)</code>, <code>Survey</code>, <code>MOV</code>, <code>RegistrationDistribution</code>, <code>Installation</code>).
+            Automatically recognizes <strong>Milestone_Data</strong>, all 6 OPTool tabs
+            (<code>Database</code>, <code>CF(DOC)</code>, <code>Survey</code>, <code>MOV</code>, <code>RegistrationDistribution</code>, <code>Installation</code>), and <strong>Leasehold</strong>.
           </p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <select id="xlsx-import-mode" class="form-control" style="max-width:240px">
@@ -6726,7 +6726,7 @@ function buildDbByLhidMap(state) {
             <button class="btn btn-secondary btn-sm" id="btn-sync-gas-headers">Sync Column Headers to Google Sheets</button>
           </div>
           <p style="margin:0;font-size:12px;color:var(--text-muted)">
-            When configured (or set via Vercel <code>GAS_WEB_APP_URL</code> env var), edits across all <strong>6 OPTool tabs</strong>, <strong>Milestone_Data</strong>, and <strong>Regional_Baselines</strong> automatically push live to your Google Sheet, while active spreadsheets auto-sync in the background.
+            When configured (or set via Vercel <code>GAS_WEB_APP_URL</code> env var), edits across all <strong>OPTool tabs</strong>, <strong>Leasehold</strong>, <strong>Milestone_Data</strong>, and <strong>Regional_Baselines</strong> automatically push live to your Google Sheet, while active spreadsheets auto-sync in the background.
           </p>
         </div>
       </div>

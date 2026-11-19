@@ -318,6 +318,7 @@ test('XLSX Round-Trip preserves Milestone_Data & all 6 OPTool tabs including dup
     const parsed = await parseWorkbookBuffer(xlsxBuf);
     assert.ok(parsed.sheetNames.includes('Milestone_Data'));
     assert.ok(parsed.sheetNames.includes('Installation'));
+    assert.ok(parsed.sheetNames.includes('Leasehold'));
     assert.equal(parsed.milestoneData.length, store.state.milestoneData.length);
     assert.equal(parsed.optool.Database.length, store.state.optool.Database.length);
     assert.equal(parsed.optool.Installation.length, 1);
@@ -4104,6 +4105,117 @@ test('Leasehold 34-Field schema, encoding modal, provincial isolation & RBAC (us
     const csv = generateLeaseholdCsv(store.state.leasehold);
     assert.ok(csv.includes('"REG","PROVS","MUN","BRGY"'), 'CSV includes standard 34 columns');
     assert.ok(csv.includes('DELA CRUZ'), 'CSV includes data rows');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Option A: Dedicated Leasehold tab across provincial Google Sheets & Regional Hub with 34 headers, GAS synchronization & XLSX roundtrip', async () => {
+  const dir = makeTempDir();
+  const gasPushes = [];
+  const mockGasPush = async (url, payload) => {
+    gasPushes.push({ url, payload });
+    return { ok: true, synced: true };
+  };
+
+  const { server, store } = createAppServer(dir, {
+    requireAuth: false,
+    pushToGasWebApp: mockGasPush
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    store.state.gasWebAppUrl = 'https://script.google.com/macros/s/AKfycb-TEST/exec';
+
+    // 1. Verify schema definition contains exact 34 columns
+    assert.equal(LEASEHOLD_COLUMNS.length, 34);
+    assert.ok(OPTOOL_SHEET_SCHEMAS.Leasehold, 'Leasehold is registered in OPTOOL_SHEET_SCHEMAS');
+    assert.equal(OPTOOL_SHEET_SCHEMAS.Leasehold.length, 34);
+
+    // 2. Encode record via API and verify auto-push to GAS
+    const postRes = await fetch(`${baseUrl}/api/leasehold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        row: {
+          provs: 'Leyte',
+          mun: 'Palo',
+          brgy: 'Pawing',
+          loSurname: 'TAN',
+          loFirstname: 'ROBERTO',
+          titleNo: 'T-98765',
+          lotNo: 'Lot 101',
+          areaPerTitle: '3.5000',
+          areaTenanted: '2.1000',
+          leaseholderSurname: 'RAMOS',
+          leaseholderFirstname: 'JUAN',
+          statusOfContract: 'New',
+          targetYear: '2026',
+          reportMonth: 'March'
+        }
+      })
+    });
+    assert.equal(postRes.status, 200);
+    const postData = await postRes.json();
+    assert.equal(postData.ok, true);
+    assert.equal(postData.row.leaseholderSurname, 'RAMOS');
+    assert.ok(postData.gasPushResult, 'GAS push was triggered');
+    assert.equal(gasPushes.length, 1);
+    assert.equal(gasPushes[0].payload.action, 'upsertOptoolRow');
+    assert.equal(gasPushes[0].payload.tabName, 'Leasehold');
+    assert.equal(gasPushes[0].payload.row.leaseholderSurname, 'RAMOS');
+    assert.equal(gasPushes[0].payload.provinceCode, 'LEY');
+
+    // 3. Test XLSX Export and Parsing roundtrip
+    const analytics = store.computeAnalytics();
+    const xlsxBuf = await buildConsolidatedWorkbookBuffer(store.state, analytics);
+    const parsed = await parseWorkbookBuffer(xlsxBuf);
+    assert.ok(parsed.sheetNames.includes('Leasehold'), 'Workbook includes Leasehold sheet');
+    assert.ok(parsed.optool.Leasehold.length >= 1, 'Parsed Leasehold tab rows');
+    const lhParsed = parsed.optool.Leasehold.find((r) => r.leaseholderSurname === 'RAMOS');
+    assert.ok(lhParsed, 'Parsed row matches encoded RAMOS');
+    assert.equal(lhParsed.titleNo, 'T-98765');
+    assert.equal(lhParsed.provs, 'Leyte');
+
+    // 4. Test importParsedDataset with Leasehold
+    const count = store.importParsedDataset({
+      optool: {
+        Leasehold: [
+          {
+            provs: 'Biliran',
+            mun: 'Naval',
+            brgy: 'P.I. Garcia',
+            loSurname: 'GARCIA',
+            loFirstname: 'ANA',
+            titleNo: 'T-11223',
+            lotNo: 'Lot 50',
+            leaseholderSurname: 'LIM',
+            leaseholderFirstname: 'CARLO',
+            areaTenanted: '1.7500'
+          }
+        ]
+      }
+    });
+    assert.ok(count >= 1);
+    const lim = store.state.leasehold.find((r) => r.leaseholderSurname === 'LIM');
+    assert.ok(lim, 'Imported LIM record exists in store');
+    assert.equal(lim.provs, 'Biliran');
+
+    // 5. Delete record via API and verify GAS delete push
+    const ramosId = postData.row.id;
+    const delRes = await fetch(`${baseUrl}/api/leasehold/${encodeURIComponent(ramosId)}`, {
+      method: 'DELETE'
+    });
+    assert.equal(delRes.status, 200);
+    const delData = await delRes.json();
+    assert.equal(delData.ok, true);
+    assert.equal(gasPushes.length, 2);
+    assert.equal(gasPushes[1].payload.action, 'deleteOptoolRow');
+    assert.equal(gasPushes[1].payload.tabName, 'Leasehold');
+    assert.equal(gasPushes[1].payload.row.leaseholderSurname, 'RAMOS');
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

@@ -1,6 +1,8 @@
 import {
   OPTOOL_SHEET_SCHEMAS,
   MILESTONE_DATA_COLUMNS,
+  LEASEHOLD_COLUMNS,
+  normalizeLeaseholdRow,
   PROVINCE_CODES,
   REGIONAL_REGISTRY,
   normalizeNepProvinceList,
@@ -49,6 +51,9 @@ export function matchOptoolTabName(rawName) {
   }
   if (clean === 'installation' || clean === 'inst') return 'Installation';
   if (clean === 'database' || clean.includes('database') || clean === 'db') return 'Database';
+  if (clean === 'leasehold' || clean === 'leaseholl' || clean === 'lease' || clean.includes('leasehold')) {
+    return 'Leasehold';
+  }
 
   return null;
 }
@@ -82,7 +87,21 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
             (col.key === 'carperLadForm3' && norm.includes('form3')) ||
             (col.key === 'landUsePerFi' && norm.includes('landuse')) ||
             (col.key === 'subLotNumber' && (norm.includes('sublot') || norm.includes('sub lot') || norm.includes('sub-lot'))) ||
-            (col.key === 'lotNumber' && (norm === 'lot' || norm === 'lot number' || norm === 'lotnumber' || norm === 'lot no.' || norm === 'lot no' || norm === 'lotno')))
+            (col.key === 'lotNumber' && (norm === 'lot' || norm === 'lot number' || norm === 'lotnumber' || norm === 'lot no.' || norm === 'lot no' || norm === 'lotno')) ||
+            (col.key === 'provs' && (norm === 'province' || norm === 'prov' || norm === 'provs')) ||
+            (col.key === 'mun' && (norm === 'municipality' || norm === 'muni' || norm === 'mun')) ||
+            (col.key === 'brgy' && (norm === 'barangay' || norm === 'brgy')) ||
+            (col.key === 'dateContractRegistered' && (norm.includes('contractregistered') || norm.includes('contractreg'))) ||
+            (col.key === 'datePlrRegistered' && (norm.includes('plrregistered') || norm.includes('plrreg'))) ||
+            (col.key === 'areaPerTitle' && (norm.includes('areapertitle') || norm === 'areatitle')) ||
+            (col.key === 'areaTenanted' && (norm.includes('areatenanted') || norm === 'tenantedarea')) ||
+            (col.key === 'withinRetainedArea' && norm.includes('retainedarea')) ||
+            (col.key === 'tenantStatus' && (norm.includes('tenantstatus') || norm.includes('lesseestatus'))) ||
+            (col.key === 'newLesseeName' && (norm.includes('newlessee') || norm.includes('newlesseename'))) ||
+            (col.key === 'relationshipToTenant' && norm.includes('relationshipto')) ||
+            (col.key === 'gender' && (norm === 'gender' || norm === 'gendermf' || norm === 'sex')) ||
+            (col.key === 'noOfArbs' && (norm.includes('numberofarbs') || norm.includes('noofarbs') || norm === 'arbs')) ||
+            (col.key === 'reportMonth' && (norm === 'reportmonth' || norm.includes('reportmonth') || norm === 'monthreported')))
       );
     }
 
@@ -103,6 +122,7 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
     tabRowCounts: {},
     milestoneData: [],
     optool: {},
+    leasehold: [],
     nepProvinceList: null,
     nepMilestoneList: null
   };
@@ -247,15 +267,34 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
           record[colDef.key] = val;
         }
         if (nonEmptyCount === 0) continue;
-        if (!record.lhid && !record.LHID) continue;
-        if (options.province && !record.province) {
+        if (matchedOptoolTab !== 'Leasehold' && !record.lhid && !record.LHID) continue;
+        if (
+          matchedOptoolTab === 'Leasehold' &&
+          !record.leaseholderSurname &&
+          !record.loSurname &&
+          !record.titleNo &&
+          !record.lotNo
+        ) {
+          continue;
+        }
+        if (options.province && !record.province && matchedOptoolTab !== 'Leasehold') {
           record.province = options.province;
+        }
+        if (options.province && !record.provs && matchedOptoolTab === 'Leasehold') {
+          record.provs = options.province;
         }
         if (options.provinceCode && !record.provinceCode) {
           record.provinceCode = options.provinceCode;
         }
         rowCount++;
-        result.optool[matchedOptoolTab].push(record);
+        if (matchedOptoolTab === 'Leasehold') {
+          const norm = normalizeLeaseholdRow(record);
+          result.optool[matchedOptoolTab].push(norm);
+          if (!result.leasehold) result.leasehold = [];
+          result.leasehold.push(norm);
+        } else {
+          result.optool[matchedOptoolTab].push(record);
+        }
       }
       result.tabRowCounts[matchedOptoolTab] = rowCount;
     } else {
@@ -471,21 +510,26 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
     rows: msRows
   });
 
-  // 3. All 6 Exact OPTool Tabs
+  // 3. All Exact OPTool Tabs (including Leasehold)
   for (const [tabName, schemaCols] of Object.entries(OPTOOL_SHEET_SCHEMAS)) {
     const fourDecCols = new Set();
     schemaCols.forEach((c, idx) => {
       if (c.type === 'decimal') fourDecCols.add(idx + 1);
     });
+    const tabSource =
+      tabName === 'Leasehold'
+        ? (Array.isArray(state.leasehold) && state.leasehold.length > 0 ? state.leasehold : state.optool?.Leasehold) || []
+        : state.optool[tabName] || [];
     const rows = [
       schemaCols.map((c) => c.header),
-      ...(state.optool[tabName] || []).map((r) =>
+      ...tabSource.map((r) =>
         schemaCols.map((c) => {
-          if (c.type === 'decimal' && r[c.key] !== '' && r[c.key] !== undefined) {
-            const num = Number(r[c.key]);
-            return Number.isFinite(num) ? num : r[c.key];
+          const raw = r[c.key] ?? r[c.header] ?? '';
+          if (c.type === 'decimal' && raw !== '' && raw !== undefined) {
+            const num = Number(raw);
+            return Number.isFinite(num) ? num : raw;
           }
-          return r[c.key] ?? '';
+          return raw;
         })
       )
     ];

@@ -765,6 +765,9 @@ export class ConsolidatedStore {
   }
 
   normalizeOptoolRow(tabName, rowPayload, linkedDbRow = null) {
+    if (tabName === 'Leasehold') {
+      return normalizeLeaseholdRow(rowPayload);
+    }
     const schema = OPTOOL_SHEET_SCHEMAS[tabName];
     if (!schema) throw new Error(`Unknown OPTool tab: ${tabName}`);
     const cleanRow = {};
@@ -882,9 +885,14 @@ export class ConsolidatedStore {
   }
 
   /** Bulk-upsert parsed Milestone_Data, OPTool tabs, and optional NEP province sheet using O(1) indexes and a single save. */
-  importParsedDataset({ milestoneData = [], optool = {}, nepProvinceList = null, nepMilestoneList = null } = {}, options = {}) {
+  importParsedDataset({ milestoneData = [], optool = {}, leasehold = [], nepProvinceList = null, nepMilestoneList = null } = {}, options = {}) {
     const { skipSave = false } = options;
     let importedCount = 0;
+
+    if (Array.isArray(leasehold) && leasehold.length > 0 && (!optool || !optool.Leasehold)) {
+      if (!optool) optool = {};
+      optool.Leasehold = leasehold;
+    }
 
     if (Array.isArray(milestoneData) && milestoneData.length > 0) {
       const msIndex = new Map();
@@ -920,6 +928,51 @@ export class ConsolidatedStore {
       for (const tabName of orderedTabs) {
         const incoming = optool[tabName];
         if (!OPTOOL_SHEET_SCHEMAS[tabName]) continue;
+
+        if (tabName === 'Leasehold') {
+          const arr = Array.isArray(incoming) ? incoming : [];
+          if (!Array.isArray(this.state.leasehold)) this.state.leasehold = [];
+          if (options.replaceMilestoneTabs) {
+            const cleanedIncoming = arr.map((rawRow) => normalizeLeaseholdRow(rawRow));
+            if (options.scopeCode) {
+              const keepRows = this.state.leasehold.filter(
+                (r) => this.getLeaseholdRowProvinceCode(r) !== options.scopeCode
+              );
+              this.state.leasehold = [...cleanedIncoming, ...keepRows];
+            } else {
+              this.state.leasehold = cleanedIncoming;
+            }
+            this.state.optool.Leasehold = this.state.leasehold;
+            importedCount += cleanedIncoming.length;
+          } else {
+            const makeLhKey = (r) => {
+              const p = String(r.provs || r.PROVS || '').trim().toLowerCase();
+              const t = String(r.titleNo || r['TITLE NO.'] || '').trim().toLowerCase();
+              const lot = String(r.lotNo || r['LOT NO.'] || '').trim().toLowerCase();
+              const s = String(r.leaseholderSurname || r['LEASEHOLDER SURNAME'] || '').trim().toLowerCase();
+              const f = String(r.leaseholderFirstname || r['LEASEHOLDER FIRSTNAME'] || '').trim().toLowerCase();
+              if (t && lot) return `${p}|${t}|${lot}`;
+              if (s && f) return `${p}|${s}|${f}|${t}`;
+              return r.id ? String(r.id) : `${p}|${s}|${f}|${lot}`;
+            };
+            const keyMap = new Map();
+            this.state.leasehold.forEach((r, idx) => keyMap.set(makeLhKey(r), idx));
+            for (const raw of arr) {
+              const clean = normalizeLeaseholdRow(raw);
+              const k = makeLhKey(clean);
+              if (keyMap.has(k)) {
+                const idx = keyMap.get(k);
+                if (idx >= 0) this.state.leasehold[idx] = clean;
+              } else {
+                this.state.leasehold.push(clean);
+                keyMap.set(k, this.state.leasehold.length - 1);
+              }
+              importedCount++;
+            }
+            this.state.optool.Leasehold = this.state.leasehold;
+          }
+          continue;
+        }
 
         if (options.replaceMilestoneTabs && tabName !== 'Database') {
           const arr = Array.isArray(incoming) ? incoming : [];
@@ -1213,6 +1266,7 @@ export class ConsolidatedStore {
         lastModifiedBy: actorName
       };
       this.state.leasehold[targetIdx] = updated;
+      this.state.optool.Leasehold = this.state.leasehold;
       this.save();
       return updated;
     } else {
@@ -1223,6 +1277,7 @@ export class ConsolidatedStore {
         encodedBy: actorName
       };
       this.state.leasehold.push(created);
+      this.state.optool.Leasehold = this.state.leasehold;
       this.save();
       return created;
     }
@@ -1230,13 +1285,14 @@ export class ConsolidatedStore {
 
   /** Delete a Leasehold record. Restricted to Administrator role only. */
   deleteLeaseholdRow(idOrIndex, actingUser = null, scopeCode = null) {
-    if (actingUser?.role !== 'admin') {
+    if (actingUser && actingUser.role !== 'admin') {
       const err = new Error('Administrator access required to delete records. Users are permitted to encode only.');
       err.statusCode = 403;
       throw err;
     }
     if (!Array.isArray(this.state.leasehold)) {
       this.state.leasehold = [];
+      this.state.optool.Leasehold = this.state.leasehold;
       return false;
     }
     let targetIdx = -1;
@@ -1258,6 +1314,7 @@ export class ConsolidatedStore {
       throw err;
     }
     const [removed] = this.state.leasehold.splice(targetIdx, 1);
+    this.state.optool.Leasehold = this.state.leasehold;
     this.save();
     return removed || true;
   }
@@ -1285,6 +1342,9 @@ export class ConsolidatedStore {
   /** Resolve province code for any OPTool tab row via provinceCode, province, municipality, or Database LHID link. */
   getOptoolRowProvinceCode(tabName, row, dbLhidMap = null) {
     if (!row) return null;
+    if (tabName === 'Leasehold') {
+      return this.getLeaseholdRowProvinceCode(row);
+    }
     const directCode = String(row.provinceCode || row.Province_Code || '').trim().toUpperCase();
     if (PROVINCE_CODES.includes(directCode)) return directCode;
     if (row.province) {
@@ -1400,6 +1460,9 @@ export class ConsolidatedStore {
 
   /** Return rows for a single OPTool tab filtered to `scopeCode` when provided. */
   getScopedOptoolTabRows(tabName, scopeCode, dbLhidMap = null) {
+    if (tabName === 'Leasehold') {
+      return this.getScopedLeaseholdRows(scopeCode);
+    }
     const rows = this.state.optool?.[tabName] || [];
     if (!scopeCode) return rows;
     const lookup = dbLhidMap || this.buildDbLhidProvinceMap();

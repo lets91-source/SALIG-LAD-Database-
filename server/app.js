@@ -1090,12 +1090,25 @@ export function createAppServer(dataDir, options = {}) {
           const rawRow = body.row || body;
           const index = body.index !== undefined && body.index !== null ? Number(body.index) : null;
           const saved = store.upsertLeaseholdRow(rawRow, index, sessionUser, scopeCode);
+          const gasPushResult = await pushMutationToGas(
+            store,
+            {
+              action: 'upsertOptoolRow',
+              tabName: 'Leasehold',
+              headers: getOptoolHeadersSpec('Leasehold'),
+              row: saved,
+              provinceCode: store.getLeaseholdRowProvinceCode(saved)
+            },
+            `Saved Leasehold record (${saved.leaseholderSurname || saved.titleNo || saved.id}) to Google Sheet.`,
+            gasPushFn
+          );
           const scopedRows = store.getScopedLeaseholdRows(scopeCode);
           return sendJson(res, 200, {
             ok: true,
             row: saved,
             rows: scopedRows,
-            leasehold: scopedRows
+            leasehold: scopedRows,
+            gasPushResult
           });
         } catch (err) {
           return sendJson(res, err.statusCode || 400, { error: err.message });
@@ -1103,19 +1116,35 @@ export function createAppServer(dataDir, options = {}) {
       }
 
       if (req.method === 'DELETE' && pathname.startsWith('/api/leasehold/')) {
-        if (sessionUser?.role !== 'admin') {
+        if (requireAuth && sessionUser?.role !== 'admin') {
           return sendJson(res, 403, {
             error: 'Administrator access required to delete records. Users are permitted to encode only.'
           });
         }
         const idOrIndex = decodeURIComponent(pathname.slice('/api/leasehold/'.length));
         try {
-          store.deleteLeaseholdRow(idOrIndex, sessionUser, scopeCode);
+          const removed = store.deleteLeaseholdRow(idOrIndex, sessionUser, scopeCode);
+          const gasPushResult = removed && typeof removed === 'object'
+            ? await pushMutationToGas(
+                store,
+                {
+                  action: 'deleteOptoolRow',
+                  tabName: 'Leasehold',
+                  headers: getOptoolHeadersSpec('Leasehold'),
+                  row: removed,
+                  provinceCode: store.getLeaseholdRowProvinceCode(removed)
+                },
+                `Deleted Leasehold record (${removed.leaseholderSurname || removed.titleNo || removed.id}) from Google Sheet.`,
+                gasPushFn
+              )
+            : null;
           const scopedRows = store.getScopedLeaseholdRows(scopeCode);
           return sendJson(res, 200, {
             ok: true,
+            removed,
             rows: scopedRows,
-            leasehold: scopedRows
+            leasehold: scopedRows,
+            gasPushResult
           });
         } catch (err) {
           return sendJson(res, err.statusCode || 400, { error: err.message });
