@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -4258,3 +4259,15 @@ test('Option A: Dedicated Leasehold tab across provincial Google Sheets & Region
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('Client scripts syntax verification (public/app.js, public/views.js, etc.)', () => {
+  const publicDir = path.resolve(__dirname, '../../public');
+  const files = ['app.js', 'views.js', 'reportingUtils.js'];
+  for (const f of files) {
+    const fullPath = path.join(publicDir, f);
+    assert.doesNotThrow(() => {
+      execFileSync(process.execPath, ['-c', fullPath], { stdio: 'pipe' });
+    }, `Syntax check failed for ${f}`);
+  }
+});
+

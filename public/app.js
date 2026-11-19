@@ -3145,7 +3145,6 @@ function bindProvincialAllocationTableEvents(container) {
     });
   });
 }
-}
 
 async function syncHubNepSheet() {
   try {
