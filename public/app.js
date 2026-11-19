@@ -110,8 +110,8 @@ const appState = {
   leaseholdPageSize: 25
 };
 
-const AUTO_SYNC_MAX_AGE_MS = 20 * 1000;
-const AUTO_SYNC_INTERVAL_MS = 30 * 1000;
+const AUTO_SYNC_MAX_AGE_MS = 10 * 1000;
+const AUTO_SYNC_INTERVAL_MS = 20 * 1000;
 
 let optoolSearchTimer = null;
 let leaseholdSearchTimer = null;
@@ -1994,6 +1994,10 @@ async function syncAllNodes(mode = 'merge', options = {}) {
       }
     } catch (_) {}
 
+    appState.state.dataSourceMode = 'live';
+    updateNavCounts();
+    updateStatusBanner();
+
     if (!quiet || !isUserActivelyEditing()) {
       await refreshAnalytics();
       if (!isUserActivelyEditing()) {
@@ -2016,11 +2020,11 @@ async function syncAllNodes(mode = 'merge', options = {}) {
   }
 }
 
-function maybeAutoSyncGoogleSheets() {
+function maybeAutoSyncGoogleSheets(force = false) {
   if (!appState.currentUser) return;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
   const lastSyncMs = appState.state?.lastSyncAt ? Date.parse(appState.state.lastSyncAt) : 0;
-  const isStale = !lastSyncMs || Number.isNaN(lastSyncMs) || Date.now() - lastSyncMs > AUTO_SYNC_MAX_AGE_MS;
+  const isStale = force || !lastSyncMs || Number.isNaN(lastSyncMs) || Date.now() - lastSyncMs > AUTO_SYNC_MAX_AGE_MS;
   if (isStale) {
     syncAllNodes('merge', { quiet: true });
   }
@@ -5641,8 +5645,8 @@ async function bootAppSession() {
   hideLoadingOverlay(true);
   stopAutoSync();
   autoSyncStartTimer = setTimeout(() => {
-    if (appState.currentUser) maybeAutoSyncGoogleSheets();
-  }, 2000);
+    if (appState.currentUser) maybeAutoSyncGoogleSheets(true);
+  }, 300);
   startAutoSyncLoop();
   startInactivityWatcher();
 }
@@ -5976,6 +5980,7 @@ async function init() {
           toast(err.message, true);
         }
       }
+      maybeAutoSyncGoogleSheets();
       renderActiveView();
     });
   });

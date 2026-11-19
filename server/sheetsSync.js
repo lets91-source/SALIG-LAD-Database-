@@ -581,7 +581,7 @@ export async function pullNepFromGasWebApp(gasUrl) {
   return fetchGasAction(gasUrl, 'nep');
 }
 
-export async function pushToGasWebApp(gasUrl, payload, timeoutMs = 7000) {
+export async function pushToGasWebApp(gasUrl, payload, timeoutMs = 15000) {
   const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
   const resp = await fetch(gasUrl, {
     method: 'POST',

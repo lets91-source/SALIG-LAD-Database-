@@ -462,8 +462,8 @@ export async function performProvincialSync(store, options = {}) {
     }
   }
 
-  // 2. Direct fetch from provincial spreadsheets
-  for (const node of nodesToSync) {
+  // 2. Direct concurrent fetch from provincial spreadsheets
+  const fetchPromises = nodesToSync.map(async (node) => {
     try {
       const rawParsed = await fetchXlsxFn(node.spreadsheetId, {
         province: node.provinceName,
@@ -471,6 +471,16 @@ export async function performProvincialSync(store, options = {}) {
       });
       const parsed = filterParsedDatasetByScope(store, rawParsed, scopeCode);
       const rowCount = Object.values(parsed.optool).reduce((acc, arr) => acc + arr.length, 0);
+      return { node, parsed, rowCount, ok: true };
+    } catch (err) {
+      return { node, error: err.message, ok: false };
+    }
+  });
+
+  const settled = await Promise.allSettled(fetchPromises);
+  for (const item of settled) {
+    if (item.status === 'fulfilled' && item.value.ok) {
+      const { node, parsed, rowCount } = item.value;
       store.importParsedDataset(
         { optool: parsed.optool },
         { skipSave: true, replaceMilestoneTabs: true, scopeCode: node.code }
@@ -483,12 +493,13 @@ export async function performProvincialSync(store, options = {}) {
         importedRows: rowCount,
         tabRowCounts: parsed.tabRowCounts
       });
-    } catch (err) {
+    } else {
+      const val = item.status === 'fulfilled' ? item.value : { node: null, error: item.reason?.message };
       results.push({
-        code: node.code,
-        jurisdiction: node.jurisdiction,
+        code: val.node?.code || 'UNKNOWN',
+        jurisdiction: val.node?.jurisdiction || 'Provincial Node',
         status: 'error',
-        error: err.message
+        error: val.error || 'Failed to fetch spreadsheet'
       });
     }
   }
@@ -1452,7 +1463,7 @@ export function createAppServer(dataDir, options = {}) {
           ? REGIONAL_REGISTRY.filter((n) => n.code === scopeCode)
           : REGIONAL_REGISTRY;
 
-        for (const node of nodesToSync) {
+        const fetchTasks = nodesToSync.map(async (node) => {
           try {
             const rawParsed = await fetchGoogleSheetXlsx(node.spreadsheetId, {
               province: node.provinceName,
@@ -1462,7 +1473,16 @@ export function createAppServer(dataDir, options = {}) {
             const rowCount =
               parsed.milestoneData.length +
               Object.values(parsed.optool).reduce((acc, arr) => acc + arr.length, 0);
+            return { node, parsed, rowCount, ok: true };
+          } catch (err) {
+            return { node, error: err.message, ok: false };
+          }
+        });
 
+        const settled = await Promise.allSettled(fetchTasks);
+        for (const item of settled) {
+          if (item.status === 'fulfilled' && item.value.ok) {
+            const { node, parsed, rowCount } = item.value;
             const hasNep = Boolean(!scopeCode && (parsed.nepProvinceList || parsed.nepMilestoneList));
             if (rowCount > 0 || hasNep) {
               store.importParsedDataset(
@@ -1499,17 +1519,20 @@ export function createAppServer(dataDir, options = {}) {
             store.state.nodeStatuses[node.code] = statusObj;
             results.push(statusObj);
             totalImported += rowCount;
-          } catch (err) {
-            const isAuth = String(err.message || '').includes('401') || String(err.message || '').includes('403');
+          } else {
+            const val = item.status === 'fulfilled' ? item.value : { node: null, error: item.reason?.message };
+            const isAuth = String(val.error || '').includes('401') || String(val.error || '').includes('403');
             const statusObj = {
-              code: node.code,
-              jurisdiction: node.jurisdiction,
+              code: val.node?.code || 'UNKNOWN',
+              jurisdiction: val.node?.jurisdiction || 'Provincial Node',
               status: isAuth ? 'unauthorized' : 'error',
               importedRows: 0,
-              error: err.message,
+              error: val.error || 'Failed to fetch spreadsheet',
               checkedAt: new Date().toISOString()
             };
-            store.state.nodeStatuses[node.code] = statusObj;
+            if (val.node?.code) {
+              store.state.nodeStatuses[val.node.code] = statusObj;
+            }
             results.push(statusObj);
           }
         }
