@@ -2634,6 +2634,10 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   // 1. MOV Whereabouts
   const movCfg = WHEREABOUTS_CONFIGS['mov-whereabouts'];
   const movHtml = renderMilestoneWhereaboutsView(baseCtx, movCfg);
+  assert.ok(movHtml.includes('id="panel-mov-whereabouts-provincial"'), 'MOV Provincial Allocation panel exists');
+  assert.ok(movHtml.includes('Provincial Allocation Table'), 'MOV Provincial Allocation Table title present');
+  assert.ok(movHtml.includes('Land Valuation'), 'Land Valuation milestone label present in Provincial Allocation Table');
+  assert.ok(movHtml.includes('Put Data / Edit Figures'), 'Put Data / Edit Figures button present in MOV Provincial Allocation Table');
   assert.ok(movHtml.includes('id="panel-cf-status-table"'), 'MOV panel exists');
   assert.ok(movHtml.includes('MOV Milestone Status &amp; Accomplishment Summary'), 'MOV summary title present');
   assert.ok(movHtml.includes('WITH PPU DATE'), 'MOV standard table has WITH PPU DATE header');
@@ -2663,6 +2667,8 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   // 2. Registration / Distribution Whereabouts
   const regDistCfg = WHEREABOUTS_CONFIGS['regdist-whereabouts'];
   const regDistHtml = renderMilestoneWhereaboutsView(baseCtx, regDistCfg);
+  assert.ok(regDistHtml.includes('id="panel-regdist-whereabouts-provincial"'), 'RegDist Provincial Allocation panel exists');
+  assert.ok(regDistHtml.includes('EP CLOA Registration / Distribution'), 'RegDist milestone label present');
   assert.ok(regDistHtml.includes('id="panel-cf-status-table"'), 'RegDist panel exists');
   assert.ok(regDistHtml.includes('Registration / Distribution Milestone Status &amp; Accomplishment Summary'), 'RegDist title present');
   assert.ok(regDistHtml.includes('WITH DATE REGISTERED'), 'RegDist standard table has WITH DATE REGISTERED header');
@@ -2675,6 +2681,8 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   // 3. Installation Whereabouts
   const instCfg = WHEREABOUTS_CONFIGS['installation-whereabouts'];
   const instHtml = renderMilestoneWhereaboutsView(baseCtx, instCfg);
+  assert.ok(instHtml.includes('id="panel-installation-whereabouts-provincial"'), 'Installation Provincial Allocation panel exists');
+  assert.ok(instHtml.includes('Installation'), 'Installation milestone label present in Provincial Allocation Table');
   assert.ok(instHtml.includes('id="panel-cf-status-table"'), 'Installation panel exists');
   assert.ok(instHtml.includes('Installation Milestone Status &amp; Accomplishment Summary'), 'Installation title present');
   assert.ok(instHtml.includes('WITH DATE REGISTERED'), 'Installation standard table has WITH DATE REGISTERED header');
@@ -2685,7 +2693,21 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   assert.ok(instHtml.includes('id="cf-status-target-year-filter"'), 'Installation panel has Target Year select');
   assert.ok(instHtml.includes('id="whereabouts-target-year-filter"'), 'Installation master ledger has Target Year filter');
 
-  // 4. Dynamic Support List Modal rendering for MOV, RegDist, and Installation
+  // 4. Leasehold Operations View Provincial Allocation Table
+  const leaseholdHtml = renderLeaseholdView({
+    ...baseCtx,
+    leaseholdSearch: '',
+    leaseholdProvinceFilter: 'ALL',
+    leaseholdStatusFilter: 'ALL',
+    leaseholdTargetYearFilter: 'ALL',
+    leaseholdPage: 1,
+    leaseholdPageSize: 25
+  });
+  assert.ok(leaseholdHtml.includes('id="panel-leasehold-provincial"'), 'Leasehold Provincial Allocation panel exists');
+  assert.ok(leaseholdHtml.includes('Provincial Allocation Table'), 'Leasehold Provincial Allocation Table title present');
+  assert.ok(leaseholdHtml.includes('Leasehold'), 'Leasehold label present in Provincial Allocation Table');
+
+  // 5. Dynamic Support List Modal rendering for MOV, RegDist, and Installation
   const sampleMovRow = [
     {
       lhid: '8.05000020E8',

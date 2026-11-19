@@ -824,6 +824,285 @@ function renderProvincialNepSheetSection(ctx) {
   `;
 }
 
+export function renderProvincialAllocationSection(ctx, {
+  milestoneKey = 'overall',
+  milestoneLabel = 'Overall NEP (All Milestones)',
+  yearFilter = 'ALL',
+  panelId = 'panel-nep-provincial',
+  customTitle = '',
+  customSubtitle = ''
+} = {}) {
+  const {
+    analytics = {},
+    state = {},
+    currentUser,
+    provinceScope,
+    nepDisplayMode = 'table',
+    nepColVisibility = { lhs: true, area: true, arbs: true },
+    schemas
+  } = ctx;
+
+  const activeMilestone = String(milestoneKey || 'overall');
+  const label = milestoneLabel || (activeMilestone === 'overall' ? 'Overall NEP (All Milestones)' : activeMilestone);
+
+  const regProvNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  const provNodes = regProvNodes.length > 0 ? regProvNodes : [
+    { code: 'BIL', provinceName: 'Biliran', jurisdiction: 'Biliran', role: 'Provincial Node' },
+    { code: 'ESA', provinceName: 'Eastern Samar', jurisdiction: 'Eastern Samar', role: 'Provincial Node' },
+    { code: 'LEY', provinceName: 'Leyte', jurisdiction: 'Leyte', role: 'Provincial Node' },
+    { code: 'NSA', provinceName: 'Northern Samar', jurisdiction: 'Northern Samar', role: 'Provincial Node' },
+    { code: 'SAM', provinceName: 'Samar (Western Samar)', jurisdiction: 'Samar', role: 'Provincial Node' },
+    { code: 'SLE', provinceName: 'Southern Leyte', jurisdiction: 'Southern Leyte', role: 'Provincial Node' }
+  ];
+
+  let rawRows = [];
+  if (activeMilestone === 'overall') {
+    rawRows = analytics?.nepProvinceBreakdown || [];
+  } else {
+    const msMap = (analytics?.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
+                  (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
+    rawRows = provNodes.map((n) => {
+      const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
+      return {
+        code: n.code,
+        jurisdiction: n.jurisdiction || n.provinceName || n.code,
+        provinceName: n.provinceName || n.jurisdiction || n.code,
+        lhs: item.lhs || 0,
+        sem1Lhs: item.sem1Lhs,
+        sem2Lhs: item.sem2Lhs,
+        area: item.area || 0,
+        sem1Area: item.sem1Area,
+        sem2Area: item.sem2Area,
+        arbs: item.arbs || 0,
+        sem1Arbs: item.sem1Arbs,
+        sem2Arbs: item.sem2Arbs,
+        year: item.year || 2026
+      };
+    });
+  }
+  if (provinceScope) {
+    rawRows = rawRows.filter((r) => r.code === provinceScope.code);
+  }
+
+  const canEditNep = currentUser ? (currentUser.role === 'admin' || currentUser.role === 'staff' || !provinceScope) : true;
+
+  const availableYearsSet = new Set(rawRows.map((r) => r.year).filter(Boolean));
+  availableYearsSet.add(new Date().getFullYear());
+  for (const r of analytics?.nepProvinceBreakdown || []) {
+    const yr = Math.round(Number(r?.year) || 0);
+    if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);
+  }
+  for (const msMap of Object.values(analytics?.nepMilestoneList || state?.nepMilestoneList || {})) {
+    if (msMap && typeof msMap === 'object') {
+      for (const r of Object.values(msMap)) {
+        const yr = Math.round(Number(r?.year) || 0);
+        if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);
+      }
+    }
+  }
+  for (const yr of analytics?.availableMilestoneYears || []) {
+    if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);
+  }
+  const availableYears = Array.from(availableYearsSet).sort((a, b) => b - a);
+
+  const activeFilter = String(yearFilter || 'ALL');
+  let filteredRows =
+    activeFilter === 'ALL'
+      ? rawRows
+      : rawRows.filter((r) => String(r.year || 2026) === activeFilter);
+
+  if (filteredRows.length === 0 && rawRows.length > 0) {
+    filteredRows = rawRows;
+  }
+
+  const totals = {
+    lhs: filteredRows.reduce((s, r) => s + (Number(r.lhs) || 0), 0),
+    area: Number(filteredRows.reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4)),
+    arbs: filteredRows.reduce((s, r) => s + (Number(r.arbs) || 0), 0)
+  };
+
+  const activeMetricCols = (nepColVisibility.lhs ? 1 : 0) + (nepColVisibility.area ? 1 : 0) + (nepColVisibility.arbs ? 1 : 0);
+  const visibleColCount = 1 + (activeMetricCols || 1) + 1 + (canEditNep ? 1 : 0);
+  const yearText = activeFilter === 'ALL' ? (availableYears.join(', ') || 'All Years') : activeFilter;
+
+  const titleText = customTitle || (nepDisplayMode === 'cards' ? 'Provincial Allocation Cards' : 'Provincial Allocation Table');
+  const subtitleText = customSubtitle || `Per-province breakdown displaying LHS, AREA (HAS), ARBs, and Target Year for <strong>${esc(label)}</strong>`;
+
+  return `
+    <div class="panel" id="${esc(panelId)}" style="margin-bottom: 22px;">
+      <div class="panel-header" style="flex-wrap:wrap;gap:12px;">
+        <div>
+          <h3 class="panel-title">${titleText}</h3>
+          <p class="panel-subtitle">${subtitleText}</p>
+        </div>
+        <div class="panel-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <!-- View Switcher Pills -->
+          <div class="nep-metric-pills" role="group" aria-label="Provincial Allocation View Mode">
+            <button type="button" class="btn btn-sm ${nepDisplayMode !== 'cards' ? 'btn-primary' : 'btn-secondary'}" data-nep-mode="table" title="Table View">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
+              Table View
+            </button>
+            <button type="button" class="btn btn-sm ${nepDisplayMode === 'cards' ? 'btn-primary' : 'btn-secondary'}" data-nep-mode="cards" title="Card View">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Card View
+            </button>
+          </div>
+
+          <!-- Column Hide / Unhide Pills for LHS, AREA, ARBs -->
+          <div class="nep-metric-pills nep-column-toggles" role="group" aria-label="Toggle Metric Columns" style="display:flex;align-items:center;gap:4px;background:var(--surface);padding:3px 6px;border-radius:6px;border:1px solid var(--border);">
+            <span style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-right:2px;">Columns:</span>
+            <button type="button" class="btn btn-xs ${nepColVisibility.lhs ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="lhs" title="${nepColVisibility.lhs ? 'Click to hide LHS' : 'Click to show LHS'}">
+              ${nepColVisibility.lhs ? '✓ LHS' : '+ LHS'}
+            </button>
+            <button type="button" class="btn btn-xs ${nepColVisibility.area ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="area" title="${nepColVisibility.area ? 'Click to hide AREA' : 'Click to show AREA'}">
+              ${nepColVisibility.area ? '✓ AREA' : '+ AREA'}
+            </button>
+            <button type="button" class="btn btn-xs ${nepColVisibility.arbs ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="arbs" title="${nepColVisibility.arbs ? 'Click to hide ARBs' : 'Click to show ARBs'}">
+              ${nepColVisibility.arbs ? '✓ ARBs' : '+ ARBs'}
+            </button>
+          </div>
+
+          ${canEditNep ? `
+            <button type="button" class="btn btn-primary btn-sm btn-card-edit-nep" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:700;" title="Put Data or Edit Figures for ${esc(label)}">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Put Data / Edit Figures
+            </button>
+          ` : ''}
+
+          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-${esc(panelId)}" title="Full Screen Table">
+            <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
+          </button>
+        </div>
+      </div>
+
+      ${nepDisplayMode === 'cards'
+      ? `
+        <div class="grid-3 nep-province-cards-grid" style="padding:16px;">
+          ${filteredRows
+        .map(
+          (r) => `
+            <div class="nep-province-card">
+              <div class="nep-province-card-header">
+                <div class="nep-province-name">${esc(r.provinceName)}</div>
+                <span class="nep-province-code">${esc(r.code)}</span>
+              </div>
+              <div class="nep-stats-row">
+                ${nepColVisibility.lhs ? `
+                <div class="nep-stat-box">
+                  <span class="nep-stat-label">NEP Target (LHS)</span>
+                  <span class="nep-stat-val">${(Number(r.lhs) || 0).toLocaleString('en-US')}</span>
+                  ${r.sem1Lhs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</span>` : ''}
+                </div>` : ''}
+                ${nepColVisibility.area ? `
+                <div class="nep-stat-box">
+                  <span class="nep-stat-label">NEP Target Area (HAS)</span>
+                  <span class="nep-stat-val">${fmtArea(r.area || 0)}</span>
+                  ${r.sem1Area !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</span>` : ''}
+                </div>` : ''}
+                ${nepColVisibility.arbs ? `
+                <div class="nep-stat-box">
+                  <span class="nep-stat-label">NEP Target (ARBs)</span>
+                  <span class="nep-stat-val">${(Number(r.arbs) || 0).toLocaleString('en-US')}</span>
+                  ${r.sem1Arbs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</span>` : ''}
+                </div>` : ''}
+              </div>
+              <div class="nep-card-footer">
+                <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
+                ${canEditNep
+              ? `<button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
+                   ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
+                 </button>`
+              : '<span class="badge badge-gray">Read-Only</span>'
+            }
+              </div>
+            </div>
+          `
+        )
+        .join('')}
+        </div>
+      `
+      : `
+        <div class="table-wrap nep-prov-table-wrap">
+          <table class="nep-sheet-table nep-targets-table">
+            <thead>
+              <tr>
+                <th class="sticky-col-province">Province</th>
+                ${activeMetricCols === 0 ? '<th class="center" style="font-size:11px;font-weight:600;color:var(--text-muted);">(No Metric Selected)</th>' : ''}
+                ${nepColVisibility.lhs ? '<th class="right" style="width:140px;">LHS</th>' : ''}
+                ${nepColVisibility.area ? '<th class="right" style="width:170px;">AREA (HAS)</th>' : ''}
+                ${nepColVisibility.arbs ? '<th class="right" style="width:140px;">ARBs</th>' : ''}
+                <th class="center" style="width:130px;">Target Year</th>
+                ${canEditNep ? '<th class="center" style="width:130px;">Action</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRows.length === 0 ? `
+                <tr>
+                  <td colspan="${visibleColCount}" class="center" style="padding:28px 16px;color:var(--text-muted);">
+                    <div>No provincial records found for ${esc(label)}. Click <strong>Put Data / Edit Figures</strong> to set targets.</div>
+                    ${canEditNep ? `<button type="button" class="btn btn-primary btn-sm btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="margin-top:10px;font-weight:700;">+ Add Target</button>` : ''}
+                  </td>
+                </tr>
+              ` : filteredRows
+        .map(
+          (r) => `
+                <tr>
+                  <td class="sticky-col-province">
+                    <strong>${esc(r.provinceName)}</strong>
+                    <div class="nep-sub-metric">${esc(r.code)}</div>
+                  </td>
+                  ${activeMetricCols === 0 ? '<td class="center" style="color:var(--text-muted);font-size:11px;">—</td>' : ''}
+                  ${nepColVisibility.lhs ? `
+                  <td class="right" style="font-weight:600;">
+                    <div>${(Number(r.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">LHS</span></div>
+                    ${r.sem1Lhs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</div>` : ''}
+                  </td>` : ''}
+                  ${nepColVisibility.area ? `
+                  <td class="right" style="font-weight:700;color:var(--dar-green-dark);">
+                    <div>${fmtArea(r.area || 0)} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">HAS</span></div>
+                    ${r.sem1Area !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);font-weight:normal;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</div>` : ''}
+                  </td>` : ''}
+                  ${nepColVisibility.arbs ? `
+                  <td class="right" style="font-weight:600;">
+                    <div>${(Number(r.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">ARBs</span></div>
+                    ${r.sem1Arbs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</div>` : ''}
+                  </td>` : ''}
+                  <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
+                  ${canEditNep
+              ? `<td class="center">
+                   <button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:3px 10px;font-size:12px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
+                     ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
+                   </button>
+                 </td>`
+              : ''
+            }
+                </tr>
+              `
+        )
+        .join('')}
+              ${filteredRows.length > 1
+        ? `
+                <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
+                  <td class="sticky-col-province">Region VIII Total</td>
+                  ${activeMetricCols === 0 ? '<td class="center" style="color:var(--text-muted);font-size:11px;">—</td>' : ''}
+                  ${nepColVisibility.lhs ? `<td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">LHS</span></td>` : ''}
+                  ${nepColVisibility.area ? `<td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">HAS</span></td>` : ''}
+                  ${nepColVisibility.arbs ? `<td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">ARBs</span></td>` : ''}
+                  <td class="center"><span class="badge badge-green" style="font-weight:700;">${esc(yearText)}</span></td>
+                  ${canEditNep ? '<td class="center">-</td>' : ''}
+                </tr>
+              `
+        : ''
+      }
+            </tbody>
+          </table>
+        </div>
+      `
+    }
+    </div>
+  `;
+}
+
 export function renderNepView(ctx) {
   const { analytics, currentUser, provinceScope, nepYearFilter = 'ALL', nepMilestoneFilter = 'overall', nepDisplayMode = 'table', nepColVisibility = { lhs: true, area: true, arbs: true }, schemas } = ctx;
   const activeMilestone = String(nepMilestoneFilter || 'overall');
@@ -990,189 +1269,12 @@ export function renderNepView(ctx) {
     </section>
 
     <!-- Provincial Allocation Section (Table View by Default with View Switcher) -->
-    <div class="panel" id="panel-nep-provincial" style="margin-bottom: 22px;">
-      <div class="panel-header" style="flex-wrap:wrap;gap:12px;">
-        <div>
-          <h3 class="panel-title">${nepDisplayMode === 'cards' ? 'Provincial NEP Allocation Cards' : 'Provincial NEP Allocation Table'}</h3>
-          <p class="panel-subtitle">Official National Expenditure Program (NEP) Targets per province displaying LHS, Area (HAS), ARBs, and Target Year for <strong>${esc(milestoneLabel)}</strong></p>
-        </div>
-        <div class="panel-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <!-- View Switcher Pills -->
-          <div class="nep-metric-pills" role="group" aria-label="Provincial Allocation View Mode">
-            <button type="button" class="btn btn-sm ${nepDisplayMode !== 'cards' ? 'btn-primary' : 'btn-secondary'}" data-nep-mode="table" title="Table View">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
-              Table View
-            </button>
-            <button type="button" class="btn btn-sm ${nepDisplayMode === 'cards' ? 'btn-primary' : 'btn-secondary'}" data-nep-mode="cards" title="Card View">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-              Card View
-            </button>
-          </div>
-
-          <!-- Column Hide / Unhide Pills for LHS, AREA, ARBs -->
-          <div class="nep-metric-pills nep-column-toggles" role="group" aria-label="Toggle Metric Columns" style="display:flex;align-items:center;gap:4px;background:var(--surface);padding:3px 6px;border-radius:6px;border:1px solid var(--border);">
-            <span style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-right:2px;">NEP Columns:</span>
-            <button type="button" class="btn btn-xs ${nepColVisibility.lhs ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="lhs" title="${nepColVisibility.lhs ? 'Click to hide LHS' : 'Click to show LHS'}">
-              ${nepColVisibility.lhs ? '✓ LHS' : '+ LHS'}
-            </button>
-            <button type="button" class="btn btn-xs ${nepColVisibility.area ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="area" title="${nepColVisibility.area ? 'Click to hide AREA' : 'Click to show AREA'}">
-              ${nepColVisibility.area ? '✓ AREA' : '+ AREA'}
-            </button>
-            <button type="button" class="btn btn-xs ${nepColVisibility.arbs ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="arbs" title="${nepColVisibility.arbs ? 'Click to hide ARBs' : 'Click to show ARBs'}">
-              ${nepColVisibility.arbs ? '✓ ARBs' : '+ ARBs'}
-            </button>
-          </div>
-
-          ${canEditNep
-      ? `<button type="button" class="btn btn-primary btn-sm" id="btn-add-nep-target" data-milestone="${esc(activeMilestone)}" style="font-weight:700;">
-                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                   + Add NEP Target
-                 </button>
-                 <button type="button" class="btn btn-secondary btn-sm" id="btn-card-edit-nep" data-milestone="${esc(activeMilestone)}" style="font-weight:600;" title="Edit provincial NEP target figures">
-                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                   Edit Figures
-                 </button>`
-      : ''
-    }
-          <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-nep-view" title="Full Screen Table">
-            <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
-          </button>
-        </div>
-      </div>
-
-      ${nepDisplayMode === 'cards'
-      ? `
-        <div class="grid-3 nep-province-cards-grid" style="padding:16px;">
-          ${filteredRows
-        .map(
-          (r) => `
-            <div class="nep-province-card">
-              <div class="nep-province-card-header">
-                <div class="nep-province-name">${esc(r.provinceName)}</div>
-                <span class="nep-province-code">${esc(r.code)}</span>
-              </div>
-              <div class="nep-stats-row">
-                ${nepColVisibility.lhs ? `
-                <div class="nep-stat-box">
-                  <span class="nep-stat-label">NEP Target (LHS)</span>
-                  <span class="nep-stat-val">${(Number(r.lhs) || 0).toLocaleString('en-US')}</span>
-                  ${r.sem1Lhs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</span>` : ''}
-                </div>` : ''}
-                ${nepColVisibility.area ? `
-                <div class="nep-stat-box">
-                  <span class="nep-stat-label">NEP Target Area (HAS)</span>
-                  <span class="nep-stat-val">${fmtArea(r.area || 0)}</span>
-                  ${r.sem1Area !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</span>` : ''}
-                </div>` : ''}
-                ${nepColVisibility.arbs ? `
-                <div class="nep-stat-box">
-                  <span class="nep-stat-label">NEP Target (ARBs)</span>
-                  <span class="nep-stat-val">${(Number(r.arbs) || 0).toLocaleString('en-US')}</span>
-                  ${r.sem1Arbs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</span>` : ''}
-                </div>` : ''}
-              </div>
-              <div class="nep-card-footer">
-                <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
-                ${canEditNep
-              ? `<button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
-                   ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
-                 </button>`
-              : '<span class="badge badge-gray">Read-Only</span>'
-            }
-              </div>
-            </div>
-          `
-        )
-        .join('')}
-        </div>
-      `
-      : `
-        <div class="table-wrap nep-prov-table-wrap">
-          <table class="nep-sheet-table nep-targets-table">
-            <thead>
-              <tr>
-                <th rowspan="2" class="sticky-col-province nep-th-rowspan" style="min-width:180px;vertical-align:middle;">Province</th>
-                <th colspan="${activeMetricCols || 1}" class="center nep-th-nep-group" style="background:#0a361d;color:#ffffff;font-size:12px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.2);padding:8px 10px;">
-                  <span style="display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    NEP Targets (${esc(milestoneLabel)})
-                  </span>
-                </th>
-                <th rowspan="2" class="center nep-th-rowspan" style="width:120px;vertical-align:middle;">Target Year</th>
-                ${canEditNep ? '<th rowspan="2" class="center nep-th-rowspan" style="width:130px;vertical-align:middle;">Action</th>' : ''}
-              </tr>
-              <tr>
-                ${activeMetricCols === 0 ? '<th class="center" style="font-size:11px;font-weight:600;color:var(--text-muted);">(No Metric Selected)</th>' : ''}
-                ${nepColVisibility.lhs ? '<th class="right" style="width:130px;">NEP Target (LHS)</th>' : ''}
-                ${nepColVisibility.area ? '<th class="right" style="width:165px;">NEP Target Area (HAS)</th>' : ''}
-                ${nepColVisibility.arbs ? '<th class="right" style="width:130px;">NEP Target (ARBs)</th>' : ''}
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredRows.length === 0 ? `
-                <tr>
-                  <td colspan="${visibleColCount}" class="center" style="padding:28px 16px;color:var(--text-muted);">
-                    <div>No provincial records found. Click <strong>+ Add NEP Target</strong> to set targets.</div>
-                    ${canEditNep ? `<button type="button" class="btn btn-primary btn-sm btn-add-nep-target-empty" data-milestone="${esc(activeMilestone)}" style="margin-top:10px;font-weight:700;">+ Add NEP Target</button>` : ''}
-                  </td>
-                </tr>
-              ` : filteredRows
-        .map(
-          (r) => `
-                <tr>
-                  <td class="sticky-col-province">
-                    <strong>${esc(r.provinceName)}</strong>
-                    <div class="nep-sub-metric">${esc(r.code)}</div>
-                  </td>
-                  ${activeMetricCols === 0 ? '<td class="center" style="color:var(--text-muted);font-size:11px;">—</td>' : ''}
-                  ${nepColVisibility.lhs ? `
-                  <td class="right" style="font-weight:600;">
-                    <div>${(Number(r.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">LHS</span></div>
-                    ${r.sem1Lhs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</div>` : ''}
-                  </td>` : ''}
-                  ${nepColVisibility.area ? `
-                  <td class="right" style="font-weight:700;color:var(--dar-green-dark);">
-                    <div>${fmtArea(r.area || 0)} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">HAS</span></div>
-                    ${r.sem1Area !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);font-weight:normal;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</div>` : ''}
-                  </td>` : ''}
-                  ${nepColVisibility.arbs ? `
-                  <td class="right" style="font-weight:600;">
-                    <div>${(Number(r.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">ARBs</span></div>
-                    ${r.sem1Arbs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</div>` : ''}
-                  </td>` : ''}
-                  <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
-                  ${canEditNep
-              ? `<td class="center">
-                           <button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:3px 10px;font-size:12px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
-                             ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
-                           </button>
-                         </td>`
-              : ''
-            }
-                </tr>
-              `
-        )
-        .join('')}
-              ${filteredRows.length > 1
-        ? `
-                <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
-                  <td class="sticky-col-province">Region VIII Total</td>
-                  ${activeMetricCols === 0 ? '<td class="center" style="color:var(--text-muted);font-size:11px;">—</td>' : ''}
-                  ${nepColVisibility.lhs ? `<td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">LHS</span></td>` : ''}
-                  ${nepColVisibility.area ? `<td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">HAS</span></td>` : ''}
-                  ${nepColVisibility.arbs ? `<td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">ARBs</span></td>` : ''}
-                  <td class="center"><span class="badge badge-green" style="font-weight:700;">${esc(yearText)}</span></td>
-                  ${canEditNep ? '<td class="center">-</td>' : ''}
-                </tr>
-              `
-        : ''
-      }
-            </tbody>
-          </table>
-        </div>
-      `
-    }
-    </div>
+    ${renderProvincialAllocationSection(ctx, {
+      milestoneKey: activeMilestone,
+      milestoneLabel,
+      yearFilter: activeFilter,
+      panelId: 'panel-nep-provincial'
+    })}
 
     <!-- Regional List — Per-Milestone NEP Targets -->
     ${renderMilestoneNepSection(ctx)}
@@ -1200,6 +1302,27 @@ function formatReportedMonthDisplay(val) {
 }
 
 export const WHEREABOUTS_CONFIGS = {
+  'leasehold': {
+    tabName: 'Leasehold',
+    viewKey: 'leasehold',
+    badgeIcon: '📜',
+    title: 'Leasehold Operations & Date Summary',
+    subtitle: 'Agricultural Leasehold Tracking • Date Contract Registered • Date PLR Registered • Report Month',
+    openTabName: 'Leasehold',
+    dates: [
+      { key: 'dateContractRegistered', label: 'DATE CONTRACT REGISTERED', shortLabel: 'Contract Reg.', badgeClass: 'badge-green', icon: '✔' },
+      { key: 'datePlrRegistered', label: 'DATE PLR REGISTERED', shortLabel: 'PLR Reg.', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'reportMonth', label: 'REPORT MONTH', shortLabel: 'Report Month', badgeClass: 'badge-amber', isMonth: true }
+    ],
+    resolveStage: (row) => {
+      if (row.datePlrRegistered) return { stage: 'PLR Registered', badge: 'badge-green' };
+      if (row.dateContractRegistered) return { stage: 'Contract Registered', badge: 'badge-blue' };
+      if (row.reportMonth) return { stage: 'Reported', badge: 'badge-amber' };
+      return { stage: 'Pending Registration', badge: 'badge-gray' };
+    },
+    extraColHeader: 'Contract Status',
+    extraColValue: (r) => `<span class="badge ${r.statusOfContract === 'New' ? 'badge-blue' : 'badge-gray'}">${esc(r.statusOfContract || 'New')}</span>`
+  },
   'cf-whereabouts': {
     tabName: 'CF(DOC)',
     viewKey: 'cf-whereabouts',
@@ -1369,6 +1492,7 @@ export function matchesMilestoneDatabaseTag(dbRow, viewKey) {
   if (viewKey === 'mov-whereabouts') return mt.includes('mov') || mt.includes('val');
   if (viewKey === 'regdist-whereabouts') return mt.includes('reg') || mt.includes('dist') || mt.includes('cloa');
   if (viewKey === 'installation-whereabouts') return mt.includes('install');
+  if (viewKey === 'leasehold') return mt.includes('lease') || mt.includes('lh');
   return true;
 }
 
@@ -4220,10 +4344,29 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     </section>
   `;
 
+  const activeNepMsKey = getNepMilestoneKey(viewKey);
+  const milestoneLabelMap = {
+    'cf_doc': 'CF Documentation',
+    'land_survey': 'Land Survey',
+    'land_valuation': 'Land Valuation',
+    'ep_cloa_registration': 'EP CLOA Registration / Distribution',
+    'installation': 'Installation',
+    'leasehold': 'Leasehold'
+  };
+  const activeMilestoneLabel = milestoneLabelMap[activeNepMsKey] || cfg.tabName;
+  const nepAllocationHtml = renderProvincialAllocationSection(ctx, {
+    milestoneKey: activeNepMsKey,
+    milestoneLabel: activeMilestoneLabel,
+    yearFilter: targetYearFilterVal,
+    panelId: `panel-${viewKey}-provincial`
+  });
+
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
     ${isMilestoneTrackingView ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
+
+    ${nepAllocationHtml}
 
     ${isMilestoneTrackingView ? cfStatusTableHtml : ''}
 
@@ -7492,6 +7635,14 @@ export function renderLeaseholdView(ctx) {
           <div style="font-size:11px;color:#b91c1c;margin-top:2px;">Total Monetary Lease Rental</div>
         </div>
       </div>
+
+      <!-- Provincial Allocation Table for Leasehold (after the CARDS) -->
+      ${renderProvincialAllocationSection(ctx, {
+        milestoneKey: 'leasehold',
+        milestoneLabel: 'Leasehold',
+        yearFilter: leaseholdTargetYearFilter,
+        panelId: 'panel-leasehold-provincial'
+      })}
 
       <!-- Toolbar & Filters -->
       <div class="toolbar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">

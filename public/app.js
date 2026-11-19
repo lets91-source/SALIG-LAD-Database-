@@ -3096,10 +3096,23 @@ function bindDashboardViewEvents(container) {
 
   container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
   container.querySelector('#btn-sync-hub-nep')?.addEventListener('click', syncHubNepSheet);
-  container.querySelectorAll('#btn-edit-nep-sheet, #btn-card-edit-nep, #btn-add-nep-target, .btn-add-nep-target-empty').forEach((btn) => {
+  bindProvincialAllocationTableEvents(container);
+  container.querySelector('#nep-milestone-filter')?.addEventListener('change', (e) => {
+    appState.nepMilestoneFilter = e.target.value;
+    renderActiveView();
+  });
+  container.querySelector('#nep-year-filter')?.addEventListener('change', (e) => {
+    appState.nepYearFilter = e.target.value;
+    renderActiveView();
+  });
+  container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
+}
+
+function bindProvincialAllocationTableEvents(container) {
+  container.querySelectorAll('#btn-edit-nep-sheet, #btn-card-edit-nep, .btn-card-edit-nep, #btn-add-nep-target, .btn-add-nep-target, .btn-add-nep-target-empty').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
-      const isAdd = btn.id === 'btn-add-nep-target' || btn.classList.contains('btn-add-nep-target-empty') || btn.id === 'btn-edit-nep-sheet';
+      const isAdd = btn.id === 'btn-add-nep-target' || btn.classList.contains('btn-add-nep-target') || btn.classList.contains('btn-add-nep-target-empty') || btn.id === 'btn-edit-nep-sheet';
       openNepSheetModal(null, ms, isAdd ? 'add' : 'edit');
     });
   });
@@ -3109,14 +3122,6 @@ function bindDashboardViewEvents(container) {
       const isAdd = btn.textContent.includes('Add');
       openNepSheetModal(btn.dataset.prov, ms, isAdd ? 'add' : 'edit');
     });
-  });
-  container.querySelector('#nep-milestone-filter')?.addEventListener('change', (e) => {
-    appState.nepMilestoneFilter = e.target.value;
-    renderActiveView();
-  });
-  container.querySelector('#nep-year-filter')?.addEventListener('change', (e) => {
-    appState.nepYearFilter = e.target.value;
-    renderActiveView();
   });
   container.querySelectorAll('[data-nep-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -3139,7 +3144,7 @@ function bindDashboardViewEvents(container) {
       renderActiveView();
     });
   });
-  container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
+}
 }
 
 async function syncHubNepSheet() {
@@ -4395,6 +4400,8 @@ function bindLeaseholdEvents(container) {
   container.querySelector('#btn-leasehold-fullscreen')?.addEventListener('click', () => {
     togglePanelFullscreen('leasehold-panel');
   });
+
+  bindProvincialAllocationTableEvents(container);
 }
 
 function getWhereaboutsFilterContext(viewKey) {
@@ -5036,6 +5043,8 @@ function bindWhereaboutsEvents(container, viewKey) {
   container.querySelector('#btn-whereabouts-export-csv')?.addEventListener('click', () => {
     exportWhereaboutsCsv(viewKey);
   });
+
+  bindProvincialAllocationTableEvents(container);
 }
 
 function exportWhereaboutsCsv(viewKey) {
