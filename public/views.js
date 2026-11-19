@@ -229,7 +229,8 @@ function renderMilestoneNepSection(ctx) {
     { key: 'land_valuation', label: 'Land Valuation' },
     { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
     { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
-    { key: 'installation', label: 'Installation' }
+    { key: 'installation', label: 'Installation' },
+    { key: 'leasehold', label: 'Leasehold' }
   ];
   const activeMilestoneTable = nepMilestoneTableFilter || 'ALL';
   const displayRows = activeMilestoneTable === 'ALL'
@@ -696,7 +697,8 @@ function renderProvincialNepSheetSection(ctx) {
     { key: 'land_valuation', label: 'Land Valuation' },
     { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
     { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
-    { key: 'installation', label: 'Installation' }
+    { key: 'installation', label: 'Installation' },
+    { key: 'leasehold', label: 'Leasehold' }
   ];
   const activeMilestoneObj = milestoneOptions.find((m) => m.key === activeMilestone) || milestoneOptions[0];
   const milestoneLabel = activeMilestoneObj.label;
@@ -832,7 +834,8 @@ export function renderNepView(ctx) {
     { key: 'land_valuation', label: 'Land Valuation' },
     { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
     { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
-    { key: 'installation', label: 'Installation' }
+    { key: 'installation', label: 'Installation' },
+    { key: 'leasehold', label: 'Leasehold' }
   ];
   const activeMilestoneObj = milestoneOptions.find((m) => m.key === activeMilestone) || milestoneOptions[0];
   const milestoneLabel = activeMilestoneObj.label;
@@ -1356,6 +1359,7 @@ export function getNepMilestoneKey(viewKey) {
   if (viewKey === 'mov-whereabouts') return 'land_valuation';
   if (viewKey === 'regdist-whereabouts') return 'ep_cloa_registration';
   if (viewKey === 'installation-whereabouts') return 'installation';
+  if (viewKey === 'leasehold') return 'leasehold';
   return 'overall';
 }
 
@@ -4931,7 +4935,7 @@ export function renderDashboardView(ctx) {
       const rawKey = String(r.lhid || '').trim().toLowerCase();
       const cleanKey = formatLhidDisplay(r.lhid).toLowerCase();
       const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
-      return s + parseNumericValue(db.totalArea || r.totalArea || r.areaHas || r.areaHas1 || r.areaHas2 || db.carpable || r.carpable || 0);
+      return s + parseNumericValue(r.areaTenanted || r.areaPerTitle || db.totalArea || r.totalArea || r.areaHas || r.areaHas1 || r.areaHas2 || db.carpable || r.carpable || 0);
     }, 0);
   }
 
@@ -4985,6 +4989,16 @@ export function renderDashboardView(ctx) {
       area: computeMilestoneTotalArea(state.optool?.Installation),
       stageLabel: 'On-Ground Physical Installation',
       subtext: 'Agrarian Reform Beneficiaries Installed'
+    },
+    {
+      key: 'leasehold',
+      tabName: 'Leasehold',
+      label: 'Leasehold',
+      navKey: 'leasehold',
+      count: ((state.leasehold && state.leasehold.length) ? state.leasehold : (state.optool?.Leasehold || [])).length,
+      area: computeMilestoneTotalArea((state.leasehold && state.leasehold.length) ? state.leasehold : state.optool?.Leasehold),
+      stageLabel: 'Agricultural Leasehold Contracts',
+      subtext: 'Registered Leasehold Contracts & Profiles'
     }
   ];
 
@@ -5770,7 +5784,8 @@ function buildDbByLhidMap(state) {
       'Survey',
       'Land Valuation',
       'RegistrationDistribution',
-      'Installation'
+      'Installation',
+      'Leasehold'
     ];
 
     const anchorCol = cols[0]?.key === 'lhid' ? cols[0] : null;
@@ -5991,7 +6006,8 @@ function buildDbByLhidMap(state) {
     'Land Valuation': { label: 'Land Valuation', variantClass: 'amber' },
     MOV: { label: 'Land Valuation', variantClass: 'amber' },
     RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'highlight' },
-    Installation: { label: 'Installation', variantClass: 'highlight' }
+    Installation: { label: 'Installation', variantClass: 'highlight' },
+    Leasehold: { label: 'Leasehold', variantClass: 'highlight' }
   };
 
   function renderOptoolKpiCardsHtml(vm) {
@@ -6781,7 +6797,7 @@ function buildDbByLhidMap(state) {
         <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-muted)">
           Target Google Drive Root: <a href="https://drive.google.com/drive/folders/1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ" target="_blank" rel="noopener noreferrer" class="mono font-semibold">1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ</a>
           <span style="margin-left:8px;" class="badge badge-blue">Owner: ltsdarregion08@gmail.com</span>.
-          All 6 provinces (<strong>BILIRAN, EASTERN SAMAR, LEYTE, NORTHERN SAMAR, SAMAR, SOUTHERN LEYTE</strong>) each contain subfolders for all 5 milestones (<strong>CF(DOC), Survey, MOV, RegistrationDistribution, Installation</strong>).
+          All 6 provinces (<strong>BILIRAN, EASTERN SAMAR, LEYTE, NORTHERN SAMAR, SAMAR, SOUTHERN LEYTE</strong>) each contain subfolders for all 6 milestones (<strong>CF(DOC), Survey, MOV, RegistrationDistribution, Installation, Leasehold</strong>).
         </p>
         <div class="grid-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">
           ${['BILIRAN', 'EASTERN SAMAR', 'LEYTE', 'NORTHERN SAMAR', 'SAMAR', 'SOUTHERN LEYTE'].map(p => `
@@ -6795,6 +6811,7 @@ function buildDbByLhidMap(state) {
                 <span class="badge badge-gray">MOV</span>
                 <span class="badge badge-gray">RegistrationDistribution</span>
                 <span class="badge badge-gray">Installation</span>
+                <span class="badge badge-gray">Leasehold</span>
               </div>
             </div>
           `).join('')}

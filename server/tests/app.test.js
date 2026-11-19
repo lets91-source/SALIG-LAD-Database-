@@ -1807,7 +1807,7 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
     const nepJson = await nepRes.json();
 
     const rows = nepJson.analytics.milestoneNepBreakdown;
-    assert.equal(rows.length, 6);
+    assert.equal(rows.length, 7);
     assert.deepEqual(
       rows.map((r) => r.label),
       [
@@ -1816,9 +1816,15 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
         'Land Valuation',
         'EP CLOA Registration',
         'EP CLOA Distribution',
-        'Installation'
+        'Installation',
+        'Leasehold'
       ]
     );
+
+    const leaseholdMs = rows[6];
+    assert.equal(leaseholdMs.key, 'leasehold');
+    assert.equal(leaseholdMs.label, 'Leasehold');
+    assert.ok(leaseholdMs.total);
 
     const cf = rows[0];
     assert.equal(cf.nepTargetCount, 6);

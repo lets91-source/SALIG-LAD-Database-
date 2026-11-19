@@ -138,7 +138,8 @@ export const MILESTONE_TARGET_TABS = [
   'Survey',
   'Land Valuation',
   'RegistrationDistribution',
-  'Installation'
+  'Installation',
+  'Leasehold'
 ];
 
 export const DASHBOARD_MILESTONES = [
@@ -147,7 +148,8 @@ export const DASHBOARD_MILESTONES = [
   { key: 'land_valuation', label: 'Land Valuation', sourceTab: 'MOV' },
   { key: 'ep_cloa_registration', label: 'EP CLOA Registration', sourceTab: 'RegistrationDistribution' },
   { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution', sourceTab: 'RegistrationDistribution' },
-  { key: 'installation', label: 'Installation', sourceTab: 'Installation' }
+  { key: 'installation', label: 'Installation', sourceTab: 'Installation' },
+  { key: 'leasehold', label: 'Leasehold', sourceTab: 'Leasehold' }
 ];
 
 export const NEP_MILESTONE_OPTIONS = [
@@ -362,6 +364,7 @@ export const LEASEHOLD_COLUMNS = [
 export function normalizeLeaseholdRow(raw = {}) {
   const row = { ...(raw || {}) };
   row.id = String(row.id || '').trim() || `LH-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  row.lhid = String(row.lhid || row.LHID || '').trim();
   row.reg = String(row.reg || row.REG || 'Region VIII').trim();
   row.provs = String(row.provs || row.PROVS || row.province || '').trim();
   row.mun = String(row.mun || row.MUN || row.municipality || '').trim();

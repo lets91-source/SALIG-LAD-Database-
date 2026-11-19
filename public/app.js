@@ -3175,7 +3175,8 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
     { key: 'land_valuation', label: 'Land Valuation' },
     { key: 'ep_cloa_registration', label: 'EP CLOA Registration' },
     { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution' },
-    { key: 'installation', label: 'Installation' }
+    { key: 'installation', label: 'Installation' },
+    { key: 'leasehold', label: 'Leasehold' }
   ];
 
   let currentMilestone = initialMilestone || appState.nepMilestoneFilter || 'overall';

@@ -156,6 +156,9 @@ export function resolveTargetTab(target) {
   if (norm.toLowerCase() === 'land valuation' || norm.toLowerCase() === 'mov') {
     return 'MOV';
   }
+  if (norm.toLowerCase() === 'leasehold' || norm.toLowerCase() === 'leaseholl') {
+    return 'Leasehold';
+  }
   return norm;
 }
 
@@ -223,6 +226,17 @@ const DATABASE_TO_TARGET_MAP = {
     areaHas2: (r) => r.totalArea || r.distributedArea || r.carpable || r.computedArea || '',
     target: (r) => resolveTargetFromDatabaseRow(r),
     monthReported: () => formatCurrentMonthYear(),
+    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+  },
+  Leasehold: {
+    lhid: 'lhid',
+    reg: (r) => r.regionName || 'Region VIII',
+    provs: (r) => r.province || 'Leyte',
+    mun: (r) => r.municipality || '',
+    brgy: (r) => r.barangay || '',
+    titleNo: (r) => r.titleNumber || '',
+    areaPerTitle: (r) => r.totalArea || '',
+    areaTenanted: (r) => r.carpable || r.totalArea || '',
     targetYear: (r) => String(r.year || r.targetYear || '').trim()
   }
 };
@@ -397,6 +411,13 @@ const MILESTONE_ANALYTICS_SPECS = {
     getCount: (r) => Math.max(1, Number.parseInt(r?.noOfTitles, 10) || 1),
     getArea: (r, db) =>
       parseMetricNumber(r?.areaHas2) || parseMetricNumber(r?.areaHas1) || getDbParcelArea(db)
+  },
+  leasehold: {
+    tabName: 'Leasehold',
+    dateKeys: ['dateContractRegistered', 'datePlrRegistered', 'reportMonth'],
+    include: () => true,
+    getCount: () => 1,
+    getArea: (r) => parseMetricNumber(r?.areaTenanted) || parseMetricNumber(r?.areaPerTitle) || 0
   }
 };
 
@@ -671,6 +692,9 @@ export class ConsolidatedStore {
         }
       }
     }
+    if (!Array.isArray(this.state.optool.Leasehold) || this.state.optool.Leasehold !== this.state.leasehold) {
+      this.state.optool.Leasehold = this.state.leasehold;
+    }
     if (dirty && fs.existsSync(this.storePath)) {
       this.save();
     }
@@ -871,14 +895,19 @@ export class ConsolidatedStore {
         return true;
       };
       const existingIdx =
-        tabName === 'Database' && cleanRow.lhid
+        (tabName === 'Database' || tabName === 'Leasehold') && cleanRow.lhid
           ? rows.findIndex((r) => r.lhid && r.lhid === cleanRow.lhid)
-          : rows.findIndex((r) => areRowsEqual(r, cleanRow));
+          : cleanRow.id
+            ? rows.findIndex((r) => r.id && r.id === cleanRow.id)
+            : rows.findIndex((r) => areRowsEqual(r, cleanRow));
       if (existingIdx >= 0) {
         rows[existingIdx] = cleanRow;
       } else {
         rows.unshift(cleanRow);
       }
+    }
+    if (tabName === 'Leasehold') {
+      this.state.leasehold = this.state.optool.Leasehold;
     }
     if (!skipSave) this.save();
     return cleanRow;
@@ -2193,7 +2222,8 @@ export class ConsolidatedStore {
             code,
             dbLhidMap
           ).length,
-          Installation: this.getScopedOptoolTabRows('Installation', code, dbLhidMap).length
+          Installation: this.getScopedOptoolTabRows('Installation', code, dbLhidMap).length,
+          Leasehold: this.getScopedOptoolTabRows('Leasehold', code, dbLhidMap).length
         }
       };
     });
@@ -2294,6 +2324,7 @@ export class ConsolidatedStore {
         dbLhidMap
       ).length,
       Installation: this.getScopedOptoolTabRows('Installation', activeScope, dbLhidMap).length,
+      Leasehold: this.getScopedOptoolTabRows('Leasehold', activeScope, dbLhidMap).length,
       totalArea: Number(dbRows.reduce((s, r) => s + (Number(r.totalArea) || 0), 0).toFixed(4)),
       totalComputedArea: Number(dbRows.reduce((s, r) => s + (Number(r.computedArea) || 0), 0).toFixed(4)),
       totalCarpableArea: Number(

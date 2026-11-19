@@ -34,7 +34,8 @@ const MILESTONE_DRIVE_FOLDERS = [
   'Survey',
   'MOV',
   'RegistrationDistribution',
-  'Installation'
+  'Installation',
+  'Leasehold'
 ];
 
 const PROVINCIAL_NODES = [
