@@ -186,6 +186,15 @@ async function pushMutationToGas(store, payload, summaryLabel, pushFn = pushToGa
   if (!gasUrl) return null;
   try {
     const result = await pushFn(gasUrl, payload);
+    const nodeError = Array.isArray(result?.syncedNodes)
+      ? result.syncedNodes.find((n) => n.ok === false)
+      : null;
+    if (result?.ok === false || nodeError) {
+      const errMsg = nodeError?.error || result?.error || 'Target node sync failed';
+      store.addSyncLog('GAS Web App Auto-Push', 'error', `${summaryLabel} failed: ${errMsg}`);
+      store.save();
+      return { ok: false, error: errMsg, ...result };
+    }
     store.addSyncLog('GAS Web App Auto-Push', 'success', summaryLabel);
     store.save();
     return { ok: true, ...result };
@@ -1151,6 +1160,47 @@ export function createAppServer(dataDir, options = {}) {
           });
         } catch (err) {
           return sendJson(res, err.statusCode || 400, { error: err.message });
+        }
+      }
+
+      if (req.method === 'POST' && pathname === '/api/leasehold/sync-gas') {
+        try {
+          const rows = store.getScopedLeaseholdRows(scopeCode);
+          const pushResults = [];
+          for (const row of rows) {
+            const pushRes = await pushMutationToGas(
+              store,
+              {
+                action: 'upsertOptoolRow',
+                tabName: 'Leasehold',
+                headers: getOptoolHeadersSpec('Leasehold'),
+                row,
+                provinceCode: store.getLeaseholdRowProvinceCode(row)
+              },
+              `Synchronized Leasehold record (${row.leaseholderSurname || row.id}) to Google Sheet.`,
+              gasPushFn
+            );
+            pushResults.push({ id: row.id, pushRes });
+          }
+
+          // Direct fetch from provincial sheet to ensure full alignment
+          await performProvincialSync(store, {
+            scopeCode,
+            gasPullFn,
+            fetchXlsxFn: options.fetchGoogleSheetXlsx || fetchGoogleSheetXlsx,
+            force: true
+          });
+
+          const scopedRows = store.getScopedLeaseholdRows(scopeCode);
+          return sendJson(res, 200, {
+            ok: true,
+            pushedCount: pushResults.length,
+            pushResults,
+            rows: scopedRows,
+            leasehold: scopedRows
+          });
+        } catch (err) {
+          return sendJson(res, err.statusCode || 500, { error: err.message });
         }
       }
 

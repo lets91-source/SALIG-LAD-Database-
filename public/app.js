@@ -2801,7 +2801,11 @@ function openLeaseholdModal(existingRow, rowIndex) {
       closeModal();
       updateNavCounts();
       renderActiveView();
-      toast(`Successfully encoded Leasehold record for ${row.leaseholderSurname || 'Tenant'}, ${row.leaseholderFirstname || ''}`);
+      if (res.gasPushResult && res.gasPushResult.ok === false) {
+        toast(`Leasehold saved, but Google Sheet sync failed: ${res.gasPushResult.error || 'Check GAS deployment'}`, true);
+      } else {
+        toast(`Successfully encoded Leasehold record for ${row.leaseholderSurname || 'Tenant'}, ${row.leaseholderFirstname || ''} and synced to Google Sheet!`);
+      }
     } catch (err) {
       toast(err.message, true);
     }
@@ -4288,6 +4292,27 @@ function bindLeaseholdEvents(container) {
 
   container.querySelector('#btn-leasehold-add')?.addEventListener('click', () => openLeaseholdModal(null, null));
   container.querySelector('#btn-leasehold-empty-add')?.addEventListener('click', () => openLeaseholdModal(null, null));
+
+  container.querySelector('#btn-leasehold-sync-sheets')?.addEventListener('click', async () => {
+    try {
+      const res = await withLoading(
+        'syncing',
+        'Syncing Leasehold with Google Sheets…',
+        'Synchronizing records with provincial Google Sheets…',
+        () => api('/api/leasehold/sync-gas', { method: 'POST' })
+      );
+      if (res.leasehold) {
+        appState.state.leasehold = res.leasehold;
+      } else if (res.rows) {
+        appState.state.leasehold = res.rows;
+      }
+      updateNavCounts();
+      renderActiveView();
+      toast(`Leasehold synchronized with Google Sheets! (${res.pushedCount || 0} local record(s) checked)`);
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
 
   container.querySelector('#btn-leasehold-export-csv')?.addEventListener('click', () => {
     exportLeaseholdCsv();

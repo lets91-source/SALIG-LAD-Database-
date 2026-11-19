@@ -4216,6 +4216,15 @@ test('Option A: Dedicated Leasehold tab across provincial Google Sheets & Region
     assert.equal(gasPushes[1].payload.action, 'deleteOptoolRow');
     assert.equal(gasPushes[1].payload.tabName, 'Leasehold');
     assert.equal(gasPushes[1].payload.row.leaseholderSurname, 'RAMOS');
+
+    // 6. Test /api/leasehold/sync-gas bulk push
+    const syncRes = await fetch(`${baseUrl}/api/leasehold/sync-gas`, {
+      method: 'POST'
+    });
+    assert.equal(syncRes.status, 200);
+    const syncJson = await syncRes.json();
+    assert.equal(syncJson.ok, true);
+    assert.ok(syncJson.pushedCount >= 1);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     fs.rmSync(dir, { recursive: true, force: true });

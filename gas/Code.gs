@@ -1557,7 +1557,7 @@ function syncAllSheetHeaders(specificSpreadsheetId) {
 function resolveNodeIdFromRow_(provinceCode, rowObj) {
   const rawCode = String(provinceCode || (rowObj && (rowObj.provinceCode || rowObj.Province_Code)) || '').trim().toUpperCase();
   for (let i = 0; i < PROVINCIAL_NODES.length; i++) {
-    if (PROVINCIAL_NODES[i].code === rawCode) return PROVINCIAL_NODES[i].id;
+    if (PROVINCIAL_NODES[i].code === rawCode || (PROVINCIAL_NODES[i].code === 'SAM' && rawCode === 'WSA')) return PROVINCIAL_NODES[i].id;
   }
   const provText = String((rowObj && (rowObj.province || rowObj.Province || rowObj.provincename || rowObj.ProvinceName || rowObj.provs || rowObj.PROVS)) || '').toLowerCase();
   if (provText.indexOf('biliran') !== -1) return PROVINCIAL_NODES[0].id;
@@ -1698,7 +1698,7 @@ function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
         return r + 1;
       }
       if (refLhSur && refLhFirst && rowLhSur === refLhSur && rowLhFirst === refLhFirst) {
-        if ((refTitle && rowTitle === refTitle) || (refLot && rowLot === refLot) || (refLoSur && rowLoSur === refLoSur)) {
+        if ((refTitle && rowTitle === refTitle) || (refLot && rowLot === refLot) || (refLoSur && rowLoSur === refLoSur) || (refMun && rowMun === refMun)) {
           return r + 1;
         }
       }
@@ -1815,6 +1815,7 @@ function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow, provinceCode
   const targets = getWriteTargetSpreadsheets_(tabName, provinceCode, rowObj);
   const perNode = [];
   let primaryResult = { ok: true, tabName: tabName, updated: false, rowNumber: 0 };
+  let anySuccess = false;
 
   targets.forEach(function (t, idx) {
     try {
@@ -1822,11 +1823,13 @@ function upsertOptoolRecord_(tabName, headersSpec, rowObj, prevRow, provinceCode
       const res = upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow);
       if (idx === 0) primaryResult = res;
       perNode.push({ code: t.code, ok: true, updated: res.updated, rowNumber: res.rowNumber });
+      anySuccess = true;
     } catch (err) {
       perNode.push({ code: t.code, ok: false, error: err.message });
     }
   });
 
+  primaryResult.ok = anySuccess;
   primaryResult.syncedNodes = perNode;
   return primaryResult;
 }

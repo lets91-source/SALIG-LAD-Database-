@@ -370,9 +370,13 @@ export function normalizeLeaseholdRow(raw = {}) {
   row.loFirstname = String(row.loFirstname || row['LO FIRSTNAME'] || '').trim();
   row.loMi = String(row.loMi || row['LO MI'] || '').trim();
   row.titleNo = String(row.titleNo || row['TITLE NO.'] || '').trim();
+  if (row.titleNo === '0.0' || row.titleNo === '0') row.titleNo = '';
   row.taxDecNo = String(row.taxDecNo || row['TAX DEC NO.'] || '').trim();
+  if (row.taxDecNo === '0.0' || row.taxDecNo === '0') row.taxDecNo = '';
   row.surveyNo = String(row.surveyNo || row['SURVEY NO.'] || '').trim();
+  if (row.surveyNo === '0.0' || row.surveyNo === '0') row.surveyNo = '';
   row.lotNo = String(row.lotNo || row['LOT NO.'] || '').trim();
+  if (/^\d+\.0$/.test(row.lotNo)) row.lotNo = row.lotNo.replace(/\.0$/, '');
   row.areaPerTitle = row.areaPerTitle !== undefined && row.areaPerTitle !== '' ? String(row.areaPerTitle).trim() : (row['AREA PER TITLE (Has)'] ? String(row['AREA PER TITLE (Has)']).trim() : '');
   row.areaTenanted = row.areaTenanted !== undefined && row.areaTenanted !== '' ? String(row.areaTenanted).trim() : (row['AREA TENANTED (Has)'] ? String(row['AREA TENANTED (Has)']).trim() : '');
   row.withinRetainedArea = String(row.withinRetainedArea || row['WITHIN RETAINED AREA (Y,N)'] || '').trim().toUpperCase();
@@ -384,6 +388,7 @@ export function normalizeLeaseholdRow(raw = {}) {
   row.relationshipToTenant = String(row.relationshipToTenant || row['RELATIONSHIP TO TENANT/LESSEE (relationship to original leaseholder)'] || '').trim();
   row.gender = String(row.gender || row['GENDER (M, F)'] || '').trim().toUpperCase();
   row.noOfArbs = row.noOfArbs !== undefined && row.noOfArbs !== '' ? String(row.noOfArbs).trim() : (row['Number of ARBs'] ? String(row['Number of ARBs']).trim() : '');
+  if (/^\d+\.0$/.test(row.noOfArbs)) row.noOfArbs = row.noOfArbs.replace(/\.0$/, '');
   row.mainCrops = String(row.mainCrops || row['MAIN CROPS'] || '').trim();
   row.auxilliaryCrops = String(row.auxilliaryCrops || row['AUXILLIARY CROPS'] || '').trim();
   row.sharingArrangement = String(row.sharingArrangement || row['SHARING ARRANGEMENT'] || '').trim();
@@ -394,6 +399,7 @@ export function normalizeLeaseholdRow(raw = {}) {
   row.leaseRentalUnit = String(row.leaseRentalUnit || row['LEASE RENTAL UNIT'] || '').trim();
   row.leaseInPesos = row.leaseInPesos !== undefined && row.leaseInPesos !== '' ? String(row.leaseInPesos).trim() : (row['LEASE IN PESOS'] ? String(row['LEASE IN PESOS']).trim() : '');
   row.targetYear = String(row.targetYear || row['TARGET YEAR'] || '').trim();
+  if (/^\d+\.0$/.test(row.targetYear)) row.targetYear = row.targetYear.replace(/\.0$/, '');
   row.reportMonth = String(row.reportMonth || row['Report Month (Words)'] || '').trim();
   row.remarks = String(row.remarks || row.REMARKS || '').trim();
   return row;
