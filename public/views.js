@@ -759,14 +759,22 @@ function renderProvincialNepSheetSection(ctx) {
         </div>
       </div>
       <div class="table-wrap">
-        <table class="nep-sheet-table">
+        <table class="nep-sheet-table nep-targets-table">
           <thead>
             <tr>
-              <th class="sticky-col-province">Province</th>
-              <th class="right">LHS</th>
-              <th class="right">AREA (HAS)</th>
-              <th class="right">ARBs</th>
-              <th class="center">Year</th>
+              <th rowspan="2" class="sticky-col-province nep-th-rowspan" style="vertical-align:middle;">Province</th>
+              <th colspan="3" class="center nep-th-nep-group" style="background:#0a361d;color:#ffffff;font-size:12px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.2);padding:8px 10px;">
+                <span style="display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  NEP Targets (${esc(milestoneLabel)})
+                </span>
+              </th>
+              <th rowspan="2" class="center nep-th-rowspan" style="vertical-align:middle;">Target Year</th>
+            </tr>
+            <tr>
+              <th class="right" style="width:130px;">NEP Target (LHS)</th>
+              <th class="right" style="width:165px;">NEP Target Area (HAS)</th>
+              <th class="right" style="width:130px;">NEP Target (ARBs)</th>
             </tr>
           </thead>
           <tbody>
@@ -778,30 +786,30 @@ function renderProvincialNepSheetSection(ctx) {
                   <strong>${esc(r.provinceName)}</strong>
                   <div class="nep-sub-metric">${esc(r.code)}</div>
                 </td>
-                <td class="right">
-                  <div>${(Number(r.lhs) || 0).toLocaleString('en-US')}</div>
+                <td class="right" style="font-weight:600;">
+                  <div>${(Number(r.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">LHS</span></div>
                   ${r.sem1Lhs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</div>` : ''}
                 </td>
-                <td class="right">
-                  <div>${fmtArea(r.area || 0)}</div>
+                <td class="right" style="font-weight:700;color:var(--dar-green-dark);">
+                  <div>${fmtArea(r.area || 0)} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">HAS</span></div>
                   ${r.sem1Area !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);font-weight:normal;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</div>` : ''}
                 </td>
-                <td class="right">
-                  <div>${(Number(r.arbs) || 0).toLocaleString('en-US')}</div>
+                <td class="right" style="font-weight:600;">
+                  <div>${(Number(r.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">ARBs</span></div>
                   ${r.sem1Arbs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</div>` : ''}
                 </td>
-                <td class="center"><span class="badge badge-gray">${esc(String(r.year || 2026))}</span></td>
+                <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
               </tr>
             `
       )
       .join('')}
             ${rows.length > 1
       ? `
-              <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);">
+              <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
                 <td class="sticky-col-province">Region VIII Total</td>
-                <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>
-                <td class="right">${fmtArea(totals.area || 0)}</td>
-                <td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>
+                <td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">LHS</span></td>
+                <td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">HAS</span></td>
+                <td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">ARBs</span></td>
                 <td class="center">-</td>
               </tr>
             `
@@ -897,7 +905,8 @@ export function renderNepView(ctx) {
     arbs: filteredRows.reduce((s, r) => s + (Number(r.arbs) || 0), 0)
   };
 
-  const visibleColCount = 1 + (nepColVisibility.lhs ? 1 : 0) + (nepColVisibility.area ? 1 : 0) + (nepColVisibility.arbs ? 1 : 0) + 1 + (canEditNep ? 1 : 0);
+  const activeMetricCols = (nepColVisibility.lhs ? 1 : 0) + (nepColVisibility.area ? 1 : 0) + (nepColVisibility.arbs ? 1 : 0);
+  const visibleColCount = 1 + (activeMetricCols || 1) + 1 + (canEditNep ? 1 : 0);
 
   const yearText = activeFilter === 'ALL' ? (availableYears.join(', ') || 'All Years') : activeFilter;
 
@@ -981,8 +990,8 @@ export function renderNepView(ctx) {
     <div class="panel" id="panel-nep-provincial" style="margin-bottom: 22px;">
       <div class="panel-header" style="flex-wrap:wrap;gap:12px;">
         <div>
-          <h3 class="panel-title">${nepDisplayMode === 'cards' ? 'Provincial Allocation Cards' : 'Provincial Allocation Table'}</h3>
-          <p class="panel-subtitle">Per-province breakdown displaying LHS, AREA (HAS), ARBs, and Target Year for <strong>${esc(milestoneLabel)}</strong></p>
+          <h3 class="panel-title">${nepDisplayMode === 'cards' ? 'Provincial NEP Allocation Cards' : 'Provincial NEP Allocation Table'}</h3>
+          <p class="panel-subtitle">Official National Expenditure Program (NEP) Targets per province displaying LHS, Area (HAS), ARBs, and Target Year for <strong>${esc(milestoneLabel)}</strong></p>
         </div>
         <div class="panel-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <!-- View Switcher Pills -->
@@ -999,7 +1008,7 @@ export function renderNepView(ctx) {
 
           <!-- Column Hide / Unhide Pills for LHS, AREA, ARBs -->
           <div class="nep-metric-pills nep-column-toggles" role="group" aria-label="Toggle Metric Columns" style="display:flex;align-items:center;gap:4px;background:var(--surface);padding:3px 6px;border-radius:6px;border:1px solid var(--border);">
-            <span style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-right:2px;">Columns:</span>
+            <span style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-right:2px;">NEP Columns:</span>
             <button type="button" class="btn btn-xs ${nepColVisibility.lhs ? 'btn-primary' : 'btn-secondary'}" data-toggle-nep-col="lhs" title="${nepColVisibility.lhs ? 'Click to hide LHS' : 'Click to show LHS'}">
               ${nepColVisibility.lhs ? '✓ LHS' : '+ LHS'}
             </button>
@@ -1038,19 +1047,19 @@ export function renderNepView(ctx) {
               <div class="nep-stats-row">
                 ${nepColVisibility.lhs ? `
                 <div class="nep-stat-box">
-                  <span class="nep-stat-label">LHS</span>
+                  <span class="nep-stat-label">NEP Target (LHS)</span>
                   <span class="nep-stat-val">${(Number(r.lhs) || 0).toLocaleString('en-US')}</span>
                   ${r.sem1Lhs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</span>` : ''}
                 </div>` : ''}
                 ${nepColVisibility.area ? `
                 <div class="nep-stat-box">
-                  <span class="nep-stat-label">AREA (HAS)</span>
+                  <span class="nep-stat-label">NEP Target Area (HAS)</span>
                   <span class="nep-stat-val">${fmtArea(r.area || 0)}</span>
                   ${r.sem1Area !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</span>` : ''}
                 </div>` : ''}
                 ${nepColVisibility.arbs ? `
                 <div class="nep-stat-box">
-                  <span class="nep-stat-label">ARBs</span>
+                  <span class="nep-stat-label">NEP Target (ARBs)</span>
                   <span class="nep-stat-val">${(Number(r.arbs) || 0).toLocaleString('en-US')}</span>
                   ${r.sem1Arbs !== undefined ? `<span style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</span>` : ''}
                 </div>` : ''}
@@ -1070,15 +1079,24 @@ export function renderNepView(ctx) {
       `
       : `
         <div class="table-wrap nep-prov-table-wrap">
-          <table class="nep-sheet-table">
+          <table class="nep-sheet-table nep-targets-table">
             <thead>
               <tr>
-                <th class="sticky-col-province" style="min-width:180px;">Province</th>
-                ${nepColVisibility.lhs ? '<th class="right" style="width:130px;">LHS</th>' : ''}
-                ${nepColVisibility.area ? '<th class="right" style="width:160px;">AREA (HAS)</th>' : ''}
-                ${nepColVisibility.arbs ? '<th class="right" style="width:130px;">ARBs</th>' : ''}
-                <th class="center" style="width:120px;">Target Year</th>
-                ${canEditNep ? '<th class="center" style="width:130px;">Action</th>' : ''}
+                <th rowspan="2" class="sticky-col-province nep-th-rowspan" style="min-width:180px;vertical-align:middle;">Province</th>
+                <th colspan="${activeMetricCols || 1}" class="center nep-th-nep-group" style="background:#0a361d;color:#ffffff;font-size:12px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.2);padding:8px 10px;">
+                  <span style="display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    NEP Targets (${esc(milestoneLabel)})
+                  </span>
+                </th>
+                <th rowspan="2" class="center nep-th-rowspan" style="width:120px;vertical-align:middle;">Target Year</th>
+                ${canEditNep ? '<th rowspan="2" class="center nep-th-rowspan" style="width:130px;vertical-align:middle;">Action</th>' : ''}
+              </tr>
+              <tr>
+                ${activeMetricCols === 0 ? '<th class="center" style="font-size:11px;font-weight:600;color:var(--text-muted);">(No Metric Selected)</th>' : ''}
+                ${nepColVisibility.lhs ? '<th class="right" style="width:130px;">NEP Target (LHS)</th>' : ''}
+                ${nepColVisibility.area ? '<th class="right" style="width:165px;">NEP Target Area (HAS)</th>' : ''}
+                ${nepColVisibility.arbs ? '<th class="right" style="width:130px;">NEP Target (ARBs)</th>' : ''}
               </tr>
             </thead>
             <tbody>
@@ -1096,19 +1114,20 @@ export function renderNepView(ctx) {
                     <strong>${esc(r.provinceName)}</strong>
                     <div class="nep-sub-metric">${esc(r.code)}</div>
                   </td>
+                  ${activeMetricCols === 0 ? '<td class="center" style="color:var(--text-muted);font-size:11px;">—</td>' : ''}
                   ${nepColVisibility.lhs ? `
                   <td class="right" style="font-weight:600;">
-                    <div>${(Number(r.lhs) || 0).toLocaleString('en-US')}</div>
+                    <div>${(Number(r.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">LHS</span></div>
                     ${r.sem1Lhs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Lhs} • 2nd: ${r.sem2Lhs ?? Math.max(0, (r.lhs || 0) - r.sem1Lhs)}</div>` : ''}
                   </td>` : ''}
                   ${nepColVisibility.area ? `
                   <td class="right" style="font-weight:700;color:var(--dar-green-dark);">
-                    <div>${fmtArea(r.area || 0)}</div>
+                    <div>${fmtArea(r.area || 0)} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">HAS</span></div>
                     ${r.sem1Area !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);font-weight:normal;">1st: ${fmtArea(r.sem1Area)} • 2nd: ${fmtArea(r.sem2Area ?? Math.max(0, (r.area || 0) - r.sem1Area))}</div>` : ''}
                   </td>` : ''}
                   ${nepColVisibility.arbs ? `
                   <td class="right" style="font-weight:600;">
-                    <div>${(Number(r.arbs) || 0).toLocaleString('en-US')}</div>
+                    <div>${(Number(r.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:500;color:var(--text-muted);">ARBs</span></div>
                     ${r.sem1Arbs !== undefined ? `<div class="nep-sub-metric" style="font-size:11px;color:var(--text-muted);">1st: ${r.sem1Arbs} • 2nd: ${r.sem2Arbs ?? Math.max(0, (r.arbs || 0) - r.sem1Arbs)}</div>` : ''}
                   </td>` : ''}
                   <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
@@ -1128,9 +1147,10 @@ export function renderNepView(ctx) {
         ? `
                 <tr style="font-weight:700;background:var(--surface-alt, #f8faf9);border-top:2px solid var(--border);">
                   <td class="sticky-col-province">Region VIII Total</td>
-                  ${nepColVisibility.lhs ? `<td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')}</td>` : ''}
-                  ${nepColVisibility.area ? `<td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)}</td>` : ''}
-                  ${nepColVisibility.arbs ? `<td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')}</td>` : ''}
+                  ${activeMetricCols === 0 ? '<td class="center" style="color:var(--text-muted);font-size:11px;">—</td>' : ''}
+                  ${nepColVisibility.lhs ? `<td class="right">${(Number(totals.lhs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">LHS</span></td>` : ''}
+                  ${nepColVisibility.area ? `<td class="right" style="color:var(--dar-green-dark);">${fmtArea(totals.area || 0)} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">HAS</span></td>` : ''}
+                  ${nepColVisibility.arbs ? `<td class="right">${(Number(totals.arbs) || 0).toLocaleString('en-US')} <span style="font-size:11px;font-weight:normal;color:var(--text-muted);">ARBs</span></td>` : ''}
                   <td class="center"><span class="badge badge-green" style="font-weight:700;">${esc(yearText)}</span></td>
                   ${canEditNep ? '<td class="center">-</td>' : ''}
                 </tr>

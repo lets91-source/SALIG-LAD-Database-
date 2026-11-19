@@ -1898,26 +1898,49 @@ tr[style*="font-weight:700"] td.sticky-col-province {
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.nep-milestone-table thead th:has(.col-filter-btn),
-.nep-milestone-table thead th.th-col-filter {
-  padding: 2px 4px;
-  vertical-align: middle;
+.nep-sheet-table thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 38px;
+  background: var(--dar-green-dark, #0a361d) !important;
+  color: #ffffff !important;
 }
 
-.nep-milestone-table thead th .col-filter-btn {
-  text-shadow: none;
+.nep-sheet-table thead tr:nth-child(2) th {
+  position: sticky;
+  top: 38px;
+  z-index: 9;
+  height: 32px;
+  background: #0d4324 !important;
+  color: #ffffff !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-bottom: 2px solid #072915 !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+  padding: 6px 8px;
 }
 
 .nep-sheet-table thead th.sticky-col-province {
   position: sticky !important;
   top: 0 !important;
   left: 0 !important;
-  z-index: 25 !important;
+  z-index: 30 !important;
   min-width: 190px !important;
   background: #072915 !important;
   color: #ffffff !important;
   border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
   box-shadow: 4px 2px 10px rgba(0, 0, 0, 0.35), inset -1px -1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.nep-sheet-table thead th.nep-th-rowspan {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  vertical-align: middle !important;
 }
 
 .nep-sheet-table td.sticky-col-province {
