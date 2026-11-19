@@ -655,25 +655,34 @@ function showAppShell() {
 }
 
 async function api(path, options = {}) {
-  const resp = await fetch(path, { credentials: 'same-origin', cache: 'no-store', ...options });
-  const contentType = resp.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    const data = await resp.json();
+  const controller = new AbortController();
+  const timeoutMs = options.timeoutMs || 15000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { timeoutMs: _t, signal: extSignal, ...fetchOpts } = options;
+    const signal = extSignal || controller.signal;
+    const resp = await fetch(path, { credentials: 'same-origin', cache: 'no-store', signal, ...fetchOpts });
+    const contentType = resp.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await resp.json();
+      if (!resp.ok) {
+        if (resp.status === 401 && !String(path).startsWith('/api/auth/')) {
+          showAuthScreen('Your session has expired. Please sign in again.', 'info', 'login');
+        }
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+      return data;
+    }
     if (!resp.ok) {
       if (resp.status === 401 && !String(path).startsWith('/api/auth/')) {
         showAuthScreen('Your session has expired. Please sign in again.', 'info', 'login');
       }
-      throw new Error(data.error || `HTTP ${resp.status}`);
+      throw new Error(`HTTP ${resp.status}`);
     }
-    return data;
+    return resp;
+  } finally {
+    clearTimeout(timer);
   }
-  if (!resp.ok) {
-    if (resp.status === 401 && !String(path).startsWith('/api/auth/')) {
-      showAuthScreen('Your session has expired. Please sign in again.', 'info', 'login');
-    }
-    throw new Error(`HTTP ${resp.status}`);
-  }
-  return resp;
 }
 
 function toast(message, isError = false) {
@@ -5566,12 +5575,30 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
 
 /** Load regional workspace bootstrap data after authentication succeeds. */
 async function bootAppSession() {
-  const boot = await withLoading(
-    'fetching',
-    'Fetching Regional Data…',
-    'Loading Region VIII OPTool database, analytics, and sync state…',
-    () => api('/api/bootstrap?sync=auto')
-  );
+  let boot = null;
+  try {
+    boot = await withLoading(
+      'fetching',
+      'Fetching Regional Data…',
+      'Loading Region VIII OPTool database, analytics, and sync state…',
+      () => api('/api/bootstrap?sync=skip', { timeoutMs: 8000 })
+    );
+  } catch (err) {
+    console.warn('Initial bootstrap fetch failed, falling back:', err);
+    try {
+      boot = await api('/api/bootstrap?sync=skip', { timeoutMs: 5000 });
+    } catch (fallbackErr) {
+      console.error('Fallback bootstrap also failed:', fallbackErr);
+    }
+  }
+
+  hideLoadingOverlay(true);
+
+  if (!boot) {
+    toast('Unable to load workspace data from server. Please refresh or check connection.', true);
+    return;
+  }
+
   appState.currentUser = boot.currentUser || appState.currentUser;
   appState.provinceScope = boot.provinceScope || null;
   appState.filters.province = appState.provinceScope?.code || 'ALL';
@@ -5586,6 +5613,7 @@ async function bootAppSession() {
   }
   showAppShell();
   renderActiveView();
+  hideLoadingOverlay(true);
   stopAutoSync();
   autoSyncStartTimer = setTimeout(() => {
     if (appState.currentUser) maybeAutoSyncGoogleSheets();

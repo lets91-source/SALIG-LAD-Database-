@@ -399,7 +399,9 @@ export function parseCsvText(csvText, targetTab = 'Milestone_Data') {
 
 export async function fetchGoogleSheetXlsx(spreadsheetId, options = {}) {
   const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export?format=xlsx`;
-  const resp = await fetch(url, { redirect: 'follow' });
+  const timeoutMs = options.timeoutMs || 4500;
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
+  const resp = await fetch(url, { redirect: 'follow', signal });
   if (resp.status === 401 || resp.status === 403) {
     throw new Error(
       `HTTP ${resp.status} Unauthorized — This Google Sheet requires authenticated DAR Google account access or a deployed GAS Web App endpoint.`
@@ -546,10 +548,12 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
 }
 
 /** Execute a GET query against a deployed GAS Web App action endpoint. */
-async function fetchGasAction(gasUrl, action) {
+async function fetchGasAction(gasUrl, action, timeoutMs = 6000) {
   const sep = gasUrl.includes('?') ? '&' : '?';
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
   const resp = await fetch(`${gasUrl}${sep}action=${encodeURIComponent(action)}`, {
-    redirect: 'follow'
+    redirect: 'follow',
+    signal
   });
   if (!resp.ok) {
     throw new Error(`GAS Web App returned HTTP ${resp.status}`);
@@ -577,12 +581,14 @@ export async function pullNepFromGasWebApp(gasUrl) {
   return fetchGasAction(gasUrl, 'nep');
 }
 
-export async function pushToGasWebApp(gasUrl, payload) {
+export async function pushToGasWebApp(gasUrl, payload, timeoutMs = 7000) {
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
   const resp = await fetch(gasUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    redirect: 'follow'
+    redirect: 'follow',
+    signal
   });
   if (!resp.ok) {
     throw new Error(`GAS Web App POST returned HTTP ${resp.status}`);

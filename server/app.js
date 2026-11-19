@@ -787,15 +787,18 @@ export function createAppServer(dataDir, options = {}) {
       }
 
       if (req.method === 'GET' && pathname === '/api/bootstrap') {
-        if ((options.autoSyncOnBootstrap === true || query.sync === 'auto' || query.sync === 'live') && query.sync !== 'skip') {
+        if ((options.autoSyncOnBootstrap === true || query.sync === 'live') && query.sync !== 'skip') {
           try {
-            await performProvincialSync(store, {
-              scopeCode,
-              gasPullFn,
-              fetchXlsxFn: options.fetchGoogleSheetXlsx || fetchGoogleSheetXlsx,
-              force: query.force === 'true',
-              ttlMs: 45000
-            });
+            await Promise.race([
+              performProvincialSync(store, {
+                scopeCode,
+                gasPullFn,
+                fetchXlsxFn: options.fetchGoogleSheetXlsx || fetchGoogleSheetXlsx,
+                force: query.force === 'true',
+                ttlMs: 45000
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 3500))
+            ]);
           } catch (_) {}
         }
         const analytics = computeScopedAnalytics(store, query, scopeCode);
