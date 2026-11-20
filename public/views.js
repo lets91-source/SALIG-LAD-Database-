@@ -5332,9 +5332,9 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
   ];
 
   return `
-    <section class="panel" style="width: 100%; margin-bottom: 16px; padding: 16px;" aria-label="Milestone Whereabouts and CF Survey Breakdown">
+    <section class="panel dash-prov-detail-panel" aria-label="Milestone Whereabouts and CF Survey Breakdown">
       <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+      <div class="dash-prov-detail-header-flex" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:18px;">📍</span>
           <div>
@@ -5350,27 +5350,27 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
         </div>
       </div>
 
-      <!-- Main Body: 2 Columns stretching until the end of the container -->
-      <div style="display:grid;grid-template-columns:minmax(0, 1.3fr) minmax(0, 1fr);gap:16px;width:100%;align-items:start;">
+      <!-- Main Body: 2 Columns stretching until the end of the container, auto-adjusts to 1 col on small screens -->
+      <div class="dash-prov-detail-grid">
         <!-- LEFT COLUMN: CF Breakdown & Other Milestones Cards -->
-        <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;flex-direction:column;gap:14px;min-width:0;">
           <!-- CF(DOC) Survey Requirement Interactive Split (Needing vs Not Needing Survey) -->
           <div>
-            <div style="font-size:10.5px;font-weight:800;color:var(--dar-green-dark,#0a361d);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:10.5px;font-weight:800;color:var(--dar-green-dark,#0a361d);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
               <span style="display:flex;align-items:center;gap:5px;">
                 <span>📋</span>
                 <span>CF(DOC) Survey Requirement Breakdown <span style="font-weight:600;color:var(--text-muted);font-size:10px;">(${(cf.count || 0).toLocaleString()} Active LHs • ${fmtArea(cf.area || 0)} HAS)</span></span>
               </span>
               <button type="button" class="btn btn-secondary btn-xs" data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" style="font-size:9.5px;padding:2px 8px;font-weight:600;">View CF Whereabouts ➔</button>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="dash-prov-detail-cf-grid">
               <!-- Needing Survey Card -->
-              <div style="background:linear-gradient(135deg, #fffdfa 0%, #fffbeb 100%);border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:8px;padding:10px 14px;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;box-shadow:0 1px 3px rgba(245,158,11,0.08);"
+              <div style="background:linear-gradient(135deg, #fffdfa 0%, #fffbeb 100%);border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:8px;padding:10px 14px;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;box-shadow:0 1px 3px rgba(245,158,11,0.08);min-width:0;"
                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 10px rgba(245,158,11,0.15)';"
                    onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(245,158,11,0.08)';"
                    data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Needing Survey"
                    title="Click to open CF Whereabouts filtered to Needing Survey for ${esc(provName)}">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
                   <span style="font-size:10.5px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.04em;display:flex;align-items:center;gap:4px;">
                     <span>🔍</span> <span>LHs Needing Survey</span>
                   </span>
@@ -5388,12 +5388,12 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
               </div>
 
               <!-- Not Needing Survey Card -->
-              <div style="background:linear-gradient(135deg, #fbfdfc 0%, #f0fdf4 100%);border:1px solid #bbf7d0;border-left:4px solid #10b981;border-radius:8px;padding:10px 14px;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;box-shadow:0 1px 3px rgba(16,185,129,0.08);"
+              <div style="background:linear-gradient(135deg, #fbfdfc 0%, #f0fdf4 100%);border:1px solid #bbf7d0;border-left:4px solid #10b981;border-radius:8px;padding:10px 14px;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;box-shadow:0 1px 3px rgba(16,185,129,0.08);min-width:0;"
                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 10px rgba(16,185,129,0.15)';"
                    onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(16,185,129,0.08)';"
                    data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Not Needing Survey"
                    title="Click to open CF Whereabouts filtered to Not Needing Survey for ${esc(provName)}">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
                   <span style="font-size:10.5px;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:0.04em;display:flex;align-items:center;gap:4px;">
                     <span>📋</span> <span>LHs Not Needing Survey</span>
                   </span>
@@ -5411,7 +5411,7 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
               </div>
             </div>
             ${(cf.unspecifiedCount || 0) > 0 ? `
-              <div style="font-size:10px;color:var(--text-muted);margin-top:6px;display:flex;justify-content:flex-end;align-items:center;gap:4px;">
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px;display:flex;justify-content:flex-end;align-items:center;gap:4px;flex-wrap:wrap;">
                 <span>⏳ Pending Survey Classification:</span>
                 <strong>${(cf.unspecifiedCount || 0).toLocaleString()} LHs</strong>
                 <span>(${fmtArea(cf.unspecifiedArea || 0)} HAS)</span>
@@ -5425,23 +5425,23 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
               <span>⚡</span>
               <span>Other Operational Milestones Active Whereabouts</span>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;width:100%;">
+            <div class="dash-prov-detail-milestones-grid">
               ${milestoneCards.map((m) => `
-                <div style="background:#ffffff;border:1px solid #e2e8f0;border-top:3.5px solid ${m.topBorder};border-radius:8px;padding:9px 10px;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:space-between;"
+                <div class="dash-milestone-card" style="background:#ffffff;border:1px solid #e2e8f0;border-top:3.5px solid ${m.topBorder};border-radius:8px;padding:9px 10px;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:space-between;"
                      onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 10px rgba(0,0,0,0.08)';"
                      onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)';"
                      data-nav="${esc(m.nav)}" data-nav-province="${esc(selectedCode)}"
                      title="Open ${esc(m.label)} Whereabouts for ${esc(provName)}">
                   <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
-                      <span style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.04em;">${m.icon} ${esc(m.label)}</span>
+                      <span style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.icon} ${esc(m.label)}</span>
                     </div>
                     <div style="font-size:17px;font-weight:800;color:#0f172a;line-height:1.15;margin-top:2px;">
                       ${(m.count || 0).toLocaleString()} <span style="font-size:10px;font-weight:600;color:#64748b;">LHs</span>
                     </div>
                   </div>
                   <div style="margin-top:6px;">
-                    <div style="font-size:10px;font-weight:700;color:${m.color};background:${m.badgeBg};border:1px solid ${m.badgeBorder};border-radius:4px;padding:2px 5px;display:inline-block;white-space:nowrap;line-height:1.2;">
+                    <div style="font-size:10px;font-weight:700;color:${m.color};background:${m.badgeBg};border:1px solid ${m.badgeBorder};border-radius:4px;padding:2px 5px;display:inline-block;white-space:nowrap;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;">
                       ${fmtArea(m.area || 0)} HAS
                     </div>
                   </div>
@@ -5452,7 +5452,7 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
         </div>
 
         <!-- RIGHT COLUMN: Interactive Visual Graph Beside -->
-        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:11px 13px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+        <div class="dash-prov-detail-graph-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:11px 13px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,0.03);min-width:0;">
           <!-- Graph Header -->
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">
             <div style="font-size:10.5px;font-weight:800;color:var(--dar-green-dark,#0a361d);text-transform:uppercase;letter-spacing:0.04em;display:flex;align-items:center;gap:4px;">
@@ -5462,8 +5462,8 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
           </div>
 
           <!-- Donut Chart & Legend for CF Survey Requirement -->
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-            <div style="position:relative;width:130px;height:130px;flex-shrink:0;">
+          <div class="dash-prov-detail-donut-row">
+            <div class="dash-prov-detail-donut-chart">
               <svg viewBox="0 0 130 130" width="130" height="130" style="display:block;">
                 ${donutPaths}
                 <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="14" font-weight="800" fill="#0f172a">${totalCfLhs.toLocaleString()}</text>
@@ -5472,7 +5472,7 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
             </div>
 
             <!-- Legend with percentages & deep links -->
-            <div style="flex:1;display:flex;flex-direction:column;gap:5px;font-size:10px;">
+            <div class="dash-prov-detail-legend">
               <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:3px 6px;border-radius:4px;background:#fffbeb;border:1px solid #fde68a;"
                    data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Needing Survey"
                    title="Click to filter CF Whereabouts to Needing Survey">
@@ -5567,7 +5567,7 @@ export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {
       </div>
 
       <!-- Map + Detail Card Body -->
-      <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:14px;align-items:center;min-height:260px;">
+      <div class="dash-ev-map-body" style="align-items:center;min-height:260px;">
         <!-- Left: 3D HD SVG Map -->
         <div style="display:flex;justify-content:center;align-items:center;">
           ${renderEasternVisayasMapSvg({ provRows, selectedCode })}
@@ -5937,7 +5937,7 @@ export function renderDashboardView(ctx) {
     </section>
 
     <!-- MIDDLE SECTION: Provincial Breakdown Table + Eastern Visayas Map & Target Explorer -->
-    <section class="grid-2" style="grid-template-columns: 1.35fr 1fr; margin-bottom: 16px;">
+    <section class="dash-prov-map-grid">
       <!-- Panel 1: Table with Provincial Breakdown -->
       <div class="panel">
         <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
