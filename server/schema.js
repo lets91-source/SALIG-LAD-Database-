@@ -435,10 +435,7 @@ export function normalizeLeaseholdRow(raw = {}) {
       row['TargetYear'] ||
       row['TARGET_YEAR'] ||
       row['target_year'] ||
-      row['TARGET'] ||
-      row['Target'] ||
-      row['YEAR'] ||
-      row['Year'];
+      row['targetYearAF'];
   }
   if (rawTargetYear === undefined || rawTargetYear === '') {
     for (const k of Object.keys(row)) {
@@ -449,10 +446,20 @@ export function normalizeLeaseholdRow(raw = {}) {
       }
     }
   }
-  let targetYearStr = String(rawTargetYear || '').trim();
-  if (/^\d+\.0$/.test(targetYearStr)) targetYearStr = targetYearStr.replace(/\.0$/, '');
-  const ym = targetYearStr.match(/\b(20\d{2})\b/);
-  row.targetYear = ym ? ym[1] : targetYearStr;
+  let targetYearStr = String(rawTargetYear || '').trim().replace(/\.0$/, '');
+  const ym = targetYearStr.match(/\b(20[1-3]\d)\b/);
+  if (ym) {
+    row.targetYear = ym[1];
+  } else {
+    // If targetYearStr is a numeric monetary value and row.leaseInPesos is empty, rescue it to leaseInPesos
+    if (targetYearStr && !row.leaseInPesos && /^\d+(\.\d+)?$/.test(targetYearStr)) {
+      row.leaseInPesos = targetYearStr;
+    }
+    const dateVal = row.dateContractRegistered || row.datePlrRegistered || '';
+    const dm = String(dateVal).match(/\b(20[1-3]\d)\b/);
+    row.targetYear = dm ? dm[1] : '';
+  }
+  row['TARGET YEAR'] = row.targetYear;
   row.reportMonth = String(row.reportMonth || row['Report Month (Words)'] || '').trim();
   row.remarks = String(row.remarks || row.REMARKS || '').trim();
   return row;

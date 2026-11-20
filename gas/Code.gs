@@ -821,12 +821,20 @@ function getHubBootstrap() {
                 }
               }
             }
-            if (targetYearVal) {
-              const strY = String(targetYearVal).trim().replace(/\.0$/, '');
-              const ym = strY.match(/\b(20\d{2})\b/);
-              row.targetYear = ym ? ym[1] : strY;
-              row['TARGET YEAR'] = row.targetYear;
+            const strY = String(targetYearVal || '').trim().replace(/\.0$/, '');
+            const ym = strY.match(/\b(20[1-3]\d)\b/);
+            if (ym) {
+              row.targetYear = ym[1];
+            } else {
+              if (strY && !row.leaseInPesos && !row['LEASE IN PESOS'] && /^\d+(\.\d+)?$/.test(strY)) {
+                row.leaseInPesos = strY;
+                row['LEASE IN PESOS'] = strY;
+              }
+              const dateVal = row.dateContractRegistered || row['*DATE CONTRACT REGISTERED (mm/dd/yyyy)'] || row.datePlrRegistered || row['*DATE PLR REGISTERED (mm/dd/yyyy)'] || '';
+              const dm = String(dateVal).match(/\b(20[1-3]\d)\b/);
+              row.targetYear = dm ? dm[1] : '';
             }
+            row['TARGET YEAR'] = row.targetYear;
           }
           optool['Database'].push(row);
         });
@@ -1227,12 +1235,20 @@ function readProvincialMilestoneSupportLists_() {
                 }
               }
             }
-            if (targetYearVal) {
-              const strY = String(targetYearVal).trim().replace(/\.0$/, '');
-              const ym = strY.match(/\b(20\d{2})\b/);
-              row.targetYear = ym ? ym[1] : strY;
-              row['TARGET YEAR'] = row.targetYear;
+            const strY = String(targetYearVal || '').trim().replace(/\.0$/, '');
+            const ym = strY.match(/\b(20[1-3]\d)\b/);
+            if (ym) {
+              row.targetYear = ym[1];
+            } else {
+              if (strY && !row.leaseInPesos && !row['LEASE IN PESOS'] && /^\d+(\.\d+)?$/.test(strY)) {
+                row.leaseInPesos = strY;
+                row['LEASE IN PESOS'] = strY;
+              }
+              const dateVal = row.dateContractRegistered || row['*DATE CONTRACT REGISTERED (mm/dd/yyyy)'] || row.datePlrRegistered || row['*DATE PLR REGISTERED (mm/dd/yyyy)'] || '';
+              const dm = String(dateVal).match(/\b(20[1-3]\d)\b/);
+              row.targetYear = dm ? dm[1] : '';
             }
+            row['TARGET YEAR'] = row.targetYear;
           }
 
           // Normalize RegistrationDistribution area and date registered fields

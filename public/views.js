@@ -863,7 +863,7 @@ export function renderProvincialAllocationSection(ctx, {
     rawRows = analytics?.nepProvinceBreakdown || [];
   } else {
     const msMap = (analytics?.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
-                  (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
+      (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
     rawRows = provNodes.map((n) => {
       const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
       return {
@@ -2941,7 +2941,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                   `;
       }).join('')}
                 ${ind.isRate ? (
-        metricMode === 'lhs' ? `
+          metricMode === 'lhs' ? `
                     <td class="right" style="padding:8px 10px;background:#09341b;font-weight:800;">
                       ${renderCfRateBadge(ind.getLhs(totals), true, 'ALL', ind.stageKey, ind.stageLabel)}
                     </td>
@@ -2957,8 +2957,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       ${renderCfRateBadge(ind.getArea(totals), true, 'ALL', ind.stageKey, ind.stageLabel)}
                     </td>
                   `
-      ) : (
-        metricMode === 'lhs' ? `
+        ) : (
+          metricMode === 'lhs' ? `
                   <td class="right" style="padding:8px 10px;background:${ind.isBal ? '#fef3c7' : '#f0fdf4'};font-weight:800;">
                     ${renderCfFigureBtn({ val: ind.getLhs(totals), isArea: false, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: false })}
                   </td>
@@ -2974,7 +2974,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                     ${renderCfFigureBtn({ val: ind.getArea(totals), isArea: true, province: 'ALL', indicator: ind, balanceArea: fmtArea(ind.getArea(totals)), isTotal: false })}
                   </td>
                 `
-      )}
+        )}
               </tr>
             `).join('')}
           </tbody>
@@ -4212,8 +4212,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             .map((st) => {
               const cell = d.byStatus[st] || { lhs: 0, area: 0 };
               return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.lhs > 0
-                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${cell.lhs} LHs)">${cell.lhs.toLocaleString()}</button>`
-                  : `<span class="text-muted">0</span>`
+                ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${cell.lhs} LHs)">${cell.lhs.toLocaleString()}</button>`
+                : `<span class="text-muted">0</span>`
                 }</td>`;
             })
             .join('')}
@@ -4230,8 +4230,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             .map((st) => {
               const cell = d.byStatus[st] || { lhs: 0, area: 0 };
               return `<td class="right ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${cell.area > 0
-                  ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${fmtArea(cell.area)} HAS)">${fmtArea(cell.area)}</button>`
-                  : `<span class="text-muted">0.0000</span>`
+                ? `<button type="button" class="btn-figure-link font-bold" data-open-survey-support-list data-province="${esc(b.name)}" data-status="${esc(st)}" title="Click to view Support List (${fmtArea(cell.area)} HAS)">${fmtArea(cell.area)}</button>`
+                : `<span class="text-muted">0.0000</span>`
                 }</td>`;
             })
             .join('')}
@@ -4278,8 +4278,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             .map((st) => {
               const tot = colTotals[st]?.lhs || 0;
               return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${tot > 0
-                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${tot} LHs)">${tot.toLocaleString()}</button>`
-                  : '0'
+                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${tot} LHs)">${tot.toLocaleString()}</button>`
+                : '0'
                 }</td>`;
             })
             .join('')}
@@ -4296,8 +4296,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             .map((st) => {
               const tot = colTotals[st]?.area || 0;
               return `<td class="right font-bold ${statusFilterVal === st ? 'survey-cell-highlight' : ''}">${tot > 0
-                  ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${fmtArea(tot)} HAS)">${fmtArea(tot)}</button>`
-                  : '0.0000'
+                ? `<button type="button" class="btn-figure-link font-bold text-white" data-open-survey-support-list data-province="ALL" data-status="${esc(st)}" title="Click to view Region VIII Support List (${fmtArea(tot)} HAS)">${fmtArea(tot)}</button>`
+                : '0.0000'
                 }</td>`;
             })
             .join('')}
@@ -5008,26 +5008,23 @@ export function getLeaseholdTargetYear(r) {
     r['target_year'] ??
     r['TARGET'] ??
     r['Target'] ??
-    r['YEAR'] ??
-    r['Year'] ??
     r['targetYearAF'];
   if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
     const str = String(direct).trim().replace(/\.0$/, '');
-    const m = str.match(/\b(20\d{2})\b/);
-    return m ? m[1] : str;
+    const m = str.match(/\b(20[1-3]\d)\b/);
+    if (m) return m[1];
   }
   for (const k of Object.keys(r)) {
     const kNorm = k.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (kNorm.includes('targetyear') || (kNorm.includes('target') && kNorm.includes('year'))) {
       const str = String(r[k] || '').trim().replace(/\.0$/, '');
-      const m = str.match(/\b(20\d{2})\b/);
+      const m = str.match(/\b(20[1-3]\d)\b/);
       if (m) return m[1];
-      if (str) return str;
     }
   }
   const dateVal = r.dateContractRegistered || r['*DATE CONTRACT REGISTERED (mm/dd/yyyy)'] || r.datePlrRegistered || r['*DATE PLR REGISTERED (mm/dd/yyyy)'] || '';
   if (dateVal) {
-    const dm = String(dateVal).match(/\b(20\d{2})\b/);
+    const dm = String(dateVal).match(/\b(20[1-3]\d)\b/);
     if (dm) return dm[1];
   }
   return '';
@@ -5602,8 +5599,8 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
             </div>
             <div style="display:flex;flex-direction:column;gap:3px;">
               ${milestoneList.map((m) => {
-                const barPct = maxMilestoneCount > 0 ? Math.max(3, Math.round((m.count / maxMilestoneCount) * 100)) : 0;
-                return `
+    const barPct = maxMilestoneCount > 0 ? Math.max(3, Math.round((m.count / maxMilestoneCount) * 100)) : 0;
+    return `
                   <div style="display:flex;align-items:center;gap:6px;font-size:9.5px;cursor:pointer;"
                        data-nav="${esc(m.nav)}" data-nav-province="${esc(selectedCode)}"
                        title="Open ${esc(m.label)} Whereabouts for ${esc(provName)}">
@@ -5614,7 +5611,7 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
                     <span style="width:36px;text-align:right;font-weight:700;color:#0f172a;">${m.count.toLocaleString()}</span>
                   </div>
                 `;
-              }).join('')}
+  }).join('')}
             </div>
           </div>
         </div>
@@ -6100,21 +6097,21 @@ export function renderDashboardView(ctx) {
         </div>
         <div class="panel-body" style="padding: 12px 16px;">
           ${dashRightTab === 'pie'
-            ? renderLadBalanceVsRegisteredPieSvg({
-                ladArea: totalLadArea,
-                registeredArea: totalRegArea,
-                tempArea: totalTempArea,
-                ladLhs: totalLadLhs,
-                registeredLhs: totalRegLhs,
-                tempLhs: totalTempLhs
-              })
-            : renderEasternVisayasMapPanelHtml({
-                provRows: provBreakdownRows,
-                provTotals,
-                selectedCode: activeMapCode,
-                milestoneBreakdown: activeMilestoneBreakdown
-              })
-          }
+      ? renderLadBalanceVsRegisteredPieSvg({
+        ladArea: totalLadArea,
+        registeredArea: totalRegArea,
+        tempArea: totalTempArea,
+        ladLhs: totalLadLhs,
+        registeredLhs: totalRegLhs,
+        tempLhs: totalTempLhs
+      })
+      : renderEasternVisayasMapPanelHtml({
+        provRows: provBreakdownRows,
+        provTotals,
+        selectedCode: activeMapCode,
+        milestoneBreakdown: activeMilestoneBreakdown
+      })
+    }
         </div>
       </div>
     </section>
@@ -6122,19 +6119,19 @@ export function renderDashboardView(ctx) {
     <!-- FULL WIDTH SECTION DIRECTLY BELOW TABLE & MAP: Milestone Whereabouts & CF Survey Breakdown + Graph Beside (Until the End) -->
     <div id="dash-prov-table-detail" style="width: 100%; margin-bottom: 16px;">
       ${renderProvTableDetailHtml({
-        breakdown: activeMilestoneBreakdown,
-        selectedCode: activeMapCode,
-        provRows: provBreakdownRows
-      })}
+      breakdown: activeMilestoneBreakdown,
+      selectedCode: activeMapCode,
+      provRows: provBreakdownRows
+    })}
     </div>
 
     <!-- BOTTOM SECTION: Whereabouts per Milestone -->
     <div id="dash-milestone-whereabouts-container">
       ${renderMilestoneWhereaboutsSectionHtml({
-        breakdown: activeMilestoneBreakdown,
-        selectedCode: activeMapCode,
-        provRows: provBreakdownRows
-      })}
+      breakdown: activeMilestoneBreakdown,
+      selectedCode: activeMapCode,
+      provRows: provBreakdownRows
+    })}
     </div>
   `;
 }
@@ -6217,11 +6214,10 @@ export function renderMilestonesView(ctx) {
                     <td class="mono">${esc(r.Milestone_Date)}</td>
                     <td><span class="badge badge-gray">${esc(r.Batch_Category)}</span></td>
                     <td>
-                      ${
-                        r.LHID
-                          ? `<button type="button" class="link-btn" data-lhid="${esc(formatLhidDisplay(r.LHID))}">${esc(formatLhidDisplay(r.LHID))}</button>`
-                          : '<span style="color:var(--text-light)">—</span>'
-                      }
+                      ${r.LHID
+              ? `<button type="button" class="link-btn" data-lhid="${esc(formatLhidDisplay(r.LHID))}">${esc(formatLhidDisplay(r.LHID))}</button>`
+              : '<span style="color:var(--text-light)">—</span>'
+            }
                     </td>
                     <td class="center col-actions-sticky" style="white-space:nowrap">
                       <button class="btn btn-secondary btn-sm" data-edit-ms="${esc(r.Record_ID)}">Edit</button>
@@ -6746,538 +6742,538 @@ function buildDbByLhidMap(state) {
   return { dbRows, dbByLhid, dbTotalCarpableArea };
 }
 
-  function insertLinkedColsAfterLhid(baseCols) {
-    if (!Array.isArray(baseCols)) return [...LINKED_DB_TABLE_COLUMNS];
-    const lhidIdx = baseCols.findIndex((c) => c && c.key === 'lhid');
-    if (lhidIdx < 0) return [...LINKED_DB_TABLE_COLUMNS, ...baseCols];
-    return [
-      ...baseCols.slice(0, lhidIdx + 1),
-      ...LINKED_DB_TABLE_COLUMNS,
-      ...baseCols.slice(lhidIdx + 1)
-    ];
+function insertLinkedColsAfterLhid(baseCols) {
+  if (!Array.isArray(baseCols)) return [...LINKED_DB_TABLE_COLUMNS];
+  const lhidIdx = baseCols.findIndex((c) => c && c.key === 'lhid');
+  if (lhidIdx < 0) return [...LINKED_DB_TABLE_COLUMNS, ...baseCols];
+  return [
+    ...baseCols.slice(0, lhidIdx + 1),
+    ...LINKED_DB_TABLE_COLUMNS,
+    ...baseCols.slice(lhidIdx + 1)
+  ];
+}
+
+function getOptoolTableColumns(schemas, tabName) {
+  let rawCols = schemas?.optoolTabs?.[tabName];
+  if (!Array.isArray(rawCols) && DEFAULT_OPTOOL_SCHEMAS[tabName]) {
+    rawCols = DEFAULT_OPTOOL_SCHEMAS[tabName];
+  } else if (!Array.isArray(rawCols) && tabName === 'CF(DOC)') {
+    rawCols = DEFAULT_OPTOOL_CF_SCHEMA;
+  } else if (!Array.isArray(rawCols)) {
+    rawCols = [];
   }
-
-  function getOptoolTableColumns(schemas, tabName) {
-    let rawCols = schemas?.optoolTabs?.[tabName];
-    if (!Array.isArray(rawCols) && DEFAULT_OPTOOL_SCHEMAS[tabName]) {
-      rawCols = DEFAULT_OPTOOL_SCHEMAS[tabName];
-    } else if (!Array.isArray(rawCols) && tabName === 'CF(DOC)') {
-      rawCols = DEFAULT_OPTOOL_CF_SCHEMA;
-    } else if (!Array.isArray(rawCols)) {
-      rawCols = [];
-    }
-    let previewKeys = schemas?.optoolPreviewCols?.[tabName];
-    if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && DEFAULT_OPTOOL_PREVIEW_KEYS[tabName]) {
-      previewKeys = DEFAULT_OPTOOL_PREVIEW_KEYS[tabName];
-    } else if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && tabName === 'CF(DOC)') {
-      previewKeys = DEFAULT_OPTOOL_CF_PREVIEW_KEYS;
-    }
-    const rawPreviewCols = Array.isArray(previewKeys)
-      ? previewKeys.map((k) => rawCols.find((c) => c && c.key === k)).filter(Boolean)
-      : rawCols.slice(0, 10);
-
-    if (!LINKED_DB_TABLE_TABS.has(tabName)) {
-      return { cols: rawCols, previewCols: rawPreviewCols };
-    }
-    return {
-      cols: insertLinkedColsAfterLhid(rawCols),
-      previewCols: insertLinkedColsAfterLhid(rawPreviewCols)
-    };
+  let previewKeys = schemas?.optoolPreviewCols?.[tabName];
+  if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && DEFAULT_OPTOOL_PREVIEW_KEYS[tabName]) {
+    previewKeys = DEFAULT_OPTOOL_PREVIEW_KEYS[tabName];
+  } else if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && tabName === 'CF(DOC)') {
+    previewKeys = DEFAULT_OPTOOL_CF_PREVIEW_KEYS;
   }
+  const rawPreviewCols = Array.isArray(previewKeys)
+    ? previewKeys.map((k) => rawCols.find((c) => c && c.key === k)).filter(Boolean)
+    : rawCols.slice(0, 10);
 
-  export function getOptoolCellValue(row, col, dbByLhid) {
-    if (col?.dbKey) {
-      const rawKey = String(row?.lhid || '').trim().toLowerCase();
-      const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
-      const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
-      return dbRow?.[col.dbKey] ?? '';
-    }
-    if (col?.key === 'lhid') {
-      return formatLhidDisplay(row?.[col.key]);
-    }
-    if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(col?.key)) {
-      const direct = row?.[col.key];
-      if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
-        return formatYearDisplay(direct);
-      }
-      const rawKey = String(row?.lhid || '').trim().toLowerCase();
-      const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
-      const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
-      const dbYr = dbRow?.year ?? dbRow?.targetYear ?? '';
-      return formatYearDisplay(dbYr);
-    }
-    if (isReportedMonthKey(col?.key)) {
-      const direct = row?.[col.key];
-      if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
-        return formatReportedMonthWord(direct) || String(direct);
-      }
-      return '';
-    }
-    return row?.[col?.key] ?? '';
+  if (!LINKED_DB_TABLE_TABS.has(tabName)) {
+    return { cols: rawCols, previewCols: rawPreviewCols };
   }
+  return {
+    cols: insertLinkedColsAfterLhid(rawCols),
+    previewCols: insertLinkedColsAfterLhid(rawPreviewCols)
+  };
+}
 
-  function filterOptoolRows(rows, ctx, skipColKey = null, dbByLhidOverride = null) {
-    const {
-      state,
-      schemas,
-      activeOptoolTab,
-      searchTerm,
-      optoolTargetFilter = 'ALL',
-      optoolColFilters = {},
-      filters
-    } = ctx;
-
-    const tabNames = Object.keys(schemas?.optoolTabs || {});
-    if (tabNames.length === 0) {
-      if (activeOptoolTab) {
-        tabNames.push(activeOptoolTab);
-      } else {
-        tabNames.push('CF(DOC)');
-      }
-    }
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
-    const { cols } = getOptoolTableColumns(schemas, currentTab);
-    const colByKey = new Map(cols.map((c) => [c.key, c]));
-    const dbByLhid = dbByLhidOverride || buildDbByLhidMap(state).dbByLhid;
-    const includeLinkedSearch = LINKED_DB_TABLE_TABS.has(currentTab);
-    const activeColEntries = Object.entries(optoolColFilters || {}).filter(
-      ([key, val]) => key !== skipColKey && normalizeFilterSpec(val).value !== ''
-    );
-
-    const q = (searchTerm || '').trim().toLowerCase();
-    const targetFilter = String(optoolTargetFilter || 'ALL');
-    const codeMap = {
-      BIL: 'biliran',
-      ESA: 'eastern samar',
-      LEY: 'leyte',
-      NSA: 'northern samar',
-      SAM: 'samar',
-      SLE: 'southern leyte'
-    };
-
-    return rows
-      .map((row, idx) => ({ row, idx }))
-      .filter(({ row }) => {
-        const activeFilterProv = (filters && filters.province) || 'ALL';
-        if (activeFilterProv !== 'ALL' && row.province !== undefined && row.province !== '') {
-          const provText = String(row.province).toLowerCase();
-          const target = codeMap[activeFilterProv];
-          if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
-          if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
-          if (target && !provText.includes(target)) return false;
-        }
-        if (currentTab === 'Database' && targetFilter !== 'ALL') {
-          const rowTarget = String(row.milestoneTarget || '').trim();
-          if (targetFilter === 'ASSIGNED' && !rowTarget) return false;
-          if (targetFilter === 'UNASSIGNED' && rowTarget) return false;
-          if (
-            targetFilter !== 'ASSIGNED' &&
-            targetFilter !== 'UNASSIGNED'
-          ) {
-            const normFilter = targetFilter.toLowerCase();
-            const normRow = rowTarget.toLowerCase();
-            const isMatch = normRow === normFilter ||
-              ((normFilter === 'land valuation' || normFilter === 'mov') && (normRow === 'land valuation' || normRow === 'mov'));
-            if (!isMatch) return false;
-          }
-        }
-        if (currentTab === 'CF(DOC)') {
-          const cfSurveyFilter = String(ctx.cfSurveyFilter || 'ALL');
-          if (cfSurveyFilter !== 'ALL') {
-            const req = String(row.surveyRequirement || row['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
-            const filterNorm = cfSurveyFilter.toLowerCase();
-            if (filterNorm.includes('not needing')) {
-              if (!req.includes('not needing')) return false;
-            } else if (filterNorm.includes('needing')) {
-              if (!req.includes('needing') || req.includes('not needing')) return false;
-            }
-          }
-        }
-        for (const [colKey, filterSpec] of activeColEntries) {
-          const col = colByKey.get(colKey);
-          const cellVal = getOptoolCellValue(row, col, dbByLhid);
-          if (!matchesColumnFilter(cellVal, filterSpec, col?.type)) {
-            return false;
-          }
-        }
-        if (q) {
-          let hay = Object.values(row).join(' ');
-          if (includeLinkedSearch) {
-            const lhidKey = String(row.lhid || '').trim().toLowerCase();
-            const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
-            if (dbRow) {
-              hay +=
-                ' ' +
-                LINKED_DB_PROFILE_FIELDS.map((f) => dbRow[f.key] ?? '').join(' ');
-            }
-          }
-          if (!hay.toLowerCase().includes(q)) return false;
-        }
-        return true;
-      });
+export function getOptoolCellValue(row, col, dbByLhid) {
+  if (col?.dbKey) {
+    const rawKey = String(row?.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
+    const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
+    return dbRow?.[col.dbKey] ?? '';
   }
-
-  export function getColumnFilterValues(ctx, colKey) {
-    const { state, schemas, activeOptoolTab } = ctx;
-    const tabNames = Object.keys(schemas?.optoolTabs || {});
-    if (tabNames.length === 0) {
-      if (activeOptoolTab) {
-        tabNames.push(activeOptoolTab);
-      } else {
-        tabNames.push('CF(DOC)');
-      }
-    }
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
-    const { cols } = getOptoolTableColumns(schemas, currentTab);
-    const col = cols.find((c) => c.key === colKey);
-    const allRows = state?.optool?.[currentTab] || [];
-    const { dbByLhid } = buildDbByLhidMap(state);
-    const matching = filterOptoolRows(allRows, ctx, colKey, dbByLhid);
-
-    const counts = new Map();
-    let blankCount = 0;
-    for (const { row } of matching) {
-      const rawCell = getOptoolCellValue(row, col, dbByLhid);
-      if (col?.type === 'checkbox') {
-        if (isChecklistChecked(rawCell)) {
-          counts.set('Checked', (counts.get('Checked') || 0) + 1);
-        } else {
-          blankCount++;
-        }
-        continue;
-      }
-      const val = String(rawCell ?? '').trim();
-      if (!val) {
-        blankCount++;
-      } else {
-        counts.set(val, (counts.get(val) || 0) + 1);
-      }
-    }
-
-    const values = Array.from(counts.entries())
-      .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }))
-      .map(([value, count]) => ({ value, count }));
-
-    return { col, blankCount, totalRows: matching.length, values };
+  if (col?.key === 'lhid') {
+    return formatLhidDisplay(row?.[col.key]);
   }
-
-  export function buildOptoolViewModel(ctx) {
-    const {
-      state,
-      schemas,
-      activeOptoolTab,
-      searchTerm,
-      optoolTargetFilter = 'ALL',
-      optoolColFilters = {},
-      optoolPage = 1,
-      optoolPageSize = 50,
-      optoolColMode = 'preview',
-      optoolColPage = 1
-    } = ctx;
-
-    const tabNames = Object.keys(schemas?.optoolTabs || {});
-    if (tabNames.length === 0) {
-      if (activeOptoolTab) {
-        tabNames.push(activeOptoolTab);
-      } else {
-        tabNames.push('CF(DOC)');
-      }
+  if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(col?.key)) {
+    const direct = row?.[col.key];
+    if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+      return formatYearDisplay(direct);
     }
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
-    const { cols, previewCols } = getOptoolTableColumns(schemas, currentTab);
-    const rawAllRows = state?.optool?.[currentTab] || [];
-    const seenOptoolKeys = new Set();
-    const allRows = [];
-    for (const r of rawAllRows) {
-      if (!r || typeof r !== 'object') continue;
-      const key = getOptoolRowKey(currentTab, r);
-      if (key) {
-        if (seenOptoolKeys.has(key)) continue;
-        seenOptoolKeys.add(key);
-      }
-      allRows.push(r);
-    }
-    const targetTabs = schemas?.milestoneTargetTabs || [
-      'CF(DOC)',
-      'Survey',
-      'Land Valuation',
-      'RegistrationDistribution',
-      'Installation',
-      'Leasehold'
-    ];
-
-    const anchorCol = cols[0]?.key === 'lhid' ? cols[0] : null;
-    const extraCols = anchorCol ? cols.slice(1) : cols;
-    const colPageSize = 7;
-    const totalColPages = Math.max(1, Math.ceil(extraCols.length / colPageSize));
-    const safeColPage = Math.min(Math.max(1, Number(optoolColPage) || 1), totalColPages);
-
-    let displayCols = previewCols;
-    if (optoolColMode === 'all') {
-      displayCols = cols;
-    } else if (optoolColMode === 'paged') {
-      const cStart = (safeColPage - 1) * colPageSize;
-      const slice = extraCols.slice(cStart, cStart + colPageSize);
-      displayCols = anchorCol ? [anchorCol, ...slice] : slice;
-    }
-
-    const activeColEntries = Object.entries(optoolColFilters || {}).filter(
-      ([, val]) => normalizeFilterSpec(val).value !== ''
-    );
-
-    const { dbRows, dbByLhid, dbTotalCarpableArea } = buildDbByLhidMap(state);
-    const q = (searchTerm || '').trim();
-    const targetFilter = String(optoolTargetFilter || 'ALL');
-    const indexedRows = filterOptoolRows(allRows, ctx, null, dbByLhid);
-
-    // Vertical (row) pagination
-    const totalRows = indexedRows.length;
-    const isShowAllRows = String(optoolPageSize) === 'ALL';
-    const rowPageSize = isShowAllRows ? Math.max(1, totalRows) : Math.max(1, Number(optoolPageSize) || 50);
-    const totalRowPages = isShowAllRows ? 1 : Math.max(1, Math.ceil(totalRows / rowPageSize));
-    const safeRowPage = Math.min(Math.max(1, Number(optoolPage) || 1), totalRowPages);
-    const rowStartIdx = (safeRowPage - 1) * rowPageSize;
-    const pagedRows = isShowAllRows ? indexedRows : indexedRows.slice(rowStartIdx, rowStartIdx + rowPageSize);
-    const showingFrom = totalRows === 0 ? 0 : rowStartIdx + 1;
-    const showingTo = Math.min(totalRows, rowStartIdx + pagedRows.length);
-
-    const showMoreCol = optoolColMode !== 'all' && displayCols.length < cols.length;
-    const hiddenColsCount = Math.max(0, cols.length - displayCols.length);
-    const totalColSpan = displayCols.length + (showMoreCol ? 1 : 0) + 1;
-    const cfSurveyFilter = String(ctx.cfSurveyFilter || 'ALL');
-    const hasAnyFilter = activeColEntries.length > 0 || Boolean(q) || targetFilter !== 'ALL' || (currentTab === 'CF(DOC)' && cfSurveyFilter !== 'ALL');
-    const isFilteredScope =
-      hasAnyFilter || String(ctx.filters?.province || 'ALL') !== 'ALL' || totalRows !== allRows.length;
-
-    const tabAllStats = sumOptoolCarpableMetrics(allRows, dbByLhid, currentTab);
-    const filteredRowsOnly = indexedRows.map((entry) => entry.row);
-    const tabFilteredStats = sumOptoolCarpableMetrics(filteredRowsOnly, dbByLhid, currentTab);
-
-    // Global Target breakdown: LAD Balance vs Temp. Park
-    let scopedDbRows = dbRows;
-    const activeFilterProv = (ctx.filters && ctx.filters.province) || 'ALL';
-    const codeMap = {
-      BIL: 'biliran',
-      ESA: 'eastern samar',
-      LEY: 'leyte',
-      NSA: 'northern samar',
-      SAM: 'samar',
-      SLE: 'southern leyte'
-    };
-    if (ctx.provinceScope) {
-      scopedDbRows = scopedDbRows.filter((r) => matchProvinceName(r.province, ctx.provinceScope.provinceName));
-    } else if (activeFilterProv !== 'ALL') {
-      const target = codeMap[activeFilterProv];
-      if (target) {
-        scopedDbRows = scopedDbRows.filter((r) => {
-          const provText = String(r.province || '').toLowerCase();
-          if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
-          if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
-          return provText.includes(target);
-        });
-      }
-    }
-
-    const scopedLadRows = scopedDbRows.filter(isLadBalance);
-    const scopedLadLhs = scopedLadRows.length;
-    const scopedLadArea = scopedLadRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
-
-    const scopedTempRows = scopedDbRows.filter(isTempPark);
-    const scopedTempLhs = scopedTempRows.length;
-    const scopedTempArea = scopedTempRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
-
-    const scopedDbCarpableArea = scopedDbRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
-
-    let filteredLadLhs = scopedLadLhs;
-    let filteredLadArea = scopedLadArea;
-    let filteredTempLhs = scopedTempLhs;
-    let filteredTempArea = scopedTempArea;
-
-    if (currentTab === 'Database') {
-      const dbLadRowsFiltered = filteredRowsOnly.filter(isLadBalance);
-      filteredLadLhs = dbLadRowsFiltered.length;
-      filteredLadArea = dbLadRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
-
-      const dbTempRowsFiltered = filteredRowsOnly.filter(isTempPark);
-      filteredTempLhs = dbTempRowsFiltered.length;
-      filteredTempArea = dbTempRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
-    }
-
-    let scopeBadgeText = 'Region VIII';
-    if (ctx.provinceScope) {
-      scopeBadgeText = ctx.provinceScope.provinceName;
-    } else if (activeFilterProv !== 'ALL') {
-      const reg = (schemas.registry || []).find((p) => p.code === activeFilterProv);
-      scopeBadgeText = reg?.provinceName || activeFilterProv;
-    }
-
-    let dbFilteredAssignedCount = 0;
-    const dbTargetStats = {};
-    for (const t of targetTabs) {
-      dbTargetStats[t] = { lhs: 0, carpableArea: 0 };
-    }
-    if (currentTab === 'Database') {
-      for (const row of filteredRowsOnly) {
-        if (String(row.milestoneTarget || '').trim() !== '') {
-          dbFilteredAssignedCount++;
-        }
-      }
-      const targetScopedRows = filterOptoolRows(allRows, { ...ctx, optoolTargetFilter: 'ALL' }, 'milestoneTarget', dbByLhid);
-      const targetLookup = new Map(targetTabs.map((t) => [t.toLowerCase(), t]));
-      targetLookup.set('mov', targetTabs.find((t) => t.toLowerCase() === 'land valuation') || 'Land Valuation');
-      for (const { row } of targetScopedRows) {
-        const canonical = targetLookup.get(String(row.milestoneTarget || '').trim().toLowerCase());
-        if (canonical) {
-          dbTargetStats[canonical].lhs++;
-          dbTargetStats[canonical].carpableArea += Number(row.totalArea || row.carpable) || 0;
-        }
-      }
-    }
-
-    return {
-      tabNames,
-      currentTab,
-      cols,
-      previewCols,
-      displayCols,
-      dbByLhid,
-      targetTabs,
-      targetFilter,
-      cfSurveyFilter,
-      optoolColFilters: optoolColFilters || {},
-      hasAnyFilter,
-      isFilteredScope,
-      dbAllRowsCount: dbRows.length,
-      dbTotalCarpableArea,
-      scopedDbRowsCount: scopedDbRows.length,
-      scopedDbCarpableArea,
-      scopedLadLhs,
-      scopedLadArea,
-      scopedTempLhs,
-      scopedTempArea,
-      filteredLadLhs,
-      filteredLadArea,
-      filteredTempLhs,
-      filteredTempArea,
-      scopeBadgeText,
-      dbFilteredAssignedCount,
-      dbTargetStats,
-      tabAllStats,
-      tabFilteredStats,
-      indexedRows,
-      pagedRows,
-      totalRows,
-      isShowAllRows,
-      optoolPageSize,
-      totalRowPages,
-      safeRowPage,
-      showingFrom,
-      showingTo,
-      pageButtons: buildPageList(safeRowPage, totalRowPages),
-      optoolColMode,
-      safeColPage,
-      totalColPages,
-      showMoreCol,
-      hiddenColsCount,
-      totalColSpan
-    };
+    const rawKey = String(row?.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
+    const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
+    const dbYr = dbRow?.year ?? dbRow?.targetYear ?? '';
+    return formatYearDisplay(dbYr);
   }
-
-  function sumOptoolCarpableMetrics(rows, dbByLhid, currentTab) {
-    const isDb = currentTab === 'Database';
-    const seenLhids = new Set();
-    let carpableArea = 0;
-    let matchedCount = 0;
-    let totalArbs = 0;
-    let totalTitles = 0;
-    let totalCompensation = 0;
-
-    for (const row of rows) {
-      if (isDb) {
-        carpableArea += parseNumericValue(row.totalArea || row.carpable) || 0;
-      } else {
-        const lhidKey = String(row.lhid || '').trim().toLowerCase();
-        const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
-        if (dbRow) matchedCount++;
-        if (!lhidKey || !seenLhids.has(lhidKey)) {
-          if (lhidKey) seenLhids.add(lhidKey);
-          if (dbRow) carpableArea += parseNumericValue(dbRow.totalArea || dbRow.carpable || row.totalArea || row.areaHas || 0) || 0;
-          else carpableArea += parseNumericValue(row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.carpable || 0) || 0;
-        }
-        totalArbs += parseNumericValue(row.noOfArbs) || 0;
-        totalTitles += parseNumericValue(row.noOfTitles) || 0;
-        totalCompensation += parseNumericValue(row.compensationAmount) || 0;
-      }
+  if (isReportedMonthKey(col?.key)) {
+    const direct = row?.[col.key];
+    if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+      return formatReportedMonthWord(direct) || String(direct);
     }
-
-    return {
-      count: rows.length,
-      carpableArea,
-      matchedCount,
-      totalArbs,
-      totalTitles,
-      totalCompensation
-    };
+    return '';
   }
+  return row?.[col?.key] ?? '';
+}
 
-  const TARGET_CARD_META = {
-    'CF(DOC)': { label: 'CF(DOC)', variantClass: 'highlight' },
-    Survey: { label: 'Survey', variantClass: 'blue' },
-    'Land Valuation': { label: 'Land Valuation', variantClass: 'amber' },
-    MOV: { label: 'Land Valuation', variantClass: 'amber' },
-    RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'highlight' },
-    Installation: { label: 'Installation', variantClass: 'highlight' },
-    Leasehold: { label: 'Leasehold', variantClass: 'highlight' }
+function filterOptoolRows(rows, ctx, skipColKey = null, dbByLhidOverride = null) {
+  const {
+    state,
+    schemas,
+    activeOptoolTab,
+    searchTerm,
+    optoolTargetFilter = 'ALL',
+    optoolColFilters = {},
+    filters
+  } = ctx;
+
+  const tabNames = Object.keys(schemas?.optoolTabs || {});
+  if (tabNames.length === 0) {
+    if (activeOptoolTab) {
+      tabNames.push(activeOptoolTab);
+    } else {
+      tabNames.push('CF(DOC)');
+    }
+  }
+  const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
+  const { cols } = getOptoolTableColumns(schemas, currentTab);
+  const colByKey = new Map(cols.map((c) => [c.key, c]));
+  const dbByLhid = dbByLhidOverride || buildDbByLhidMap(state).dbByLhid;
+  const includeLinkedSearch = LINKED_DB_TABLE_TABS.has(currentTab);
+  const activeColEntries = Object.entries(optoolColFilters || {}).filter(
+    ([key, val]) => key !== skipColKey && normalizeFilterSpec(val).value !== ''
+  );
+
+  const q = (searchTerm || '').trim().toLowerCase();
+  const targetFilter = String(optoolTargetFilter || 'ALL');
+  const codeMap = {
+    BIL: 'biliran',
+    ESA: 'eastern samar',
+    LEY: 'leyte',
+    NSA: 'northern samar',
+    SAM: 'samar',
+    SLE: 'southern leyte'
   };
 
-  function renderOptoolKpiCardsHtml(vm) {
-    const {
-      currentTab,
-      totalRows,
-      dbAllRowsCount,
-      dbTotalCarpableArea,
-      dbFilteredAssignedCount,
-      dbTargetStats,
-      tabAllStats,
-      tabFilteredStats,
-      targetTabs,
-      targetFilter,
-      isFilteredScope,
-      scopedDbRowsCount,
-      scopedDbCarpableArea,
-      scopedLadLhs,
-      scopedLadArea,
-      scopedTempLhs,
-      scopedTempArea,
-      filteredLadLhs,
-      filteredLadArea,
-      filteredTempLhs,
-      filteredTempArea,
-      scopeBadgeText
-    } = vm;
-
-    if (currentTab !== 'Database') {
-      const meta = TARGET_CARD_META[currentTab] || { label: currentTab, variantClass: 'highlight' };
-      const pctTabLhs = tabAllStats.count > 0 ? ((totalRows / tabAllStats.count) * 100).toFixed(1) : '0.0';
-      const pctTabArea =
-        tabAllStats.carpableArea > 0
-          ? ((tabFilteredStats.carpableArea / tabAllStats.carpableArea) * 100).toFixed(1)
-          : '0.0';
-      const pctDbLhs = dbAllRowsCount > 0 ? ((totalRows / dbAllRowsCount) * 100).toFixed(1) : '0.0';
-      const pctDbArea =
-        dbTotalCarpableArea > 0 ? ((tabFilteredStats.carpableArea / dbTotalCarpableArea) * 100).toFixed(1) : '0.0';
-
-      let lhsMeta = isFilteredScope ? `Filtered ${meta.label} landholdings` : `Active records in ${meta.label} tab`;
-      if (currentTab === 'MOV') {
-        lhsMeta = `Total Compensation: PHP ${tabFilteredStats.totalCompensation.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        })}`;
-      } else if (currentTab === 'RegistrationDistribution' || currentTab === 'Installation') {
-        lhsMeta = `${tabFilteredStats.totalArbs.toLocaleString()} ARBs • ${tabFilteredStats.totalTitles.toLocaleString()} Titles`;
+  return rows
+    .map((row, idx) => ({ row, idx }))
+    .filter(({ row }) => {
+      const activeFilterProv = (filters && filters.province) || 'ALL';
+      if (activeFilterProv !== 'ALL' && row.province !== undefined && row.province !== '') {
+        const provText = String(row.province).toLowerCase();
+        const target = codeMap[activeFilterProv];
+        if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
+        if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
+        if (target && !provText.includes(target)) return false;
       }
+      if (currentTab === 'Database' && targetFilter !== 'ALL') {
+        const rowTarget = String(row.milestoneTarget || '').trim();
+        if (targetFilter === 'ASSIGNED' && !rowTarget) return false;
+        if (targetFilter === 'UNASSIGNED' && rowTarget) return false;
+        if (
+          targetFilter !== 'ASSIGNED' &&
+          targetFilter !== 'UNASSIGNED'
+        ) {
+          const normFilter = targetFilter.toLowerCase();
+          const normRow = rowTarget.toLowerCase();
+          const isMatch = normRow === normFilter ||
+            ((normFilter === 'land valuation' || normFilter === 'mov') && (normRow === 'land valuation' || normRow === 'mov'));
+          if (!isMatch) return false;
+        }
+      }
+      if (currentTab === 'CF(DOC)') {
+        const cfSurveyFilter = String(ctx.cfSurveyFilter || 'ALL');
+        if (cfSurveyFilter !== 'ALL') {
+          const req = String(row.surveyRequirement || row['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
+          const filterNorm = cfSurveyFilter.toLowerCase();
+          if (filterNorm.includes('not needing')) {
+            if (!req.includes('not needing')) return false;
+          } else if (filterNorm.includes('needing')) {
+            if (!req.includes('needing') || req.includes('not needing')) return false;
+          }
+        }
+      }
+      for (const [colKey, filterSpec] of activeColEntries) {
+        const col = colByKey.get(colKey);
+        const cellVal = getOptoolCellValue(row, col, dbByLhid);
+        if (!matchesColumnFilter(cellVal, filterSpec, col?.type)) {
+          return false;
+        }
+      }
+      if (q) {
+        let hay = Object.values(row).join(' ');
+        if (includeLinkedSearch) {
+          const lhidKey = String(row.lhid || '').trim().toLowerCase();
+          const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
+          if (dbRow) {
+            hay +=
+              ' ' +
+              LINKED_DB_PROFILE_FIELDS.map((f) => dbRow[f.key] ?? '').join(' ');
+          }
+        }
+        if (!hay.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+}
 
-      return `
+export function getColumnFilterValues(ctx, colKey) {
+  const { state, schemas, activeOptoolTab } = ctx;
+  const tabNames = Object.keys(schemas?.optoolTabs || {});
+  if (tabNames.length === 0) {
+    if (activeOptoolTab) {
+      tabNames.push(activeOptoolTab);
+    } else {
+      tabNames.push('CF(DOC)');
+    }
+  }
+  const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
+  const { cols } = getOptoolTableColumns(schemas, currentTab);
+  const col = cols.find((c) => c.key === colKey);
+  const allRows = state?.optool?.[currentTab] || [];
+  const { dbByLhid } = buildDbByLhidMap(state);
+  const matching = filterOptoolRows(allRows, ctx, colKey, dbByLhid);
+
+  const counts = new Map();
+  let blankCount = 0;
+  for (const { row } of matching) {
+    const rawCell = getOptoolCellValue(row, col, dbByLhid);
+    if (col?.type === 'checkbox') {
+      if (isChecklistChecked(rawCell)) {
+        counts.set('Checked', (counts.get('Checked') || 0) + 1);
+      } else {
+        blankCount++;
+      }
+      continue;
+    }
+    const val = String(rawCell ?? '').trim();
+    if (!val) {
+      blankCount++;
+    } else {
+      counts.set(val, (counts.get(val) || 0) + 1);
+    }
+  }
+
+  const values = Array.from(counts.entries())
+    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }))
+    .map(([value, count]) => ({ value, count }));
+
+  return { col, blankCount, totalRows: matching.length, values };
+}
+
+export function buildOptoolViewModel(ctx) {
+  const {
+    state,
+    schemas,
+    activeOptoolTab,
+    searchTerm,
+    optoolTargetFilter = 'ALL',
+    optoolColFilters = {},
+    optoolPage = 1,
+    optoolPageSize = 50,
+    optoolColMode = 'preview',
+    optoolColPage = 1
+  } = ctx;
+
+  const tabNames = Object.keys(schemas?.optoolTabs || {});
+  if (tabNames.length === 0) {
+    if (activeOptoolTab) {
+      tabNames.push(activeOptoolTab);
+    } else {
+      tabNames.push('CF(DOC)');
+    }
+  }
+  const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
+  const { cols, previewCols } = getOptoolTableColumns(schemas, currentTab);
+  const rawAllRows = state?.optool?.[currentTab] || [];
+  const seenOptoolKeys = new Set();
+  const allRows = [];
+  for (const r of rawAllRows) {
+    if (!r || typeof r !== 'object') continue;
+    const key = getOptoolRowKey(currentTab, r);
+    if (key) {
+      if (seenOptoolKeys.has(key)) continue;
+      seenOptoolKeys.add(key);
+    }
+    allRows.push(r);
+  }
+  const targetTabs = schemas?.milestoneTargetTabs || [
+    'CF(DOC)',
+    'Survey',
+    'Land Valuation',
+    'RegistrationDistribution',
+    'Installation',
+    'Leasehold'
+  ];
+
+  const anchorCol = cols[0]?.key === 'lhid' ? cols[0] : null;
+  const extraCols = anchorCol ? cols.slice(1) : cols;
+  const colPageSize = 7;
+  const totalColPages = Math.max(1, Math.ceil(extraCols.length / colPageSize));
+  const safeColPage = Math.min(Math.max(1, Number(optoolColPage) || 1), totalColPages);
+
+  let displayCols = previewCols;
+  if (optoolColMode === 'all') {
+    displayCols = cols;
+  } else if (optoolColMode === 'paged') {
+    const cStart = (safeColPage - 1) * colPageSize;
+    const slice = extraCols.slice(cStart, cStart + colPageSize);
+    displayCols = anchorCol ? [anchorCol, ...slice] : slice;
+  }
+
+  const activeColEntries = Object.entries(optoolColFilters || {}).filter(
+    ([, val]) => normalizeFilterSpec(val).value !== ''
+  );
+
+  const { dbRows, dbByLhid, dbTotalCarpableArea } = buildDbByLhidMap(state);
+  const q = (searchTerm || '').trim();
+  const targetFilter = String(optoolTargetFilter || 'ALL');
+  const indexedRows = filterOptoolRows(allRows, ctx, null, dbByLhid);
+
+  // Vertical (row) pagination
+  const totalRows = indexedRows.length;
+  const isShowAllRows = String(optoolPageSize) === 'ALL';
+  const rowPageSize = isShowAllRows ? Math.max(1, totalRows) : Math.max(1, Number(optoolPageSize) || 50);
+  const totalRowPages = isShowAllRows ? 1 : Math.max(1, Math.ceil(totalRows / rowPageSize));
+  const safeRowPage = Math.min(Math.max(1, Number(optoolPage) || 1), totalRowPages);
+  const rowStartIdx = (safeRowPage - 1) * rowPageSize;
+  const pagedRows = isShowAllRows ? indexedRows : indexedRows.slice(rowStartIdx, rowStartIdx + rowPageSize);
+  const showingFrom = totalRows === 0 ? 0 : rowStartIdx + 1;
+  const showingTo = Math.min(totalRows, rowStartIdx + pagedRows.length);
+
+  const showMoreCol = optoolColMode !== 'all' && displayCols.length < cols.length;
+  const hiddenColsCount = Math.max(0, cols.length - displayCols.length);
+  const totalColSpan = displayCols.length + (showMoreCol ? 1 : 0) + 1;
+  const cfSurveyFilter = String(ctx.cfSurveyFilter || 'ALL');
+  const hasAnyFilter = activeColEntries.length > 0 || Boolean(q) || targetFilter !== 'ALL' || (currentTab === 'CF(DOC)' && cfSurveyFilter !== 'ALL');
+  const isFilteredScope =
+    hasAnyFilter || String(ctx.filters?.province || 'ALL') !== 'ALL' || totalRows !== allRows.length;
+
+  const tabAllStats = sumOptoolCarpableMetrics(allRows, dbByLhid, currentTab);
+  const filteredRowsOnly = indexedRows.map((entry) => entry.row);
+  const tabFilteredStats = sumOptoolCarpableMetrics(filteredRowsOnly, dbByLhid, currentTab);
+
+  // Global Target breakdown: LAD Balance vs Temp. Park
+  let scopedDbRows = dbRows;
+  const activeFilterProv = (ctx.filters && ctx.filters.province) || 'ALL';
+  const codeMap = {
+    BIL: 'biliran',
+    ESA: 'eastern samar',
+    LEY: 'leyte',
+    NSA: 'northern samar',
+    SAM: 'samar',
+    SLE: 'southern leyte'
+  };
+  if (ctx.provinceScope) {
+    scopedDbRows = scopedDbRows.filter((r) => matchProvinceName(r.province, ctx.provinceScope.provinceName));
+  } else if (activeFilterProv !== 'ALL') {
+    const target = codeMap[activeFilterProv];
+    if (target) {
+      scopedDbRows = scopedDbRows.filter((r) => {
+        const provText = String(r.province || '').toLowerCase();
+        if (activeFilterProv === 'LEY' && provText.includes('southern')) return false;
+        if (activeFilterProv === 'SAM' && (provText.includes('eastern') || provText.includes('northern'))) return false;
+        return provText.includes(target);
+      });
+    }
+  }
+
+  const scopedLadRows = scopedDbRows.filter(isLadBalance);
+  const scopedLadLhs = scopedLadRows.length;
+  const scopedLadArea = scopedLadRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
+
+  const scopedTempRows = scopedDbRows.filter(isTempPark);
+  const scopedTempLhs = scopedTempRows.length;
+  const scopedTempArea = scopedTempRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
+
+  const scopedDbCarpableArea = scopedDbRows.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
+
+  let filteredLadLhs = scopedLadLhs;
+  let filteredLadArea = scopedLadArea;
+  let filteredTempLhs = scopedTempLhs;
+  let filteredTempArea = scopedTempArea;
+
+  if (currentTab === 'Database') {
+    const dbLadRowsFiltered = filteredRowsOnly.filter(isLadBalance);
+    filteredLadLhs = dbLadRowsFiltered.length;
+    filteredLadArea = dbLadRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
+
+    const dbTempRowsFiltered = filteredRowsOnly.filter(isTempPark);
+    filteredTempLhs = dbTempRowsFiltered.length;
+    filteredTempArea = dbTempRowsFiltered.reduce((s, r) => s + (parseNumericValue(r.totalArea || r.carpable) || 0), 0);
+  }
+
+  let scopeBadgeText = 'Region VIII';
+  if (ctx.provinceScope) {
+    scopeBadgeText = ctx.provinceScope.provinceName;
+  } else if (activeFilterProv !== 'ALL') {
+    const reg = (schemas.registry || []).find((p) => p.code === activeFilterProv);
+    scopeBadgeText = reg?.provinceName || activeFilterProv;
+  }
+
+  let dbFilteredAssignedCount = 0;
+  const dbTargetStats = {};
+  for (const t of targetTabs) {
+    dbTargetStats[t] = { lhs: 0, carpableArea: 0 };
+  }
+  if (currentTab === 'Database') {
+    for (const row of filteredRowsOnly) {
+      if (String(row.milestoneTarget || '').trim() !== '') {
+        dbFilteredAssignedCount++;
+      }
+    }
+    const targetScopedRows = filterOptoolRows(allRows, { ...ctx, optoolTargetFilter: 'ALL' }, 'milestoneTarget', dbByLhid);
+    const targetLookup = new Map(targetTabs.map((t) => [t.toLowerCase(), t]));
+    targetLookup.set('mov', targetTabs.find((t) => t.toLowerCase() === 'land valuation') || 'Land Valuation');
+    for (const { row } of targetScopedRows) {
+      const canonical = targetLookup.get(String(row.milestoneTarget || '').trim().toLowerCase());
+      if (canonical) {
+        dbTargetStats[canonical].lhs++;
+        dbTargetStats[canonical].carpableArea += Number(row.totalArea || row.carpable) || 0;
+      }
+    }
+  }
+
+  return {
+    tabNames,
+    currentTab,
+    cols,
+    previewCols,
+    displayCols,
+    dbByLhid,
+    targetTabs,
+    targetFilter,
+    cfSurveyFilter,
+    optoolColFilters: optoolColFilters || {},
+    hasAnyFilter,
+    isFilteredScope,
+    dbAllRowsCount: dbRows.length,
+    dbTotalCarpableArea,
+    scopedDbRowsCount: scopedDbRows.length,
+    scopedDbCarpableArea,
+    scopedLadLhs,
+    scopedLadArea,
+    scopedTempLhs,
+    scopedTempArea,
+    filteredLadLhs,
+    filteredLadArea,
+    filteredTempLhs,
+    filteredTempArea,
+    scopeBadgeText,
+    dbFilteredAssignedCount,
+    dbTargetStats,
+    tabAllStats,
+    tabFilteredStats,
+    indexedRows,
+    pagedRows,
+    totalRows,
+    isShowAllRows,
+    optoolPageSize,
+    totalRowPages,
+    safeRowPage,
+    showingFrom,
+    showingTo,
+    pageButtons: buildPageList(safeRowPage, totalRowPages),
+    optoolColMode,
+    safeColPage,
+    totalColPages,
+    showMoreCol,
+    hiddenColsCount,
+    totalColSpan
+  };
+}
+
+function sumOptoolCarpableMetrics(rows, dbByLhid, currentTab) {
+  const isDb = currentTab === 'Database';
+  const seenLhids = new Set();
+  let carpableArea = 0;
+  let matchedCount = 0;
+  let totalArbs = 0;
+  let totalTitles = 0;
+  let totalCompensation = 0;
+
+  for (const row of rows) {
+    if (isDb) {
+      carpableArea += parseNumericValue(row.totalArea || row.carpable) || 0;
+    } else {
+      const lhidKey = String(row.lhid || '').trim().toLowerCase();
+      const dbRow = lhidKey ? dbByLhid.get(lhidKey) : null;
+      if (dbRow) matchedCount++;
+      if (!lhidKey || !seenLhids.has(lhidKey)) {
+        if (lhidKey) seenLhids.add(lhidKey);
+        if (dbRow) carpableArea += parseNumericValue(dbRow.totalArea || dbRow.carpable || row.totalArea || row.areaHas || 0) || 0;
+        else carpableArea += parseNumericValue(row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.carpable || 0) || 0;
+      }
+      totalArbs += parseNumericValue(row.noOfArbs) || 0;
+      totalTitles += parseNumericValue(row.noOfTitles) || 0;
+      totalCompensation += parseNumericValue(row.compensationAmount) || 0;
+    }
+  }
+
+  return {
+    count: rows.length,
+    carpableArea,
+    matchedCount,
+    totalArbs,
+    totalTitles,
+    totalCompensation
+  };
+}
+
+const TARGET_CARD_META = {
+  'CF(DOC)': { label: 'CF(DOC)', variantClass: 'highlight' },
+  Survey: { label: 'Survey', variantClass: 'blue' },
+  'Land Valuation': { label: 'Land Valuation', variantClass: 'amber' },
+  MOV: { label: 'Land Valuation', variantClass: 'amber' },
+  RegistrationDistribution: { label: 'Registration / Distribution', variantClass: 'highlight' },
+  Installation: { label: 'Installation', variantClass: 'highlight' },
+  Leasehold: { label: 'Leasehold', variantClass: 'highlight' }
+};
+
+function renderOptoolKpiCardsHtml(vm) {
+  const {
+    currentTab,
+    totalRows,
+    dbAllRowsCount,
+    dbTotalCarpableArea,
+    dbFilteredAssignedCount,
+    dbTargetStats,
+    tabAllStats,
+    tabFilteredStats,
+    targetTabs,
+    targetFilter,
+    isFilteredScope,
+    scopedDbRowsCount,
+    scopedDbCarpableArea,
+    scopedLadLhs,
+    scopedLadArea,
+    scopedTempLhs,
+    scopedTempArea,
+    filteredLadLhs,
+    filteredLadArea,
+    filteredTempLhs,
+    filteredTempArea,
+    scopeBadgeText
+  } = vm;
+
+  if (currentTab !== 'Database') {
+    const meta = TARGET_CARD_META[currentTab] || { label: currentTab, variantClass: 'highlight' };
+    const pctTabLhs = tabAllStats.count > 0 ? ((totalRows / tabAllStats.count) * 100).toFixed(1) : '0.0';
+    const pctTabArea =
+      tabAllStats.carpableArea > 0
+        ? ((tabFilteredStats.carpableArea / tabAllStats.carpableArea) * 100).toFixed(1)
+        : '0.0';
+    const pctDbLhs = dbAllRowsCount > 0 ? ((totalRows / dbAllRowsCount) * 100).toFixed(1) : '0.0';
+    const pctDbArea =
+      dbTotalCarpableArea > 0 ? ((tabFilteredStats.carpableArea / dbTotalCarpableArea) * 100).toFixed(1) : '0.0';
+
+    let lhsMeta = isFilteredScope ? `Filtered ${meta.label} landholdings` : `Active records in ${meta.label} tab`;
+    if (currentTab === 'MOV') {
+      lhsMeta = `Total Compensation: PHP ${tabFilteredStats.totalCompensation.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`;
+    } else if (currentTab === 'RegistrationDistribution' || currentTab === 'Installation') {
+      lhsMeta = `${tabFilteredStats.totalArbs.toLocaleString()} ARBs • ${tabFilteredStats.totalTitles.toLocaleString()} Titles`;
+    }
+
+    return `
       <section class="kpi-grid kpi-grid-2">
         <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
           <div class="cf-kpi-header">
@@ -7353,22 +7349,22 @@ function buildDbByLhidMap(state) {
         </div>
       </section>
     `;
-    }
+  }
 
-    const pctLhs = (scopedDbRowsCount || dbAllRowsCount) > 0
-      ? ((totalRows / (scopedDbRowsCount || dbAllRowsCount)) * 100).toFixed(1)
+  const pctLhs = (scopedDbRowsCount || dbAllRowsCount) > 0
+    ? ((totalRows / (scopedDbRowsCount || dbAllRowsCount)) * 100).toFixed(1)
+    : '0.0';
+  const pctArea =
+    (scopedDbCarpableArea || dbTotalCarpableArea) > 0
+      ? ((tabFilteredStats.carpableArea / (scopedDbCarpableArea || dbTotalCarpableArea)) * 100).toFixed(1)
       : '0.0';
-    const pctArea =
-      (scopedDbCarpableArea || dbTotalCarpableArea) > 0
-        ? ((tabFilteredStats.carpableArea / (scopedDbCarpableArea || dbTotalCarpableArea)) * 100).toFixed(1)
-        : '0.0';
 
-    const ladLhsToDisplay = isFilteredScope ? filteredLadLhs : scopedLadLhs;
-    const ladAreaToDisplay = isFilteredScope ? filteredLadArea : scopedLadArea;
-    const tempLhsToDisplay = isFilteredScope ? filteredTempLhs : scopedTempLhs;
-    const tempAreaToDisplay = isFilteredScope ? filteredTempArea : scopedTempArea;
+  const ladLhsToDisplay = isFilteredScope ? filteredLadLhs : scopedLadLhs;
+  const ladAreaToDisplay = isFilteredScope ? filteredLadArea : scopedLadArea;
+  const tempLhsToDisplay = isFilteredScope ? filteredTempLhs : scopedTempLhs;
+  const tempAreaToDisplay = isFilteredScope ? filteredTempArea : scopedTempArea;
 
-    const summaryRowHtml = `
+  const summaryRowHtml = `
     <section class="kpi-grid kpi-grid-3" aria-label="Global Target Breakdown">
       <!-- Card 1: Global Target (LAD Balance) -->
       <div class="cf-kpi-card cf-kpi-card-sm kpi-card">
@@ -7388,8 +7384,8 @@ function buildDbByLhidMap(state) {
         </div>
         <div class="cf-kpi-meta-sub">
           ${isFilteredScope
-            ? `of ${scopedLadLhs.toLocaleString()} LAD Balance LHs (${scopedLadLhs > 0 ? ((ladLhsToDisplay / scopedLadLhs) * 100).toFixed(1) : '0.0'}%)`
-            : `Active LAD Balance landholdings (${scopedDbRowsCount > 0 ? ((ladLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
+      ? `of ${scopedLadLhs.toLocaleString()} LAD Balance LHs (${scopedLadLhs > 0 ? ((ladLhsToDisplay / scopedLadLhs) * 100).toFixed(1) : '0.0'}%)`
+      : `Active LAD Balance landholdings (${scopedDbRowsCount > 0 ? ((ladLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
         </div>
       </div>
 
@@ -7411,8 +7407,8 @@ function buildDbByLhidMap(state) {
         </div>
         <div class="cf-kpi-meta-sub">
           ${isFilteredScope
-            ? `of ${scopedTempLhs.toLocaleString()} Temp. Park LHs (${scopedTempLhs > 0 ? ((tempLhsToDisplay / scopedTempLhs) * 100).toFixed(1) : '0.0'}%)`
-            : `Temporarily parked landholdings (${scopedDbRowsCount > 0 ? ((tempLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
+      ? `of ${scopedTempLhs.toLocaleString()} Temp. Park LHs (${scopedTempLhs > 0 ? ((tempLhsToDisplay / scopedTempLhs) * 100).toFixed(1) : '0.0'}%)`
+      : `Temporarily parked landholdings (${scopedDbRowsCount > 0 ? ((tempLhsToDisplay / scopedDbRowsCount) * 100).toFixed(1) : '0.0'}% of Database)`}
         </div>
       </div>
 
@@ -7434,14 +7430,14 @@ function buildDbByLhidMap(state) {
         </div>
         <div class="cf-kpi-meta-sub">
           ${isFilteredScope
-            ? `of ${(scopedDbRowsCount || dbAllRowsCount).toLocaleString()} total LHs (${pctLhs}%)`
-            : `${dbFilteredAssignedCount.toLocaleString()} assigned to Milestone Target`}
+      ? `of ${(scopedDbRowsCount || dbAllRowsCount).toLocaleString()} total LHs (${pctLhs}%)`
+      : `${dbFilteredAssignedCount.toLocaleString()} assigned to Milestone Target`}
         </div>
       </div>
     </section>
   `;
 
-    const targetsRowHtml = `
+  const targetsRowHtml = `
     <section class="kpi-targets-section" aria-labelledby="kpi-targets-heading">
       <div class="kpi-section-header">
         <h3 id="kpi-targets-heading" class="kpi-section-title">Target per Milestone</h3>
@@ -7449,11 +7445,11 @@ function buildDbByLhidMap(state) {
       </div>
       <div class="kpi-grid kpi-grid-targets" aria-label="Milestone Target summary cards">
         ${targetTabs
-        .map((t) => {
-          const stat = dbTargetStats[t] || { lhs: 0, carpableArea: 0 };
-          const meta = TARGET_CARD_META[t] || { label: t, variantClass: 'highlight' };
-          const isSelected = targetFilter.toLowerCase() === t.toLowerCase();
-          return `
+      .map((t) => {
+        const stat = dbTargetStats[t] || { lhs: 0, carpableArea: 0 };
+        const meta = TARGET_CARD_META[t] || { label: t, variantClass: 'highlight' };
+        const isSelected = targetFilter.toLowerCase() === t.toLowerCase();
+        return `
               <button
                 type="button"
                 class="cf-kpi-card cf-kpi-card-sm kpi-card kpi-target-card ${isSelected ? 'active-target-card' : ''}"
@@ -7477,112 +7473,112 @@ function buildDbByLhidMap(state) {
                 <div class="cf-kpi-meta-sub">${isSelected ? 'Active filter (click to clear)' : 'Target CARPable • Click to filter'}</div>
               </button>
             `;
-        })
-        .join('')}
+      })
+      .join('')}
       </div>
     </section>
   `;
 
-    return `${summaryRowHtml}${targetsRowHtml}`;
-  }
+  return `${summaryRowHtml}${targetsRowHtml}`;
+}
 
-  function renderOptoolBodyRowsHtml(vm) {
-    const { currentTab, pagedRows, displayCols, targetTabs, showMoreCol, hiddenColsCount, totalColSpan, dbByLhid } = vm;
-    if (pagedRows.length === 0) {
-      return `<tr><td colspan="${totalColSpan}" style="text-align:center;padding:28px;color:var(--text-muted)">No matching rows in <strong>${esc(currentTab)}</strong>. Adjust filters or click <strong>+ Add ${esc(currentTab)} Row</strong>.</td></tr>`;
-    }
-    return pagedRows
-      .map(({ row, idx }) => {
-        const rowLhidClean = formatLhidDisplay(row.lhid);
-        return `
+function renderOptoolBodyRowsHtml(vm) {
+  const { currentTab, pagedRows, displayCols, targetTabs, showMoreCol, hiddenColsCount, totalColSpan, dbByLhid } = vm;
+  if (pagedRows.length === 0) {
+    return `<tr><td colspan="${totalColSpan}" style="text-align:center;padding:28px;color:var(--text-muted)">No matching rows in <strong>${esc(currentTab)}</strong>. Adjust filters or click <strong>+ Add ${esc(currentTab)} Row</strong>.</td></tr>`;
+  }
+  return pagedRows
+    .map(({ row, idx }) => {
+      const rowLhidClean = formatLhidDisplay(row.lhid);
+      return `
         <tr>
           ${displayCols
-            .map((c) => {
-              let val = getOptoolCellValue(row, c, dbByLhid);
-              const linkedCls = c.linkedFromDb ? 'cell-linked-db' : '';
-              if (c.key === 'lhid' && val) {
-                const displayLhid = formatLhidDisplay(val);
-                return `<td><button type="button" class="link-btn" data-lhid="${esc(displayLhid)}">${esc(displayLhid)}</button></td>`;
-              }
-              if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
-                const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/api/pdf/') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
-                if (isPdfAttached) {
-                  return `<td style="white-space:nowrap">
+          .map((c) => {
+            let val = getOptoolCellValue(row, c, dbByLhid);
+            const linkedCls = c.linkedFromDb ? 'cell-linked-db' : '';
+            if (c.key === 'lhid' && val) {
+              const displayLhid = formatLhidDisplay(val);
+              return `<td><button type="button" class="link-btn" data-lhid="${esc(displayLhid)}">${esc(displayLhid)}</button></td>`;
+            }
+            if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
+              const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/api/pdf/') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
+              if (isPdfAttached) {
+                return `<td style="white-space:nowrap">
                     <div style="display:inline-flex;gap:4px;align-items:center;">
                       <a href="${esc(normalizePdfUrl(val))}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;font-weight:600;" title="${esc(val)}"><span style="font-size:12px;">📄</span> View PDF</a>
                       <button type="button" class="btn btn-secondary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-col="${esc(c.key)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" title="Replace or re-upload PDF" style="padding:2px 6px;font-size:11px;">⬆</button>
                     </div>
                   </td>`;
-                }
-                const isMarkedYes = val === 'Yes' || val === true || val === 'true';
-                return `<td style="white-space:nowrap">
+              }
+              const isMarkedYes = val === 'Yes' || val === true || val === 'true';
+              return `<td style="white-space:nowrap">
                   <div style="display:inline-flex;gap:4px;align-items:center;">
                     ${isMarkedYes ? `<span class="badge badge-blue" style="font-size:10px;padding:2px 5px;" title="Marked in checklist">✔ Marked</span>` : ''}
                     <button type="button" class="btn btn-primary btn-xs btn-upload-pdf" data-upload-pdf-tab="${esc(currentTab)}" data-upload-pdf-col="${esc(c.key)}" data-upload-pdf-idx="${idx}" data-upload-pdf-lhid="${esc(rowLhidClean || '')}" data-upload-pdf-province="${esc(row.province || '')}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;"><span>📎</span> Upload PDF</button>
                   </div>
                 </td>`;
+            }
+            if (c.type === 'checkbox') {
+              const checked = isChecklistChecked(val);
+              return `<td class="cell-check"><input type="checkbox" class="table-check-input" data-optool-check-idx="${idx}" data-optool-check-key="${esc(
+                c.key
+              )}" ${checked ? 'checked' : ''} aria-label="${esc(c.label)} for ${esc(
+                rowLhidClean || `row ${idx + 1}`
+              )}" title="${esc(c.label)}: ${checked ? 'Checked' : 'Unchecked'}" /></td>`;
+            }
+            if (
+              c.type === 'select' &&
+              Array.isArray(c.options) &&
+              !(currentTab === 'Database' && c.key === 'milestoneTarget')
+            ) {
+              const isMonth = isReportedMonthKey(c.key);
+              if (isMonth && val) {
+                const wordVal = formatReportedMonthWord(val);
+                if (wordVal) val = wordVal;
               }
-              if (c.type === 'checkbox') {
-                const checked = isChecklistChecked(val);
-                return `<td class="cell-check"><input type="checkbox" class="table-check-input" data-optool-check-idx="${idx}" data-optool-check-key="${esc(
-                  c.key
-                )}" ${checked ? 'checked' : ''} aria-label="${esc(c.label)} for ${esc(
-                  rowLhidClean || `row ${idx + 1}`
-                )}" title="${esc(c.label)}: ${checked ? 'Checked' : 'Unchecked'}" /></td>`;
-              }
-              if (
-                c.type === 'select' &&
-                Array.isArray(c.options) &&
-                !(currentTab === 'Database' && c.key === 'milestoneTarget')
-              ) {
-                const isMonth = isReportedMonthKey(c.key);
-                if (isMonth && val) {
-                  const wordVal = formatReportedMonthWord(val);
-                  if (wordVal) val = wordVal;
-                }
-                const opts = isMonth ? getReportedMonthOptions() : [...c.options];
-                if (val && !opts.includes(val)) opts.push(val);
-                return `<td><select class="table-cell-select ${val ? 'has-value' : ''}" data-optool-select-idx="${idx}" data-optool-select-key="${esc(
-                  c.key
-                )}" aria-label="${esc(c.label)} for ${esc(rowLhidClean || `row ${idx + 1}`)}"><option value="">-- Select --</option>${opts
-                  .map((opt) => `<option value="${esc(opt)}" ${val === opt ? 'selected' : ''}>${esc(opt)}</option>`)
-                  .join('')}</select></td>`;
-              }
-              if (c.type === 'decimal' && val !== '') {
-                return `<td class="${linkedCls ? `${linkedCls} ` : ''}mono num">${fmtArea(val)}</td>`;
-              }
-              return `<td${linkedCls ? ` class="${linkedCls}"` : ''}>${esc(val || '—')}</td>`;
-            })
-            .join('')}
+              const opts = isMonth ? getReportedMonthOptions() : [...c.options];
+              if (val && !opts.includes(val)) opts.push(val);
+              return `<td><select class="table-cell-select ${val ? 'has-value' : ''}" data-optool-select-idx="${idx}" data-optool-select-key="${esc(
+                c.key
+              )}" aria-label="${esc(c.label)} for ${esc(rowLhidClean || `row ${idx + 1}`)}"><option value="">-- Select --</option>${opts
+                .map((opt) => `<option value="${esc(opt)}" ${val === opt ? 'selected' : ''}>${esc(opt)}</option>`)
+                .join('')}</select></td>`;
+            }
+            if (c.type === 'decimal' && val !== '') {
+              return `<td class="${linkedCls ? `${linkedCls} ` : ''}mono num">${fmtArea(val)}</td>`;
+            }
+            return `<td${linkedCls ? ` class="${linkedCls}"` : ''}>${esc(val || '—')}</td>`;
+          })
+          .join('')}
           ${showMoreCol
-            ? `<td><span class="badge badge-gray">+${hiddenColsCount} cols</span></td>`
-            : ''
-          }
+          ? `<td><span class="badge badge-gray">+${hiddenColsCount} cols</span></td>`
+          : ''
+        }
           <td class="center col-actions-sticky" style="white-space:nowrap">
             <button class="btn btn-secondary btn-sm" data-edit-optool="${idx}">Edit / View All</button>
             <button class="btn btn-danger btn-sm" data-del-optool="${idx}">Delete</button>
           </td>
         </tr>
       `;
-      })
-      .join('');
-  }
+    })
+    .join('');
+}
 
-  function renderOptoolPaginationHtml(vm) {
-    const {
-      showingFrom,
-      showingTo,
-      totalRows,
-      optoolPageSize,
-      isShowAllRows,
-      optoolColMode,
-      safeColPage,
-      totalColPages,
-      pageButtons,
-      safeRowPage,
-      totalRowPages
-    } = vm;
-    return `
+function renderOptoolPaginationHtml(vm) {
+  const {
+    showingFrom,
+    showingTo,
+    totalRows,
+    optoolPageSize,
+    isShowAllRows,
+    optoolColMode,
+    safeColPage,
+    totalColPages,
+    pageButtons,
+    safeRowPage,
+    totalRowPages
+  } = vm;
+  return `
     <div class="pagination-group">
       <span class="num" style="color:var(--text-muted)">
         Showing <strong>${showingFrom.toLocaleString()}–${showingTo.toLocaleString()}</strong> of <strong>${totalRows.toLocaleString()}</strong>
@@ -7598,73 +7594,73 @@ function buildDbByLhidMap(state) {
       <button type="button" class="page-btn" data-hscroll="-360" title="Scroll table left">◀ Left</button>
       <button type="button" class="page-btn" data-hscroll="360" title="Scroll table right">Right ▶</button>
       ${optoolColMode === 'paged'
-        ? `
+      ? `
         <span class="page-ellipsis">|</span>
         <button type="button" class="page-btn" data-optool-col-page="${safeColPage - 1}" ${safeColPage <= 1 ? 'disabled' : ''}>◀ Cols</button>
         <span class="num" style="font-weight:600">Cols ${safeColPage}/${totalColPages}</span>
         <button type="button" class="page-btn" data-optool-col-page="${safeColPage + 1}" ${safeColPage >= totalColPages ? 'disabled' : ''}>Cols ▶</button>
       `
-        : ''
-      }
+      : ''
+    }
     </div>
 
     <div class="pagination-group" aria-label="Row pagination">
       <button type="button" class="page-btn" data-optool-page="1" ${safeRowPage <= 1 ? 'disabled' : ''} title="First page">⟪</button>
       <button type="button" class="page-btn" data-optool-page="${safeRowPage - 1}" ${safeRowPage <= 1 ? 'disabled' : ''}>‹ Prev</button>
       ${pageButtons
-        .map((p) =>
-          p === '...'
-            ? '<span class="page-ellipsis">…</span>'
-            : `<button type="button" class="page-btn ${p === safeRowPage ? 'active' : ''}" data-optool-page="${p}">${p}</button>`
-        )
-        .join('')}
+      .map((p) =>
+        p === '...'
+          ? '<span class="page-ellipsis">…</span>'
+          : `<button type="button" class="page-btn ${p === safeRowPage ? 'active' : ''}" data-optool-page="${p}">${p}</button>`
+      )
+      .join('')}
       <button type="button" class="page-btn" data-optool-page="${safeRowPage + 1}" ${safeRowPage >= totalRowPages ? 'disabled' : ''}>Next ›</button>
       <button type="button" class="page-btn" data-optool-page="${totalRowPages}" ${safeRowPage >= totalRowPages ? 'disabled' : ''} title="Last page">⟫</button>
     </div>
   `;
-  }
+}
 
-  export function renderOptoolPartial(ctx) {
-    const vm = buildOptoolViewModel(ctx);
-    return {
-      kpiCardsHtml: renderOptoolKpiCardsHtml(vm),
-      tbodyHtml: renderOptoolBodyRowsHtml(vm),
-      paginationHtml: renderOptoolPaginationHtml(vm),
-      badgeText: `${vm.indexedRows.length} row(s) • ${vm.displayCols.length}/${vm.cols.length} cols`,
-      hasAnyFilter: vm.hasAnyFilter
-    };
-  }
+export function renderOptoolPartial(ctx) {
+  const vm = buildOptoolViewModel(ctx);
+  return {
+    kpiCardsHtml: renderOptoolKpiCardsHtml(vm),
+    tbodyHtml: renderOptoolBodyRowsHtml(vm),
+    paginationHtml: renderOptoolPaginationHtml(vm),
+    badgeText: `${vm.indexedRows.length} row(s) • ${vm.displayCols.length}/${vm.cols.length} cols`,
+    hasAnyFilter: vm.hasAnyFilter
+  };
+}
 
-  export function renderOptoolTablePanelHtml(ctx, options = {}) {
-    const vm = options.vm || buildOptoolViewModel(ctx);
-    const {
-      tabNames,
-      currentTab,
-      cols,
-      previewCols,
-      displayCols,
-      targetTabs,
-      targetFilter,
-      cfSurveyFilter = 'ALL',
-      optoolColFilters,
-      hasAnyFilter,
-      indexedRows,
-      optoolColMode,
-      showMoreCol
-    } = vm;
-    const { state } = ctx;
-    const searchTerm = ctx.searchTerm || ctx.optoolSearch || '';
-    const hasGroupHeader = currentTab === 'Survey';
-    const groupSpans = hasGroupHeader ? buildOptoolGroupSpans(displayCols, showMoreCol) : [];
-    const showTabStrip = options.showTabStrip !== false;
-    const panelId = options.panelId || 'panel-optool';
-    const panelTitle = options.panelTitle || `${currentTab} Operational Support List`;
-    const panelSubtitle = options.panelSubtitle || `Active records in ${currentTab} worksheet • Live synchronization with Provincial Google Sheets`;
+export function renderOptoolTablePanelHtml(ctx, options = {}) {
+  const vm = options.vm || buildOptoolViewModel(ctx);
+  const {
+    tabNames,
+    currentTab,
+    cols,
+    previewCols,
+    displayCols,
+    targetTabs,
+    targetFilter,
+    cfSurveyFilter = 'ALL',
+    optoolColFilters,
+    hasAnyFilter,
+    indexedRows,
+    optoolColMode,
+    showMoreCol
+  } = vm;
+  const { state } = ctx;
+  const searchTerm = ctx.searchTerm || ctx.optoolSearch || '';
+  const hasGroupHeader = currentTab === 'Survey';
+  const groupSpans = hasGroupHeader ? buildOptoolGroupSpans(displayCols, showMoreCol) : [];
+  const showTabStrip = options.showTabStrip !== false;
+  const panelId = options.panelId || 'panel-optool';
+  const panelTitle = options.panelTitle || `${currentTab} Operational Support List`;
+  const panelSubtitle = options.panelSubtitle || `Active records in ${currentTab} worksheet • Live synchronization with Provincial Google Sheets`;
 
-    return `
+  return `
     <div class="panel" id="${esc(panelId)}">
       ${showTabStrip
-        ? `
+      ? `
       <div class="tab-strip">
         ${tabNames
         .map(
@@ -7678,7 +7674,7 @@ function buildDbByLhidMap(state) {
         .join('')}
       </div>
       `
-        : `
+      : `
       <div class="panel-header nep-panel-header" style="padding:12px 16px;background:#ffffff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:32px;height:32px;border-radius:6px;background:#0f4d2a;color:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">
@@ -7700,7 +7696,7 @@ function buildDbByLhidMap(state) {
         </div>
       </div>
       `
-      }
+    }
 
       <div class="toolbar">
         <div class="toolbar-left">
@@ -7712,19 +7708,19 @@ function buildDbByLhidMap(state) {
             value="${esc(searchTerm)}"
           />
           ${currentTab === 'Database'
-        ? `
+      ? `
             <select id="optool-target-filter" class="toolbar-select" aria-label="Filter by Milestone Target">
               <option value="ALL" ${targetFilter === 'ALL' ? 'selected' : ''}>All Milestone Targets</option>
               <option value="ASSIGNED" ${targetFilter === 'ASSIGNED' ? 'selected' : ''}>Assigned Only</option>
               <option value="UNASSIGNED" ${targetFilter === 'UNASSIGNED' ? 'selected' : ''}>Unassigned</option>
               ${targetTabs
-          .map(
-            (t) => `<option value="${esc(t)}" ${targetFilter === t ? 'selected' : ''}>${esc((TARGET_CARD_META[t] || {}).label || t)}</option>`
-          )
-          .join('')}
+        .map(
+          (t) => `<option value="${esc(t)}" ${targetFilter === t ? 'selected' : ''}>${esc((TARGET_CARD_META[t] || {}).label || t)}</option>`
+        )
+        .join('')}
             </select>
           `
-        : currentTab === 'CF(DOC)'
+      : currentTab === 'CF(DOC)'
         ? `
             <select id="optool-cf-survey-filter" class="toolbar-select" aria-label="Filter LHs Needing or Not Needing Survey" title="Filter LHs Needing or Not Needing Survey">
               <option value="ALL" ${cfSurveyFilter === 'ALL' ? 'selected' : ''}>All LHs</option>
@@ -7733,7 +7729,7 @@ function buildDbByLhidMap(state) {
             </select>
           `
         : ''
-      }
+    }
           <select id="optool-col-mode" class="toolbar-select" aria-label="Horizontal column mode">
             <option value="preview" ${optoolColMode === 'preview' ? 'selected' : ''}>Key Columns (${previewCols.length})</option>
             <option value="paged" ${optoolColMode === 'paged' ? 'selected' : ''}>Horizontal Col Pages (${cols.length})</option>
@@ -7763,23 +7759,23 @@ function buildDbByLhidMap(state) {
         <table id="optool-table"${hasGroupHeader ? ' class="has-col-groups"' : ''}>
           <thead id="optool-thead">
             ${hasGroupHeader
-        ? `
+      ? `
             <tr class="optool-head-groups">
               ${groupSpans
-          .map((g) => `<th colspan="${g.span}" class="col-group-th ${g.variant}">${esc(g.label)}</th>`)
-          .join('')}
+        .map((g) => `<th colspan="${g.span}" class="col-group-th ${g.variant}">${esc(g.label)}</th>`)
+        .join('')}
               <th rowspan="2" class="center col-actions-sticky optool-actions-rowspan">Actions</th>
             </tr>
             `
-        : ''
-      }
+      : ''
+    }
             <tr class="optool-head-titles">
               ${displayCols
-        .map((c) => {
-          const spec = optoolColFilters[c.key];
-          const label = getColumnFilterLabel(spec, c.type);
-          const isActive = label !== 'All';
-          return `
+      .map((c) => {
+        const spec = optoolColFilters[c.key];
+        const label = getColumnFilterLabel(spec, c.type);
+        const isActive = label !== 'All';
+        return `
                     <th${c.linkedFromDb ? ' class="th-linked-db"' : ''}>
                       <button
                         type="button"
@@ -7790,7 +7786,7 @@ function buildDbByLhidMap(state) {
                         aria-haspopup="listbox"
                         aria-label="Filter ${esc(c.label)}"
                         title="${isActive ? `${esc(c.label)}: ${esc(label)}` : `Filter ${esc(c.label)}`}${c.linkedFromDb ? ' (Database linked by LHID)' : ''
-            }"
+          }"
                       >
                         <span class="col-filter-col-title">${esc(c.label)}</span>
                         <span class="col-filter-btn-text" ${isActive ? '' : 'hidden'}>${isActive ? esc(label) : ''}</span>
@@ -7798,8 +7794,8 @@ function buildDbByLhidMap(state) {
                       </button>
                     </th>
                   `;
-        })
-        .join('')}
+      })
+      .join('')}
               ${showMoreCol ? '<th>More Fields</th>' : ''}
               ${hasGroupHeader ? '' : '<th class="center col-actions-sticky">Actions</th>'}
             </tr>
@@ -7815,96 +7811,96 @@ function buildDbByLhidMap(state) {
       </div>
     </div>
     `;
-  }
+}
 
-  export function renderOptoolView(ctx) {
-    const { state } = ctx;
-    const activeTab = ctx.view === 'optool' || !ctx.activeOptoolTab ? 'Database' : ctx.activeOptoolTab;
-    const vm = buildOptoolViewModel({ ...ctx, activeOptoolTab: activeTab });
+export function renderOptoolView(ctx) {
+  const { state } = ctx;
+  const activeTab = ctx.view === 'optool' || !ctx.activeOptoolTab ? 'Database' : ctx.activeOptoolTab;
+  const vm = buildOptoolViewModel({ ...ctx, activeOptoolTab: activeTab });
 
-    return `
+  return `
     ${renderEmptyWorkspaceCallout(state)}
     <div class="optool-kpi-stack" id="optool-kpi-cards">${renderOptoolKpiCardsHtml(vm)}</div>
     ${renderOptoolTablePanelHtml(ctx, {
-      showTabStrip: false,
-      panelTitle: 'Optool Support List(tagging of Target)',
-      panelSubtitle: 'Active records in Database worksheet (All Provinces) • Tagging of Milestone Targets • Google Sheets Live Sync',
-      vm
-    })}
+    showTabStrip: false,
+    panelTitle: 'Optool Support List(tagging of Target)',
+    panelSubtitle: 'Active records in Database worksheet (All Provinces) • Tagging of Milestone Targets • Google Sheets Live Sync',
+    vm
+  })}
   `;
-  }
+}
 
-  export function generateOptoolSupportListCsv(ctx) {
-    const vm = buildOptoolViewModel(ctx);
-    const { currentTab, cols, indexedRows, dbByLhid } = vm;
+export function generateOptoolSupportListCsv(ctx) {
+  const vm = buildOptoolViewModel(ctx);
+  const { currentTab, cols, indexedRows, dbByLhid } = vm;
 
-    const escapeCsv = (val) => {
-      const s = String(val ?? '');
-      return `"${s.replace(/"/g, '""')}"`;
-    };
+  const escapeCsv = (val) => {
+    const s = String(val ?? '');
+    return `"${s.replace(/"/g, '""')}"`;
+  };
 
-    const headers = cols.map((c) => c.label || c.header || c.key);
-    const csvLines = [headers.map(escapeCsv).join(',')];
+  const headers = cols.map((c) => c.label || c.header || c.key);
+  const csvLines = [headers.map(escapeCsv).join(',')];
 
-    indexedRows.forEach(({ row }) => {
-      const rowVals = [];
-      for (const c of cols) {
-        let val = getOptoolCellValue(row, c, dbByLhid);
-        if (val === null || val === undefined || val === '—') val = '';
-        if (c.type === 'decimal' && val !== '') {
-          const num = parseFloat(String(val).replace(/,/g, ''));
-          val = !isNaN(num) ? num.toFixed(4) : val;
-        }
-        if (c.key === 'lhid' && val) {
-          val = formatLhidDisplay(val);
-        }
-        rowVals.push(val);
+  indexedRows.forEach(({ row }) => {
+    const rowVals = [];
+    for (const c of cols) {
+      let val = getOptoolCellValue(row, c, dbByLhid);
+      if (val === null || val === undefined || val === '—') val = '';
+      if (c.type === 'decimal' && val !== '') {
+        const num = parseFloat(String(val).replace(/,/g, ''));
+        val = !isNaN(num) ? num.toFixed(4) : val;
       }
-      csvLines.push(rowVals.map(escapeCsv).join(','));
-    });
+      if (c.key === 'lhid' && val) {
+        val = formatLhidDisplay(val);
+      }
+      rowVals.push(val);
+    }
+    csvLines.push(rowVals.map(escapeCsv).join(','));
+  });
 
-    const safeTab = currentTab.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filename = `Supportlist_${safeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
-    return {
-      csvText: csvLines.join('\r\n'),
-      filename,
-      rowCount: indexedRows.length,
-      currentTab
-    };
-  }
+  const safeTab = currentTab.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `Supportlist_${safeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+  return {
+    csvText: csvLines.join('\r\n'),
+    filename,
+    rowCount: indexedRows.length,
+    currentTab
+  };
+}
 
-  export function renderSyncView(ctx) {
-    const { state, schemas, gasScript, gasHtml, provinceScope } = ctx;
-    const snap = state.liveHubSnapshot || {};
-    const nodeStatuses = state.nodeStatuses || {};
-    const isScoped = Boolean(provinceScope?.code);
+export function renderSyncView(ctx) {
+  const { state, schemas, gasScript, gasHtml, provinceScope } = ctx;
+  const snap = state.liveHubSnapshot || {};
+  const nodeStatuses = state.nodeStatuses || {};
+  const isScoped = Boolean(provinceScope?.code);
 
-    return `
+  return `
     <!-- Section 1: Regional Google Sheets Data Source Repository -->
     <div class="panel">
       <div class="panel-header">
         <div>
           <h3 class="panel-title">1. ${isScoped
-        ? `${esc(provinceScope.provinceName)} Google Sheet Node`
-        : 'Regional Google Sheets Data Source Repository'
-      }</h3>
+      ? `${esc(provinceScope.provinceName)} Google Sheet Node`
+      : 'Regional Google Sheets Data Source Repository'
+    }</h3>
           <p class="panel-subtitle">${isScoped
-        ? `Assigned Provincial Ledger: ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
-        : 'Central Aggregator Hub + 6 Provincial Nodes (DAR Region VIII Active Registry)'
-      }</p>
+      ? `Assigned Provincial Ledger: ${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})`
+      : 'Central Aggregator Hub + 6 Provincial Nodes (DAR Region VIII Active Registry)'
+    }</p>
         </div>
         <div class="toolbar-left">
           ${isScoped
-        ? ''
-        : `
+      ? ''
+      : `
                 <button class="btn btn-secondary btn-sm" id="btn-sync-probe">Verify Live Hub Connection</button>
                 <button class="btn btn-secondary btn-sm" id="btn-sync-pull-hub">Sync &amp; Merge Live Hub Sheet</button>
               `
-      }
+    }
           <button class="btn btn-primary btn-sm" id="btn-sync-all-nodes">${isScoped
-        ? `Sync ${esc(provinceScope.provinceName)} Sheet`
-        : 'Sync All 7 Google Sheets'
-      }</button>
+      ? `Sync ${esc(provinceScope.provinceName)} Sheet`
+      : 'Sync All 7 Google Sheets'
+    }</button>
         </div>
       </div>
 
@@ -7922,29 +7918,29 @@ function buildDbByLhidMap(state) {
           </thead>
           <tbody>
             ${schemas.registry
-        .map((node) => {
-          const isHub = node.role === 'Central Aggregator';
-          const ns = nodeStatuses[node.code];
-          let statusBadge = '';
-          if (ns) {
-            if (ns.status === 'synced') {
-              statusBadge = `<span class="badge badge-green">Synced (${ns.importedRows} rows)</span>`;
-            } else if (ns.status === 'unauthorized') {
-              statusBadge = '<span class="badge badge-amber">401 Restricted (Share Link or GAS)</span>';
-            } else {
-              statusBadge = '<span class="badge badge-red">Connection Error</span>';
-            }
+      .map((node) => {
+        const isHub = node.role === 'Central Aggregator';
+        const ns = nodeStatuses[node.code];
+        let statusBadge = '';
+        if (ns) {
+          if (ns.status === 'synced') {
+            statusBadge = `<span class="badge badge-green">Synced (${ns.importedRows} rows)</span>`;
+          } else if (ns.status === 'unauthorized') {
+            statusBadge = '<span class="badge badge-amber">401 Restricted (Share Link or GAS)</span>';
           } else {
-            statusBadge = isHub
-              ? snap.reachable === true
-                ? '<span class="badge badge-green">Public XLSX Reachable</span>'
-                : snap.reachable === false
-                  ? '<span class="badge badge-red">Connection Error</span>'
-                  : '<span class="badge badge-gray">Not Checked Yet</span>'
-              : '<span class="badge badge-amber">DAR Private / GAS ETL Node</span>';
+            statusBadge = '<span class="badge badge-red">Connection Error</span>';
           }
+        } else {
+          statusBadge = isHub
+            ? snap.reachable === true
+              ? '<span class="badge badge-green">Public XLSX Reachable</span>'
+              : snap.reachable === false
+                ? '<span class="badge badge-red">Connection Error</span>'
+                : '<span class="badge badge-gray">Not Checked Yet</span>'
+            : '<span class="badge badge-amber">DAR Private / GAS ETL Node</span>';
+        }
 
-          return `
+        return `
                   <tr>
                     <td class="mono" style="font-weight:800">${esc(node.code)}</td>
                     <td style="font-weight:600">${esc(node.jurisdiction)}</td>
@@ -7963,25 +7959,25 @@ function buildDbByLhidMap(state) {
                     </td>
                   </tr>
                 `;
-        })
-        .join('')}
+      })
+      .join('')}
           </tbody>
         </table>
       </div>
       ${snap.checkedAt
-        ? `
+      ? `
         <div class="panel-body" style="border-top:1px solid var(--border);background:var(--surface-alt)">
           <strong>Last Live Regional Hub Probe (${esc(new Date(snap.checkedAt).toLocaleString())}):</strong>
           ${snap.reachable
-          ? `Detected tabs: ${Object.entries(snap.tabRowCounts || {})
-            .map(([tab, cnt]) => `<span class="badge badge-blue" style="margin-left:6px">${esc(tab)}: ${cnt} rows</span>`)
-            .join('')}`
-          : `<span class="badge badge-red">${esc(snap.error)}</span>`
-        }
+        ? `Detected tabs: ${Object.entries(snap.tabRowCounts || {})
+          .map(([tab, cnt]) => `<span class="badge badge-blue" style="margin-left:6px">${esc(tab)}: ${cnt} rows</span>`)
+          .join('')}`
+        : `<span class="badge badge-red">${esc(snap.error)}</span>`
+      }
         </div>
       `
-        : ''
-      }
+      : ''
+    }
     </div>
 
     <!-- Section 2: Workbook Import & GAS Web App Endpoint -->
@@ -8010,22 +8006,22 @@ function buildDbByLhidMap(state) {
             </label>
           </div>
           ${isScoped
-        ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">Imports are automatically filtered to <strong>${esc(
-          provinceScope.provinceName
-        )} (${esc(provinceScope.code)})</strong> records.</p>`
-        : `
+      ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">Imports are automatically filtered to <strong>${esc(
+        provinceScope.provinceName
+      )} (${esc(provinceScope.code)})</strong> records.</p>`
+      : `
                 <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">
                   <button class="btn btn-secondary btn-sm" id="btn-reset-sample">Restore Sample Staging Data</button>
                   <button class="btn btn-danger btn-sm" id="btn-clear-workspace">Clear to Empty Live Workspace</button>
                 </div>
               `
-      }
+    }
         </div>
       </div>
 
       ${isScoped
-        ? ''
-        : `
+      ? ''
+      : `
       <div class="panel">
         <div class="panel-header">
           <div>
@@ -8053,7 +8049,7 @@ function buildDbByLhidMap(state) {
         </div>
       </div>
       `
-      }
+    }
     </section>
 
     <!-- Section 2b: Google Drive Provincial Milestone Storage -->
@@ -8099,8 +8095,8 @@ function buildDbByLhidMap(state) {
     </div>
 
     ${isScoped
-        ? ''
-        : `
+      ? ''
+      : `
     <!-- Section 3: Ready-to-Deploy GAS ETL Pipeline Code -->
     <div class="panel">
       <div class="panel-header">
@@ -8133,7 +8129,7 @@ function buildDbByLhidMap(state) {
       </div>
     </div>
     `
-      }
+    }
 
     <!-- Section 4: Sync & Consolidation Audit Log -->
     <div class="panel">
@@ -8155,44 +8151,44 @@ function buildDbByLhidMap(state) {
           </thead>
           <tbody>
             ${(state.syncLogs || [])
-        .map(
-          (log) => `
+      .map(
+        (log) => `
               <tr>
                 <td class="mono" style="white-space:nowrap;font-size:11.5px">${esc(new Date(log.timestamp).toLocaleString())}</td>
                 <td style="font-weight:600">${esc(log.source)}</td>
                 <td>
                   <span class="badge ${log.status === 'success'
-              ? 'badge-green'
-              : log.status === 'error'
-                ? 'badge-red'
-                : 'badge-blue'
-            }">${esc(log.status.toUpperCase())}</span>
+            ? 'badge-green'
+            : log.status === 'error'
+              ? 'badge-red'
+              : 'badge-blue'
+          }">${esc(log.status.toUpperCase())}</span>
                 </td>
                 <td>${esc(log.message)}</td>
               </tr>
             `
-        )
-        .join('')}
+      )
+      .join('')}
           </tbody>
         </table>
       </div>
     </div>
   `;
-  }
+}
 
-  /** Render Administrator Account Confirmation & User Directory view. */
-  export function renderUsersView({ users = [], currentUser = null }) {
-    const pendingCount = users.filter((u) => u.status === 'pending').length;
-    const approvedCount = users.filter((u) => u.status === 'approved').length;
-    const rejectedCount = users.filter((u) => u.status === 'rejected').length;
+/** Render Administrator Account Confirmation & User Directory view. */
+export function renderUsersView({ users = [], currentUser = null }) {
+  const pendingCount = users.filter((u) => u.status === 'pending').length;
+  const approvedCount = users.filter((u) => u.status === 'approved').length;
+  const rejectedCount = users.filter((u) => u.status === 'rejected').length;
 
-    const statusBadge = (status) => {
-      if (status === 'approved') return '<span class="badge badge-green">CONFIRMED</span>';
-      if (status === 'rejected') return '<span class="badge badge-red">DECLINED</span>';
-      return '<span class="badge badge-amber">PENDING CONFIRMATION</span>';
-    };
+  const statusBadge = (status) => {
+    if (status === 'approved') return '<span class="badge badge-green">CONFIRMED</span>';
+    if (status === 'rejected') return '<span class="badge badge-red">DECLINED</span>';
+    return '<span class="badge badge-amber">PENDING CONFIRMATION</span>';
+  };
 
-    return `
+  return `
     <div class="view-header">
       <div>
         <h2>Account Confirmations &amp; User Access</h2>
@@ -8253,14 +8249,14 @@ function buildDbByLhidMap(state) {
           </thead>
           <tbody>
             ${users.length === 0
-        ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">No user accounts found.</td></tr>'
-        : users
-          .map((u) => {
-            const isSelf = currentUser && currentUser.id === u.id;
-            const createdText = u.createdAt
-              ? new Date(u.createdAt).toLocaleString()
-              : '—';
-            return `
+      ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">No user accounts found.</td></tr>'
+      : users
+        .map((u) => {
+          const isSelf = currentUser && currentUser.id === u.id;
+          const createdText = u.createdAt
+            ? new Date(u.createdAt).toLocaleString()
+            : '—';
+          return `
                         <tr>
                           <td>
                             <strong>${esc(u.name)}</strong>
@@ -8276,60 +8272,60 @@ function buildDbByLhidMap(state) {
                           <td class="mono" style="font-size:11.5px;white-space:nowrap">${esc(createdText)}</td>
                           <td style="text-align:right;white-space:nowrap">
                             ${u.status !== 'approved'
-                ? `<button class="btn btn-primary btn-sm" data-user-action="approve" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">✓ Confirm</button>`
-                : ''
-              }
+              ? `<button class="btn btn-primary btn-sm" data-user-action="approve" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">✓ Confirm</button>`
+              : ''
+            }
                             ${u.status !== 'rejected' && !isSelf
-                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="reject" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">Decline</button>`
-                : ''
-              }
+              ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="reject" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">Decline</button>`
+              : ''
+            }
                             ${u.status === 'approved' && !isSelf
-                ? `<button class="btn btn-secondary btn-sm" style="margin-left:4px" data-user-action="${u.role === 'admin' ? 'demote' : 'promote'
-                }" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">${u.role === 'admin' ? 'Set User' : 'Make Admin'
-                }</button>`
-                : ''
-              }
+              ? `<button class="btn btn-secondary btn-sm" style="margin-left:4px" data-user-action="${u.role === 'admin' ? 'demote' : 'promote'
+              }" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}">${u.role === 'admin' ? 'Set User' : 'Make Admin'
+              }</button>`
+              : ''
+            }
                             ${!isSelf
-                ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="delete" data-user-id="${esc(
-                  u.id
-                )}" data-user-email="${esc(u.email)}" data-user-name="${esc(u.name || u.email)}">Delete</button>`
-                : ''
-              }
+              ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" data-user-action="delete" data-user-id="${esc(
+                u.id
+              )}" data-user-email="${esc(u.email)}" data-user-name="${esc(u.name || u.email)}">Delete</button>`
+              : ''
+            }
                           </td>
                         </tr>
                       `;
-          })
-          .join('')
-      }
+        })
+        .join('')
+    }
           </tbody>
         </table>
       </div>
     </div>
   `;
+}
+
+export function renderSurveySupportListModalHtml({
+  rows = [],
+  province = 'ALL',
+  status = 'ALL',
+  stageKey = '',
+  stageLabel = '',
+  targetYear = 'ALL',
+  totalArea = 0,
+  mode = 'accomplished',
+  balanceArea = ''
+}) {
+  const isBalanceMode = mode === 'balance' || mode === 'pending';
+  const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
+  let statusDisplay = '';
+  if (isBalanceMode) {
+    statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
+  } else {
+    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
   }
+  const totalCount = rows.length;
 
-  export function renderSurveySupportListModalHtml({
-    rows = [],
-    province = 'ALL',
-    status = 'ALL',
-    stageKey = '',
-    stageLabel = '',
-    targetYear = 'ALL',
-    totalArea = 0,
-    mode = 'accomplished',
-    balanceArea = ''
-  }) {
-    const isBalanceMode = mode === 'balance' || mode === 'pending';
-    const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
-    let statusDisplay = '';
-    if (isBalanceMode) {
-      statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
-    } else {
-      statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : 'All Current Statuses')) : status;
-    }
-    const totalCount = rows.length;
-
-    return `
+  return `
     <div class="survey-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
       <!-- Summary Header Banner -->
       <div style="background:${isBalanceMode ? '#fefce8' : '#f0fdf4'};border:1px solid ${isBalanceMode ? '#fde047' : '#bbf7d0'};border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -8403,22 +8399,22 @@ function buildDbByLhidMap(state) {
           </thead>
           <tbody>
             ${rows.length === 0
-        ? `
+      ? `
               <tr>
                 <td colspan="14" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
                   <div style="font-size:14px;font-weight:700;color:var(--text);">${isBalanceMode
-          ? `All current Survey records for ${esc(provLabel)} have completed this milestone!`
-          : 'No landholdings found for this selection'
-        }</div>
+        ? `All current Survey records for ${esc(provLabel)} have completed this milestone!`
+        : 'No landholdings found for this selection'
+      }</div>
                   ${isBalanceMode && balanceArea
-          ? `<div style="font-size:12.5px;margin-top:6px;color:var(--text-muted);">To fulfill the remaining quota balance (<strong>${esc(balanceArea)} HAS</strong>), assign more workable parcels from the Database into Survey.</div>`
-          : ''
-        }
+        ? `<div style="font-size:12.5px;margin-top:6px;color:var(--text-muted);">To fulfill the remaining quota balance (<strong>${esc(balanceArea)} HAS</strong>), assign more workable parcels from the Database into Survey.</div>`
+        : ''
+      }
                 </td>
               </tr>
             `
-        : rows
-          .map((r, i) => `
+      : rows
+        .map((r, i) => `
               <tr>
                 <td class="text-muted center" style="font-size:11px;">${i + 1}</td>
                 <td>
@@ -8449,52 +8445,52 @@ function buildDbByLhidMap(state) {
                 </td>
               </tr>
             `)
-          .join('')
-      }
+        .join('')
+    }
           </tbody>
         </table>
       </div>
     </div>
   `;
+}
+
+export function renderCfSupportListModalHtml({
+  rows = [],
+  province = 'ALL',
+  status = 'ALL',
+  stageKey = '',
+  stageLabel = '',
+  targetYear = 'ALL',
+  totalArea = 0,
+  mode = 'accomplished',
+  balanceArea = '',
+  tabName = 'CF(DOC)',
+  dates = null
+}) {
+  const isBalanceMode = mode === 'balance' || mode === 'pending';
+  const isTargetMode = mode === 'target';
+  const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
+  let statusDisplay = '';
+  if (isTargetMode) {
+    statusDisplay = 'NEP Target Workable Pool';
+  } else if (isBalanceMode) {
+    statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
+  } else {
+    statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : `All ${tabName} Records`)) : status;
   }
+  const totalCount = rows.length;
 
-  export function renderCfSupportListModalHtml({
-    rows = [],
-    province = 'ALL',
-    status = 'ALL',
-    stageKey = '',
-    stageLabel = '',
-    targetYear = 'ALL',
-    totalArea = 0,
-    mode = 'accomplished',
-    balanceArea = '',
-    tabName = 'CF(DOC)',
-    dates = null
-  }) {
-    const isBalanceMode = mode === 'balance' || mode === 'pending';
-    const isTargetMode = mode === 'target';
-    const provLabel = province === 'ALL' ? 'Region VIII (All Provinces)' : province;
-    let statusDisplay = '';
-    if (isTargetMode) {
-      statusDisplay = 'NEP Target Workable Pool';
-    } else if (isBalanceMode) {
-      statusDisplay = stageLabel ? `Balance / Pending: ${stageLabel}` : 'Balance / Pending Milestones';
-    } else {
-      statusDisplay = status === 'ALL' ? (stageLabel || (stageKey ? 'Accomplished Milestones' : `All ${tabName} Records`)) : status;
-    }
-    const totalCount = rows.length;
+  const effectiveDates = Array.isArray(dates) && dates.length > 0
+    ? dates
+    : [
+      { key: 'dateFiConducted', shortLabel: 'Date FI Conducted' },
+      { key: 'datePreparedSigned', shortLabel: 'Date Prepared & Signed' },
+      { key: 'reportedMonth', shortLabel: 'Reported Month' }
+    ];
 
-    const effectiveDates = Array.isArray(dates) && dates.length > 0
-      ? dates
-      : [
-        { key: 'dateFiConducted', shortLabel: 'Date FI Conducted' },
-        { key: 'datePreparedSigned', shortLabel: 'Date Prepared & Signed' },
-        { key: 'reportedMonth', shortLabel: 'Reported Month' }
-      ];
+  const colSpanCount = 9 + effectiveDates.length + 1;
 
-    const colSpanCount = 9 + effectiveDates.length + 1;
-
-    return `
+  return `
     <div class="cf-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
       <!-- Summary Header Banner -->
       <div style="background:${isBalanceMode ? '#fefce8' : isTargetMode ? '#eff6ff' : '#f0fdf4'};border:1px solid ${isBalanceMode ? '#fde047' : isTargetMode ? '#93c5fd' : '#bbf7d0'};border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -8565,16 +8561,16 @@ function buildDbByLhidMap(state) {
           </thead>
           <tbody>
             ${rows.length === 0
-        ? `
+      ? `
               <tr>
                 <td colspan="${colSpanCount}" class="center" style="padding:28px 16px;color:var(--text-muted);">
                   No matching landholdings found for this selection.
                 </td>
               </tr>
             `
-        : rows
-          .map((r, idx) => {
-            return `
+      : rows
+        .map((r, idx) => {
+          return `
                 <tr>
                   <td class="center font-mono" style="font-size:11px;color:var(--text-muted);">${idx + 1}</td>
                   <td>
@@ -8599,10 +8595,10 @@ function buildDbByLhidMap(state) {
                     </span>
                   </td>
                   ${effectiveDates.map((d) => {
-              const dVal = r[d.key] || r.datesMap?.[d.key];
-              const displayVal = d.key === 'reportedMonth' || d.key === 'monthReported' ? formatReportedMonthDisplay(dVal) : dVal;
-              return `<td>${displayVal && displayVal !== '—' ? `<span class="badge badge-green">✔ ${esc(displayVal)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>`;
-            }).join('')}
+            const dVal = r[d.key] || r.datesMap?.[d.key];
+            const displayVal = d.key === 'reportedMonth' || d.key === 'monthReported' ? formatReportedMonthDisplay(dVal) : dVal;
+            return `<td>${displayVal && displayVal !== '—' ? `<span class="badge badge-green">✔ ${esc(displayVal)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>`;
+          }).join('')}
                   <td>${r.targetYear ? `<span class="badge badge-gray">${esc(formatYearDisplay(r.targetYear))}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
                   <td class="right">
                     <button type="button" class="btn btn-secondary btn-xs" data-lhid="${esc(formatLhidDisplay(r.lhid))}" style="font-size:11px;padding:2px 8px;" title="View Landholding Drawer">
@@ -8611,9 +8607,9 @@ function buildDbByLhidMap(state) {
                   </td>
                 </tr>
               `;
-          })
-          .join('')
-      }
+        })
+        .join('')
+    }
           </tbody>
         </table>
       </div>
@@ -8701,8 +8697,14 @@ export function renderLeaseholdView(ctx) {
   const totalArbs = rows.reduce((sum, r) => sum + (parseInt(r.noOfArbs || r['Number of ARBs'], 10) || 0), 0);
   const totalLeasePesos = rows.reduce((sum, r) => sum + (parseNumericValue(r.leaseInPesos || r['LEASE IN PESOS']) || 0), 0);
 
-  // Distinct target years for filter dropdown (Column AF)
-  const uniqueYears = Array.from(new Set(rawRows.map(getLeaseholdTargetYear).filter(Boolean))).sort();
+  // Distinct target years for filter dropdown (Column AF) - strictly valid 4-digit years (e.g. 2025, 2026)
+  const uniqueYears = Array.from(
+    new Set(
+      rawRows
+        .map(getLeaseholdTargetYear)
+        .filter((y) => /^20[1-3]\d$/.test(String(y || '').trim()))
+    )
+  ).sort();
 
   // Pagination
   const pageSize = leaseholdPageSize === 'ALL' ? totalCount || 1 : Math.max(1, parseInt(leaseholdPageSize, 10) || 25);
@@ -8878,15 +8880,15 @@ export function renderLeaseholdView(ctx) {
                 </td>
               </tr>
             ` : pageRows.map((r, i) => {
-              const rowNum = startIndex + i + 1;
-              const globalIndex = rawRows.indexOf(r);
-              const rowId = r.id || `idx-${globalIndex}`;
-              const loFull = [r.loSurname, r.loFirstname, r.loMi].filter(Boolean).join(', ');
-              const lhFull = [r.leaseholderSurname, r.leaseholderFirstname, r.leaseholderMi].filter(Boolean).join(', ');
-              const status = String(r.statusOfContract || 'New').trim();
-              const isAlive = String(r.tenantStatus || 'Alive').toLowerCase().includes('alive');
+    const rowNum = startIndex + i + 1;
+    const globalIndex = rawRows.indexOf(r);
+    const rowId = r.id || `idx-${globalIndex}`;
+    const loFull = [r.loSurname, r.loFirstname, r.loMi].filter(Boolean).join(', ');
+    const lhFull = [r.leaseholderSurname, r.leaseholderFirstname, r.leaseholderMi].filter(Boolean).join(', ');
+    const status = String(r.statusOfContract || 'New').trim();
+    const isAlive = String(r.tenantStatus || 'Alive').toLowerCase().includes('alive');
 
-              return `
+    return `
                 <tr style="border-bottom:1px solid var(--border,#e2e8f0);transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                   <td style="text-align:center;font-weight:700;color:var(--text-muted);padding:8px;">${rowNum}</td>
                   <td style="padding:8px 10px;"><span class="badge badge-gray" style="font-weight:600;">${esc(r.provs || '—')}</span></td>
@@ -8956,7 +8958,7 @@ export function renderLeaseholdView(ctx) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+  }).join('')}
           </tbody>
         </table>
       </div>
@@ -9172,8 +9174,8 @@ export function renderLeaseholdModalHtml(existingRow, rowIndex, ctx) {
           <label for="lh-reportMonth">Report Month (Words)</label>
           <select id="lh-reportMonth" name="reportMonth" class="form-control">
             ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(
-              (m) => `<option value="${m}" ${reportMonthVal === m ? 'selected' : ''}>${m}</option>`
-            ).join('')}
+    (m) => `<option value="${m}" ${reportMonthVal === m ? 'selected' : ''}>${m}</option>`
+  ).join('')}
           </select>
         </div>
       </div>

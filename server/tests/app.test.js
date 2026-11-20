@@ -4680,6 +4680,13 @@ test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs
   assert.equal(getLeaseholdAreaTenanted({ 'AREA TENANTED (Has)': '4.1250' }), 4.1250);
   assert.equal(getLeaseholdTargetYear({ 'TARGET YEAR': '2026.0' }), '2026');
   assert.equal(getLeaseholdTargetYear({ 'Target Year': '2027' }), '2027');
+  // Discards monetary amounts from misaligned columns (e.g. 10080, 2221.67, 25200)
+  assert.equal(getLeaseholdTargetYear({ 'TARGET YEAR': '10080' }), '');
+  assert.equal(getLeaseholdTargetYear({ 'TARGET YEAR': '2221.67' }), '');
+  assert.equal(getLeaseholdTargetYear({ 'TARGET YEAR': '25200' }), '');
+  // Falls back to registered contract date year when TARGET YEAR is empty or monetary amount
+  assert.equal(getLeaseholdTargetYear({ 'TARGET YEAR': '10080', dateContractRegistered: '03/15/2025' }), '2025');
+  assert.equal(getLeaseholdTargetYear({ 'TARGET YEAR': '', datePlrRegistered: '09/01/2026' }), '2026');
 
   // 3. renderProvTableDetailHtml renders milestone whereabouts and survey split directly below table with graph beside
   const detailHtml = renderProvTableDetailHtml({ breakdown: esaBreakdown, selectedCode: 'ESA' });
