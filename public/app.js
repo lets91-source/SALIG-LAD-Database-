@@ -980,12 +980,8 @@ function renderStatusBanner() {
 function updateNavCounts() {
   const msCountEl = document.getElementById('nav-ms-count');
   if (msCountEl) msCountEl.textContent = appState.state.milestoneData.length;
-  const totalOptool = Object.values(appState.state.optool).reduce(
-    (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
-    0
-  );
   const optoolCountEl = document.getElementById('nav-optool-count');
-  if (optoolCountEl) optoolCountEl.textContent = totalOptool;
+  if (optoolCountEl) optoolCountEl.textContent = (appState.state.optool?.Database || []).length;
   const cfCountEl = document.getElementById('nav-cf-count');
   if (cfCountEl) cfCountEl.textContent = (appState.state.optool?.['CF(DOC)'] || []).length;
   const surveyCountEl = document.getElementById('nav-survey-count');
@@ -1026,10 +1022,12 @@ function updateHeaderTitles() {
       `Standardized ${scopeLabel} Schema • Auto-Index (PROV-YYYYMM-XXXX) • LGU Master List Validation`
     ],
     optool: [
-      appState.provinceScope ? `Optool Support List — ${scopeLabel}` : 'Optool Support List',
+      appState.provinceScope
+        ? `Optool Support List(tagging of Target) — ${scopeLabel}`
+        : 'Optool Support List(tagging of Target)',
       appState.provinceScope
         ? `SALIG (LAD Database) Support List • ${scopeLabel} Records Only`
-        : 'SALIG (LAD Database) Master Support List • 6 Operational Worksheets'
+        : 'SALIG (LAD Database) Master Support List • Tagging of Milestone Targets'
     ],
     'target-summary': [
       `${scopeLabel} Target Summary`,

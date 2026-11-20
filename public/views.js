@@ -5245,7 +5245,7 @@ export function renderDashboardView(ctx) {
             <h3 class="panel-title">${esc(scopeBadge)} Provincial Breakdown</h3>
             <p class="panel-subtitle">LAD Balance target, Temp. Park, master parcels &amp; registered titles per province</p>
           </div>
-          <button type="button" class="btn btn-secondary btn-xs" data-nav="optool">Open OPTool Support List</button>
+          <button type="button" class="btn btn-secondary btn-xs" data-nav="optool">Open Optool Support List(tagging of Target)</button>
         </div>
         <div class="table-wrap">
           <table class="prov-breakdown-table">
@@ -7057,12 +7057,18 @@ function buildDbByLhidMap(state) {
 
   export function renderOptoolView(ctx) {
     const { state } = ctx;
-    const vm = buildOptoolViewModel(ctx);
+    const activeTab = ctx.activeOptoolTab || 'Database';
+    const vm = buildOptoolViewModel({ ...ctx, activeOptoolTab: activeTab });
 
     return `
     ${renderEmptyWorkspaceCallout(state)}
     <div class="optool-kpi-stack" id="optool-kpi-cards">${renderOptoolKpiCardsHtml(vm)}</div>
-    ${renderOptoolTablePanelHtml(ctx, { showTabStrip: true, vm })}
+    ${renderOptoolTablePanelHtml(ctx, {
+      showTabStrip: false,
+      panelTitle: 'Optool Support List(tagging of Target)',
+      panelSubtitle: `Active records in ${activeTab} worksheet • Tagging of Milestone Targets • Google Sheets Live Sync`,
+      vm
+    })}
   `;
   }
 
