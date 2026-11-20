@@ -47,6 +47,9 @@ import {
   isTempPark,
   resolveProvinceCode,
   renderDashboardView,
+  computeMilestoneWhereaboutsBreakdown,
+  renderMilestoneWhereaboutsSectionHtml,
+  renderMapDetailCardInner,
   renderLeaseholdView,
   renderLeaseholdModalHtml,
   generateLeaseholdCsv
@@ -4609,6 +4612,75 @@ test('performProvincialSync imports both optool and milestoneData, and /api/sync
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs Not Needing Survey breakdown', () => {
+  const sampleState = {
+    optool: {
+      Database: [
+        { lhid: '803000101', province: 'EASTERN SAMAR', provinceCode: 'ESA', ladStatus: 'LAD Balance', carpable: 5.5 },
+        { lhid: '803000102', province: 'EASTERN SAMAR', provinceCode: 'ESA', ladStatus: 'Temp. Park', carpable: 4.5 },
+        { lhid: '803000201', province: 'LEYTE', provinceCode: 'LEY', ladStatus: 'LAD Balance', carpable: 10.0 }
+      ],
+      'CF(DOC)': [
+        { lhid: '803000101', province: 'EASTERN SAMAR', surveyRequirement: 'Needing Survey', totalArea: 5.5 },
+        { lhid: '803000102', province: 'EASTERN SAMAR', surveyRequirement: 'Not Needing Survey', totalArea: 4.5 },
+        { lhid: '803000201', province: 'LEYTE', surveyRequirement: 'Needing Survey', totalArea: 10.0 }
+      ],
+      Survey: [
+        { lhid: '803000101', province: 'EASTERN SAMAR', totalArea: 5.5 }
+      ],
+      MOV: [
+        { lhid: '803000101', province: 'EASTERN SAMAR', totalArea: 5.5 }
+      ],
+      RegistrationDistribution: [],
+      Installation: [],
+      Leasehold: []
+    }
+  };
+
+  // 1. Consolidated Region VIII Breakdown
+  const allBreakdown = computeMilestoneWhereaboutsBreakdown(sampleState, null, 'ALL');
+  assert.equal(allBreakdown.isAll, true);
+  assert.equal(allBreakdown.cf.count, 3);
+  assert.equal(allBreakdown.cf.needingCount, 2);
+  assert.equal(allBreakdown.cf.notNeedingCount, 1);
+  assert.equal(allBreakdown.survey.count, 1);
+  assert.equal(allBreakdown.targetLhs, 2); // 803000101 and 803000201
+
+  // 2. Eastern Samar Provincial Filter Breakdown
+  const esaBreakdown = computeMilestoneWhereaboutsBreakdown(sampleState, null, 'ESA');
+  assert.equal(esaBreakdown.isAll, false);
+  assert.equal(esaBreakdown.targetLhs, 1);
+  assert.equal(esaBreakdown.cf.count, 2);
+  assert.equal(esaBreakdown.cf.needingCount, 1);
+  assert.equal(esaBreakdown.cf.notNeedingCount, 1);
+  assert.equal(esaBreakdown.survey.count, 1);
+
+  // 3. renderMapDetailCardInner renders milestone whereabouts and survey split
+  const cardHtml = renderMapDetailCardInner('ESA', [{ code: 'ESA', name: 'EASTERN SAMAR', ladLhs: 1, ladArea: 5.5, tempLhs: 1, tempArea: 4.5 }], {}, esaBreakdown);
+  assert.ok(cardHtml.includes('Milestone Whereabouts Details'), 'Card has milestone whereabouts section');
+  assert.ok(cardHtml.includes('NEEDING SURVEY'), 'Card shows NEEDING SURVEY label');
+  assert.ok(cardHtml.includes('NOT NEEDING'), 'Card shows NOT NEEDING label');
+  assert.ok(cardHtml.includes('data-nav-survey="Needing Survey"'), 'Card has link for Needing Survey');
+
+  // 4. renderMilestoneWhereaboutsSectionHtml renders dynamic cards and survey badges
+  const sectionHtml = renderMilestoneWhereaboutsSectionHtml({ breakdown: esaBreakdown, selectedCode: 'ESA' });
+  assert.ok(sectionHtml.includes('Whereabouts per Milestone'), 'Renders Whereabouts per Milestone header');
+  assert.ok(sectionHtml.includes('EASTERN SAMAR (ESA) Active'), 'Renders ESA Active badge');
+  assert.ok(sectionHtml.includes('Needing: <strong>1</strong>'), 'Renders Needing count on CF card');
+  assert.ok(sectionHtml.includes('Not Needing: <strong>1</strong>'), 'Renders Not Needing count on CF card');
+  assert.ok(sectionHtml.includes('data-dash-reset-prov="ALL"'), 'Renders Show All Region VIII reset button');
+
+  // 5. renderMilestoneWhereaboutsView for cf-whereabouts renders interactive split KPI cards
+  const cfHtml = renderMilestoneWhereaboutsView({
+    state: sampleState,
+    filters: {},
+    cfSurveyFilter: 'ALL'
+  }, WHEREABOUTS_CONFIGS['cf-whereabouts']);
+  assert.ok(cfHtml.includes('data-cf-survey-kpi="Needing Survey"'), 'Renders Needing Survey interactive KPI card');
+  assert.ok(cfHtml.includes('data-cf-survey-kpi="Not Needing Survey"'), 'Renders Not Needing Survey interactive KPI card');
+});
+
 
 
 

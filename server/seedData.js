@@ -372,6 +372,7 @@ export function createSeedState() {
         datePreparedSigned: '2026-05-03',
         target: 'Current',
         reportedMonth: 'May 2026',
+        surveyRequirement: 'Needing Survey',
         remarks: 'Complete CF forwarded to Valuation',
         targetYear: '2026'
       },
@@ -394,6 +395,7 @@ export function createSeedState() {
         datePreparedSigned: '2026-06-08',
         target: 'Current',
         reportedMonth: 'June 2026',
+        surveyRequirement: 'Not Needing Survey',
         remarks: 'Validated by DARPO Biliran',
         targetYear: '2026'
       }

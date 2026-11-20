@@ -6,6 +6,8 @@ import {
   LINKED_DB_PROFILE_FIELDS,
   renderDashboardView,
   renderMapDetailCardInner,
+  computeMilestoneWhereaboutsBreakdown,
+  renderMilestoneWhereaboutsSectionHtml,
   renderMilestonesView,
   renderOptoolView,
   renderOptoolPartial,
@@ -1354,10 +1356,33 @@ function renderActiveView() {
   });
 
   container.querySelectorAll('[data-nav]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      appState.view = btn.dataset.nav;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetView = btn.dataset.nav;
+      appState.view = targetView;
       if (appState.view === 'optool') {
         appState.activeOptoolTab = 'Database';
+      }
+      if (btn.dataset.navProvince) {
+        const provCode = btn.dataset.navProvince;
+        if (provCode === 'ALL') {
+          appState.whereaboutsProvinceFilter[targetView] = 'ALL';
+          if (appState.whereaboutsColFilters[targetView]) {
+            delete appState.whereaboutsColFilters[targetView].province;
+          }
+        } else {
+          const provNodes = appState.schemas?.registry?.filter((n) => n.role === 'Provincial Node') || [];
+          const node = provNodes.find((p) => p.code === provCode);
+          const provName = node ? node.provinceName : provCode;
+          appState.whereaboutsProvinceFilter[targetView] = provName;
+          if (!appState.whereaboutsColFilters[targetView]) {
+            appState.whereaboutsColFilters[targetView] = {};
+          }
+          appState.whereaboutsColFilters[targetView].province = { mode: 'exact', value: provName };
+        }
+      }
+      if (btn.dataset.navSurvey) {
+        appState.cfSurveyFilter = btn.dataset.navSurvey;
       }
       renderActiveView();
     });
@@ -2987,6 +3012,42 @@ function openBaselinesModal() {
   });
 }
 
+function bindNavLinks(rootEl) {
+  if (!rootEl) return;
+  rootEl.querySelectorAll('[data-nav]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetView = btn.dataset.nav;
+      appState.view = targetView;
+      if (appState.view === 'optool') {
+        appState.activeOptoolTab = 'Database';
+      }
+      if (btn.dataset.navProvince) {
+        const provCode = btn.dataset.navProvince;
+        if (provCode === 'ALL') {
+          appState.whereaboutsProvinceFilter[targetView] = 'ALL';
+          if (appState.whereaboutsColFilters[targetView]) {
+            delete appState.whereaboutsColFilters[targetView].province;
+          }
+        } else {
+          const provNodes = appState.schemas?.registry?.filter((n) => n.role === 'Provincial Node') || [];
+          const node = provNodes.find((p) => p.code === provCode);
+          const provName = node ? node.provinceName : provCode;
+          appState.whereaboutsProvinceFilter[targetView] = provName;
+          if (!appState.whereaboutsColFilters[targetView]) {
+            appState.whereaboutsColFilters[targetView] = {};
+          }
+          appState.whereaboutsColFilters[targetView].province = { mode: 'exact', value: provName };
+        }
+      }
+      if (btn.dataset.navSurvey) {
+        appState.cfSurveyFilter = btn.dataset.navSurvey;
+      }
+      renderActiveView();
+    });
+  });
+}
+
 function updateDashboardMapSelection(container, code) {
   appState.dashboardMapProvince = code;
 
@@ -3021,11 +3082,30 @@ function updateDashboardMapSelection(container, code) {
   // 3. Update the Target Breakdown card details
   const cardEl = container.querySelector('#dash-map-detail-card');
   if (cardEl && typeof window !== 'undefined' && window.__DASHBOARD_PROV_DATA__) {
-    const { rows, totals } = window.__DASHBOARD_PROV_DATA__;
-    cardEl.innerHTML = renderMapDetailCardInner(code, rows, totals);
+    const { rows, totals, state, schemas } = window.__DASHBOARD_PROV_DATA__;
+    const mb = computeMilestoneWhereaboutsBreakdown(state, schemas, code);
+    cardEl.innerHTML = renderMapDetailCardInner(code, rows, totals, mb);
+    bindNavLinks(cardEl);
   }
 
-  // 4. Highlight the corresponding table row in Provincial Breakdown
+  // 4. Update the Whereabouts per Milestone section dynamically
+  const whereaboutsEl = container.querySelector('#dash-milestone-whereabouts-container');
+  if (whereaboutsEl && typeof window !== 'undefined' && window.__DASHBOARD_PROV_DATA__) {
+    const { rows, state, schemas } = window.__DASHBOARD_PROV_DATA__;
+    const mb = computeMilestoneWhereaboutsBreakdown(state, schemas, code);
+    whereaboutsEl.innerHTML = renderMilestoneWhereaboutsSectionHtml({
+      breakdown: mb,
+      selectedCode: code,
+      provRows: rows
+    });
+    bindNavLinks(whereaboutsEl);
+    whereaboutsEl.querySelector('[data-dash-reset-prov]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateDashboardMapSelection(container, 'ALL');
+    });
+  }
+
+  // 5. Highlight the corresponding table row in Provincial Breakdown
   const table = container.querySelector('.prov-breakdown-table');
   if (table) {
     table.querySelectorAll('tbody tr').forEach((tr) => {
@@ -3040,6 +3120,12 @@ function updateDashboardMapSelection(container, code) {
 }
 
 function bindDashboardViewEvents(container) {
+  bindNavLinks(container);
+  container.querySelector('[data-dash-reset-prov]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    updateDashboardMapSelection(container, 'ALL');
+  });
+
   // Eastern Visayas Map & Target Breakdown Events (Click to select, click again to unselect)
   container.querySelectorAll('[data-map-province]').forEach((el) => {
     el.addEventListener('click', (e) => {
@@ -4941,6 +5027,16 @@ function bindWhereaboutsEvents(container, viewKey) {
     appState.cfSurveyFilter = e.target.value;
     appState.whereaboutsPage[viewKey] = 1;
     renderActiveView();
+  });
+
+  container.querySelectorAll('[data-cf-survey-kpi]').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetVal = card.dataset.cfSurveyKpi;
+      appState.cfSurveyFilter = (appState.cfSurveyFilter === targetVal) ? 'ALL' : targetVal;
+      appState.whereaboutsPage[viewKey] = 1;
+      renderActiveView();
+    });
   });
 
   container.querySelector('#btn-survey-status-refresh')?.addEventListener('click', () => {

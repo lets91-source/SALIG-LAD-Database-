@@ -2413,6 +2413,20 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const gridCols = isMovWhereabouts ? 3 : (1 + cfg.dates.length);
     const movGridClass = isMovWhereabouts ? 'mov-kpi-grid' : '';
 
+    const cfNeedingRows = scopeRows.filter((r) => {
+      const req = String(r.surveyRequirement || r['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
+      return req.includes('needing') && !req.includes('not needing');
+    });
+    const cfNeedingLhs = cfNeedingRows.length;
+    const cfNeedingArea = cfNeedingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
+
+    const cfNotNeedingRows = scopeRows.filter((r) => {
+      const req = String(r.surveyRequirement || r['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
+      return req.includes('not needing');
+    });
+    const cfNotNeedingLhs = cfNotNeedingRows.length;
+    const cfNotNeedingArea = cfNotNeedingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
+
     cfKpiHtml = `
       <!-- Row 1: Global Target & Global Accomplishment -->
       <section class="cf-kpi-global-grid">
@@ -2450,6 +2464,61 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           </div>
         </div>
       </section>
+
+      ${viewKey === 'cf-whereabouts' ? `
+      <!-- CF(DOC) Interactive Survey Requirement Split -->
+      <section class="cf-kpi-global-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 12px;" aria-label="Survey Requirement Interactive Filter">
+        <div class="cf-kpi-card cf-kpi-card-sm ${cfSurveyFilterVal === 'Needing Survey' ? 'cf-kpi-card-active' : ''}" 
+             style="cursor:pointer;border-left:4px solid #f59e0b;" 
+             data-cf-survey-kpi="Needing Survey"
+             title="${cfSurveyFilterVal === 'Needing Survey' ? 'Active filter: Click to clear' : 'Click to filter table by Needing Survey'}">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title" style="display:flex;align-items:center;gap:6px;">
+              <span>🔍</span> <strong>LHs Needing Survey</strong>
+            </span>
+            <span class="badge ${cfSurveyFilterVal === 'Needing Survey' ? 'badge-green' : 'badge-amber'}" style="font-size:10px;">
+              ${cfSurveyFilterVal === 'Needing Survey' ? '✓ Filter Active' : 'Click to Filter'}
+            </span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${cfNeedingLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(cfNeedingArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+          <div class="cf-kpi-meta-sub" style="color:#b45309;font-weight:600;">Requires Cadastral/Field Inspection</div>
+        </div>
+
+        <div class="cf-kpi-card cf-kpi-card-sm ${cfSurveyFilterVal === 'Not Needing Survey' ? 'cf-kpi-card-active' : ''}" 
+             style="cursor:pointer;border-left:4px solid #10b981;" 
+             data-cf-survey-kpi="Not Needing Survey"
+             title="${cfSurveyFilterVal === 'Not Needing Survey' ? 'Active filter: Click to clear' : 'Click to filter table by Not Needing Survey'}">
+          <div class="cf-kpi-header">
+            <span class="cf-kpi-title" style="display:flex;align-items:center;gap:6px;">
+              <span>📋</span> <strong>LHs Not Needing Survey</strong>
+            </span>
+            <span class="badge ${cfSurveyFilterVal === 'Not Needing Survey' ? 'badge-green' : 'badge-blue'}" style="font-size:10px;">
+              ${cfSurveyFilterVal === 'Not Needing Survey' ? '✓ Filter Active' : 'Click to Filter'}
+            </span>
+          </div>
+          <div class="cf-kpi-body">
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">LHs</span>
+              <span class="cf-kpi-val">${cfNotNeedingLhs.toLocaleString()}</span>
+            </div>
+            <div class="cf-kpi-stat">
+              <span class="cf-kpi-label">Area</span>
+              <span class="cf-kpi-val area">${fmtArea(cfNotNeedingArea)}<span class="cf-kpi-unit">HAS</span></span>
+            </div>
+          </div>
+          <div class="cf-kpi-meta-sub" style="color:#059669;font-weight:600;">Ready for Direct Documentation & Valuation</div>
+        </div>
+      </section>
+      ` : ''}
 
       <!-- Row 2: Target Year & Milestone Cards (${isMovWhereabouts ? 'Row 1: [Target Year, PPU Date, Received DARPO], Row 2: [Date of MOV, Trans to LBP/AOC, Reported Month]' : 'Milestone Cards'}) -->
       <section class="cf-kpi-year-grid ${movGridClass}" style="grid-template-columns: repeat(${gridCols}, minmax(0, 1fr));">
@@ -4896,24 +4965,163 @@ export function renderInstallationWhereaboutsView(ctx) {
   return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['installation-whereabouts']);
 }
 
-export function renderMapDetailCardInner(selectedCode, provRows = [], provTotals = {}) {
+export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCode = 'ALL') {
+  const isAll = !selectedCode || selectedCode === 'ALL';
+  const allDbRows = state?.optool?.Database || [];
+  const dbMap = new Map();
+  for (const db of allDbRows) {
+    const rawKey = String(db.lhid || '').trim().toLowerCase();
+    const cleanKey = formatLhidDisplay(db.lhid).toLowerCase();
+    if (cleanKey && !dbMap.has(cleanKey)) dbMap.set(cleanKey, db);
+    if (rawKey && !dbMap.has(rawKey)) dbMap.set(rawKey, db);
+  }
+
+  const matchesCode = (r) => {
+    if (isAll) return true;
+    const cleanKey = formatLhidDisplay(r.lhid || '').toLowerCase();
+    const rawKey = String(r.lhid || '').trim().toLowerCase();
+    const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
+    const prov =
+      r.province ||
+      r.provincename ||
+      r.prov ||
+      r.PROVINCE ||
+      r.PROVS ||
+      r.Province ||
+      r.ProvinceName ||
+      db.province ||
+      db.provincename ||
+      db.Province ||
+      db.ProvinceName ||
+      '';
+    if (!prov) return false;
+    const code = resolveProvinceCode(prov, schemas);
+    return code ? code === selectedCode : matchProvinceName(prov, selectedCode);
+  };
+
+  const getArea = (r) => {
+    const cleanKey = formatLhidDisplay(r.lhid || '').toLowerCase();
+    const rawKey = String(r.lhid || '').trim().toLowerCase();
+    const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
+    return parseNumericValue(
+      r.areaTenanted ||
+      r.areaPerTitle ||
+      r.totalArea ||
+      r.carpable ||
+      r.areaHas ||
+      r.areaHas1 ||
+      r.areaHas2 ||
+      r.computedArea ||
+      db.totalArea ||
+      db.carpable ||
+      0
+    );
+  };
+
+  // 1. CF(DOC)
+  const allCfRows = (state?.optool?.['CF(DOC)'] || []).filter(matchesCode);
+  const cfCount = allCfRows.length;
+  const cfArea = allCfRows.reduce((s, r) => s + getArea(r), 0);
+
+  const cfNeedingRows = allCfRows.filter((r) => {
+    const req = String(r.surveyRequirement || r['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
+    return req.includes('needing') && !req.includes('not needing');
+  });
+  const cfNeedingCount = cfNeedingRows.length;
+  const cfNeedingArea = cfNeedingRows.reduce((s, r) => s + getArea(r), 0);
+
+  const cfNotNeedingRows = allCfRows.filter((r) => {
+    const req = String(r.surveyRequirement || r['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
+    return req.includes('not needing');
+  });
+  const cfNotNeedingCount = cfNotNeedingRows.length;
+  const cfNotNeedingArea = cfNotNeedingRows.reduce((s, r) => s + getArea(r), 0);
+
+  const cfUnspecifiedCount = Math.max(0, cfCount - (cfNeedingCount + cfNotNeedingCount));
+  const cfUnspecifiedArea = Math.max(0, cfArea - (cfNeedingArea + cfNotNeedingArea));
+
+  // 2. Survey
+  const allSurveyRows = (state?.optool?.Survey || []).filter(matchesCode);
+  const surveyCount = allSurveyRows.length;
+  const surveyArea = allSurveyRows.reduce((s, r) => s + getArea(r), 0);
+
+  // 3. MOV (Land Valuation)
+  const allMovRows = (state?.optool?.MOV || []).filter(matchesCode);
+  const movCount = allMovRows.length;
+  const movArea = allMovRows.reduce((s, r) => s + getArea(r), 0);
+
+  // 4. RegistrationDistribution
+  const allRegRows = (state?.optool?.RegistrationDistribution || state?.optool?.['Registration/Distribution'] || []).filter(matchesCode);
+  const regCount = allRegRows.length;
+  const regArea = allRegRows.reduce((s, r) => s + getArea(r), 0);
+
+  // 5. Installation
+  const allInstRows = (state?.optool?.Installation || []).filter(matchesCode);
+  const instCount = allInstRows.length;
+  const instArea = allInstRows.reduce((s, r) => s + getArea(r), 0);
+
+  // 6. Leasehold
+  const leaseRowsRaw = (state?.leasehold && state.leasehold.length) ? state.leasehold : (state?.optool?.Leasehold || []);
+  const allLeaseRows = leaseRowsRaw.filter(matchesCode);
+  const leaseCount = allLeaseRows.length;
+  const leaseArea = allLeaseRows.reduce((s, r) => s + getArea(r), 0);
+
+  // Targets from Database LAD Balance
+  const scopedDb = allDbRows.filter(matchesCode);
+  const ladDb = scopedDb.filter(isLadBalance);
+  const targetLhs = ladDb.length;
+  const targetArea = ladDb.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || 0), 0);
+
+  return {
+    selectedCode,
+    isAll,
+    targetLhs,
+    targetArea,
+    cf: {
+      count: cfCount,
+      area: cfArea,
+      needingCount: cfNeedingCount,
+      needingArea: cfNeedingArea,
+      notNeedingCount: cfNotNeedingCount,
+      notNeedingArea: cfNotNeedingArea,
+      unspecifiedCount: cfUnspecifiedCount,
+      unspecifiedArea: cfUnspecifiedArea
+    },
+    survey: { count: surveyCount, area: surveyArea },
+    mov: { count: movCount, area: movArea },
+    regdist: { count: regCount, area: regArea },
+    installation: { count: instCount, area: instArea },
+    leasehold: { count: leaseCount, area: leaseArea }
+  };
+}
+
+export function renderMapDetailCardInner(selectedCode, provRows = [], provTotals = {}, mb = null) {
   const isAll = !selectedCode || selectedCode === 'ALL';
   const p = isAll ? null : (provRows || []).find((r) => r.code === selectedCode);
 
   const title = p ? `${p.name} (${p.code})` : 'Region VIII Consolidated';
   const subtitle = p ? 'Provincial LAD Target & Park Breakdown' : 'All 6 Provincial Nodes Active Portfolio';
-  const ladLhs = p ? p.ladLhs : (provTotals.ladLhs || 0);
-  const ladArea = p ? p.ladArea : (provTotals.ladArea || 0);
-  const tempLhs = p ? p.tempLhs : (provTotals.tempLhs || 0);
-  const tempArea = p ? p.tempArea : (provTotals.tempArea || 0);
-  const dbLhs = p ? p.dbLhs : (provTotals.totalLhs || 0);
-  const dbArea = p ? p.dbArea : (provTotals.totalArea || 0);
-  const regArea = p ? p.regArea : (provTotals.regArea || 0);
+  const ladLhs = p ? (p.ladLhs || 0) : (provTotals.ladLhs || 0);
+  const ladArea = p ? (p.ladArea || 0) : (provTotals.ladArea || 0);
+  const tempLhs = p ? (p.tempLhs || 0) : (provTotals.tempLhs || 0);
+  const tempArea = p ? (p.tempArea || 0) : (provTotals.tempArea || 0);
+  const dbLhs = p ? (p.dbLhs || 0) : (provTotals.totalLhs || 0);
+  const dbArea = p ? (p.dbArea || 0) : (provTotals.totalArea || 0);
+  const regArea = p ? (p.regArea || 0) : (provTotals.regArea || 0);
   const pct = p ? p.pct : (provTotals.pct || '0.0');
 
   const badgeClass = isAll ? 'badge-blue' : 'badge-green';
   const badgeText = isAll ? 'Region Wide' : `${p.code} Active`;
   const pctBadgeClass = Number(pct) >= 50 ? 'badge-green' : Number(pct) > 0 ? 'badge-blue' : 'badge-gray';
+
+  const {
+    cf = { count: 0, area: 0, needingCount: 0, needingArea: 0, notNeedingCount: 0, notNeedingArea: 0, unspecifiedCount: 0 },
+    survey = { count: 0, area: 0 },
+    mov = { count: 0, area: 0 },
+    regdist = { count: 0, area: 0 },
+    installation = { count: 0, area: 0 },
+    leasehold = { count: 0, area: 0 }
+  } = mb || {};
 
   return `
     <div style="background:var(--surface,#ffffff);border:1px solid var(--border);border-radius:8px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
@@ -4969,11 +5177,108 @@ export function renderMapDetailCardInner(selectedCode, provRows = [], provTotals
           </div>
         </div>
       </div>
+
+      <!-- Milestone Whereabouts & CF Survey Requirement Breakdown -->
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <span style="font-size:13px;">📋</span>
+            <span style="font-size:11px;font-weight:800;color:var(--dar-green-dark,#0a361d);text-transform:uppercase;letter-spacing:0.04em;">
+              Milestone Whereabouts Details
+            </span>
+          </div>
+          <span class="badge ${badgeClass}" style="font-size:9.5px;">${esc(badgeText)}</span>
+        </div>
+
+        <!-- CF(DOC) Highlight with Interactive Survey Split -->
+        <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <strong style="font-size:11.5px;color:var(--dar-green-dark,#0a361d);">📁 CF(DOC) Active Ledger</strong>
+              <span class="badge badge-green" style="font-size:10px;font-weight:700;">${(cf.count || 0).toLocaleString()} LHs</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-xs" data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" style="font-size:10px;padding:2px 6px;">View CF ➔</button>
+          </div>
+          <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;">
+            Active Area: <strong>${fmtArea(cf.area || 0)} HAS</strong>
+          </div>
+
+          <!-- Interactive Needing vs Not Needing Survey Split -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;">
+            <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:5px 6px;cursor:pointer;"
+                 data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Needing Survey"
+                 title="Filter CF Whereabouts to Needing Survey">
+              <div style="font-size:9px;font-weight:800;color:#92400e;text-transform:uppercase;">🔍 NEEDING SURVEY</div>
+              <div style="font-size:13px;font-weight:800;color:#78350f;margin-top:1px;">
+                ${(cf.needingCount || 0).toLocaleString()} <span style="font-size:9px;font-weight:600;">LHs</span>
+              </div>
+              <div style="font-size:9.5px;font-weight:700;color:#92400e;">${fmtArea(cf.needingArea || 0)} HAS</div>
+            </div>
+
+            <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:4px;padding:5px 6px;cursor:pointer;"
+                 data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Not Needing Survey"
+                 title="Filter CF Whereabouts to Not Needing Survey">
+              <div style="font-size:9px;font-weight:800;color:#065f46;text-transform:uppercase;">📋 NOT NEEDING</div>
+              <div style="font-size:13px;font-weight:800;color:#047857;margin-top:1px;">
+                ${(cf.notNeedingCount || 0).toLocaleString()} <span style="font-size:9px;font-weight:600;">LHs</span>
+              </div>
+              <div style="font-size:9.5px;font-weight:700;color:#065f46;">${fmtArea(cf.notNeedingArea || 0)} HAS</div>
+            </div>
+          </div>
+          ${(cf.unspecifiedCount || 0) > 0 ? `
+            <div style="font-size:9px;color:var(--text-muted);margin-top:4px;text-align:right;">
+              Pending Classification: ${(cf.unspecifiedCount || 0)} LHs (${fmtArea(cf.unspecifiedArea || 0)} HAS)
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 5 Other Milestones Compact 2-Col Grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10.5px;">
+          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
+               data-nav="survey-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Survey Whereabouts for ${esc(title)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📐 Survey</div>
+            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(survey.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(survey.area || 0)} HAS</div>
+          </div>
+
+          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
+               data-nav="mov-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Land Valuation Whereabouts for ${esc(title)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">⚖️ Valuation (MOV)</div>
+            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(mov.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(mov.area || 0)} HAS</div>
+          </div>
+
+          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
+               data-nav="regdist-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Registration/Distribution Whereabouts for ${esc(title)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📜 Reg / Dist</div>
+            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(regdist.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(regdist.area || 0)} HAS</div>
+          </div>
+
+          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
+               data-nav="installation-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Installation Whereabouts for ${esc(title)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">🌾 Installation</div>
+            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(installation.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(installation.area || 0)} HAS</div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;margin-top:6px;cursor:pointer;"
+             data-nav="leasehold" data-nav-province="${esc(selectedCode)}" title="Open Leasehold Ledger for ${esc(title)}">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📑 Leasehold</span>
+              <span style="font-weight:800;color:#0f172a;margin-left:6px;font-size:11.5px;">${(leasehold.count || 0).toLocaleString()} LHs</span>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(leasehold.area || 0)} HAS</span>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
 
-export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {}, selectedCode = 'ALL' } = {}) {
+export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {}, selectedCode = 'ALL', milestoneBreakdown = null } = {}) {
   const isAll = !selectedCode || selectedCode === 'ALL';
 
   const pillButtons = [
@@ -5005,10 +5310,188 @@ export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {
 
         <!-- Right: Target Detail Card -->
         <div id="dash-map-detail-card" style="display:flex;flex-direction:column;justify-content:center;">
-          ${renderMapDetailCardInner(selectedCode, provRows, provTotals)}
+          ${renderMapDetailCardInner(selectedCode, provRows, provTotals, milestoneBreakdown)}
         </div>
       </div>
     </div>
+  `;
+}
+
+export function renderMilestoneWhereaboutsSectionHtml({ breakdown, selectedCode, provRows = [] } = {}) {
+  const isAll = !selectedCode || selectedCode === 'ALL';
+  const node = DEFAULT_CF_PROVINCES.find((p) => p.code === selectedCode);
+  const provName = node ? node.name : (selectedCode || 'Region VIII');
+  const scopeBadge = isAll ? 'Region VIII' : `${node ? node.name : selectedCode} (${selectedCode})`;
+  const statusBadgeClass = isAll ? 'badge-blue' : 'badge-green';
+
+  const {
+    targetLhs = 0,
+    targetArea = 0,
+    cf = { count: 0, area: 0, needingCount: 0, needingArea: 0, notNeedingCount: 0, notNeedingArea: 0, unspecifiedCount: 0 },
+    survey = { count: 0, area: 0 },
+    mov = { count: 0, area: 0 },
+    regdist = { count: 0, area: 0 },
+    installation = { count: 0, area: 0 },
+    leasehold = { count: 0, area: 0 }
+  } = breakdown || {};
+
+  const milestoneCards = [
+    {
+      key: 'cf-whereabouts',
+      tabName: 'CF(DOC)',
+      label: 'CF(DOC)',
+      navKey: 'cf-whereabouts',
+      count: cf.count,
+      area: cf.area,
+      stageLabel: 'FI Conducted & Prepared',
+      subtext: 'Field Investigation & Documentation',
+      isCf: true
+    },
+    {
+      key: 'survey-whereabouts',
+      tabName: 'Survey',
+      label: 'Survey',
+      navKey: 'survey-whereabouts',
+      count: survey.count,
+      area: survey.area,
+      stageLabel: 'RSS & Field Survey Return',
+      subtext: 'Survey Verification & DARRO/DENR'
+    },
+    {
+      key: 'mov-whereabouts',
+      tabName: 'MOV',
+      label: 'Land Valuation',
+      navKey: 'mov-whereabouts',
+      count: mov.count,
+      area: mov.area,
+      stageLabel: 'Land Valuation & LBP/AOC',
+      subtext: 'Memorandum of Valuation'
+    },
+    {
+      key: 'regdist-whereabouts',
+      tabName: 'RegistrationDistribution',
+      label: 'Registration / Distribution',
+      navKey: 'regdist-whereabouts',
+      count: regdist.count,
+      area: regdist.area,
+      stageLabel: 'ROD Registration & ARB Distribution',
+      subtext: 'eTitles & ARB Distribution'
+    },
+    {
+      key: 'installation-whereabouts',
+      tabName: 'Installation',
+      label: 'Installation',
+      navKey: 'installation-whereabouts',
+      count: installation.count,
+      area: installation.area,
+      stageLabel: 'On-Ground Physical Installation',
+      subtext: 'Agrarian Reform Beneficiaries Installed'
+    },
+    {
+      key: 'leasehold',
+      tabName: 'Leasehold',
+      label: 'Leasehold',
+      navKey: 'leasehold',
+      count: leasehold.count,
+      area: leasehold.area,
+      stageLabel: 'Agricultural Leasehold Contracts',
+      subtext: 'Registered Leasehold Contracts & Profiles'
+    }
+  ];
+
+  return `
+    <section class="panel" style="margin-bottom: 16px;" aria-label="Whereabouts per Milestone">
+      <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h3 class="panel-title">Whereabouts per Milestone</h3>
+          <p class="panel-subtitle">Tracking documentation, surveys, valuations, and registration for <strong>${esc(isAll ? 'All Region VIII Provinces' : provName + ' (' + selectedCode + ')')}</strong></p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge ${statusBadgeClass}">📍 ${esc(isAll ? 'Region VIII Consolidated' : `${scopeBadge} Active`)}</span>
+          ${!isAll ? `
+            <button type="button" class="btn btn-secondary btn-xs" data-dash-reset-prov="ALL" title="Reset filter to all Region VIII provinces">🌐 Show All Region VIII</button>
+          ` : ''}
+          <span class="badge badge-green">6 Operational Milestones</span>
+        </div>
+      </div>
+      <div class="panel-body" style="padding: 16px;">
+        <!-- 6 Milestone Cards across the grid -->
+        <div class="kpi-grid kpi-grid-targets" style="margin-bottom: 16px;" aria-label="Milestone Whereabouts Summary Cards">
+          ${milestoneCards.map((m) => `
+            <div class="cf-kpi-card cf-kpi-card-sm kpi-card" style="cursor:pointer;" data-nav="${esc(m.navKey)}" data-nav-province="${esc(selectedCode)}" title="Click to view full ${esc(m.label)} Whereabouts ledger for ${esc(scopeBadge)}">
+              <div class="cf-kpi-header">
+                <span class="cf-kpi-title">${esc(m.label)}</span>
+                <span class="cf-kpi-badge">${esc(scopeBadge)}</span>
+              </div>
+              <div class="cf-kpi-body">
+                <div class="cf-kpi-stat">
+                  <span class="cf-kpi-label">LHs</span>
+                  <span class="cf-kpi-val">${m.count.toLocaleString()}</span>
+                </div>
+                <div class="cf-kpi-stat">
+                  <span class="cf-kpi-label">Area</span>
+                  <span class="cf-kpi-val area">${fmtArea(m.area)}<span class="cf-kpi-unit">HAS</span></span>
+                </div>
+              </div>
+              ${m.isCf ? `
+                <div style="display:flex;gap:4px;margin-top:8px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.2);flex-wrap:wrap;">
+                  <span class="badge badge-amber" data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Needing Survey" style="font-size:9.5px;cursor:pointer;" title="Click to open CF Whereabouts filtered to Needing Survey">
+                    🔍 Needing: <strong>${cf.needingCount}</strong> (${fmtArea(cf.needingArea)})
+                  </span>
+                  <span class="badge badge-green" data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Not Needing Survey" style="font-size:9.5px;cursor:pointer;" title="Click to open CF Whereabouts filtered to Not Needing Survey">
+                    📋 Not Needing: <strong>${cf.notNeedingCount}</strong> (${fmtArea(cf.notNeedingArea)})
+                  </span>
+                </div>
+              ` : `
+                <div class="cf-kpi-meta-sub">${esc(m.stageLabel)}</div>
+              `}
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Consolidated Milestone Performance Table -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Operational Milestone</th>
+                <th class="right">Database Target (LHs)</th>
+                <th class="right">Target Area (HAS)</th>
+                <th class="right">Active in Milestone</th>
+                <th class="right">Milestone Area (HAS)</th>
+                <th>Workflow Focus</th>
+                <th class="center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${milestoneCards.map((m) => `
+                <tr>
+                  <td><strong>${esc(m.label)}</strong></td>
+                  <td class="right num">${targetLhs.toLocaleString()}</td>
+                  <td class="right mono num">${fmtArea(targetArea)}</td>
+                  <td class="right num"><span class="badge ${m.count > 0 ? 'badge-green' : 'badge-gray'}">${m.count.toLocaleString()} LHs</span></td>
+                  <td class="right mono num">${fmtArea(m.area)}</td>
+                  <td>
+                    ${m.isCf ? `
+                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span style="font-size:12px;color:var(--text-muted);">${esc(m.subtext)}</span>
+                        <span class="badge badge-amber" style="font-size:10px;padding:2px 6px;">Needing: ${cf.needingCount} (${fmtArea(cf.needingArea)} HAS)</span>
+                        <span class="badge badge-green" style="font-size:10px;padding:2px 6px;">Not Needing: ${cf.notNeedingCount} (${fmtArea(cf.notNeedingArea)} HAS)</span>
+                      </div>
+                    ` : `
+                      <span style="font-size:12px;color:var(--text-muted);">${esc(m.subtext)}</span>
+                    `}
+                  </td>
+                  <td class="center">
+                    <button type="button" class="btn btn-secondary btn-xs" data-nav="${esc(m.navKey)}" data-nav-province="${esc(selectedCode)}">Open Whereabouts</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   `;
 }
 
@@ -5107,93 +5590,17 @@ export function renderDashboardView(ctx) {
   const activeMapCode = ctx.dashboardMapProvince || 'ALL';
   const dashRightTab = ctx.dashboardRightPanelTab || 'map';
 
+  const activeMilestoneBreakdown = computeMilestoneWhereaboutsBreakdown(state, schemas, activeMapCode);
+
   if (typeof window !== 'undefined') {
     window.__DASHBOARD_PROV_DATA__ = {
       rows: provBreakdownRows,
       totals: provTotals,
-      scopeBadge
+      scopeBadge,
+      state,
+      schemas
     };
   }
-
-  // 3. Milestone Whereabouts Data
-  const dbMap = new Map();
-  for (const db of allDbRows) {
-    const rawKey = String(db.lhid || '').trim().toLowerCase();
-    const cleanKey = formatLhidDisplay(db.lhid).toLowerCase();
-    if (cleanKey && !dbMap.has(cleanKey)) dbMap.set(cleanKey, db);
-    if (rawKey && !dbMap.has(rawKey)) dbMap.set(rawKey, db);
-  }
-  function computeMilestoneTotalArea(tabRows) {
-    return (tabRows || []).reduce((s, r) => {
-      const rawKey = String(r.lhid || '').trim().toLowerCase();
-      const cleanKey = formatLhidDisplay(r.lhid).toLowerCase();
-      const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
-      return s + parseNumericValue(r.areaTenanted || r.areaPerTitle || db.totalArea || r.totalArea || r.areaHas || r.areaHas1 || r.areaHas2 || db.carpable || r.carpable || 0);
-    }, 0);
-  }
-
-  const milestoneWhereaboutsData = [
-    {
-      key: 'cf-whereabouts',
-      tabName: 'CF(DOC)',
-      label: 'CF(DOC)',
-      navKey: 'cf-whereabouts',
-      count: (state.optool?.['CF(DOC)'] || []).length,
-      area: computeMilestoneTotalArea(state.optool?.['CF(DOC)']),
-      stageLabel: 'FI Conducted & Prepared',
-      subtext: 'Field Investigation & Documentation'
-    },
-    {
-      key: 'survey-whereabouts',
-      tabName: 'Survey',
-      label: 'Survey',
-      navKey: 'survey-whereabouts',
-      count: (state.optool?.Survey || []).length,
-      area: computeMilestoneTotalArea(state.optool?.Survey),
-      stageLabel: 'RSS & Field Survey Return',
-      subtext: 'Survey Verification & DARRO/DENR'
-    },
-    {
-      key: 'mov-whereabouts',
-      tabName: 'MOV',
-      label: 'Land Valuation',
-      navKey: 'mov-whereabouts',
-      count: (state.optool?.MOV || []).length,
-      area: computeMilestoneTotalArea(state.optool?.MOV),
-      stageLabel: 'Land Valuation & LBP/AOC',
-      subtext: 'Memorandum of Valuation'
-    },
-    {
-      key: 'regdist-whereabouts',
-      tabName: 'RegistrationDistribution',
-      label: 'Registration / Distribution',
-      navKey: 'regdist-whereabouts',
-      count: (state.optool?.RegistrationDistribution || []).length,
-      area: computeMilestoneTotalArea(state.optool?.RegistrationDistribution),
-      stageLabel: 'ROD Registration & ARB Distribution',
-      subtext: 'eTitles & ARB Distribution'
-    },
-    {
-      key: 'installation-whereabouts',
-      tabName: 'Installation',
-      label: 'Installation',
-      navKey: 'installation-whereabouts',
-      count: (state.optool?.Installation || []).length,
-      area: computeMilestoneTotalArea(state.optool?.Installation),
-      stageLabel: 'On-Ground Physical Installation',
-      subtext: 'Agrarian Reform Beneficiaries Installed'
-    },
-    {
-      key: 'leasehold',
-      tabName: 'Leasehold',
-      label: 'Leasehold',
-      navKey: 'leasehold',
-      count: ((state.leasehold && state.leasehold.length) ? state.leasehold : (state.optool?.Leasehold || [])).length,
-      area: computeMilestoneTotalArea((state.leasehold && state.leasehold.length) ? state.leasehold : state.optool?.Leasehold),
-      stageLabel: 'Agricultural Leasehold Contracts',
-      subtext: 'Registered Leasehold Contracts & Profiles'
-    }
-  ];
 
   return `
     ${renderEmptyWorkspaceCallout(state)}
@@ -5359,7 +5766,8 @@ export function renderDashboardView(ctx) {
             : renderEasternVisayasMapPanelHtml({
                 provRows: provBreakdownRows,
                 provTotals,
-                selectedCode: activeMapCode
+                selectedCode: activeMapCode,
+                milestoneBreakdown: activeMilestoneBreakdown
               })
           }
         </div>
@@ -5367,71 +5775,13 @@ export function renderDashboardView(ctx) {
     </section>
 
     <!-- BOTTOM SECTION: Whereabouts per Milestone -->
-    <section class="panel" style="margin-bottom: 16px;" aria-label="Whereabouts per Milestone">
-      <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-        <div>
-          <h3 class="panel-title">Whereabouts per Milestone</h3>
-          <p class="panel-subtitle">Tracking documentation, surveys, valuations, and registration across Region VIII operational worksheets</p>
-        </div>
-        <span class="badge badge-green">6 Operational Milestones</span>
-      </div>
-      <div class="panel-body" style="padding: 16px;">
-        <!-- 6 Milestone Cards across the grid -->
-        <div class="kpi-grid kpi-grid-targets" style="margin-bottom: 16px;" aria-label="Milestone Whereabouts Summary Cards">
-          ${milestoneWhereaboutsData.map((m) => `
-            <div class="cf-kpi-card cf-kpi-card-sm kpi-card" style="cursor:pointer;" data-nav="${esc(m.navKey)}" title="Click to view full ${esc(m.label)} Whereabouts ledger">
-              <div class="cf-kpi-header">
-                <span class="cf-kpi-title">${esc(m.label)}</span>
-                <span class="cf-kpi-badge">${esc(scopeBadge)}</span>
-              </div>
-              <div class="cf-kpi-body">
-                <div class="cf-kpi-stat">
-                  <span class="cf-kpi-label">LHs</span>
-                  <span class="cf-kpi-val">${m.count.toLocaleString()}</span>
-                </div>
-                <div class="cf-kpi-stat">
-                  <span class="cf-kpi-label">Area</span>
-                  <span class="cf-kpi-val area">${fmtArea(m.area)}<span class="cf-kpi-unit">HAS</span></span>
-                </div>
-              </div>
-              <div class="cf-kpi-meta-sub">${esc(m.stageLabel)}</div>
-            </div>
-          `).join('')}
-        </div>
-
-        <!-- Consolidated Milestone Performance Table -->
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Operational Milestone</th>
-                <th class="right">Database Target (LHs)</th>
-                <th class="right">Target Area (HAS)</th>
-                <th class="right">Active in Milestone</th>
-                <th class="right">Milestone Area (HAS)</th>
-                <th>Workflow Focus</th>
-                <th class="center">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${milestoneWhereaboutsData.map((m) => `
-                <tr>
-                  <td><strong>${esc(m.label)}</strong></td>
-                  <td class="right num">${totalLadLhs.toLocaleString()}</td>
-                  <td class="right mono num">${fmtArea(totalLadArea)}</td>
-                  <td class="right num"><span class="badge ${m.count > 0 ? 'badge-green' : 'badge-gray'}">${m.count.toLocaleString()} LHs</span></td>
-                  <td class="right mono num">${fmtArea(m.area)}</td>
-                  <td><span style="font-size:12px;color:var(--text-muted);">${esc(m.subtext)}</span></td>
-                  <td class="center">
-                    <button type="button" class="btn btn-secondary btn-xs" data-nav="${esc(m.navKey)}">Open Whereabouts</button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+    <div id="dash-milestone-whereabouts-container">
+      ${renderMilestoneWhereaboutsSectionHtml({
+        breakdown: activeMilestoneBreakdown,
+        selectedCode: activeMapCode,
+        provRows: provBreakdownRows
+      })}
+    </div>
   `;
 }
 
