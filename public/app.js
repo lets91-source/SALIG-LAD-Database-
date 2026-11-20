@@ -6251,9 +6251,10 @@ async function init() {
     hideLoadingOverlay(true);
   }
 
-  const isMobileSidebar = () => window.matchMedia('(max-width: 860px)').matches;
+  const isMobileSidebar = () => window.matchMedia('(max-width: 1024px)').matches;
   const appShellEl = document.getElementById('app-shell');
   const sidebarEl = document.getElementById('sidebar');
+  const sidebarBackdropEl = document.getElementById('sidebar-backdrop');
   const toggleBtn = document.getElementById('btn-sidebar-toggle');
   const toggleLabelEl = document.getElementById('sidebar-toggle-label');
 
@@ -6267,8 +6268,10 @@ async function init() {
       toggleBtn.title = label;
       toggleBtn.classList.toggle('is-collapsed', !isOpen);
       if (toggleLabelEl) toggleLabelEl.textContent = label;
+      if (sidebarBackdropEl) sidebarBackdropEl.classList.toggle('hidden', !isOpen);
       return;
     }
+    if (sidebarBackdropEl) sidebarBackdropEl.classList.add('hidden');
     const isCollapsed = appShellEl.classList.contains('sidebar-collapsed');
     const label = isCollapsed ? 'Show Sidebar' : 'Hide Sidebar';
     toggleBtn.setAttribute('aria-expanded', String(!isCollapsed));
@@ -6286,6 +6289,11 @@ async function init() {
     // Ignore storage access errors
   }
   syncSidebarToggleUi();
+
+  sidebarBackdropEl?.addEventListener('click', () => {
+    sidebarEl?.classList.remove('open');
+    syncSidebarToggleUi();
+  });
 
   // Navigation
   document.querySelectorAll('[data-view]').forEach((btn) => {
