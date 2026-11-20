@@ -1304,8 +1304,10 @@ function isColumnEmptyBelowHeader_(sheet, colOneBased) {
 }
 
 function getDefaultHeaderTitles_(tabName, headersSpec) {
+  const fromSpec = (headersSpec || []).map(function (h) { return h.header || h.key; }).filter(Boolean);
+  if (fromSpec.length > 0) return fromSpec;
   if (OPTOOL_SCHEMA_HEADERS[tabName]) return OPTOOL_SCHEMA_HEADERS[tabName].slice();
-  return (headersSpec || []).map(function (h) { return h.header || h.key; });
+  return [];
 }
 
 function styleHeaderRange_(range) {
