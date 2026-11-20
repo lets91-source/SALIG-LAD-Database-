@@ -1191,8 +1191,17 @@ function renderActiveView() {
     });
     bindWhereaboutsEvents(container, 'cf-whereabouts');
   } else if (appState.view === 'survey-whereabouts') {
+    appState.activeOptoolTab = 'Survey';
     container.innerHTML = renderSurveyWhereaboutsView({
       ...ctx,
+      activeOptoolTab: 'Survey',
+      searchTerm: appState.optoolSearch || '',
+      optoolSearch: appState.optoolSearch || '',
+      optoolColMode: appState.optoolColMode || 'preview',
+      optoolPage: appState.optoolPage || 1,
+      optoolPageSize: appState.optoolPageSize || 50,
+      optoolColPage: appState.optoolColPage || 1,
+      optoolColFilters: appState.optoolColFilters || {},
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
@@ -1208,8 +1217,17 @@ function renderActiveView() {
     });
     bindWhereaboutsEvents(container, 'survey-whereabouts');
   } else if (appState.view === 'mov-whereabouts') {
+    appState.activeOptoolTab = 'MOV';
     container.innerHTML = renderMovWhereaboutsView({
       ...ctx,
+      activeOptoolTab: 'MOV',
+      searchTerm: appState.optoolSearch || '',
+      optoolSearch: appState.optoolSearch || '',
+      optoolColMode: appState.optoolColMode || 'preview',
+      optoolPage: appState.optoolPage || 1,
+      optoolPageSize: appState.optoolPageSize || 50,
+      optoolColPage: appState.optoolColPage || 1,
+      optoolColFilters: appState.optoolColFilters || {},
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
@@ -1224,8 +1242,17 @@ function renderActiveView() {
     });
     bindWhereaboutsEvents(container, 'mov-whereabouts');
   } else if (appState.view === 'regdist-whereabouts') {
+    appState.activeOptoolTab = 'RegistrationDistribution';
     container.innerHTML = renderRegDistWhereaboutsView({
       ...ctx,
+      activeOptoolTab: 'RegistrationDistribution',
+      searchTerm: appState.optoolSearch || '',
+      optoolSearch: appState.optoolSearch || '',
+      optoolColMode: appState.optoolColMode || 'preview',
+      optoolPage: appState.optoolPage || 1,
+      optoolPageSize: appState.optoolPageSize || 50,
+      optoolColPage: appState.optoolColPage || 1,
+      optoolColFilters: appState.optoolColFilters || {},
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
@@ -1240,8 +1267,17 @@ function renderActiveView() {
     });
     bindWhereaboutsEvents(container, 'regdist-whereabouts');
   } else if (appState.view === 'installation-whereabouts') {
+    appState.activeOptoolTab = 'Installation';
     container.innerHTML = renderInstallationWhereaboutsView({
       ...ctx,
+      activeOptoolTab: 'Installation',
+      searchTerm: appState.optoolSearch || '',
+      optoolSearch: appState.optoolSearch || '',
+      optoolColMode: appState.optoolColMode || 'preview',
+      optoolPage: appState.optoolPage || 1,
+      optoolPageSize: appState.optoolPageSize || 50,
+      optoolColPage: appState.optoolColPage || 1,
+      optoolColFilters: appState.optoolColFilters || {},
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
@@ -5054,8 +5090,16 @@ function bindWhereaboutsEvents(container, viewKey) {
 
   bindProvincialAllocationTableEvents(container);
 
-  if (viewKey === 'cf-whereabouts') {
-    appState.activeOptoolTab = 'CF(DOC)';
+  const whereaboutsTabMap = {
+    'cf-whereabouts': 'CF(DOC)',
+    'survey-whereabouts': 'Survey',
+    'mov-whereabouts': 'MOV',
+    'regdist-whereabouts': 'RegistrationDistribution',
+    'installation-whereabouts': 'Installation'
+  };
+  const matchedTab = whereaboutsTabMap[viewKey];
+  if (matchedTab) {
+    appState.activeOptoolTab = matchedTab;
     bindOptoolViewEvents(container);
   }
 }

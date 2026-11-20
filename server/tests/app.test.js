@@ -2635,10 +2635,10 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   // 1. MOV Whereabouts
   const movCfg = WHEREABOUTS_CONFIGS['mov-whereabouts'];
   const movHtml = renderMilestoneWhereaboutsView(baseCtx, movCfg);
-  assert.ok(movHtml.includes('id="panel-mov-whereabouts-provincial"'), 'MOV Provincial Allocation panel exists');
-  assert.ok(movHtml.includes('Provincial Allocation Table'), 'MOV Provincial Allocation Table title present');
-  assert.ok(movHtml.includes('Land Valuation'), 'Land Valuation milestone label present in Provincial Allocation Table');
-  assert.ok(movHtml.includes('Put Data / Edit Figures'), 'Put Data / Edit Figures button present in MOV Provincial Allocation Table');
+  assert.equal(movHtml.includes('id="panel-mov-whereabouts-provincial"'), false, 'MOV Provincial Allocation panel removed');
+  assert.ok(movHtml.includes('id="panel-optool"'), 'MOV OPTool panel exists');
+  assert.ok(movHtml.includes('MOV Operational Support List'), 'MOV Operational Support List title present');
+  assert.ok(movHtml.includes('+ Add MOV Row'), '+ Add MOV Row button present');
   assert.ok(movHtml.includes('id="panel-cf-status-table"'), 'MOV panel exists');
   assert.ok(movHtml.includes('MOV Milestone Status &amp; Accomplishment Summary'), 'MOV summary title present');
   assert.ok(movHtml.includes('WITH PPU DATE'), 'MOV standard table has WITH PPU DATE header');
@@ -2668,8 +2668,10 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   // 2. Registration / Distribution Whereabouts
   const regDistCfg = WHEREABOUTS_CONFIGS['regdist-whereabouts'];
   const regDistHtml = renderMilestoneWhereaboutsView(baseCtx, regDistCfg);
-  assert.ok(regDistHtml.includes('id="panel-regdist-whereabouts-provincial"'), 'RegDist Provincial Allocation panel exists');
-  assert.ok(regDistHtml.includes('EP CLOA Registration / Distribution'), 'RegDist milestone label present');
+  assert.equal(regDistHtml.includes('id="panel-regdist-whereabouts-provincial"'), false, 'RegDist Provincial Allocation panel removed');
+  assert.ok(regDistHtml.includes('id="panel-optool"'), 'RegDist OPTool panel exists');
+  assert.ok(regDistHtml.includes('Registration / Distribution Operational Support List'), 'RegDist Operational Support List title present');
+  assert.ok(regDistHtml.includes('+ Add RegistrationDistribution Row'), '+ Add RegistrationDistribution Row button present');
   assert.ok(regDistHtml.includes('id="panel-cf-status-table"'), 'RegDist panel exists');
   assert.ok(regDistHtml.includes('Registration / Distribution Milestone Status &amp; Accomplishment Summary'), 'RegDist title present');
   assert.ok(regDistHtml.includes('WITH DATE REGISTERED'), 'RegDist standard table has WITH DATE REGISTERED header');
@@ -2682,8 +2684,10 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
   // 3. Installation Whereabouts
   const instCfg = WHEREABOUTS_CONFIGS['installation-whereabouts'];
   const instHtml = renderMilestoneWhereaboutsView(baseCtx, instCfg);
-  assert.ok(instHtml.includes('id="panel-installation-whereabouts-provincial"'), 'Installation Provincial Allocation panel exists');
-  assert.ok(instHtml.includes('Installation'), 'Installation milestone label present in Provincial Allocation Table');
+  assert.equal(instHtml.includes('id="panel-installation-whereabouts-provincial"'), false, 'Installation Provincial Allocation panel removed');
+  assert.ok(instHtml.includes('id="panel-optool"'), 'Installation OPTool panel exists');
+  assert.ok(instHtml.includes('Installation Operational Support List'), 'Installation Operational Support List title present');
+  assert.ok(instHtml.includes('+ Add Installation Row'), '+ Add Installation Row button present');
   assert.ok(instHtml.includes('id="panel-cf-status-table"'), 'Installation panel exists');
   assert.ok(instHtml.includes('Installation Milestone Status &amp; Accomplishment Summary'), 'Installation title present');
   assert.ok(instHtml.includes('WITH DATE REGISTERED'), 'Installation standard table has WITH DATE REGISTERED header');
@@ -2704,9 +2708,9 @@ test('Milestone Status & Accomplishment Summary template replicated across MOV, 
     leaseholdPage: 1,
     leaseholdPageSize: 25
   });
-  assert.ok(leaseholdHtml.includes('id="panel-leasehold-provincial"'), 'Leasehold Provincial Allocation panel exists');
-  assert.ok(leaseholdHtml.includes('Provincial Allocation Table'), 'Leasehold Provincial Allocation Table title present');
-  assert.ok(leaseholdHtml.includes('Leasehold'), 'Leasehold label present in Provincial Allocation Table');
+  assert.equal(leaseholdHtml.includes('id="panel-leasehold-provincial"'), false, 'Leasehold Provincial Allocation panel removed');
+  assert.ok(leaseholdHtml.includes('Leasehold Master Ledger &amp; Encoding Operations') || leaseholdHtml.includes('Leasehold Master Ledger & Encoding Operations'), 'Leasehold Master Ledger title present');
+  assert.ok(leaseholdHtml.includes('id="leasehold-search"'), 'Leasehold search bar present');
 
   // 5. Dynamic Support List Modal rendering for MOV, RegDist, and Installation
   const sampleMovRow = [
@@ -4317,10 +4321,27 @@ test('CF Whereabouts embeds CF(DOC) OPTool Support List Table right after cards 
   assert.ok(pCards < pOptoolPanel, 'CF(DOC) table must come after KPI cards');
   assert.ok(pOptoolPanel < pStatusTable, 'CF(DOC) table must come before Status Table');
 
-  // 4. MOV Whereabouts still keeps its Provincial Allocation panel
+  // 4. Survey, MOV, RegDist, and Installation all remove Provincial Allocation panel and embed OPTool Table
   const movCfg = WHEREABOUTS_CONFIGS['mov-whereabouts'];
   const movHtml = renderMilestoneWhereaboutsView({ ...ctx, whereaboutsTargetYearFilter: { 'mov-whereabouts': 'ALL' } }, movCfg);
-  assert.ok(movHtml.includes('id="panel-mov-whereabouts-provincial"'), 'MOV Whereabouts keeps its Provincial Allocation Table');
+  assert.equal(movHtml.includes('id="panel-mov-whereabouts-provincial"'), false, 'MOV Whereabouts removes Provincial Allocation Table');
+  assert.ok(movHtml.includes('id="panel-optool"'), 'MOV embeds OPTool panel');
+  assert.ok(movHtml.includes('MOV Operational Support List'), 'MOV Operational Support List title present');
+
+  const surveyCfg = WHEREABOUTS_CONFIGS['survey-whereabouts'];
+  const surveyHtml = renderMilestoneWhereaboutsView({ ...ctx, whereaboutsTargetYearFilter: { 'survey-whereabouts': 'ALL' } }, surveyCfg);
+  assert.equal(surveyHtml.includes('id="panel-survey-whereabouts-provincial"'), false, 'Survey Whereabouts removes Provincial Allocation Table');
+  assert.ok(surveyHtml.includes('id="panel-optool"'), 'Survey embeds OPTool panel');
+  assert.ok(surveyHtml.includes('Survey Operational Support List'), 'Survey Operational Support List title present');
+  assert.ok(surveyHtml.includes('+ Add Survey Row'), '+ Add Survey Row button present');
+
+  // Position check in Survey: surveyKpiHtml comes before panel-optool which comes before surveyStatusTableHtml
+  const pSurveyCards = surveyHtml.indexOf('cf-kpi-global-grid');
+  const pSurveyOptool = surveyHtml.indexOf('id="panel-optool"');
+  const pSurveyStatus = surveyHtml.indexOf('id="panel-survey-status-monitoring"');
+  assert.ok(pSurveyCards !== -1 && pSurveyOptool !== -1 && pSurveyStatus !== -1, 'All Survey panels exist');
+  assert.ok(pSurveyCards < pSurveyOptool, 'Survey OPTool table must come after KPI cards');
+  assert.ok(pSurveyOptool < pSurveyStatus, 'Survey OPTool table must come before Survey Monitoring Table');
 });
 
 

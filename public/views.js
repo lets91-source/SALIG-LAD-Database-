@@ -4353,39 +4353,29 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     'installation': 'Installation',
     'leasehold': 'Leasehold'
   };
-  const activeMilestoneLabel = milestoneLabelMap[activeNepMsKey] || cfg.tabName;
-  const nepAllocationHtml = isCfWhereabouts ? '' : renderProvincialAllocationSection(ctx, {
-    milestoneKey: activeNepMsKey,
-    milestoneLabel: activeMilestoneLabel,
-    yearFilter: targetYearFilterVal,
-    panelId: `panel-${viewKey}-provincial`
+  const displayTabName = cfg.tabName === 'RegistrationDistribution' ? 'Registration / Distribution' : cfg.tabName;
+  const milestoneOptoolCtx = {
+    ...ctx,
+    activeOptoolTab: cfg.tabName,
+    searchTerm: ctx.optoolSearch || ctx.whereaboutsSearch?.[viewKey] || ctx.searchTerm || '',
+    optoolColMode: ctx.optoolColMode || 'preview',
+    optoolPage: ctx.optoolPage || 1,
+    optoolPageSize: ctx.optoolPageSize || 50,
+    optoolColPage: ctx.optoolColPage || 1,
+    optoolColFilters: ctx.optoolColFilters || {}
+  };
+  const optoolTableHtml = renderOptoolTablePanelHtml(milestoneOptoolCtx, {
+    showTabStrip: false,
+    panelTitle: `${displayTabName} Operational Support List`,
+    panelSubtitle: `Active records in ${esc(cfg.tabName)} worksheet • Standardized Operational Columns • Google Sheets Live Sync`
   });
-
-  let cfOptoolTableHtml = '';
-  if (isCfWhereabouts) {
-    const cfOptoolCtx = {
-      ...ctx,
-      activeOptoolTab: 'CF(DOC)',
-      searchTerm: ctx.optoolSearch || ctx.whereaboutsSearch?.[viewKey] || ctx.searchTerm || '',
-      optoolColMode: ctx.optoolColMode || 'preview',
-      optoolPage: ctx.optoolPage || 1,
-      optoolPageSize: ctx.optoolPageSize || 50,
-      optoolColPage: ctx.optoolColPage || 1,
-      optoolColFilters: ctx.optoolColFilters || {}
-    };
-    cfOptoolTableHtml = renderOptoolTablePanelHtml(cfOptoolCtx, {
-      showTabStrip: false,
-      panelTitle: 'CF(DOC) Operational Support List',
-      panelSubtitle: 'Active records in CF(DOC) worksheet • 31 Standardized Operational Columns • Google Sheets Live Sync'
-    });
-  }
 
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
     ${isMilestoneTrackingView ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
 
-    ${isCfWhereabouts ? cfOptoolTableHtml : nepAllocationHtml}
+    ${optoolTableHtml}
 
     ${isMilestoneTrackingView ? cfStatusTableHtml : ''}
 
@@ -5723,6 +5713,140 @@ export const DEFAULT_OPTOOL_CF_SCHEMA = [
   { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Reporting', type: 'text' }
 ];
 
+export const DEFAULT_OPTOOL_SURVEY_SCHEMA = [
+  { key: 'lhid', header: 'LHID', label: 'LHID', group: 'Identification', type: 'text' },
+  { key: 'kindOfSurvey', header: 'Kind of Survey', label: 'Kind of Survey', group: 'DARPO Compliance', type: 'select', options: ['By Admin', 'By Contract'] },
+  { key: 'dateRss', header: 'Date RSS', label: 'Date RSS', group: 'DARPO Compliance', type: 'date' },
+  { key: 'fieldWorkStartDate', header: 'Field Work Start Date', label: 'Field Work Start Date', group: 'DARPO Compliance', type: 'date' },
+  { key: 'fieldWorkCompletionDate', header: 'Field Work Completion Date', label: 'Field Work Completion Date', group: 'DARPO Compliance', type: 'date' },
+  { key: 'finalizedSrDate', header: 'Finalized Survey Return \nDate', label: 'Finalized Survey Return Date', group: 'DARPO Compliance', type: 'date' },
+  { key: 'srForwardedToDarro', header: 'SR Forwarded to DARRO', label: 'SR Forwarded to DARRO', group: 'DARPO Compliance', type: 'date' },
+  { key: 'srAcceptedByDarro', header: 'SR Accepted by DARRO', label: 'SR Accepted by DARRO', group: 'DARRO Compliance', type: 'date' },
+  { key: 'plan', header: 'Plan\n(With/Out)', label: 'Plan (With/Out)', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'fieldNotes', header: 'Field Notes W/Cover\n(With/Out)', label: 'Field Notes w/ Cover', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'traverseComputation', header: 'Traverse Computation\n(With/Out)', label: 'Traverse Computation', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'lotDataComputation', header: 'Lot Data Computation\n(With/Out)', label: 'Lot Data Computation', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'dlsdFile', header: 'DLSD File', label: 'DLSD File', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'transmittalSrPdf', header: 'Transmittal of Survey Returned PDF File\n(With/Out)', label: 'Transmittal PDF File', group: 'DARRO Compliance', type: 'pdfFile' },
+  { key: 'refBoundaryComp', header: 'Reference Boundary Computation\n(With/Out)', label: 'Reference Boundary Comp.', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'noticeOfCoverage', header: 'Notice of Coverage\n(With/Out)', label: 'Notice of Coverage', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'taxDeclaration', header: 'Tax Declaration\n(With/Out)', label: 'Tax Declaration', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'certifiedCopyTitle', header: 'Certified Copy of Title\n(With/Out)', label: 'Certified Copy of Title', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'marpoCert', header: 'MARPO Certification', label: 'MARPO Certification', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'surveyAuthority', header: 'Survey Authority\nIF APPLICABLE', label: 'Survey Authority (If Applicable)', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'cenroCert', header: 'CENRO Certification\nIF APPLICABLE', label: 'CENRO Cert. (If Applicable)', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'orderOfCancellation', header: 'Order of Cancellation\nIF APPLICABLE \n', label: 'Order of Cancellation', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'orderOfCorrection', header: 'Order of Correction\nIF APPLICABLE', label: 'Order of Correction', group: 'DARRO Compliance', type: 'checkbox' },
+  { key: 'remarksDarroToDarpo', header: 'Remarks\n(SR Returned by DARRO to DARPO', label: 'Remarks (DARRO -> DARPO)', group: 'DARRO Compliance', type: 'text', fullWidth: true },
+  { key: 'srReturnedDarroToDarpoDate', header: 'Survey Returns Returned DARRO to DARPO\nDATE', label: 'SR Returned DARRO -> DARPO Date', group: 'DARRO Compliance', type: 'date' },
+  { key: 'srResubmittedDarroDate', header: 'Sruvey Returns Re-Submitted to DARRO\nDATE', label: 'SR Re-submitted to DARRO Date', group: 'DARPO Compliance', type: 'date' },
+  { key: 'srTransmittedDenrSmdDate', header: 'Surver Returns Trasmitted to DENR-SMD DATE', label: 'SR Transmitted to DENR-SMD Date', group: 'DARRO Compliance', type: 'date' },
+  { key: 'transactionNumber', header: 'Transaction Number', label: 'DENR Transaction Number', group: 'DARRO Compliance', type: 'text' },
+  { key: 'dateAcceptedDenrSmd', header: 'Date Accepted by DENR-SMD\nDATE', label: 'Date Accepted by DENR-SMD', group: 'DARRO Compliance', type: 'date' },
+  { key: 'withSubmittedDlsd', header: 'With Submitted DLSD', label: 'With Submitted DLSD', group: 'DARRO Compliance', type: 'text' },
+  { key: 'srReturnedDenrToDarroDate', header: 'SR Returned by DENR-SMD to DARRO\nDATE', label: 'SR Returned DENR-SMD -> DARRO Date', group: 'DARRO Compliance', type: 'date' },
+  { key: 'srReturnedDenrDarroToDarpoDate', header: 'SR Returned DENR-SMD -> DARRO - DARPO', label: 'SR Returned DENR-SMD -> DARRO - DARPO', group: 'DARRO Compliance', type: 'date' },
+  { key: 'remarksReturnedDenr', header: 'Remarks\n(Returned SRs from DENR)', label: 'Remarks (Returned from DENR)', group: 'DARRO Compliance', type: 'text', fullWidth: true },
+  { key: 'srReturnedDarpoToDarroDate', header: 'SR Returned by DARPO to DARRO\nDATE', label: 'SR Returned DARPO -> DARRO Date', group: 'DARRO Compliance', type: 'date' },
+  { key: 'darroResubmittedDenrDate', header: 'DARRO Re-submitted survey to DENR-SMD\nDATE', label: 'DARRO Re-submitted to DENR-SMD', group: 'DARRO Compliance', type: 'date' },
+  { key: 'aspDate', header: 'ASP Date', label: 'ASP Approval Date', group: 'DARRO Compliance', type: 'date' },
+  { key: 'aspNo', header: 'ASP No.', label: 'ASP Number', group: 'DARRO Compliance', type: 'text' },
+  { key: 'receivedBy', header: 'Received By', label: 'Received By', group: 'Reporting', type: 'text' },
+  { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Reporting', type: 'select', options: ['Current', 'Previous Year'] },
+  { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Reporting', type: 'select' },
+  { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
+  { key: 'currentStatus', header: 'Current Status', label: 'Current Status', group: 'Reporting', type: 'text' },
+  { key: 'currentDate', header: 'Current Date', label: 'Current Date', group: 'Reporting', type: 'date' },
+  { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
+];
+
+export const DEFAULT_OPTOOL_MOV_SCHEMA = [
+  { key: 'lhid', header: 'LHID', label: 'LHID', group: 'Valuation & PPU', type: 'text' },
+  { key: 'ppuDate', header: 'PPU Date', label: 'PPU Date', group: 'Valuation & PPU', type: 'date' },
+  { key: 'ppuReviewResult', header: 'PPU Review Result\n(PASSED/FAILED)', label: 'PPU Review Result', group: 'Valuation & PPU', type: 'select', options: ['PASSED', 'FAILED'] },
+  { key: 'dateReceivedDarpo', header: 'Date Received at DARPO', label: 'Date Received at DARPO', group: 'Valuation & PPU', type: 'date' },
+  { key: 'compensationAmount', header: 'Compensation Amount', label: 'Compensation Amount (PHP)', group: 'Compensation & LBP', type: 'decimal' },
+  { key: 'dateOfMov', header: 'Date of MOV', label: 'Date of MOV', group: 'Compensation & LBP', type: 'date' },
+  { key: 'lotNumber', header: 'Lot Number', label: 'Lot Number', group: 'Compensation & LBP', type: 'text' },
+  { key: 'subLotNumber', header: 'Sub Lot Number', label: 'Sub Lot Number', group: 'Compensation & LBP', type: 'text' },
+  { key: 'dateTransLbpAoc', header: 'Date Trans to LBP/AOC', label: 'Date Transmitted to LBP/AOC', group: 'Compensation & LBP', type: 'date' },
+  { key: 'lbpClaimNumber', header: 'LBP Claim Number', label: 'LBP Claim Number', group: 'Compensation & LBP', type: 'text' },
+  { key: 'aocNumber', header: 'AOC Number', label: 'AOC Number', group: 'Compensation & LBP', type: 'text' },
+  { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Reporting', type: 'select', options: ['Current', 'Previous Year'] },
+  { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Reporting', type: 'select' },
+  { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
+  { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
+];
+
+export const DEFAULT_OPTOOL_REGDIST_SCHEMA = [
+  { key: 'lhid', header: 'LHID/ Sequence No.', label: 'LHID / Sequence No.', group: 'Identification', type: 'text' },
+  { key: 'originSource', header: 'Origin/\nSource:\n(New Land, REDOC & DNYD)', label: 'Origin / Source', group: 'Identification', type: 'text' },
+  { key: 'cloaType', header: 'CLOA TYPE (EP/CLOA OR COLLECTIVE)', label: 'CLOA Type', group: 'Identification', type: 'text' },
+  { key: 'region', header: 'REGION', label: 'Region', group: 'Location', type: 'text' },
+  { key: 'province', header: 'PROVINCE', label: 'Province', group: 'Location', type: 'text' },
+  { key: 'municipality', header: 'MUNICIPALITY', label: 'Municipality', group: 'Location', type: 'text' },
+  { key: 'barangay', header: 'BARANGAY', label: 'Barangay', group: 'Location', type: 'text' },
+  { key: 'arbName', header: 'NAME OF ARB (LN, FN, MI)', label: 'Name of ARB (LN, FN, MI)', group: 'ARB & Title Details', type: 'text' },
+  { key: 'epOrCloaSerialNo', header: 'EP or CLOA \nSERIAL No.', label: 'EP or CLOA Serial No.', group: 'ARB & Title Details', type: 'text' },
+  { key: 'areaHas', header: 'AREA\n(HAs)', label: 'Area (HAS)', group: 'ARB & Title Details', type: 'decimal' },
+  { key: 'moa', header: 'MOA', label: 'MOA', group: 'ARB & Title Details', type: 'text' },
+  { key: 'rodTitleNo', header: 'ROD TITLE NO.', label: 'ROD Title No.', group: 'Registration & Distribution', type: 'text' },
+  { key: 'dateRegistered', header: 'DATE REGISTERED', label: 'Date Registered', group: 'Registration & Distribution', type: 'date' },
+  { key: 'dateOfDistribution', header: 'DATE OF DISTRIBUTION (mm/dd/yyyy)', label: 'Date of Distribution', group: 'Registration & Distribution', type: 'text' },
+  { key: 'noOfArbs', header: 'Total Number of ARB', label: 'Total Number of ARB', group: 'Reporting', type: 'integer' },
+  { key: 'maleArbs', header: 'Male', label: 'Male', group: 'Reporting', type: 'integer' },
+  { key: 'femaleArbs', header: 'Female', label: 'Female', group: 'Reporting', type: 'integer' },
+  { key: 'noOfTitles', header: 'NO. OF TITLES', label: 'No. of Titles', group: 'Reporting', type: 'integer' },
+  { key: 'target', header: 'TARGET YEAR\n (Current/ Previous)', label: 'Target Year', group: 'Reporting', type: 'select', options: ['Current', 'Previous Year'] },
+  { key: 'monthReported', header: 'MONTH REPORTED', label: 'Month Reported', group: 'Reporting', type: 'select' },
+  { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Reporting', type: 'text' },
+  { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
+  { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
+];
+
+export const DEFAULT_OPTOOL_INSTALLATION_SCHEMA = [
+  { key: 'lhid', header: 'LHID \n (From OPTool, \n if New Land)', label: 'LHID (From OPTool)', group: 'Location & Cross-Ref', type: 'text' },
+  { key: 'region', header: 'REGION', label: 'Region', group: 'Location & Cross-Ref', type: 'text' },
+  { key: 'province', header: 'PROVINCE', label: 'Province', group: 'Location & Cross-Ref', type: 'text' },
+  { key: 'municipality', header: 'MUNICIPALITY', label: 'Municipality', group: 'Location & Cross-Ref', type: 'text' },
+  { key: 'barangay', header: 'BARANGAY', label: 'Barangay', group: 'Location & Cross-Ref', type: 'text' },
+  { key: 'loLastName', header: 'LAST NAME', label: 'Landowner Last Name', group: 'Landholding / Original Title', type: 'text' },
+  { key: 'loFirstName', header: 'FIRST NAME', label: 'Landowner First Name', group: 'Landholding / Original Title', type: 'text' },
+  { key: 'loMiddleName', header: 'MIDDLE NAME', label: 'Landowner Middle Name', group: 'Landholding / Original Title', type: 'text' },
+  { key: 'titleOrTaxDecNo', header: 'TITLE NO. OR TAX DEC. NO.', label: 'Title No. or Tax Dec. No.', group: 'Landholding / Original Title', type: 'text' },
+  { key: 'lotNo', header: 'LOT No.', label: 'Lot No.', group: 'Landholding / Original Title', type: 'text' },
+  { key: 'areaHas1', header: 'AREA (Has.)', label: 'Landholding Area (HAS)', group: 'Landholding / Original Title', type: 'decimal' },
+  { key: 'arbLastName', header: 'LAST NAME', label: 'ARB Last Name', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'arbFirstName', header: 'FIRST NAME', label: 'ARB First Name', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'arbMiddleName', header: 'MIDDLE NAME', label: 'ARB Middle Name', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'gender', header: 'GENDER (M/F)', label: 'Gender (M/F)', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'rodTitleNo', header: 'ROD TITLE No.', label: 'ROD Title No.', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'epOrCloaSerialNo', header: 'EP OR CLOA \n SERIAL No.', label: 'EP or CLOA Serial No.', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'surveyNo', header: 'SURVEY No.', label: 'Survey No.', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'lotNo2', header: 'LOT No.2', label: 'Lot No. 2', group: 'Installed ARB & eTitle', type: 'text' },
+  { key: 'areaHas2', header: 'AREA\n (HAs) 2', label: 'Installed Area (HAS)', group: 'Installed ARB & eTitle', type: 'decimal' },
+  { key: 'dateRegistered', header: 'DATE REGISTERED', label: 'Date Registered', group: 'Dates & Accomplishment', type: 'date' },
+  { key: 'dateDistributed', header: 'DATE DISTRIBUTED', label: 'Date Distributed', group: 'Dates & Accomplishment', type: 'date' },
+  { key: 'dateOfInstallation', header: 'DATE OF INSTALLATION (mm/dd/yyyy)', label: 'Date of Installation', group: 'Dates & Accomplishment', type: 'text' },
+  { key: 'installedStatus', header: 'REMARKS (Installed - Yes/No)', label: 'Installed (Yes/No)', group: 'Dates & Accomplishment', type: 'text' },
+  { key: 'noOfArbs', header: 'No. OF ARBs', label: 'No. of ARBs', group: 'Dates & Accomplishment', type: 'integer' },
+  { key: 'noOfTitles', header: 'No. OF TITLES', label: 'No. of Titles', group: 'Dates & Accomplishment', type: 'integer' },
+  { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Dates & Accomplishment', type: 'text' },
+  { key: 'yearAccomp', header: 'YEAR ACCOMP', label: 'Year Accomplished', group: 'Dates & Accomplishment', type: 'text' },
+  { key: 'target', header: 'TARGET YEAR\n (Current/ Previous)', label: 'Target Year', group: 'Dates & Accomplishment', type: 'select', options: ['Current', 'Previous Year'] },
+  { key: 'monthReported', header: 'MONTH REPORTED', label: 'Month Reported', group: 'Dates & Accomplishment', type: 'select' },
+  { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Dates & Accomplishment', type: 'text' },
+  { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Accomplishment', type: 'text' }
+];
+
+export const DEFAULT_OPTOOL_SCHEMAS = {
+  'CF(DOC)': DEFAULT_OPTOOL_CF_SCHEMA,
+  Survey: DEFAULT_OPTOOL_SURVEY_SCHEMA,
+  MOV: DEFAULT_OPTOOL_MOV_SCHEMA,
+  RegistrationDistribution: DEFAULT_OPTOOL_REGDIST_SCHEMA,
+  Installation: DEFAULT_OPTOOL_INSTALLATION_SCHEMA
+};
+
 export const DEFAULT_OPTOOL_CF_PREVIEW_KEYS = [
   'lhid',
   'certificateOfTitle',
@@ -5742,6 +5866,91 @@ export const DEFAULT_OPTOOL_CF_PREVIEW_KEYS = [
   'reportedMonth',
   'remarks'
 ];
+
+export const DEFAULT_OPTOOL_PREVIEW_KEYS = {
+  'CF(DOC)': DEFAULT_OPTOOL_CF_PREVIEW_KEYS,
+  Survey: [
+    'lhid',
+    'kindOfSurvey',
+    'dateRss',
+    'fieldWorkStartDate',
+    'fieldWorkCompletionDate',
+    'finalizedSrDate',
+    'srForwardedToDarro',
+    'srAcceptedByDarro',
+    'transmittalSrPdf',
+    'srTransmittedDenrSmdDate',
+    'transactionNumber',
+    'dateAcceptedDenrSmd',
+    'aspDate',
+    'aspNo',
+    'target',
+    'targetYear',
+    'reportedMonth',
+    'pdfFile'
+  ],
+  MOV: [
+    'lhid',
+    'ppuDate',
+    'ppuReviewResult',
+    'dateReceivedDarpo',
+    'compensationAmount',
+    'dateOfMov',
+    'lotNumber',
+    'subLotNumber',
+    'dateTransLbpAoc',
+    'lbpClaimNumber',
+    'aocNumber',
+    'target',
+    'targetYear',
+    'reportedMonth',
+    'pdfFile'
+  ],
+  RegistrationDistribution: [
+    'lhid',
+    'originSource',
+    'cloaType',
+    'province',
+    'municipality',
+    'barangay',
+    'arbName',
+    'epOrCloaSerialNo',
+    'areaHas',
+    'rodTitleNo',
+    'dateRegistered',
+    'dateOfDistribution',
+    'noOfArbs',
+    'maleArbs',
+    'femaleArbs',
+    'noOfTitles',
+    'target',
+    'targetYear',
+    'monthReported',
+    'pdfFile',
+    'remarks'
+  ],
+  Installation: [
+    'lhid',
+    'province',
+    'municipality',
+    'barangay',
+    'loLastName',
+    'arbLastName',
+    'arbFirstName',
+    'epOrCloaSerialNo',
+    'rodTitleNo',
+    'areaHas2',
+    'dateOfInstallation',
+    'installedStatus',
+    'noOfArbs',
+    'noOfTitles',
+    'yearAccomp',
+    'target',
+    'targetYear',
+    'monthReported',
+    'pdfFile'
+  ]
+};
 
 export function getGroupVariantClass(groupName) {
   const norm = String(groupName || '').trim().toLowerCase();
@@ -5803,13 +6012,17 @@ function buildDbByLhidMap(state) {
 
   function getOptoolTableColumns(schemas, tabName) {
     let rawCols = schemas?.optoolTabs?.[tabName];
-    if (!Array.isArray(rawCols) && tabName === 'CF(DOC)') {
+    if (!Array.isArray(rawCols) && DEFAULT_OPTOOL_SCHEMAS[tabName]) {
+      rawCols = DEFAULT_OPTOOL_SCHEMAS[tabName];
+    } else if (!Array.isArray(rawCols) && tabName === 'CF(DOC)') {
       rawCols = DEFAULT_OPTOOL_CF_SCHEMA;
     } else if (!Array.isArray(rawCols)) {
       rawCols = [];
     }
     let previewKeys = schemas?.optoolPreviewCols?.[tabName];
-    if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && tabName === 'CF(DOC)') {
+    if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && DEFAULT_OPTOOL_PREVIEW_KEYS[tabName]) {
+      previewKeys = DEFAULT_OPTOOL_PREVIEW_KEYS[tabName];
+    } else if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && tabName === 'CF(DOC)') {
       previewKeys = DEFAULT_OPTOOL_CF_PREVIEW_KEYS;
     }
     const rawPreviewCols = Array.isArray(previewKeys)
@@ -5868,10 +6081,14 @@ function buildDbByLhidMap(state) {
     } = ctx;
 
     const tabNames = Object.keys(schemas?.optoolTabs || {});
-    if (tabNames.length === 0 && (activeOptoolTab === 'CF(DOC)' || !activeOptoolTab)) {
-      tabNames.push('CF(DOC)');
+    if (tabNames.length === 0) {
+      if (activeOptoolTab) {
+        tabNames.push(activeOptoolTab);
+      } else {
+        tabNames.push('CF(DOC)');
+      }
     }
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (tabNames[0] || activeOptoolTab || 'CF(DOC)');
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
     const { cols } = getOptoolTableColumns(schemas, currentTab);
     const colByKey = new Map(cols.map((c) => [c.key, c]));
     const dbByLhid = dbByLhidOverride || buildDbByLhidMap(state).dbByLhid;
@@ -5944,13 +6161,17 @@ function buildDbByLhidMap(state) {
   export function getColumnFilterValues(ctx, colKey) {
     const { state, schemas, activeOptoolTab } = ctx;
     const tabNames = Object.keys(schemas?.optoolTabs || {});
-    if (tabNames.length === 0 && (activeOptoolTab === 'CF(DOC)' || !activeOptoolTab)) {
-      tabNames.push('CF(DOC)');
+    if (tabNames.length === 0) {
+      if (activeOptoolTab) {
+        tabNames.push(activeOptoolTab);
+      } else {
+        tabNames.push('CF(DOC)');
+      }
     }
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (tabNames[0] || activeOptoolTab || 'CF(DOC)');
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
     const { cols } = getOptoolTableColumns(schemas, currentTab);
     const col = cols.find((c) => c.key === colKey);
-    const allRows = state.optool[currentTab] || [];
+    const allRows = state?.optool?.[currentTab] || [];
     const { dbByLhid } = buildDbByLhidMap(state);
     const matching = filterOptoolRows(allRows, ctx, colKey, dbByLhid);
 
@@ -5996,10 +6217,14 @@ function buildDbByLhidMap(state) {
     } = ctx;
 
     const tabNames = Object.keys(schemas?.optoolTabs || {});
-    if (tabNames.length === 0 && (activeOptoolTab === 'CF(DOC)' || !activeOptoolTab)) {
-      tabNames.push('CF(DOC)');
+    if (tabNames.length === 0) {
+      if (activeOptoolTab) {
+        tabNames.push(activeOptoolTab);
+      } else {
+        tabNames.push('CF(DOC)');
+      }
     }
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (tabNames[0] || activeOptoolTab || 'CF(DOC)');
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
     const { cols, previewCols } = getOptoolTableColumns(schemas, currentTab);
     const allRows = state?.optool?.[currentTab] || [];
     const targetTabs = schemas?.milestoneTargetTabs || [
@@ -7754,14 +7979,6 @@ export function renderLeaseholdView(ctx) {
           <div style="font-size:11px;color:#b91c1c;margin-top:2px;">Total Monetary Lease Rental</div>
         </div>
       </div>
-
-      <!-- Provincial Allocation Table for Leasehold (after the CARDS) -->
-      ${renderProvincialAllocationSection(ctx, {
-        milestoneKey: 'leasehold',
-        milestoneLabel: 'Leasehold',
-        yearFilter: leaseholdTargetYearFilter,
-        panelId: 'panel-leasehold-provincial'
-      })}
 
       <!-- Toolbar & Filters -->
       <div class="toolbar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
