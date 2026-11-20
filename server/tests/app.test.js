@@ -49,6 +49,7 @@ import {
   renderDashboardView,
   computeMilestoneWhereaboutsBreakdown,
   renderMilestoneWhereaboutsSectionHtml,
+  renderProvTableDetailHtml,
   renderMapDetailCardInner,
   renderLeaseholdView,
   renderLeaseholdModalHtml,
@@ -4656,12 +4657,17 @@ test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs
   assert.equal(esaBreakdown.cf.notNeedingCount, 1);
   assert.equal(esaBreakdown.survey.count, 1);
 
-  // 3. renderMapDetailCardInner renders milestone whereabouts and survey split
-  const cardHtml = renderMapDetailCardInner('ESA', [{ code: 'ESA', name: 'EASTERN SAMAR', ladLhs: 1, ladArea: 5.5, tempLhs: 1, tempArea: 4.5 }], {}, esaBreakdown);
-  assert.ok(cardHtml.includes('Milestone Whereabouts Details'), 'Card has milestone whereabouts section');
-  assert.ok(cardHtml.includes('NEEDING SURVEY'), 'Card shows NEEDING SURVEY label');
-  assert.ok(cardHtml.includes('NOT NEEDING'), 'Card shows NOT NEEDING label');
-  assert.ok(cardHtml.includes('data-nav-survey="Needing Survey"'), 'Card has link for Needing Survey');
+  // 3. renderProvTableDetailHtml renders milestone whereabouts and survey split directly below table
+  const detailHtml = renderProvTableDetailHtml({ breakdown: esaBreakdown, selectedCode: 'ESA' });
+  assert.ok(detailHtml.includes('Milestone Whereabouts &amp; CF Survey Breakdown'), 'Detail has milestone whereabouts section');
+  assert.ok(detailHtml.includes('LHs Needing Survey'), 'Detail shows LHs Needing Survey label');
+  assert.ok(detailHtml.includes('LHs Not Needing Survey'), 'Detail shows LHs Not Needing Survey label');
+  assert.ok(detailHtml.includes('data-nav-survey="Needing Survey"'), 'Detail has link for Needing Survey');
+
+  // renderMapDetailCardInner preserves clean original design
+  const cardHtml = renderMapDetailCardInner('ESA', [{ code: 'ESA', name: 'EASTERN SAMAR', ladLhs: 1, ladArea: 5.5, tempLhs: 1, tempArea: 4.5 }], {});
+  assert.ok(cardHtml.includes('LAD Balance'), 'Card shows LAD Balance');
+  assert.ok(cardHtml.includes('Temp. Park'), 'Card shows Temp. Park');
 
   // 4. renderMilestoneWhereaboutsSectionHtml renders dynamic cards and survey badges
   const sectionHtml = renderMilestoneWhereaboutsSectionHtml({ breakdown: esaBreakdown, selectedCode: 'ESA' });

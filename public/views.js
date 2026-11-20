@@ -5177,100 +5177,128 @@ export function renderMapDetailCardInner(selectedCode, provRows = [], provTotals
           </div>
         </div>
       </div>
+    </div>
+  `;
+}
 
-      <!-- Milestone Whereabouts & CF Survey Requirement Breakdown -->
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:5px;">
-            <span style="font-size:13px;">📋</span>
-            <span style="font-size:11px;font-weight:800;color:var(--dar-green-dark,#0a361d);text-transform:uppercase;letter-spacing:0.04em;">
-              Milestone Whereabouts Details
-            </span>
+export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = [] } = {}) {
+  const isAll = !selectedCode || selectedCode === 'ALL';
+  const node = DEFAULT_CF_PROVINCES.find((p) => p.code === selectedCode);
+  const provName = node ? node.name : (selectedCode || 'Region VIII');
+  const scopeBadge = isAll ? 'Region VIII Consolidated' : `${node ? node.name : selectedCode} (${selectedCode})`;
+  const statusBadgeClass = isAll ? 'badge-blue' : 'badge-green';
+
+  const {
+    cf = { count: 0, area: 0, needingCount: 0, needingArea: 0, notNeedingCount: 0, notNeedingArea: 0, unspecifiedCount: 0 },
+    survey = { count: 0, area: 0 },
+    mov = { count: 0, area: 0 },
+    regdist = { count: 0, area: 0 },
+    installation = { count: 0, area: 0 },
+    leasehold = { count: 0, area: 0 }
+  } = breakdown || {};
+
+  return `
+    <div style="margin-top: 12px; padding: 12px; background: var(--bg-light, #f8fafc); border: 1px solid var(--border); border-radius: 8px;">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:15px;">📍</span>
+          <div>
+            <div style="font-size:12px;font-weight:800;color:var(--dar-green-dark,#0a361d);">${esc(scopeBadge)} — Milestone Whereabouts &amp; CF Survey Breakdown</div>
+            <div style="font-size:10.5px;color:var(--text-muted);">${isAll ? 'Showing active records across all Region VIII provinces' : `Active whereabouts and survey requirements for ${esc(provName)}`}</div>
           </div>
-          <span class="badge ${badgeClass}" style="font-size:9.5px;">${esc(badgeText)}</span>
         </div>
-
-        <!-- CF(DOC) Highlight with Interactive Survey Split -->
-        <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-            <div style="display:flex;align-items:center;gap:4px;">
-              <strong style="font-size:11.5px;color:var(--dar-green-dark,#0a361d);">📁 CF(DOC) Active Ledger</strong>
-              <span class="badge badge-green" style="font-size:10px;font-weight:700;">${(cf.count || 0).toLocaleString()} LHs</span>
-            </div>
-            <button type="button" class="btn btn-secondary btn-xs" data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" style="font-size:10px;padding:2px 6px;">View CF ➔</button>
-          </div>
-          <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;">
-            Active Area: <strong>${fmtArea(cf.area || 0)} HAS</strong>
-          </div>
-
-          <!-- Interactive Needing vs Not Needing Survey Split -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;">
-            <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:5px 6px;cursor:pointer;"
-                 data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Needing Survey"
-                 title="Filter CF Whereabouts to Needing Survey">
-              <div style="font-size:9px;font-weight:800;color:#92400e;text-transform:uppercase;">🔍 NEEDING SURVEY</div>
-              <div style="font-size:13px;font-weight:800;color:#78350f;margin-top:1px;">
-                ${(cf.needingCount || 0).toLocaleString()} <span style="font-size:9px;font-weight:600;">LHs</span>
-              </div>
-              <div style="font-size:9.5px;font-weight:700;color:#92400e;">${fmtArea(cf.needingArea || 0)} HAS</div>
-            </div>
-
-            <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:4px;padding:5px 6px;cursor:pointer;"
-                 data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Not Needing Survey"
-                 title="Filter CF Whereabouts to Not Needing Survey">
-              <div style="font-size:9px;font-weight:800;color:#065f46;text-transform:uppercase;">📋 NOT NEEDING</div>
-              <div style="font-size:13px;font-weight:800;color:#047857;margin-top:1px;">
-                ${(cf.notNeedingCount || 0).toLocaleString()} <span style="font-size:9px;font-weight:600;">LHs</span>
-              </div>
-              <div style="font-size:9.5px;font-weight:700;color:#065f46;">${fmtArea(cf.notNeedingArea || 0)} HAS</div>
-            </div>
-          </div>
-          ${(cf.unspecifiedCount || 0) > 0 ? `
-            <div style="font-size:9px;color:var(--text-muted);margin-top:4px;text-align:right;">
-              Pending Classification: ${(cf.unspecifiedCount || 0)} LHs (${fmtArea(cf.unspecifiedArea || 0)} HAS)
-            </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="badge ${statusBadgeClass}" style="font-size:10px;">${esc(isAll ? 'Region Wide' : `${selectedCode} Active`)}</span>
+          ${!isAll ? `
+            <button type="button" class="btn btn-secondary btn-xs" data-dash-reset-prov="ALL" style="font-size:10px;padding:2px 8px;" title="Reset filter to all Region VIII provinces">🌐 Show All Region VIII</button>
           ` : ''}
         </div>
+      </div>
 
-        <!-- 5 Other Milestones Compact 2-Col Grid -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10.5px;">
-          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
-               data-nav="survey-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Survey Whereabouts for ${esc(title)}">
-            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📐 Survey</div>
-            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(survey.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
-            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(survey.area || 0)} HAS</div>
+      <!-- CF(DOC) Survey Requirement Interactive Split (Needing vs Not Needing Survey) -->
+      <div style="margin-bottom: 10px;">
+        <div style="font-size:10px;font-weight:800;color:var(--dar-green-dark,#0a361d);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+          <span>📋 CF(DOC) Survey Requirement Breakdown (${(cf.count || 0).toLocaleString()} Active LHs • ${fmtArea(cf.area || 0)} HAS)</span>
+          <button type="button" class="btn btn-secondary btn-xs" data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" style="font-size:9.5px;padding:1px 6px;">View CF Whereabouts ➔</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <!-- Needing Survey Card -->
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;cursor:pointer;transition:transform 0.15s ease;"
+               data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Needing Survey"
+               title="Click to open CF Whereabouts filtered to Needing Survey for ${esc(provName)}">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:10px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.03em;">🔍 LHs Needing Survey</span>
+              <span class="badge badge-amber" style="font-size:9px;">Click to Filter</span>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;">
+              <span style="font-size:16px;font-weight:800;color:#78350f;">${(cf.needingCount || 0).toLocaleString()} <span style="font-size:10px;font-weight:600;">LHs</span></span>
+              <span style="font-size:12px;font-weight:700;color:#92400e;">${fmtArea(cf.needingArea || 0)} HAS</span>
+            </div>
+            <div style="font-size:9.5px;color:#b45309;margin-top:2px;">Requires field survey / cadastral inspection</div>
           </div>
 
-          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
-               data-nav="mov-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Land Valuation Whereabouts for ${esc(title)}">
-            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">⚖️ Valuation (MOV)</div>
-            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(mov.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
-            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(mov.area || 0)} HAS</div>
-          </div>
-
-          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
-               data-nav="regdist-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Registration/Distribution Whereabouts for ${esc(title)}">
-            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📜 Reg / Dist</div>
-            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(regdist.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
-            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(regdist.area || 0)} HAS</div>
-          </div>
-
-          <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;cursor:pointer;"
-               data-nav="installation-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Installation Whereabouts for ${esc(title)}">
-            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">🌾 Installation</div>
-            <div style="font-weight:800;color:#0f172a;font-size:12px;">${(installation.count || 0).toLocaleString()} <span style="font-size:9.5px;font-weight:600;color:var(--text-muted);">LHs</span></div>
-            <div style="font-size:9.5px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(installation.area || 0)} HAS</div>
+          <!-- Not Needing Survey Card -->
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 10px;cursor:pointer;transition:transform 0.15s ease;"
+               data-nav="cf-whereabouts" data-nav-province="${esc(selectedCode)}" data-nav-survey="Not Needing Survey"
+               title="Click to open CF Whereabouts filtered to Not Needing Survey for ${esc(provName)}">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:10px;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:0.03em;">📋 LHs Not Needing Survey</span>
+              <span class="badge badge-green" style="font-size:9px;">Click to Filter</span>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;">
+              <span style="font-size:16px;font-weight:800;color:#14532d;">${(cf.notNeedingCount || 0).toLocaleString()} <span style="font-size:10px;font-weight:600;">LHs</span></span>
+              <span style="font-size:12px;font-weight:700;color:#16a34a;">${fmtArea(cf.notNeedingArea || 0)} HAS</span>
+            </div>
+            <div style="font-size:9.5px;color:#15803d;margin-top:2px;">Ready for direct documentation &amp; valuation</div>
           </div>
         </div>
+        ${(cf.unspecifiedCount || 0) > 0 ? `
+          <div style="font-size:9.5px;color:var(--text-muted);margin-top:4px;text-align:right;">
+            Pending Survey Classification: ${(cf.unspecifiedCount || 0)} LHs (${fmtArea(cf.unspecifiedArea || 0)} HAS)
+          </div>
+        ` : ''}
+      </div>
 
-        <div style="background:var(--bg-light,#f8fafc);border:1px solid var(--border);border-radius:5px;padding:5px 8px;margin-top:6px;cursor:pointer;"
-             data-nav="leasehold" data-nav-province="${esc(selectedCode)}" title="Open Leasehold Ledger for ${esc(title)}">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📑 Leasehold</span>
-              <span style="font-weight:800;color:#0f172a;margin-left:6px;font-size:11.5px;">${(leasehold.count || 0).toLocaleString()} LHs</span>
-            </div>
-            <span style="font-size:10px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(leasehold.area || 0)} HAS</span>
+      <!-- Other Operational Milestones Summary Grid -->
+      <div>
+        <div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">
+          Other Operational Milestones Active Whereabouts
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:6px;">
+          <div style="background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:6px 8px;cursor:pointer;"
+               data-nav="survey-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Survey Whereabouts for ${esc(provName)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📐 Survey</div>
+            <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-top:1px;">${(survey.count || 0).toLocaleString()} <span style="font-size:9px;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:10px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(survey.area || 0)} HAS</div>
+          </div>
+
+          <div style="background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:6px 8px;cursor:pointer;"
+               data-nav="mov-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Land Valuation Whereabouts for ${esc(provName)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">⚖️ Valuation</div>
+            <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-top:1px;">${(mov.count || 0).toLocaleString()} <span style="font-size:9px;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:10px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(mov.area || 0)} HAS</div>
+          </div>
+
+          <div style="background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:6px 8px;cursor:pointer;"
+               data-nav="regdist-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Registration/Distribution Whereabouts for ${esc(provName)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📜 Reg / Dist</div>
+            <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-top:1px;">${(regdist.count || 0).toLocaleString()} <span style="font-size:9px;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:10px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(regdist.area || 0)} HAS</div>
+          </div>
+
+          <div style="background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:6px 8px;cursor:pointer;"
+               data-nav="installation-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Installation Whereabouts for ${esc(provName)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">🌾 Installation</div>
+            <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-top:1px;">${(installation.count || 0).toLocaleString()} <span style="font-size:9px;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:10px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(installation.area || 0)} HAS</div>
+          </div>
+
+          <div style="background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:6px 8px;cursor:pointer;"
+               data-nav="leasehold" data-nav-province="${esc(selectedCode)}" title="Open Leasehold Ledger for ${esc(provName)}">
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📑 Leasehold</div>
+            <div style="font-size:12.5px;font-weight:800;color:#0f172a;margin-top:1px;">${(leasehold.count || 0).toLocaleString()} <span style="font-size:9px;color:var(--text-muted);">LHs</span></div>
+            <div style="font-size:10px;font-weight:700;color:var(--dar-green,#059669);">${fmtArea(leasehold.area || 0)} HAS</div>
           </div>
         </div>
       </div>
@@ -5278,7 +5306,7 @@ export function renderMapDetailCardInner(selectedCode, provRows = [], provTotals
   `;
 }
 
-export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {}, selectedCode = 'ALL', milestoneBreakdown = null } = {}) {
+export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {}, selectedCode = 'ALL' } = {}) {
   const isAll = !selectedCode || selectedCode === 'ALL';
 
   const pillButtons = [
@@ -5310,7 +5338,7 @@ export function renderEasternVisayasMapPanelHtml({ provRows = [], provTotals = {
 
         <!-- Right: Target Detail Card -->
         <div id="dash-map-detail-card" style="display:flex;flex-direction:column;justify-content:center;">
-          ${renderMapDetailCardInner(selectedCode, provRows, provTotals, milestoneBreakdown)}
+          ${renderMapDetailCardInner(selectedCode, provRows, provTotals)}
         </div>
       </div>
     </div>
@@ -5738,6 +5766,15 @@ export function renderDashboardView(ctx) {
               </tr>
             </tfoot>
           </table>
+        </div>
+
+        <!-- Milestone Whereabouts & CF Survey Breakdown for selected province (BELOW THIS TABLE) -->
+        <div id="dash-prov-table-detail">
+          ${renderProvTableDetailHtml({
+            breakdown: activeMilestoneBreakdown,
+            selectedCode: activeMapCode,
+            provRows: provBreakdownRows
+          })}
         </div>
       </div>
 

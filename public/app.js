@@ -6,6 +6,7 @@ import {
   LINKED_DB_PROFILE_FIELDS,
   renderDashboardView,
   renderMapDetailCardInner,
+  renderProvTableDetailHtml,
   computeMilestoneWhereaboutsBreakdown,
   renderMilestoneWhereaboutsSectionHtml,
   renderMilestonesView,
@@ -3079,16 +3080,32 @@ function updateDashboardMapSelection(container, code) {
     pill.classList.toggle('active', isAct);
   });
 
-  // 3. Update the Target Breakdown card details
+  // 3. Update the Target Breakdown card details (clean, original design preserved)
   const cardEl = container.querySelector('#dash-map-detail-card');
   if (cardEl && typeof window !== 'undefined' && window.__DASHBOARD_PROV_DATA__) {
-    const { rows, totals, state, schemas } = window.__DASHBOARD_PROV_DATA__;
-    const mb = computeMilestoneWhereaboutsBreakdown(state, schemas, code);
-    cardEl.innerHTML = renderMapDetailCardInner(code, rows, totals, mb);
+    const { rows, totals } = window.__DASHBOARD_PROV_DATA__;
+    cardEl.innerHTML = renderMapDetailCardInner(code, rows, totals);
     bindNavLinks(cardEl);
   }
 
-  // 4. Update the Whereabouts per Milestone section dynamically
+  // 4. Update the section directly below the Provincial Breakdown table
+  const tableDetailEl = container.querySelector('#dash-prov-table-detail');
+  if (tableDetailEl && typeof window !== 'undefined' && window.__DASHBOARD_PROV_DATA__) {
+    const { rows, state, schemas } = window.__DASHBOARD_PROV_DATA__;
+    const mb = computeMilestoneWhereaboutsBreakdown(state, schemas, code);
+    tableDetailEl.innerHTML = renderProvTableDetailHtml({
+      breakdown: mb,
+      selectedCode: code,
+      provRows: rows
+    });
+    bindNavLinks(tableDetailEl);
+    tableDetailEl.querySelector('[data-dash-reset-prov]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateDashboardMapSelection(container, 'ALL');
+    });
+  }
+
+  // 5. Update the Whereabouts per Milestone section dynamically
   const whereaboutsEl = container.querySelector('#dash-milestone-whereabouts-container');
   if (whereaboutsEl && typeof window !== 'undefined' && window.__DASHBOARD_PROV_DATA__) {
     const { rows, state, schemas } = window.__DASHBOARD_PROV_DATA__;
