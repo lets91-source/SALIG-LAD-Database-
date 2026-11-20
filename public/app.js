@@ -150,10 +150,11 @@ function closeColFilterPopover() {
 }
 
 function getOptoolFilterContext() {
+  const activeTab = appState.view === 'optool' ? 'Database' : (appState.activeOptoolTab || 'Database');
   return {
     state: appState.state,
     schemas: appState.schemas,
-    activeOptoolTab: appState.activeOptoolTab,
+    activeOptoolTab: activeTab,
     searchTerm: appState.optoolSearch,
     optoolTargetFilter: appState.optoolTargetFilter,
     optoolColFilters: appState.optoolColFilters,
@@ -161,7 +162,8 @@ function getOptoolFilterContext() {
     optoolPageSize: appState.optoolPageSize,
     optoolColMode: appState.optoolColMode,
     optoolColPage: appState.optoolColPage,
-    filters: appState.filters
+    filters: appState.filters,
+    view: appState.view
   };
 }
 
@@ -1307,7 +1309,13 @@ function renderActiveView() {
     container.innerHTML = renderMilestonesView({ ...ctx, searchTerm: appState.msSearch });
     bindMilestonesViewEvents(container);
   } else if (appState.view === 'optool') {
-    container.innerHTML = renderOptoolView({ ...ctx, ...getOptoolFilterContext() });
+    appState.activeOptoolTab = 'Database';
+    container.innerHTML = renderOptoolView({
+      ...ctx,
+      ...getOptoolFilterContext(),
+      view: 'optool',
+      activeOptoolTab: 'Database'
+    });
     bindOptoolViewEvents(container);
   } else if (appState.view === 'sync') {
     container.innerHTML = renderSyncView(ctx);
@@ -1343,6 +1351,9 @@ function renderActiveView() {
   container.querySelectorAll('[data-nav]').forEach((btn) => {
     btn.addEventListener('click', () => {
       appState.view = btn.dataset.nav;
+      if (appState.view === 'optool') {
+        appState.activeOptoolTab = 'Database';
+      }
       renderActiveView();
     });
   });
@@ -1603,7 +1614,8 @@ function bindOptoolViewEvents(container) {
   bindOptoolPagerEvents(container);
 
   container.querySelector('#btn-optool-add')?.addEventListener('click', () => {
-    openOptoolModal(appState.activeOptoolTab, null, null);
+    const tab = appState.view === 'optool' ? 'Database' : (appState.activeOptoolTab || 'Database');
+    openOptoolModal(tab, null, null);
   });
 
   container.querySelector('#btn-sync-provincial-optool')?.addEventListener('click', async () => {
@@ -1668,23 +1680,25 @@ function bindOptoolViewEvents(container) {
     const editBtn = e.target.closest('[data-edit-optool]');
     if (editBtn) {
       const idx = Number(editBtn.dataset.editOptool);
-      const row = appState.state.optool[appState.activeOptoolTab][idx];
-      if (row) openOptoolModal(appState.activeOptoolTab, row, idx);
+      const tabName = appState.view === 'optool' ? 'Database' : (appState.activeOptoolTab || 'Database');
+      const row = appState.state.optool[tabName]?.[idx];
+      if (row) openOptoolModal(tabName, row, idx);
       return;
     }
 
     const delBtn = e.target.closest('[data-del-optool]');
     if (delBtn) {
       const idx = Number(delBtn.dataset.delOptool);
-      if (!confirm(`Delete row #${idx + 1} from ${appState.activeOptoolTab}?`)) return;
+      const tabName = appState.view === 'optool' ? 'Database' : (appState.activeOptoolTab || 'Database');
+      if (!confirm(`Delete row #${idx + 1} from ${tabName}?`)) return;
       try {
         const res = await withLoading(
           'saving',
           'Deleting OPTool Record…',
-          `Removing row from ${appState.activeOptoolTab} & syncing Google Sheet…`,
+          `Removing row from ${tabName} & syncing Google Sheet…`,
           () =>
             api(
-              `/api/optool/${encodeURIComponent(appState.activeOptoolTab)}/${idx}`,
+              `/api/optool/${encodeURIComponent(tabName)}/${idx}`,
               { method: 'DELETE' }
             )
         );
@@ -1693,21 +1707,21 @@ function bindOptoolViewEvents(container) {
         } else if (res.optool) {
           appState.state.optool = res.optool;
         } else if (res.rows) {
-          appState.state.optool[appState.activeOptoolTab] = res.rows;
+          appState.state.optool[tabName] = res.rows;
         }
         if (res.analytics) {
           appState.analytics = res.analytics;
         } else {
           await refreshAnalytics();
         }
-        const remainingRows = appState.state.optool[appState.activeOptoolTab] || [];
+        const remainingRows = appState.state.optool[tabName] || [];
         const pageSize = Number(appState.optoolPageSize) || 50;
         const maxPages = Math.max(1, Math.ceil(remainingRows.length / pageSize));
         if (appState.optoolPage > maxPages) {
           appState.optoolPage = maxPages;
         }
         renderActiveView();
-        toast(`Deleted row from ${appState.activeOptoolTab}${formatGasPushSuffix(res)}`);
+        toast(`Deleted row from ${tabName}${formatGasPushSuffix(res)}`);
       } catch (err) {
         toast(err.message, true);
       }
@@ -1719,7 +1733,7 @@ function bindOptoolViewEvents(container) {
     if (checkEl) {
       const idx = Number(checkEl.dataset.optoolCheckIdx);
       const colKey = checkEl.dataset.optoolCheckKey;
-      const tabName = appState.activeOptoolTab;
+      const tabName = appState.view === 'optool' ? 'Database' : (appState.activeOptoolTab || 'Database');
       const prevVal = appState.state.optool[tabName]?.[idx]?.[colKey] ?? '';
       const nextChecked = checkEl.checked;
       checkEl.disabled = true;
@@ -1744,7 +1758,7 @@ function bindOptoolViewEvents(container) {
     if (selectEl) {
       const idx = Number(selectEl.dataset.optoolSelectIdx);
       const colKey = selectEl.dataset.optoolSelectKey;
-      const tabName = appState.activeOptoolTab;
+      const tabName = appState.view === 'optool' ? 'Database' : (appState.activeOptoolTab || 'Database');
       const prevVal = appState.state.optool[tabName]?.[idx]?.[colKey] ?? '';
       const nextVal = selectEl.value;
       selectEl.classList.toggle('has-value', Boolean(nextVal));
@@ -2178,7 +2192,7 @@ function exportMilestoneCsv() {
 }
 
 function exportOptoolSupportlistCsv() {
-  const currentTab = appState.activeOptoolTab || 'CF(DOC)';
+  const currentTab = appState.view === 'optool' ? 'Database' : (appState.activeOptoolTab || 'Database');
   const { csvText, filename, rowCount } = generateOptoolSupportListCsv({
     state: appState.state,
     schemas: appState.schemas,
@@ -6083,6 +6097,9 @@ async function init() {
   document.querySelectorAll('[data-view]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       appState.view = btn.dataset.view;
+      if (appState.view === 'optool') {
+        appState.activeOptoolTab = 'Database';
+      }
       sidebarEl?.classList.remove('open');
       syncSidebarToggleUi();
       if (appState.view === 'users') {

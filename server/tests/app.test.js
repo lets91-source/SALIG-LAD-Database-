@@ -4443,5 +4443,75 @@ test('OPTool deduplication and data-loading resilience: no duplicate rows on ref
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('renderOptoolView strictly displays the master Database worksheet across all provinces', () => {
+  const multiProvinceCtx = {
+    view: 'optool',
+    // Simulate leftover state from visiting CF Whereabouts
+    activeOptoolTab: 'CF(DOC)',
+    state: {
+      optool: {
+        'CF(DOC)': [
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA', province: 'EASTERN SAMAR' }
+        ],
+        Database: [
+          { lhid: '801000001', landOwner: 'DELA CRUZ, JUAN', province: 'BILIRAN', municipality: 'NAVAL', titleNumber: 'OCT-100', area: 5.5, carpableArea: 5.5, lotNumber: '101' },
+          { lhid: '802000002', landOwner: 'SANTOS, MARIA', province: 'LEYTE', municipality: 'ALANGALANG', titleNumber: 'T-200', area: 12.0, carpableArea: 10.0, lotNumber: '102' },
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA', province: 'EASTERN SAMAR', municipality: 'LAWA-AN', titleNumber: 'RP-1038', area: 7.5, carpableArea: 7.5, lotNumber: '103' },
+          { lhid: '804000004', landOwner: 'REYES, PEDRO', province: 'NORTHERN SAMAR', municipality: 'CATARMAN', titleNumber: 'OCT-400', area: 3.2, carpableArea: 3.2, lotNumber: '104' },
+          { lhid: '805000005', landOwner: 'ABELLAR, CORAZON', province: 'WESTERN SAMAR', municipality: 'SAN JORGE', titleNumber: 'OCT-500', area: 15.0, carpableArea: 15.0, lotNumber: '105' },
+          { lhid: '806000006', landOwner: 'MERCADO, JOSE', province: 'SOUTHERN LEYTE', municipality: 'MAASIN', titleNumber: 'OCT-600', area: 8.4, carpableArea: 8.4, lotNumber: '106' }
+        ]
+      }
+    },
+    schemas: {
+      optoolTabs: {
+        'CF(DOC)': [
+          { key: 'lhid', header: 'LHID', label: 'LHID' },
+          { key: 'landOwner', header: 'LONAME', label: 'LONAME' }
+        ],
+        Database: [
+          { key: 'titleNumber', header: 'TITLE NUMBER', label: 'TITLE NUMBER' },
+          { key: 'landOwner', header: 'LAND OWNER', label: 'LAND OWNER' },
+          { key: 'province', header: 'PROVINCE', label: 'PROVINCE' },
+          { key: 'municipality', header: 'MUNICIPALITY', label: 'MUNICIPALITY' },
+          { key: 'area', header: 'TOTAL AREA (HAS)', label: 'TOTAL AREA (HAS)', type: 'decimal' },
+          { key: 'carpableArea', header: 'COMPUTED AREA (HAS)', label: 'COMPUTED AREA (HAS)', type: 'decimal' },
+          { key: 'lotNumber', header: 'LOT', label: 'LOT' }
+        ]
+      },
+      milestoneTargetTabs: ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation', 'Leasehold']
+    },
+    optoolColFilters: {},
+    optoolSearch: '',
+    optoolTargetFilter: 'ALL',
+    optoolPage: 1,
+    optoolPageSize: 50,
+    optoolColMode: 'all',
+    optoolColPage: 1,
+    filters: {}
+  };
+
+  const html = renderOptoolView(multiProvinceCtx);
+
+  // Must render the Database panel heading and subtitle
+  assert.ok(html.includes('Optool Support List(tagging of Target)'), 'Panel title must be Optool Support List(tagging of Target)');
+  assert.ok(html.includes('Active records in Database worksheet (All Provinces)'), 'Panel subtitle must indicate Database worksheet (All Provinces)');
+  assert.ok(html.includes('6 Active Records in Database'), 'Panel badge must show all 6 Database active records');
+
+  // Must render Database action buttons and target filters
+  assert.ok(html.includes('+ Add Database Row'), 'Action button must be + Add Database Row');
+  assert.ok(!html.includes('+ Add CF(DOC) Row'), 'Must not render CF(DOC) action button');
+  assert.ok(html.includes('All Milestone Targets'), 'Must render Milestone Target dropdown for Database');
+
+  // Must display records across all provinces in Region VIII
+  assert.ok(html.includes('BILIRAN'), 'Displays Biliran Database record');
+  assert.ok(html.includes('LEYTE'), 'Displays Leyte Database record');
+  assert.ok(html.includes('EASTERN SAMAR'), 'Displays Eastern Samar Database record');
+  assert.ok(html.includes('NORTHERN SAMAR'), 'Displays Northern Samar Database record');
+  assert.ok(html.includes('WESTERN SAMAR'), 'Displays Samar Database record');
+  assert.ok(html.includes('SOUTHERN LEYTE'), 'Displays Southern Leyte Database record');
+});
+
+
 
 

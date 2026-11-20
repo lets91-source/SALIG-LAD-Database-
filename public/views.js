@@ -7057,7 +7057,7 @@ function buildDbByLhidMap(state) {
 
   export function renderOptoolView(ctx) {
     const { state } = ctx;
-    const activeTab = ctx.activeOptoolTab || 'Database';
+    const activeTab = ctx.view === 'optool' || !ctx.activeOptoolTab ? 'Database' : ctx.activeOptoolTab;
     const vm = buildOptoolViewModel({ ...ctx, activeOptoolTab: activeTab });
 
     return `
@@ -7066,7 +7066,7 @@ function buildDbByLhidMap(state) {
     ${renderOptoolTablePanelHtml(ctx, {
       showTabStrip: false,
       panelTitle: 'Optool Support List(tagging of Target)',
-      panelSubtitle: `Active records in ${activeTab} worksheet • Tagging of Milestone Targets • Google Sheets Live Sync`,
+      panelSubtitle: 'Active records in Database worksheet (All Provinces) • Tagging of Milestone Targets • Google Sheets Live Sync',
       vm
     })}
   `;
