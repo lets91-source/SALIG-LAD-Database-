@@ -4512,6 +4512,70 @@ test('renderOptoolView strictly displays the master Database worksheet across al
   assert.ok(html.includes('SOUTHERN LEYTE'), 'Displays Southern Leyte Database record');
 });
 
+test('performProvincialSync imports both optool and milestoneData, and /api/sync/provincial-optool returns live state on login sync', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-login-sync-test-'));
+  const store = new ConsolidatedStore(tmpDir);
+
+  const mockFetchXlsx = async (spreadsheetId, options = {}) => {
+    return {
+      milestoneData: [
+        {
+          Record_ID: `REC-${options.provinceCode}-1`,
+          Province_Code: options.provinceCode,
+          Municipality: 'Sample Mun',
+          Land_Allocation_ID: 'LAD-101',
+          eTitle_No: 'TCT-001',
+          Area_HAS: '2.5000',
+          Milestone_Stage: 'eTitle Registered',
+          Milestone_Date: '2026-11-20',
+          Batch_Category: 'ADMIN BATCH 1',
+          LHID: '803000135'
+        }
+      ],
+      optool: {
+        'CF(DOC)': [
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA', province: options.province, titleNumber: 'RP-1038' },
+          { lhid: '803000136', landOwner: 'SABULAO, EUFEMIA', province: options.province, titleNumber: 'RP-1039' }
+        ],
+        Survey: [
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA', province: options.province, titleNumber: 'RP-1038' }
+        ],
+        MOV: [],
+        RegistrationDistribution: [
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA', province: options.province, titleNumber: 'RP-1038' }
+        ],
+        Installation: [],
+        Database: [
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA', province: options.province, titleNumber: 'RP-1038', area: 7.5, carpableArea: 7.5 }
+        ],
+        Leasehold: []
+      },
+      tabRowCounts: {
+        'CF(DOC)': 2,
+        Survey: 1,
+        RegistrationDistribution: 1,
+        Database: 1
+      }
+    };
+  };
+
+  const { performProvincialSync } = await import('../app.js');
+  const syncRes = await performProvincialSync(store, {
+    fetchXlsxFn: mockFetchXlsx,
+    force: true
+  });
+
+  assert.equal(syncRes.ok, true, 'performProvincialSync completes successfully');
+  assert.ok(store.state.optool['CF(DOC)'].length >= 2, 'CF(DOC) records are populated');
+  assert.ok(store.state.optool.Survey.length >= 1, 'Survey records are populated');
+  assert.ok(store.state.optool.RegistrationDistribution.length >= 1, 'RegistrationDistribution records are populated');
+  assert.ok(store.state.milestoneData.length >= 1, 'MilestoneData records are populated');
+  assert.equal(store.state.dataSourceMode, 'live', 'dataSourceMode is set to live');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+
 
 
 

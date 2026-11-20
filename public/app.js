@@ -5704,14 +5704,19 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
 }
 
 /** Load regional workspace bootstrap data after authentication succeeds. */
-async function bootAppSession() {
+async function bootAppSession(options = {}) {
+  const isLogin = Boolean(options.syncOnLogin);
   let boot = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       boot = await withLoading(
         'fetching',
-        attempt > 1 ? `Connecting to Server (${attempt}/3)…` : 'Fetching Regional Data…',
-        'Loading Region VIII OPTool database, analytics, and sync state…',
+        isLogin
+          ? 'Signing In & Loading Records…'
+          : attempt > 1 ? `Connecting to Server (${attempt}/3)…` : 'Fetching Regional Data…',
+        isLogin
+          ? 'Loading Region VIII OPTool database, analytics, and session…'
+          : 'Loading Region VIII OPTool database, analytics, and sync state…',
         () => api('/api/bootstrap?sync=skip', { timeoutMs: 30000 })
       );
       if (boot && boot.state) break;
@@ -5723,9 +5728,8 @@ async function bootAppSession() {
     }
   }
 
-  hideLoadingOverlay(true);
-
   if (!boot || !boot.state) {
+    hideLoadingOverlay(true);
     toast('Unable to load workspace data from server. Please refresh or check connection.', true);
     const existingError = document.getElementById('boot-error-container');
     if (!existingError && document.body) {
@@ -5745,7 +5749,7 @@ async function bootAppSession() {
       document.body.appendChild(errorDiv);
       document.getElementById('boot-retry-btn')?.addEventListener('click', () => {
         errorDiv.remove();
-        bootAppSession();
+        bootAppSession(options);
       });
     }
     return;
@@ -5766,12 +5770,36 @@ async function bootAppSession() {
   if (appState.view === 'users' && appState.currentUser?.role !== 'admin') {
     appState.view = 'dashboard';
   }
+
+  // If user just logged in or if milestone tabs are empty, synchronize directly with Google Sheets before dismissing loading overlay
+  const cfCount = (appState.state.optool?.['CF(DOC)'] || []).length;
+  const surveyCount = (appState.state.optool?.Survey || []).length;
+  const shouldSyncLive = isLogin || (cfCount === 0 && surveyCount === 0);
+
+  if (shouldSyncLive) {
+    try {
+      const syncResult = await withLoading(
+        'fetching',
+        'Synchronizing with Google Sheets…',
+        'Fetching live CF, Survey, and milestone records across provincial sheets…',
+        () => api('/api/sync/provincial-optool', { method: 'POST', timeoutMs: 25000 })
+      );
+      if (syncResult && syncResult.ok) {
+        if (syncResult.state) appState.state = { ...appState.state, ...syncResult.state };
+        if (syncResult.analytics) appState.analytics = syncResult.analytics;
+        appState.state.dataSourceMode = 'live';
+      }
+    } catch (syncErr) {
+      console.warn('Initial live sync during login skipped/failed:', syncErr);
+    }
+  }
+
   showAppShell();
   renderActiveView();
   hideLoadingOverlay(true);
   stopAutoSync();
   autoSyncStartTimer = setTimeout(() => {
-    if (appState.currentUser) maybeAutoSyncGoogleSheets(true);
+    if (appState.currentUser && !shouldSyncLive) maybeAutoSyncGoogleSheets(true);
   }, 300);
   startAutoSyncLoop();
   startInactivityWatcher();
@@ -5939,7 +5967,7 @@ function bindAuthEvents() {
       );
       appState.currentUser = res.user;
       document.getElementById('login-password').value = '';
-      await bootAppSession();
+      await bootAppSession({ syncOnLogin: true });
       toast(`Welcome back, ${res.user.name}`);
     } catch (err) {
       setAuthFeedback(err.message, 'error');

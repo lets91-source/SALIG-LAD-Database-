@@ -482,7 +482,7 @@ export async function performProvincialSync(store, options = {}) {
     if (item.status === 'fulfilled' && item.value.ok) {
       const { node, parsed, rowCount } = item.value;
       store.importParsedDataset(
-        { optool: parsed.optool },
+        { optool: parsed.optool, milestoneData: parsed.milestoneData },
         { skipSave: true, replaceMilestoneTabs: true, scopeCode: node.code }
       );
       totalImported += rowCount;
