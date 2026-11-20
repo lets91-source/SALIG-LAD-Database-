@@ -5274,28 +5274,28 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
   const maxMilestoneCount = Math.max(1, ...milestoneList.map((m) => m.count));
 
   return `
-    <div style="margin-top: 12px; padding: 12px; background: var(--bg-light, #f8fafc); border: 1px solid var(--border); border-radius: 8px;">
+    <section class="panel" style="width: 100%; margin-bottom: 16px; padding: 16px;" aria-label="Milestone Whereabouts and CF Survey Breakdown">
       <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:15px;">📍</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:18px;">📍</span>
           <div>
-            <div style="font-size:12px;font-weight:800;color:var(--dar-green-dark,#0a361d);">${esc(scopeBadge)} — Milestone Whereabouts &amp; CF Survey Breakdown</div>
-            <div style="font-size:10.5px;color:var(--text-muted);">${isAll ? 'Showing active records across all Region VIII provinces' : `Active whereabouts and survey requirements for ${esc(provName)}`}</div>
+            <div style="font-size:13.5px;font-weight:800;color:var(--dar-green-dark,#0a361d);">${esc(scopeBadge)} — Milestone Whereabouts &amp; CF Survey Breakdown</div>
+            <div style="font-size:11px;color:var(--text-muted);">${isAll ? 'Showing active records across all Region VIII provinces' : `Active whereabouts and survey requirements for ${esc(provName)}`}</div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="badge ${statusBadgeClass}" style="font-size:10px;">${esc(isAll ? 'Region Wide' : `${selectedCode} Active`)}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge ${statusBadgeClass}" style="font-size:10.5px;">${esc(isAll ? 'Region Wide' : `${selectedCode} Active`)}</span>
           ${!isAll ? `
-            <button type="button" class="btn btn-secondary btn-xs" data-dash-reset-prov="ALL" style="font-size:10px;padding:2px 8px;" title="Reset filter to all Region VIII provinces">🌐 Show All Region VIII</button>
+            <button type="button" class="btn btn-secondary btn-xs" data-dash-reset-prov="ALL" style="font-size:10.5px;padding:3px 10px;" title="Reset filter to all Region VIII provinces">🌐 Show All Region VIII</button>
           ` : ''}
         </div>
       </div>
 
-      <!-- Main Body: 2 Columns (Breakdown Cards on Left + Interactive Graph Beside on Right) -->
-      <div style="display:grid;grid-template-columns:minmax(0, 1.45fr) minmax(0, 1.05fr);gap:14px;align-items:stretch;">
+      <!-- Main Body: 2 Columns stretching until the end of the container -->
+      <div style="display:grid;grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr);gap:16px;width:100%;align-items:stretch;">
         <!-- LEFT COLUMN: CF Breakdown & Other Milestones Cards -->
-        <div style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;">
+        <div style="display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
           <!-- CF(DOC) Survey Requirement Interactive Split (Needing vs Not Needing Survey) -->
           <div>
             <div style="font-size:10px;font-weight:800;color:var(--dar-green-dark,#0a361d);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
@@ -5342,10 +5342,10 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
 
           <!-- Other Operational Milestones Summary Grid -->
           <div>
-            <div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">
+            <div style="font-size:10.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">
               Other Operational Milestones Active Whereabouts
             </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(95px, 1fr));gap:6px;">
+            <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;width:100%;">
               <div style="background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:6px 8px;cursor:pointer;"
                    data-nav="survey-whereabouts" data-nav-province="${esc(selectedCode)}" title="Open Survey Whereabouts for ${esc(provName)}">
                 <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">📐 Survey</div>
@@ -5472,7 +5472,7 @@ export function renderProvTableDetailHtml({ breakdown, selectedCode, provRows = 
           </div>
         </div>
       </div>
-    </div>
+    </section>
   `;
 }
 
@@ -5937,15 +5937,6 @@ export function renderDashboardView(ctx) {
             </tfoot>
           </table>
         </div>
-
-        <!-- Milestone Whereabouts & CF Survey Breakdown for selected province (BELOW THIS TABLE) -->
-        <div id="dash-prov-table-detail">
-          ${renderProvTableDetailHtml({
-            breakdown: activeMilestoneBreakdown,
-            selectedCode: activeMapCode,
-            provRows: provBreakdownRows
-          })}
-        </div>
       </div>
 
       <!-- Panel 2: Eastern Visayas Map & Target Explorer + Portfolio Pie -->
@@ -5980,6 +5971,15 @@ export function renderDashboardView(ctx) {
         </div>
       </div>
     </section>
+
+    <!-- FULL WIDTH SECTION DIRECTLY BELOW TABLE & MAP: Milestone Whereabouts & CF Survey Breakdown + Graph Beside (Until the End) -->
+    <div id="dash-prov-table-detail" style="width: 100%; margin-bottom: 16px;">
+      ${renderProvTableDetailHtml({
+        breakdown: activeMilestoneBreakdown,
+        selectedCode: activeMapCode,
+        provRows: provBreakdownRows
+      })}
+    </div>
 
     <!-- BOTTOM SECTION: Whereabouts per Milestone -->
     <div id="dash-milestone-whereabouts-container">
