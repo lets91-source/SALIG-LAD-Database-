@@ -54,6 +54,8 @@ import {
 import {
   TARGET_PERIOD_OPTIONS,
   formatCurrentMonthYear,
+  formatReportedMonthWord,
+  formatYearDisplay,
   getReportedMonthOptions,
   isReportedMonthKey,
   formatLhidDisplay,
@@ -670,6 +672,24 @@ test('Target dropdown (Current / Previous Year) & Reported Month (Month + Curren
   assert.equal(resolveTargetFromDatabaseRow({ year: '', targetYear: '' }, refNov2026), 'Previous Year');
   assert.equal(resolveTargetFromDatabaseRow(null, refNov2026), 'Previous Year');
 
+  // Verify formatReportedMonthWord
+  assert.equal(formatReportedMonthWord('2026-03-01'), 'March 2026');
+  assert.equal(formatReportedMonthWord('2026-11'), 'November 2026');
+  assert.equal(formatReportedMonthWord('Nov 2026'), 'November 2026');
+  assert.equal(formatReportedMonthWord('November 2026'), 'November 2026');
+  assert.equal(formatReportedMonthWord('undated / pending'), '');
+  assert.equal(formatReportedMonthWord('—'), '');
+  assert.equal(formatReportedMonthWord(''), '');
+  assert.equal(formatReportedMonthWord(null), '');
+
+  // Verify formatYearDisplay
+  assert.equal(formatYearDisplay('2026.0'), '2026');
+  assert.equal(formatYearDisplay('2026.00'), '2026');
+  assert.equal(formatYearDisplay('2026'), '2026');
+  assert.equal(formatYearDisplay(2026), '2026');
+  assert.equal(formatYearDisplay(''), '');
+  assert.equal(formatYearDisplay(null), '');
+
   const dir = makeTempDir();
   try {
     const store = new ConsolidatedStore(dir);
@@ -694,6 +714,14 @@ test('Target dropdown (Current / Previous Year) & Reported Month (Month + Curren
       assert.equal(routedCur?.target, 'Current');
       assert.equal(routedCur?.reportedMonth, expectedMonth);
     }
+
+    const normalizedCf = store.normalizeOptoolRow('CF(DOC)', {
+      lhid: '803000135',
+      reportedMonth: '2026-03-01',
+      targetYear: '2026.0'
+    });
+    assert.equal(normalizedCf.reportedMonth, 'March 2026');
+    assert.equal(normalizedCf.targetYear, '2026');
 
     const cfHtml = renderOptoolView({
       state: store.state,

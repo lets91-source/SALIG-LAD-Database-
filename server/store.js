@@ -37,6 +37,8 @@ import { createSeedState } from './seedData.js';
 import {
   LEGACY_SURVEY_STATUS_LABELS,
   formatCurrentMonthYear,
+  formatReportedMonthWord,
+  formatYearDisplay,
   formatLhidDisplay,
   getOptoolRowKey,
   resolveSurveyCurrentStatus,
@@ -116,9 +118,31 @@ function applyTabRowDefaults(tabName, row, dbRow) {
 
   // Auto-connect targetYear from linked Database row if unset
   if (tabName !== 'Database' && (!row.targetYear || String(row.targetYear).trim() === '') && dbRow) {
-    const yr = String(dbRow.year || dbRow.targetYear || '').trim();
+    const yr = formatYearDisplay(dbRow.year || dbRow.targetYear || '');
     if (yr) {
       row.targetYear = yr;
+      changed = true;
+    }
+  } else if (row.targetYear) {
+    const cleanYr = formatYearDisplay(row.targetYear);
+    if (cleanYr && cleanYr !== row.targetYear) {
+      row.targetYear = cleanYr;
+      changed = true;
+    }
+  }
+
+  // Normalize reportedMonth / monthReported
+  if (row.reportedMonth) {
+    const cleanMo = formatReportedMonthWord(row.reportedMonth);
+    if (cleanMo && cleanMo !== row.reportedMonth) {
+      row.reportedMonth = cleanMo;
+      changed = true;
+    }
+  }
+  if (row.monthReported) {
+    const cleanMo = formatReportedMonthWord(row.monthReported);
+    if (cleanMo && cleanMo !== row.monthReported) {
+      row.monthReported = cleanMo;
       changed = true;
     }
   }
@@ -168,13 +192,13 @@ const DATABASE_TO_TARGET_MAP = {
     lhid: 'lhid',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   },
   Survey: {
     lhid: 'lhid',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   },
   MOV: {
     lhid: 'lhid',
@@ -182,7 +206,7 @@ const DATABASE_TO_TARGET_MAP = {
     subLotNumber: 'subLotNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   },
   'Land Valuation': {
     lhid: 'lhid',
@@ -190,7 +214,7 @@ const DATABASE_TO_TARGET_MAP = {
     subLotNumber: 'subLotNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   },
   'Land valuation': {
     lhid: 'lhid',
@@ -198,7 +222,7 @@ const DATABASE_TO_TARGET_MAP = {
     subLotNumber: 'subLotNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   },
   RegistrationDistribution: {
     lhid: 'lhid',
@@ -211,7 +235,7 @@ const DATABASE_TO_TARGET_MAP = {
     rodTitleNo: 'titleNumber',
     target: (r) => resolveTargetFromDatabaseRow(r),
     monthReported: () => formatCurrentMonthYear(),
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   },
   Installation: {
     lhid: 'lhid',
@@ -227,7 +251,7 @@ const DATABASE_TO_TARGET_MAP = {
     areaHas2: (r) => r.totalArea || r.distributedArea || r.carpable || r.computedArea || '',
     target: (r) => resolveTargetFromDatabaseRow(r),
     monthReported: () => formatCurrentMonthYear(),
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   },
   Leasehold: {
     lhid: 'lhid',
@@ -238,7 +262,7 @@ const DATABASE_TO_TARGET_MAP = {
     titleNo: (r) => r.titleNumber || '',
     areaPerTitle: (r) => r.totalArea || '',
     areaTenanted: (r) => r.carpable || r.totalArea || '',
-    targetYear: (r) => String(r.year || r.targetYear || '').trim()
+    targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
   }
 };
 
@@ -916,6 +940,10 @@ export class ConsolidatedStore {
         } else {
           val = String(val ?? '').trim();
         }
+      } else if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(col.key)) {
+        val = formatYearDisplay(val);
+      } else if (col.key === 'reportedMonth' || col.key === 'monthReported') {
+        val = formatReportedMonthWord(val) || String(val ?? '').trim();
       } else {
         val = String(val ?? '').trim();
       }
@@ -1214,7 +1242,7 @@ export class ConsolidatedStore {
       ? targetRows.find((r) => String(r.lhid || '').trim().toLowerCase() === lhidKey)
       : null;
 
-    const targetYearVal = String(dbRow.year || dbRow.targetYear || '').trim();
+    const targetYearVal = formatYearDisplay(dbRow.year || dbRow.targetYear || '');
     const targetVal = resolveTargetFromDatabaseRow(dbRow);
 
     if (existingRow) {

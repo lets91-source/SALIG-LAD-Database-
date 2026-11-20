@@ -11,7 +11,11 @@ import {
   formatArea4,
   normalizeChecklistValue
 } from './schema.js';
-import { formatLhidDisplay } from '../public/reportingUtils.js';
+import {
+  formatLhidDisplay,
+  formatReportedMonthWord,
+  formatYearDisplay
+} from '../public/reportingUtils.js';
 import { readXlsxWorkbook, writeXlsxWorkbook } from './xlsxCodec.js';
 
 function normalizeHeader(value) {
@@ -262,6 +266,10 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
             } else if (val === 'false' || val === 'FALSE' || val === false) {
               val = '';
             }
+          } else if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(colDef.key)) {
+            val = formatYearDisplay(val);
+          } else if (colDef.key === 'reportedMonth' || colDef.key === 'monthReported') {
+            val = formatReportedMonthWord(val) || val;
           }
           if (val !== '') nonEmptyCount++;
           record[colDef.key] = val;
@@ -381,6 +389,10 @@ export function parseCsvText(csvText, targetTab = 'Milestone_Data') {
         } else {
           obj[colDef.key] = raw;
         }
+      } else if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(colDef.key)) {
+        obj[colDef.key] = formatYearDisplay(raw);
+      } else if (colDef.key === 'reportedMonth' || colDef.key === 'monthReported') {
+        obj[colDef.key] = formatReportedMonthWord(raw) || raw;
       } else {
         obj[colDef.key] = raw;
       }

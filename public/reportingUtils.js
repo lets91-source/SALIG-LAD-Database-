@@ -108,6 +108,86 @@ export function resolveTotalArbsFromGenderCounts(maleRaw, femaleRaw) {
 }
 
 /**
+ * Normalizes any reported month string (e.g. "2026-03-01", "2026-11", "Nov 2026", "11/2026")
+ * into full word Month and 4-digit Year format (e.g. "March 2026", "November 2026").
+ */
+export function formatReportedMonthWord(val, fallbackYear = new Date().getFullYear()) {
+  if (val === null || val === undefined) return '';
+  const s = String(val).trim();
+  if (!s || s === '—' || s.toLowerCase() === 'undated / pending' || s.toLowerCase() === 'undated') {
+    return '';
+  }
+
+  // 1. Check YYYY-MM or YYYY-MM-DD (e.g. "2026-03-01", "2026-11", "2026/03/01")
+  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})(?:[-/]\d{1,2})?/);
+  if (isoMatch) {
+    const yr = isoMatch[1];
+    const moIdx = parseInt(isoMatch[2], 10) - 1;
+    if (moIdx >= 0 && moIdx < 12) {
+      return `${MONTH_NAMES[moIdx]} ${yr}`;
+    }
+  }
+
+  // 2. Check MM/DD/YYYY or MM/YYYY (e.g. "03/01/2026", "11/2026")
+  const usMatch = s.match(/^(\d{1,2})\/(\d{1,2}\/)?(\d{4})$/);
+  if (usMatch) {
+    const moIdx = parseInt(usMatch[1], 10) - 1;
+    const yr = usMatch[3];
+    if (moIdx >= 0 && moIdx < 12) {
+      return `${MONTH_NAMES[moIdx]} ${yr}`;
+    }
+  }
+
+  // 3. Check MonthName YYYY (e.g. "Nov 2026", "November 2026", "March 2026", "Nov. 2026")
+  const wordMatch = s.match(/^([A-Za-z]+)\.?\s*,?\s*(\d{4})$/);
+  if (wordMatch) {
+    const monthWord = wordMatch[1].toLowerCase();
+    const yr = wordMatch[2];
+    const moIdx = MONTH_NAMES.findIndex(
+      (m) => m.toLowerCase() === monthWord || m.slice(0, 3).toLowerCase() === monthWord
+    );
+    if (moIdx !== -1) {
+      return `${MONTH_NAMES[moIdx]} ${yr}`;
+    }
+  }
+
+  // 4. Check MonthName alone (e.g. "November", "March")
+  const singleMonthMatch = s.match(/^([A-Za-z]+)\.?$/);
+  if (singleMonthMatch) {
+    const monthWord = singleMonthMatch[1].toLowerCase();
+    const moIdx = MONTH_NAMES.findIndex(
+      (m) => m.toLowerCase() === monthWord || m.slice(0, 3).toLowerCase() === monthWord
+    );
+    if (moIdx !== -1) {
+      return `${MONTH_NAMES[moIdx]} ${fallbackYear}`;
+    }
+  }
+
+  // 5. Try JS Date parser
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `${MONTH_NAMES[parsed.getMonth()]} ${parsed.getFullYear()}`;
+  }
+
+  return s;
+}
+
+/**
+ * Clean year string to a 4-digit integer year (e.g. "2026.0" -> "2026").
+ */
+export function formatYearDisplay(raw) {
+  if (raw === null || raw === undefined) return '';
+  const s = String(raw).trim();
+  if (!s || s === '—') return '';
+  if (/^\d+\.0+$/.test(s)) {
+    return s.split('.')[0];
+  }
+  const match = s.match(/\b(19\d{2}|20\d{2}|21\d{2})\b/);
+  if (match) return match[1];
+  return s;
+}
+
+/**
  * Build the 12 month options paired with the current year (e.g. "January 2026" .. "December 2026").
  */
 export function getReportedMonthOptions(referenceDate = new Date()) {

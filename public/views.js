@@ -11,7 +11,9 @@ import {
   SURVEY_STATUS_STAGES,
   formatLhidDisplay,
   getOptoolRowKey,
-  normalizePdfUrl
+  normalizePdfUrl,
+  formatReportedMonthWord,
+  formatYearDisplay
 } from './reportingUtils.js';
 
 export function esc(str) {
@@ -1291,15 +1293,8 @@ export function renderTargetSummaryView(ctx) {
 
 function formatReportedMonthDisplay(val) {
   if (!val || !String(val).trim()) return '—';
-  const s = String(val).trim();
-  const match = s.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
-  if (match) {
-    const yr = match[1];
-    const mo = parseInt(match[2], 10) - 1;
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    if (mo >= 0 && mo < 12) return `${months[mo]} ${yr}`;
-  }
-  return s;
+  const wordVal = formatReportedMonthWord(val);
+  return wordVal || String(val).trim();
 }
 
 export const WHEREABOUTS_CONFIGS = {
@@ -1642,6 +1637,12 @@ export function getWhereaboutsRowDisplayValue(row, colKey, cfg) {
   if (colKey === 'lhid') return formatLhidDisplay(row.lhid) || '—';
   if (colKey === 'target') return row.target || 'Current';
   if (colKey === 'stage') return row.currentStatus || row.stage || '—';
+  if (colKey === 'targetYear' || colKey === 'year' || colKey === 'pipelineYear' || colKey === 'reportYear') {
+    return formatYearDisplay(row[colKey]) || '—';
+  }
+  if (isReportedMonthKey(colKey)) {
+    return formatReportedMonthDisplay(row[colKey]);
+  }
   if (row.datesMap && colKey in row.datesMap) {
     const raw = row.datesMap[colKey];
     if (raw && cfg?.dates?.find((d) => d.key === colKey)?.isMonth) {
@@ -1894,6 +1895,10 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       rawVal = r.target || 'Current';
     } else if (colKey === 'stage') {
       rawVal = r.stage;
+    } else if (colKey === 'targetYear' || colKey === 'year' || colKey === 'pipelineYear' || colKey === 'reportYear') {
+      rawVal = formatYearDisplay(r[colKey]);
+    } else if (isReportedMonthKey(colKey)) {
+      rawVal = formatReportedMonthDisplay(r[colKey]);
     } else if (r.datesMap && colKey in r.datesMap) {
       rawVal = r.datesMap[colKey];
       if (rawVal && cfg.dates.find((d) => d.key === colKey)?.isMonth) {
@@ -6061,21 +6066,21 @@ function buildDbByLhidMap(state) {
     if (col?.key === 'lhid') {
       return formatLhidDisplay(row?.[col.key]);
     }
-    if (col?.key === 'targetYear') {
+    if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(col?.key)) {
       const direct = row?.[col.key];
       if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
-        const s = String(direct).trim();
-        const m = s.match(/\b(20\d{2})\b/);
-        return m ? m[1] : s;
+        return formatYearDisplay(direct);
       }
       const rawKey = String(row?.lhid || '').trim().toLowerCase();
       const cleanKey = formatLhidDisplay(row?.lhid).toLowerCase();
       const dbRow = (cleanKey && dbByLhid ? dbByLhid.get(cleanKey) : null) || (rawKey && dbByLhid ? dbByLhid.get(rawKey) : null);
       const dbYr = dbRow?.year ?? dbRow?.targetYear ?? '';
-      if (dbYr !== '') {
-        const s = String(dbYr).trim();
-        const m = s.match(/\b(20\d{2})\b/);
-        return m ? m[1] : s;
+      return formatYearDisplay(dbYr);
+    }
+    if (isReportedMonthKey(col?.key)) {
+      const direct = row?.[col.key];
+      if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+        return formatReportedMonthWord(direct) || String(direct);
       }
       return '';
     }
@@ -6750,7 +6755,7 @@ function buildDbByLhidMap(state) {
         <tr>
           ${displayCols
             .map((c) => {
-              const val = getOptoolCellValue(row, c, dbByLhid);
+              let val = getOptoolCellValue(row, c, dbByLhid);
               const linkedCls = c.linkedFromDb ? 'cell-linked-db' : '';
               if (c.key === 'lhid' && val) {
                 const displayLhid = formatLhidDisplay(val);
@@ -6787,7 +6792,12 @@ function buildDbByLhidMap(state) {
                 Array.isArray(c.options) &&
                 !(currentTab === 'Database' && c.key === 'milestoneTarget')
               ) {
-                const opts = isReportedMonthKey(c.key) ? getReportedMonthOptions() : [...c.options];
+                const isMonth = isReportedMonthKey(c.key);
+                if (isMonth && val) {
+                  const wordVal = formatReportedMonthWord(val);
+                  if (wordVal) val = wordVal;
+                }
+                const opts = isMonth ? getReportedMonthOptions() : [...c.options];
                 if (val && !opts.includes(val)) opts.push(val);
                 return `<td><select class="table-cell-select ${val ? 'has-value' : ''}" data-optool-select-idx="${idx}" data-optool-select-key="${esc(
                   c.key
@@ -7580,7 +7590,7 @@ function buildDbByLhidMap(state) {
           </span>
           ${targetYear && targetYear !== 'ALL' ? `
             <span class="badge badge-gray" style="font-size:12px;font-weight:700;padding:4px 10px;">
-              🗓️ Target Year: ${esc(targetYear)}
+              🗓️ Target Year: ${esc(formatYearDisplay(targetYear))}
             </span>
           ` : ''}
           ${isBalanceMode && balanceArea ? `
@@ -7679,7 +7689,7 @@ function buildDbByLhidMap(state) {
                 <td>${esc(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || '—')}</td>
                 <td>${esc(r.datesMap?.fieldWorkCompletionDate || r.fieldWorkCompletionDate || '—')}</td>
                 <td>${esc(r.datesMap?.aspDate || r.aspDate || '—')}</td>
-                <td>${esc(r.targetYear || r.year || r.target || '—')}</td>
+                <td>${esc(formatYearDisplay(r.targetYear || r.year) || r.target || '—')}</td>
                 <td class="right">
                   <button type="button" class="btn btn-xs btn-primary" data-open-optool-tab="Survey" data-filter-lhid="${esc(formatLhidDisplay(r.lhid))}" title="Switch to Survey tab for this LHID">
                     Open in Survey
@@ -7745,7 +7755,7 @@ function buildDbByLhidMap(state) {
           </span>
           ${targetYear && targetYear !== 'ALL' ? `
             <span class="badge badge-gray" style="font-size:12px;font-weight:700;padding:4px 10px;">
-              🗓️ Target Year: ${esc(targetYear)}
+              🗓️ Target Year: ${esc(formatYearDisplay(targetYear))}
             </span>
           ` : ''}
           ${isBalanceMode && balanceArea ? `
@@ -7835,9 +7845,10 @@ function buildDbByLhidMap(state) {
                   </td>
                   ${effectiveDates.map((d) => {
               const dVal = r[d.key] || r.datesMap?.[d.key];
-              return `<td>${dVal ? `<span class="badge badge-green">✔ ${esc(dVal)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>`;
+              const displayVal = d.key === 'reportedMonth' || d.key === 'monthReported' ? formatReportedMonthDisplay(dVal) : dVal;
+              return `<td>${displayVal && displayVal !== '—' ? `<span class="badge badge-green">✔ ${esc(displayVal)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>`;
             }).join('')}
-                  <td>${r.targetYear ? `<span class="badge badge-gray">${esc(r.targetYear)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
+                  <td>${r.targetYear ? `<span class="badge badge-gray">${esc(formatYearDisplay(r.targetYear))}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
                   <td class="right">
                     <button type="button" class="btn btn-secondary btn-xs" data-lhid="${esc(formatLhidDisplay(r.lhid))}" style="font-size:11px;padding:2px 8px;" title="View Landholding Drawer">
                       View Drawer

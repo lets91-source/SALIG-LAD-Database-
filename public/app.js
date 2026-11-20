@@ -35,6 +35,8 @@ import {
 } from './views.js';
 import {
   formatCurrentMonthYear,
+  formatReportedMonthWord,
+  formatYearDisplay,
   formatLhidDisplay,
   getReportedMonthOptions,
   isReportedMonthKey,
@@ -2573,8 +2575,17 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
         `;
       }
       let val = existingRow?.[c.key] ?? '';
-      if (supportsAutoReportedMonth && isReportedMonthKey(c.key) && String(val).trim() === '') {
-        val = formatCurrentMonthYear();
+      if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(c.key)) {
+        val = formatYearDisplay(val);
+      }
+      if (supportsAutoReportedMonth && isReportedMonthKey(c.key)) {
+        if (String(val).trim() === '') {
+          val = formatCurrentMonthYear();
+        } else {
+          val = formatReportedMonthWord(val) || val;
+        }
+      } else if (isReportedMonthKey(c.key) && val) {
+        val = formatReportedMonthWord(val) || val;
       }
       if (supportsAutoTarget && c.key === 'target' && !hasExplicitTarget) {
         val = resolveTargetFromDatabaseRow(initialDbRow);
@@ -2639,7 +2650,12 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
         `;
       }
       if (c.type === 'select' && Array.isArray(c.options)) {
-        const opts = isReportedMonthKey(c.key) ? getReportedMonthOptions() : [...c.options];
+        const isMonth = isReportedMonthKey(c.key);
+        if (isMonth && val) {
+          const wordVal = formatReportedMonthWord(val);
+          if (wordVal) val = wordVal;
+        }
+        const opts = isMonth ? getReportedMonthOptions() : [...c.options];
         if (val && !opts.includes(val)) opts.push(val);
         return `
           ${groupHtml}
@@ -2715,10 +2731,13 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
         targetSelectEl.value = resolveTargetFromDatabaseRow(dbRow);
       }
       const targetYearInput = document.getElementById('opt-targetYear');
-      if (targetYearInput && (!targetYearInput.value || !isEdit)) {
-        const rawYr = dbRow?.year || dbRow?.targetYear || targetYearInput.value || '';
-        const m = String(rawYr).match(/\b(20\d{2})\b/);
-        targetYearInput.value = m ? m[1] : (targetYearInput.value || '');
+      if (targetYearInput) {
+        if (!targetYearInput.value || !isEdit) {
+          const rawYr = dbRow?.year || dbRow?.targetYear || targetYearInput.value || '';
+          targetYearInput.value = formatYearDisplay(rawYr);
+        } else {
+          targetYearInput.value = formatYearDisplay(targetYearInput.value);
+        }
       }
       if (tabName === 'MOV') {
         const lotInput = document.getElementById('opt-lotNumber');
@@ -2785,7 +2804,13 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
           row[c.key] = inputVal;
         }
       } else {
-        row[c.key] = formData.get(c.key) ?? '';
+        let v = formData.get(c.key) ?? '';
+        if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(c.key)) {
+          v = formatYearDisplay(v);
+        } else if (isReportedMonthKey(c.key)) {
+          v = formatReportedMonthWord(v) || v;
+        }
+        row[c.key] = v;
       }
     }
     try {
@@ -5281,7 +5306,7 @@ function getCfSupportRows(appState, tabName = 'CF(DOC)') {
       areaHas: carpableNum,
       currentStatus: row.currentStatus || stage,
       stage,
-      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
+      targetYear: formatYearDisplay(row.targetYear || db.year || db.targetYear || ''),
       target: row.target || db.target || 'Current',
       datesMap
     };
@@ -5432,7 +5457,7 @@ function getSurveySupportRows(appState) {
       areaHas: carpableNum,
       currentStatus: row.currentStatus || stage,
       stage,
-      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
+      targetYear: formatYearDisplay(row.targetYear || db.year || db.targetYear || ''),
       target: row.target || db.target || 'Current',
       datesMap: { ...row }
     };
@@ -5647,8 +5672,12 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
           escapeCsv(r.titleNumber),
           fmtArea(r.carpable),
           escapeCsv(r.currentStatus || r.stage || ''),
-          escapeCsv(r.targetYear || r.year || ''),
-          ...effectiveDates.map((d) => escapeCsv(r.datesMap?.[d.key] || r[d.key] || ''))
+          escapeCsv(formatYearDisplay(r.targetYear || r.year || '')),
+          ...effectiveDates.map((d) => {
+            const rawVal = r.datesMap?.[d.key] || r[d.key] || '';
+            const displayVal = d.key === 'reportedMonth' || d.key === 'monthReported' ? (formatReportedMonthWord(rawVal) || rawVal) : rawVal;
+            return escapeCsv(displayVal);
+          })
         ].join(',')
       );
     } else if (isCf) {
@@ -5663,10 +5692,10 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
           escapeCsv(r.titleNumber),
           fmtArea(r.carpable),
           escapeCsv(r.currentStatus || r.stage || ''),
-          escapeCsv(r.targetYear || r.year || ''),
+          escapeCsv(formatYearDisplay(r.targetYear || r.year || '')),
           escapeCsv(r.datesMap?.dateFiConducted || r.dateFiConducted || ''),
           escapeCsv(r.datesMap?.datePreparedSigned || r.datePreparedSigned || ''),
-          escapeCsv(r.datesMap?.reportedMonth || r.reportedMonth || '')
+          escapeCsv(formatReportedMonthWord(r.datesMap?.reportedMonth || r.reportedMonth || '') || (r.datesMap?.reportedMonth || r.reportedMonth || ''))
         ].join(',')
       );
     } else {
@@ -5681,7 +5710,7 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
           escapeCsv(r.titleNumber),
           fmtArea(r.carpable),
           escapeCsv(r.currentStatus || r.stage || ''),
-          escapeCsv(r.targetYear || r.year || ''),
+          escapeCsv(formatYearDisplay(r.targetYear || r.year || '')),
           escapeCsv(r.target || 'Current'),
           escapeCsv(r.datesMap?.dateRss || r.dateRss || ''),
           escapeCsv(r.datesMap?.fieldWorkStartDate || r.fieldWorkStartDate || ''),
