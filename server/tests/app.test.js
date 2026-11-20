@@ -4657,12 +4657,15 @@ test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs
   assert.equal(esaBreakdown.cf.notNeedingCount, 1);
   assert.equal(esaBreakdown.survey.count, 1);
 
-  // 3. renderProvTableDetailHtml renders milestone whereabouts and survey split directly below table
+  // 3. renderProvTableDetailHtml renders milestone whereabouts and survey split directly below table with graph beside
   const detailHtml = renderProvTableDetailHtml({ breakdown: esaBreakdown, selectedCode: 'ESA' });
   assert.ok(detailHtml.includes('Milestone Whereabouts &amp; CF Survey Breakdown'), 'Detail has milestone whereabouts section');
   assert.ok(detailHtml.includes('LHs Needing Survey'), 'Detail shows LHs Needing Survey label');
   assert.ok(detailHtml.includes('LHs Not Needing Survey'), 'Detail shows LHs Not Needing Survey label');
   assert.ok(detailHtml.includes('data-nav-survey="Needing Survey"'), 'Detail has link for Needing Survey');
+  assert.ok(detailHtml.includes('Survey &amp; Milestone Graph'), 'Detail includes graph beside header');
+  assert.ok(detailHtml.includes('CF LHs'), 'Detail includes donut chart center text');
+  assert.ok(detailHtml.includes('Milestone Comparison'), 'Detail includes milestone comparison bars');
 
   // renderMapDetailCardInner preserves clean original design
   const cardHtml = renderMapDetailCardInner('ESA', [{ code: 'ESA', name: 'EASTERN SAMAR', ladLhs: 1, ladArea: 5.5, tempLhs: 1, tempArea: 4.5 }], {});
