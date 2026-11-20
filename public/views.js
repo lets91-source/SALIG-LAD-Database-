@@ -10,6 +10,7 @@ import {
   resolveSurveyCurrentStatus,
   SURVEY_STATUS_STAGES,
   formatLhidDisplay,
+  getOptoolRowKey,
   normalizePdfUrl
 } from './reportingUtils.js';
 
@@ -1973,10 +1974,22 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     : whereaboutsShowGraph[viewKey] !== false;
   const graphMode = whereaboutsGraphMode[viewKey] || 'graph';
 
-  const rawRows = (state?.optool?.[cfg.tabName] || []).map((r, originalIndex) => ({
-    ...r,
-    __originalIndex: originalIndex
-  }));
+  const unFilteredRawRows = state?.optool?.[cfg.tabName] || [];
+  const seenWhereaboutsKeys = new Set();
+  const rawRows = [];
+  let originalIndexCounter = 0;
+  for (const r of unFilteredRawRows) {
+    if (!r || typeof r !== 'object') continue;
+    const key = getOptoolRowKey(cfg.tabName, r);
+    if (key) {
+      if (seenWhereaboutsKeys.has(key)) {
+        originalIndexCounter++;
+        continue;
+      }
+      seenWhereaboutsKeys.add(key);
+    }
+    rawRows.push({ ...r, __originalIndex: originalIndexCounter++ });
+  }
   const dbRows = state?.optool?.Database || [];
   const dbMap = new Map();
   for (const db of dbRows) {
@@ -6226,7 +6239,18 @@ function buildDbByLhidMap(state) {
     }
     const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (activeOptoolTab || tabNames[0] || 'CF(DOC)');
     const { cols, previewCols } = getOptoolTableColumns(schemas, currentTab);
-    const allRows = state?.optool?.[currentTab] || [];
+    const rawAllRows = state?.optool?.[currentTab] || [];
+    const seenOptoolKeys = new Set();
+    const allRows = [];
+    for (const r of rawAllRows) {
+      if (!r || typeof r !== 'object') continue;
+      const key = getOptoolRowKey(currentTab, r);
+      if (key) {
+        if (seenOptoolKeys.has(key)) continue;
+        seenOptoolKeys.add(key);
+      }
+      allRows.push(r);
+    }
     const targetTabs = schemas?.milestoneTargetTabs || [
       'CF(DOC)',
       'Survey',
@@ -6893,7 +6917,7 @@ function buildDbByLhidMap(state) {
           (t) => `
           <button type="button" class="tab-btn ${t === currentTab ? 'active' : ''}" data-optool-tab="${esc(t)}">
             <span>${esc(t)}</span>
-            <span class="tab-count">${(state?.optool?.[t] || []).length}</span>
+            <span class="tab-count">${t === currentTab ? (vm.totalRows ?? (state?.optool?.[t] || []).length) : (state?.optool?.[t] || []).length}</span>
           </button>
         `
         )
@@ -6917,7 +6941,7 @@ function buildDbByLhidMap(state) {
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="badge badge-green" style="font-size:11px;padding:3px 8px;">
-            ${(state?.optool?.[currentTab] || []).length} Active Records in ${esc(currentTab)}
+            ${vm.totalRows ?? (state?.optool?.[currentTab] || []).length} Active Records in ${esc(currentTab)}
           </span>
         </div>
       </div>

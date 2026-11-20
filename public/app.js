@@ -5694,28 +5694,53 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
 /** Load regional workspace bootstrap data after authentication succeeds. */
 async function bootAppSession() {
   let boot = null;
-  try {
-    boot = await withLoading(
-      'fetching',
-      'Fetching Regional Data…',
-      'Loading Region VIII OPTool database, analytics, and sync state…',
-      () => api('/api/bootstrap?sync=skip', { timeoutMs: 8000 })
-    );
-  } catch (err) {
-    console.warn('Initial bootstrap fetch failed, falling back:', err);
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      boot = await api('/api/bootstrap?sync=skip', { timeoutMs: 5000 });
-    } catch (fallbackErr) {
-      console.error('Fallback bootstrap also failed:', fallbackErr);
+      boot = await withLoading(
+        'fetching',
+        attempt > 1 ? `Connecting to Server (${attempt}/3)…` : 'Fetching Regional Data…',
+        'Loading Region VIII OPTool database, analytics, and sync state…',
+        () => api('/api/bootstrap?sync=skip', { timeoutMs: 30000 })
+      );
+      if (boot && boot.state) break;
+    } catch (err) {
+      console.warn(`Initial bootstrap fetch attempt ${attempt} failed:`, err);
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
     }
   }
 
   hideLoadingOverlay(true);
 
-  if (!boot) {
+  if (!boot || !boot.state) {
     toast('Unable to load workspace data from server. Please refresh or check connection.', true);
+    const existingError = document.getElementById('boot-error-container');
+    if (!existingError && document.body) {
+      const errorDiv = document.createElement('div');
+      errorDiv.id = 'boot-error-container';
+      errorDiv.style.cssText = 'position:fixed;inset:0;background:#0d2818;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:99999;font-family:inherit;padding:24px;text-align:center;';
+      errorDiv.innerHTML = `
+        <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);padding:32px;border-radius:12px;max-width:480px;width:100%;box-shadow:0 12px 36px rgba(0,0,0,0.4);">
+          <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+          <h2 style="margin:0 0 8px 0;font-size:20px;font-weight:700;">Connection Error</h2>
+          <p style="margin:0 0 20px 0;font-size:14px;color:#cbd5e1;line-height:1.5;">Unable to load Region VIII workspace data from server. This can occur on serverless cold starts or temporary network interruption.</p>
+          <button id="boot-retry-btn" style="background:#22c55e;color:#0d2818;font-weight:700;font-size:14px;padding:10px 24px;border:none;border-radius:6px;cursor:pointer;transition:background 0.2s;">
+            Retry Connection ↻
+          </button>
+        </div>
+      `;
+      document.body.appendChild(errorDiv);
+      document.getElementById('boot-retry-btn')?.addEventListener('click', () => {
+        errorDiv.remove();
+        bootAppSession();
+      });
+    }
     return;
   }
+
+  const existingError = document.getElementById('boot-error-container');
+  if (existingError) existingError.remove();
 
   appState.currentUser = boot.currentUser || appState.currentUser;
   appState.provinceScope = boot.provinceScope || null;

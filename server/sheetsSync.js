@@ -399,7 +399,7 @@ export function parseCsvText(csvText, targetTab = 'Milestone_Data') {
 
 export async function fetchGoogleSheetXlsx(spreadsheetId, options = {}) {
   const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export?format=xlsx`;
-  const timeoutMs = options.timeoutMs || 4500;
+  const timeoutMs = options.timeoutMs || 30000;
   const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
   const resp = await fetch(url, { redirect: 'follow', signal });
   if (resp.status === 401 || resp.status === 403) {

@@ -817,7 +817,7 @@ export function createAppServer(dataDir, options = {}) {
                 force: query.force === 'true',
                 ttlMs: 45000
               }),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 3500))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 12000))
             ]);
           } catch (_) {}
         }
@@ -1492,7 +1492,11 @@ export function createAppServer(dataDir, options = {}) {
                   nepProvinceList: !scopeCode ? parsed.nepProvinceList : null,
                   nepMilestoneList: !scopeCode ? parsed.nepMilestoneList : null
                 },
-                { skipSave: true }
+                {
+                  skipSave: true,
+                  replaceMilestoneTabs: true,
+                  scopeCode: node.code === 'HUB' ? null : node.code
+                }
               );
               if (rowCount > 0 && store.state.dataSourceMode === 'sample') {
                 store.state.dataSourceMode = 'merged';

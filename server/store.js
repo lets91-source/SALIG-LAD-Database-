@@ -38,6 +38,7 @@ import {
   LEGACY_SURVEY_STATUS_LABELS,
   formatCurrentMonthYear,
   formatLhidDisplay,
+  getOptoolRowKey,
   resolveSurveyCurrentStatus,
   resolveTargetFromDatabaseRow,
   resolveTotalArbsFromGenderCounts
@@ -601,6 +602,36 @@ export class ConsolidatedStore {
           }
         }
       }
+      // Deduplicate rows within tab using canonical key
+      if (Array.isArray(this.state.optool[tab]) && this.state.optool[tab].length > 1) {
+        const seenKeys = new Map();
+        const dedupedRows = [];
+        for (const row of this.state.optool[tab]) {
+          if (!row || typeof row !== 'object') continue;
+          const key = getOptoolRowKey(tab, row);
+          if (!key) {
+            dedupedRows.push(row);
+            continue;
+          }
+          if (seenKeys.has(key)) {
+            const existingIdx = seenKeys.get(key);
+            const target = dedupedRows[existingIdx];
+            for (const [k, v] of Object.entries(row)) {
+              if (v !== '' && v !== null && v !== undefined && (target[k] === '' || target[k] === null || target[k] === undefined)) {
+                target[k] = v;
+              }
+            }
+            dirty = true;
+          } else {
+            seenKeys.set(key, dedupedRows.length);
+            dedupedRows.push(row);
+          }
+        }
+        if (dedupedRows.length !== this.state.optool[tab].length) {
+          this.state.optool[tab] = dedupedRows;
+          dirty = true;
+        }
+      }
     }
     if (!this.state.gasWebAppUrl && process.env.GAS_WEB_APP_URL) {
       this.state.gasWebAppUrl = String(process.env.GAS_WEB_APP_URL).trim();
@@ -688,6 +719,35 @@ export class ConsolidatedStore {
         const norm = normalizeLeaseholdRow(this.state.leasehold[i]);
         if (JSON.stringify(norm) !== JSON.stringify(this.state.leasehold[i])) {
           this.state.leasehold[i] = norm;
+          dirty = true;
+        }
+      }
+      if (this.state.leasehold.length > 1) {
+        const seenLh = new Map();
+        const dedupedLh = [];
+        for (const row of this.state.leasehold) {
+          if (!row || typeof row !== 'object') continue;
+          const key = getOptoolRowKey('Leasehold', row);
+          if (!key) {
+            dedupedLh.push(row);
+            continue;
+          }
+          if (seenLh.has(key)) {
+            const existingIdx = seenLh.get(key);
+            const target = dedupedLh[existingIdx];
+            for (const [k, v] of Object.entries(row)) {
+              if (v !== '' && v !== null && v !== undefined && (target[k] === '' || target[k] === null || target[k] === undefined)) {
+                target[k] = v;
+              }
+            }
+            dirty = true;
+          } else {
+            seenLh.set(key, dedupedLh.length);
+            dedupedLh.push(row);
+          }
+        }
+        if (dedupedLh.length !== this.state.leasehold.length) {
+          this.state.leasehold = dedupedLh;
           dirty = true;
         }
       }
@@ -963,38 +1023,45 @@ export class ConsolidatedStore {
           if (!Array.isArray(this.state.leasehold)) this.state.leasehold = [];
           if (options.replaceMilestoneTabs) {
             const cleanedIncoming = arr.map((rawRow) => normalizeLeaseholdRow(rawRow));
+            let merged = [];
             if (options.scopeCode) {
               const keepRows = this.state.leasehold.filter(
                 (r) => this.getLeaseholdRowProvinceCode(r) !== options.scopeCode
               );
-              this.state.leasehold = [...cleanedIncoming, ...keepRows];
+              merged = [...cleanedIncoming, ...keepRows];
             } else {
-              this.state.leasehold = cleanedIncoming;
+              merged = cleanedIncoming;
             }
+            const seenLh = new Map();
+            const dedupedLh = [];
+            for (const r of merged) {
+              const k = getOptoolRowKey('Leasehold', r);
+              if (k && seenLh.has(k)) {
+                const idx = seenLh.get(k);
+                dedupedLh[idx] = { ...dedupedLh[idx], ...r };
+              } else {
+                if (k) seenLh.set(k, dedupedLh.length);
+                dedupedLh.push(r);
+              }
+            }
+            this.state.leasehold = dedupedLh;
             this.state.optool.Leasehold = this.state.leasehold;
             importedCount += cleanedIncoming.length;
           } else {
-            const makeLhKey = (r) => {
-              const p = String(r.provs || r.PROVS || '').trim().toLowerCase();
-              const t = String(r.titleNo || r['TITLE NO.'] || '').trim().toLowerCase();
-              const lot = String(r.lotNo || r['LOT NO.'] || '').trim().toLowerCase();
-              const s = String(r.leaseholderSurname || r['LEASEHOLDER SURNAME'] || '').trim().toLowerCase();
-              const f = String(r.leaseholderFirstname || r['LEASEHOLDER FIRSTNAME'] || '').trim().toLowerCase();
-              if (t && lot) return `${p}|${t}|${lot}`;
-              if (s && f) return `${p}|${s}|${f}|${t}`;
-              return r.id ? String(r.id) : `${p}|${s}|${f}|${lot}`;
-            };
             const keyMap = new Map();
-            this.state.leasehold.forEach((r, idx) => keyMap.set(makeLhKey(r), idx));
+            this.state.leasehold.forEach((r, idx) => {
+              const k = getOptoolRowKey('Leasehold', r);
+              if (k) keyMap.set(k, idx);
+            });
             for (const raw of arr) {
               const clean = normalizeLeaseholdRow(raw);
-              const k = makeLhKey(clean);
-              if (keyMap.has(k)) {
+              const k = getOptoolRowKey('Leasehold', clean);
+              if (k && keyMap.has(k)) {
                 const idx = keyMap.get(k);
-                if (idx >= 0) this.state.leasehold[idx] = clean;
+                if (idx >= 0) this.state.leasehold[idx] = { ...this.state.leasehold[idx], ...clean };
               } else {
+                if (k) keyMap.set(k, this.state.leasehold.length);
                 this.state.leasehold.push(clean);
-                keyMap.set(k, this.state.leasehold.length - 1);
               }
               importedCount++;
             }
@@ -1014,14 +1081,34 @@ export class ConsolidatedStore {
             return this.normalizeOptoolRow(tabName, rawRow, linkedDb);
           });
 
+          let mergedList = [];
           if (options.scopeCode) {
             const keepRows = (this.state.optool[tabName] || []).filter(
               (r) => this.getOptoolRowProvinceCode(tabName, r) !== options.scopeCode
             );
-            this.state.optool[tabName] = [...cleanedIncoming, ...keepRows];
+            mergedList = [...cleanedIncoming, ...keepRows];
           } else {
-            this.state.optool[tabName] = cleanedIncoming;
+            mergedList = cleanedIncoming;
           }
+
+          const seenKeys = new Map();
+          const finalRows = [];
+          for (const row of mergedList) {
+            if (!row || typeof row !== 'object') continue;
+            const key = getOptoolRowKey(tabName, row);
+            if (!key) {
+              finalRows.push(row);
+              continue;
+            }
+            if (seenKeys.has(key)) {
+              const existingIdx = seenKeys.get(key);
+              finalRows[existingIdx] = { ...finalRows[existingIdx], ...row };
+            } else {
+              seenKeys.set(key, finalRows.length);
+              finalRows.push(row);
+            }
+          }
+          this.state.optool[tabName] = finalRows;
           importedCount += cleanedIncoming.length;
           continue;
         }
@@ -1030,47 +1117,37 @@ export class ConsolidatedStore {
           continue;
         }
         const targetRows = this.state.optool[tabName];
-        const makeRowKey = (r) => {
-          if (tabName === 'Database') {
-            const lhid = String(r?.lhid || '').trim().toLowerCase();
-            const prov = String(r?.province || '').trim().toLowerCase();
-            if (lhid) {
-              return `${lhid}|${prov}`;
-            }
-            return `${String(r?.titleNumber || '').trim().toLowerCase()}|${String(r?.lotNumber || '').trim().toLowerCase()}|${String(r?.subLotNumber || '').trim().toLowerCase()}|${String(r?.landOwner || '').trim().toLowerCase()}`;
-          }
-          return `${String(r?.lhid || '').trim().toLowerCase()}|${JSON.stringify(r)}`;
-        };
         const keyMap = new Map();
         targetRows.forEach((r, idx) => {
-          keyMap.set(makeRowKey(r), idx);
+          const k = getOptoolRowKey(tabName, r);
+          if (k) keyMap.set(k, idx);
         });
-        const newPrepends = [];
+        const newRows = [];
         for (const rawRow of incoming) {
           const lhidKey = String(rawRow?.lhid || '').trim().toLowerCase();
-          if (!lhidKey) continue;
           const linkedDb =
             tabName === 'RegistrationDistribution' || tabName === 'Installation'
-              ? getDbByLhid().get(lhidKey) || null
+              ? (lhidKey ? getDbByLhid().get(lhidKey) || null : null)
               : null;
           const cleanRow = this.normalizeOptoolRow(tabName, rawRow, linkedDb);
-          const rKey = makeRowKey(cleanRow);
-          if (keyMap.has(rKey)) {
+          const rKey = getOptoolRowKey(tabName, cleanRow);
+          if (rKey && keyMap.has(rKey)) {
             const existingIdx = keyMap.get(rKey);
             if (existingIdx >= 0) {
-              targetRows[existingIdx] = cleanRow;
+              targetRows[existingIdx] = { ...targetRows[existingIdx], ...cleanRow };
             }
           } else {
-            newPrepends.push(cleanRow);
-            keyMap.set(rKey, -1);
+            if (rKey) keyMap.set(rKey, targetRows.length + newRows.length);
+            newRows.push(cleanRow);
           }
           if (tabName === 'Database' && dbByLhid && cleanRow.lhid) {
             dbByLhid.set(cleanRow.lhid.trim().toLowerCase(), cleanRow);
+            dbByLhid.set(formatLhidDisplay(cleanRow.lhid).toLowerCase(), cleanRow);
           }
           importedCount++;
         }
-        if (newPrepends.length > 0) {
-          this.state.optool[tabName] = [...newPrepends.reverse(), ...targetRows];
+        if (newRows.length > 0) {
+          this.state.optool[tabName] = [...targetRows, ...newRows];
         }
       }
     }

@@ -41,6 +41,7 @@ import {
   renderCfSupportListModalHtml,
   DEFAULT_CF_PROVINCES,
   WHEREABOUTS_CONFIGS,
+  buildOptoolViewModel,
   renderUsersView,
   isLadBalance,
   isTempPark,
@@ -4343,5 +4344,104 @@ test('CF Whereabouts embeds CF(DOC) OPTool Support List Table right after cards 
   assert.ok(pSurveyCards < pSurveyOptool, 'Survey OPTool table must come after KPI cards');
   assert.ok(pSurveyOptool < pSurveyStatus, 'Survey OPTool table must come before Survey Monitoring Table');
 });
+
+test('OPTool deduplication and data-loading resilience: no duplicate rows on refresh/sync and purge on load', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'optool-dedup-test-'));
+  const store = new ConsolidatedStore(tmpDir);
+
+  // 1. Reset CF(DOC) to empty array
+  store.state.optool['CF(DOC)'] = [];
+  assert.equal(store.state.optool['CF(DOC)'].length, 0);
+
+  // 2. Import two rows from Eastern Samar: LHID 803000135 and 803000136 (exact user scenario)
+  const incomingRows = [
+    {
+      lhid: '803000135',
+      titleNumber: 'RP-1038 (11000)',
+      landOwner: 'SABULAO, EUFEMIA',
+      moa: 'CA',
+      regionName: 'VIII',
+      province: 'EASTERN SAMAR',
+      municipality: 'LAWA-AN',
+      barangay: 'BOLUSAO'
+    },
+    {
+      lhid: '803000136',
+      titleNumber: 'RP-1039 (11001)',
+      landOwner: 'SABULAO, EUFEMIA',
+      moa: 'CA',
+      regionName: 'VIII',
+      province: 'EASTERN SAMAR',
+      municipality: 'LAWA-AN',
+      barangay: 'BOLUSAO'
+    }
+  ];
+
+  store.importParsedDataset({ optool: { 'CF(DOC)': incomingRows } }, { skipSave: true });
+  assert.equal(store.state.optool['CF(DOC)'].length, 2, 'Initial import produces exactly 2 rows');
+
+  // 3. Repeated sync / import of the same rows must NOT duplicate
+  store.importParsedDataset({ optool: { 'CF(DOC)': incomingRows } }, { skipSave: true });
+  assert.equal(store.state.optool['CF(DOC)'].length, 2, 'Repeated import in merge mode does NOT duplicate rows');
+
+  // 4. Repeated sync / import in replaceMilestoneTabs mode must also NOT duplicate
+  store.importParsedDataset(
+    { optool: { 'CF(DOC)': incomingRows } },
+    { skipSave: true, replaceMilestoneTabs: true, scopeCode: 'ESA' }
+  );
+  assert.equal(store.state.optool['CF(DOC)'].length, 2, 'replaceMilestoneTabs mode does NOT duplicate rows');
+
+  // 5. Injected raw duplicate records in store.json are automatically purged by normalizeState on reload
+  store.state.optool['CF(DOC)'].push(...incomingRows); // Intentionally create duplicate in memory
+  assert.equal(store.state.optool['CF(DOC)'].length, 4, 'Intentionally duplicated to 4 rows');
+  store.save();
+
+  // Reload store from disk
+  const reloadedStore = new ConsolidatedStore(tmpDir);
+  assert.equal(reloadedStore.state.optool['CF(DOC)'].length, 2, 'normalizeState purges duplicate rows on load');
+
+  // 6. UI view models defensively deduplicate even if raw state had duplicates
+  const testCtx = {
+    state: {
+      optool: {
+        'CF(DOC)': [
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA' },
+          { lhid: '803000136', landOwner: 'SABULAO, EUFEMIA' },
+          { lhid: '803000135', landOwner: 'SABULAO, EUFEMIA' },
+          { lhid: '803000136', landOwner: 'SABULAO, EUFEMIA' }
+        ],
+        Database: []
+      }
+    },
+    schemas: {
+      optoolTabs: {
+        'CF(DOC)': [
+          { key: 'lhid', header: 'LHID', label: 'LHID' },
+          { key: 'landOwner', header: 'LONAME', label: 'LONAME' }
+        ]
+      },
+      milestoneTargetTabs: ['CF(DOC)']
+    },
+    activeOptoolTab: 'CF(DOC)',
+    whereaboutsColFilters: {},
+    whereaboutsSearch: {},
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsTargetYearFilter: {},
+    whereaboutsPage: {},
+    whereaboutsPageSize: {}
+  };
+
+  const vm = buildOptoolViewModel(testCtx);
+  assert.equal(vm.totalRows, 2, 'buildOptoolViewModel deduplicates raw duplicate rows');
+  assert.equal(vm.indexedRows.length, 2, 'buildOptoolViewModel indexedRows count is 2');
+
+  const cfCfg = WHEREABOUTS_CONFIGS['cf-whereabouts'];
+  const whereaboutsHtml = renderMilestoneWhereaboutsView(testCtx, cfCfg);
+  assert.ok(whereaboutsHtml.includes('2 Active Records in CF(DOC)'), 'Whereabouts badges display deduplicated count (2 active records, not 4)');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 
 

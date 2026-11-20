@@ -217,3 +217,86 @@ export function resolveSurveyCurrentStatus(row) {
     : { currentStatus: '', currentDate: '' };
 }
 
+/**
+ * Resolves a unique canonical key for an OPTool row across worksheets.
+ * Prevents record duplication during sync, imports, merges, and UI rendering.
+ */
+export function getOptoolRowKey(tabName, r) {
+  if (!r || typeof r !== 'object') return '';
+  const cleanLhid = r.lhid ? formatLhidDisplay(r.lhid).trim().toLowerCase() : '';
+
+  if (tabName === 'Database') {
+    if (cleanLhid) return `db|${cleanLhid}`;
+    const t = String(r.titleNumber || '').trim().toLowerCase();
+    const lot = String(r.lotNumber || '').trim().toLowerCase();
+    const subLot = String(r.subLotNumber || '').trim().toLowerCase();
+    const lo = String(r.landOwner || '').trim().toLowerCase();
+    return `db|t:${t}|l:${lot}|s:${subLot}|lo:${lo}`;
+  }
+
+  if (tabName === 'CF(DOC)') {
+    if (cleanLhid) return `cf|${cleanLhid}`;
+    const t = String(r.titleNumber || r.titlenumber || '').trim().toLowerCase();
+    const lo = String(r.landOwner || r.loname || '').trim().toLowerCase();
+    return `cf|t:${t}|lo:${lo}`;
+  }
+
+  if (tabName === 'Survey') {
+    if (cleanLhid) return `survey|${cleanLhid}`;
+    const tx = String(r.transactionNumber || '').trim().toLowerCase();
+    const sn = String(r.surveyNumber || '').trim().toLowerCase();
+    return `survey|tx:${tx}|sn:${sn}`;
+  }
+
+  if (tabName === 'MOV' || tabName === 'Land Valuation') {
+    const lot = String(r.lotNumber || '').trim().toLowerCase();
+    const subLot = String(r.subLotNumber || '').trim().toLowerCase();
+    if (cleanLhid) {
+      return (lot || subLot) ? `mov|${cleanLhid}|l:${lot}|s:${subLot}` : `mov|${cleanLhid}`;
+    }
+    const lbp = String(r.lbpClaimNumber || '').trim().toLowerCase();
+    const aoc = String(r.aocNumber || '').trim().toLowerCase();
+    return `mov|lbp:${lbp}|aoc:${aoc}|l:${lot}|s:${subLot}`;
+  }
+
+  if (tabName === 'RegistrationDistribution') {
+    const s = String(r.epOrCloaSerialNo || '').trim().toLowerCase();
+    const rod = String(r.rodTitleNo || '').trim().toLowerCase();
+    const a = String(r.arbName || '').trim().toLowerCase();
+    if (cleanLhid) {
+      if (s || rod || a) return `regdist|${cleanLhid}|s:${s}|r:${rod}|a:${a}`;
+      return `regdist|${cleanLhid}`;
+    }
+    return `regdist|s:${s}|r:${rod}|a:${a}`;
+  }
+
+  if (tabName === 'Installation') {
+    const s = String(r.epOrCloaSerialNo || '').trim().toLowerCase();
+    const rod = String(r.rodTitleNo || '').trim().toLowerCase();
+    const lot = String(r.lotNo2 || r.lotNo || '').trim().toLowerCase();
+    const al = String(r.arbLastName || '').trim().toLowerCase();
+    const af = String(r.arbFirstName || '').trim().toLowerCase();
+    if (cleanLhid) {
+      if (s || rod || lot || al || af) return `inst|${cleanLhid}|s:${s}|r:${rod}|l:${lot}|al:${al}|af:${af}`;
+      return `inst|${cleanLhid}`;
+    }
+    return `inst|s:${s}|r:${rod}|l:${lot}|al:${al}|af:${af}`;
+  }
+
+  if (tabName === 'Leasehold') {
+    const p = String(r.provs || r.PROVS || r.province || '').trim().toLowerCase();
+    const t = String(r.titleNo || r['TITLE NO.'] || '').trim().toLowerCase();
+    const lot = String(r.lotNo || r['LOT NO.'] || '').trim().toLowerCase();
+    const s = String(r.leaseholderSurname || r['LEASEHOLDER SURNAME'] || '').trim().toLowerCase();
+    const f = String(r.leaseholderFirstname || r['LEASEHOLDER FIRSTNAME'] || '').trim().toLowerCase();
+    if (t && lot) return `lh|${p}|t:${t}|l:${lot}`;
+    if (s && f) return `lh|${p}|s:${s}|f:${f}|t:${t}`;
+    if (r.id) return `lh|id:${String(r.id).trim().toLowerCase()}`;
+    return `lh|${p}|s:${s}|f:${f}|l:${lot}`;
+  }
+
+  if (cleanLhid) return `${tabName}|${cleanLhid}`;
+  return `${tabName}|${JSON.stringify(r)}`;
+}
+
+
