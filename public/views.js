@@ -2238,6 +2238,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   if ((isMilestoneTrackingView || isSurveyWhereabouts) && targetYearFilterVal !== 'ALL') {
     filteredRows = filteredRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
   }
+  const cfSurveyFilterVal = String(ctx.cfSurveyFilter || 'ALL');
+  if (cfg.tabName === 'CF(DOC)' && cfSurveyFilterVal !== 'ALL') {
+    const filterNorm = cfSurveyFilterVal.toLowerCase();
+    filteredRows = filteredRows.filter((r) => {
+      const req = String(r.surveyRequirement || r['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
+      if (filterNorm.includes('not needing')) return req.includes('not needing');
+      if (filterNorm.includes('needing')) return req.includes('needing') && !req.includes('not needing');
+      return true;
+    });
+  }
 
   // Pagination & Page Size
   const rawPageSizeVal = whereaboutsPageSize[viewKey] || 50;
@@ -3123,6 +3133,18 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             </p>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            ${cfg.tabName === 'CF(DOC)' ? `
+            <select
+              class="form-control whereabouts-target-year-select cf-survey-matrix-filter"
+              id="cf-status-survey-filter"
+              aria-label="Filter by Survey Requirement"
+              title="Filter CF Milestones by Survey Requirement"
+            >
+              <option value="ALL" ${cfSurveyFilterVal === 'ALL' ? 'selected' : ''}>All LHs</option>
+              <option value="Needing Survey" ${cfSurveyFilterVal === 'Needing Survey' ? 'selected' : ''}>Needing Survey</option>
+              <option value="Not Needing Survey" ${cfSurveyFilterVal === 'Not Needing Survey' ? 'selected' : ''}>Not Needing Survey</option>
+            </select>
+            ` : ''}
             <select
               class="form-control whereabouts-target-year-select cf-target-year-select"
               id="cf-status-target-year-filter"
@@ -4375,6 +4397,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const milestoneOptoolCtx = {
     ...ctx,
     activeOptoolTab: cfg.tabName,
+    cfSurveyFilter: ctx.cfSurveyFilter || 'ALL',
     searchTerm: ctx.optoolSearch || ctx.whereaboutsSearch?.[viewKey] || ctx.searchTerm || '',
     optoolColMode: ctx.optoolColMode || 'preview',
     optoolPage: ctx.optoolPage || 1,
@@ -5727,6 +5750,7 @@ export const DEFAULT_OPTOOL_CF_SCHEMA = [
   { key: 'datePreparedSigned', header: 'DATE PREPARED & SIGNED', label: 'Date Prepared & Signed', group: 'Dates & Reporting', type: 'date' },
   { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Dates & Reporting', type: 'select', options: ['Current', 'Previous Year'] },
   { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Dates & Reporting', type: 'select' },
+  { key: 'surveyRequirement', header: 'LHs (Needing/Not Needing Survey)', label: 'LHs (Needing / Not Needing Survey)', group: 'Dates & Reporting', type: 'select', options: ['Needing Survey', 'Not Needing Survey'] },
   { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Dates & Reporting', type: 'text' },
   { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Reporting', type: 'text' }
 ];
@@ -5880,6 +5904,7 @@ export const DEFAULT_OPTOOL_CF_PREVIEW_KEYS = [
   'dateFiConducted',
   'datePreparedSigned',
   'target',
+  'surveyRequirement',
   'targetYear',
   'reportedMonth',
   'remarks'
@@ -6152,6 +6177,18 @@ function buildDbByLhidMap(state) {
             if (!isMatch) return false;
           }
         }
+        if (currentTab === 'CF(DOC)') {
+          const cfSurveyFilter = String(ctx.cfSurveyFilter || 'ALL');
+          if (cfSurveyFilter !== 'ALL') {
+            const req = String(row.surveyRequirement || row['LHs (Needing/Not Needing Survey)'] || '').trim().toLowerCase();
+            const filterNorm = cfSurveyFilter.toLowerCase();
+            if (filterNorm.includes('not needing')) {
+              if (!req.includes('not needing')) return false;
+            } else if (filterNorm.includes('needing')) {
+              if (!req.includes('needing') || req.includes('not needing')) return false;
+            }
+          }
+        }
         for (const [colKey, filterSpec] of activeColEntries) {
           const col = colByKey.get(colKey);
           const cellVal = getOptoolCellValue(row, col, dbByLhid);
@@ -6303,7 +6340,8 @@ function buildDbByLhidMap(state) {
     const showMoreCol = optoolColMode !== 'all' && displayCols.length < cols.length;
     const hiddenColsCount = Math.max(0, cols.length - displayCols.length);
     const totalColSpan = displayCols.length + (showMoreCol ? 1 : 0) + 1;
-    const hasAnyFilter = activeColEntries.length > 0 || Boolean(q) || targetFilter !== 'ALL';
+    const cfSurveyFilter = String(ctx.cfSurveyFilter || 'ALL');
+    const hasAnyFilter = activeColEntries.length > 0 || Boolean(q) || targetFilter !== 'ALL' || (currentTab === 'CF(DOC)' && cfSurveyFilter !== 'ALL');
     const isFilteredScope =
       hasAnyFilter || String(ctx.filters?.province || 'ALL') !== 'ALL' || totalRows !== allRows.length;
 
@@ -6401,6 +6439,7 @@ function buildDbByLhidMap(state) {
       dbByLhid,
       targetTabs,
       targetFilter,
+      cfSurveyFilter,
       optoolColFilters: optoolColFilters || {},
       hasAnyFilter,
       isFilteredScope,
@@ -6902,6 +6941,7 @@ function buildDbByLhidMap(state) {
       displayCols,
       targetTabs,
       targetFilter,
+      cfSurveyFilter = 'ALL',
       optoolColFilters,
       hasAnyFilter,
       indexedRows,
@@ -6978,6 +7018,14 @@ function buildDbByLhidMap(state) {
             (t) => `<option value="${esc(t)}" ${targetFilter === t ? 'selected' : ''}>${esc((TARGET_CARD_META[t] || {}).label || t)}</option>`
           )
           .join('')}
+            </select>
+          `
+        : currentTab === 'CF(DOC)'
+        ? `
+            <select id="optool-cf-survey-filter" class="toolbar-select" aria-label="Filter LHs Needing or Not Needing Survey" title="Filter LHs Needing or Not Needing Survey">
+              <option value="ALL" ${cfSurveyFilter === 'ALL' ? 'selected' : ''}>All LHs</option>
+              <option value="Needing Survey" ${cfSurveyFilter === 'Needing Survey' ? 'selected' : ''}>Needing Survey</option>
+              <option value="Not Needing Survey" ${cfSurveyFilter === 'Not Needing Survey' ? 'selected' : ''}>Not Needing Survey</option>
             </select>
           `
         : ''
@@ -7834,7 +7882,10 @@ function buildDbByLhidMap(state) {
                   <td>${esc(r.municipality || '—')}</td>
                   <td>${esc(r.barangay || '—')}</td>
                   <td>
-                    <div style="font-weight:600;font-size:12px;">${esc(r.landOwner || '—')}</div>
+                    <div style="font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <span>${esc(r.landOwner || '—')}</span>
+                      ${r.surveyRequirement ? `<span class="badge ${r.surveyRequirement === 'Needing Survey' ? 'badge-amber' : 'badge-green'}" style="font-size:10px;padding:1px 6px;">${esc(r.surveyRequirement)}</span>` : ''}
+                    </div>
                     <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber || '—')}${r.lotNumber && r.lotNumber !== '—' ? ` • Lot: ${esc(r.lotNumber)}` : ''}${r.subLotNumber && r.subLotNumber !== '—' ? ` • Sub-Lot: ${esc(r.subLotNumber)}` : ''}</div>
                   </td>
                   <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.totalArea || r.carpable || 0)} HAS</td>

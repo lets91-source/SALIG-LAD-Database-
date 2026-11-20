@@ -88,6 +88,7 @@ const appState = {
   msSearch: '',
   optoolSearch: '',
   optoolTargetFilter: 'ALL',
+  cfSurveyFilter: 'ALL',
   optoolColFilters: {},
   optoolPage: 1,
   optoolPageSize: 50,
@@ -159,6 +160,7 @@ function getOptoolFilterContext() {
     activeOptoolTab: activeTab,
     searchTerm: appState.optoolSearch,
     optoolTargetFilter: appState.optoolTargetFilter,
+    cfSurveyFilter: appState.cfSurveyFilter,
     optoolColFilters: appState.optoolColFilters,
     optoolPage: appState.optoolPage,
     optoolPageSize: appState.optoolPageSize,
@@ -1172,6 +1174,7 @@ function renderActiveView() {
     container.innerHTML = renderCfWhereaboutsView({
       ...ctx,
       activeOptoolTab: 'CF(DOC)',
+      cfSurveyFilter: appState.cfSurveyFilter || 'ALL',
       searchTerm: appState.optoolSearch || '',
       optoolSearch: appState.optoolSearch || '',
       optoolColMode: appState.optoolColMode || 'preview',
@@ -1591,6 +1594,12 @@ function bindOptoolViewEvents(container) {
     updateOptoolRowsInPlace(container);
   });
 
+  container.querySelector('#optool-cf-survey-filter')?.addEventListener('change', (e) => {
+    appState.cfSurveyFilter = e.target.value;
+    appState.optoolPage = 1;
+    updateOptoolRowsInPlace(container);
+  });
+
   container.querySelector('#optool-col-mode')?.addEventListener('change', (e) => {
     appState.optoolColMode = e.target.value;
     appState.optoolColPage = 1;
@@ -1609,6 +1618,7 @@ function bindOptoolViewEvents(container) {
     appState.optoolColFilters = {};
     appState.optoolSearch = '';
     appState.optoolTargetFilter = 'ALL';
+    appState.cfSurveyFilter = 'ALL';
     appState.optoolPage = 1;
     renderActiveView();
   });
@@ -2201,6 +2211,7 @@ function exportOptoolSupportlistCsv() {
     activeOptoolTab: currentTab,
     searchTerm: appState.optoolSearch,
     optoolTargetFilter: appState.optoolTargetFilter,
+    cfSurveyFilter: appState.cfSurveyFilter,
     optoolColFilters: appState.optoolColFilters,
     optoolPage: 1,
     optoolPageSize: 'ALL',
@@ -4926,6 +4937,12 @@ function bindWhereaboutsEvents(container, viewKey) {
     });
   });
 
+  container.querySelector('#cf-status-survey-filter')?.addEventListener('change', (e) => {
+    appState.cfSurveyFilter = e.target.value;
+    appState.whereaboutsPage[viewKey] = 1;
+    renderActiveView();
+  });
+
   container.querySelector('#btn-survey-status-refresh')?.addEventListener('click', () => {
     renderActiveView();
   });
@@ -5015,6 +5032,7 @@ function bindWhereaboutsEvents(container, viewKey) {
     appState.whereaboutsProvinceFilter[viewKey] = 'ALL';
     appState.whereaboutsStatusFilter[viewKey] = 'ALL';
     appState.whereaboutsTargetYearFilter[viewKey] = 'ALL';
+    appState.cfSurveyFilter = 'ALL';
     appState.whereaboutsSearch[viewKey] = '';
     appState.whereaboutsPage[viewKey] = 1;
     closeColFilterPopover();
@@ -5308,6 +5326,7 @@ function getCfSupportRows(appState, tabName = 'CF(DOC)') {
       stage,
       targetYear: formatYearDisplay(row.targetYear || db.year || db.targetYear || ''),
       target: row.target || db.target || 'Current',
+      surveyRequirement: row.surveyRequirement || db.surveyRequirement || '',
       datesMap
     };
   });
@@ -5459,6 +5478,7 @@ function getSurveySupportRows(appState) {
       stage,
       targetYear: formatYearDisplay(row.targetYear || db.year || db.targetYear || ''),
       target: row.target || db.target || 'Current',
+      surveyRequirement: row.surveyRequirement || db.surveyRequirement || '',
       datesMap: { ...row }
     };
   });
@@ -5631,7 +5651,8 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
       'Target Year',
       'Date FI Conducted',
       'Date Prepared & Signed',
-      'Reported Month'
+      'Reported Month',
+      'LHs (Needing/Not Needing Survey)'
     ];
   } else {
     headers = [
@@ -5695,7 +5716,8 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
           escapeCsv(formatYearDisplay(r.targetYear || r.year || '')),
           escapeCsv(r.datesMap?.dateFiConducted || r.dateFiConducted || ''),
           escapeCsv(r.datesMap?.datePreparedSigned || r.datePreparedSigned || ''),
-          escapeCsv(formatReportedMonthWord(r.datesMap?.reportedMonth || r.reportedMonth || '') || (r.datesMap?.reportedMonth || r.reportedMonth || ''))
+          escapeCsv(formatReportedMonthWord(r.datesMap?.reportedMonth || r.reportedMonth || '') || (r.datesMap?.reportedMonth || r.reportedMonth || '')),
+          escapeCsv(r.surveyRequirement || '')
         ].join(',')
       );
     } else {

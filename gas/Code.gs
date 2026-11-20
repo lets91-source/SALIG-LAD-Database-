@@ -110,6 +110,7 @@ const OPTOOL_SCHEMA_HEADERS = {
     'Upload Land Use per FI', 'Upload CARPER LAD Form 46',
     'DATE FI CONDUCTED', 'DATE PREPARED & SIGNED',
     'TARGET\n (Current/ Previous)', 'Reported Month',
+    'LHs (Needing/Not Needing Survey)',
     'REMARKS', 'Target Year'
   ],
   Survey: [

@@ -105,6 +105,7 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
             (col.key === 'relationshipToTenant' && norm.includes('relationshipto')) ||
             (col.key === 'gender' && (norm === 'gender' || norm === 'gendermf' || norm === 'sex')) ||
             (col.key === 'noOfArbs' && (norm.includes('numberofarbs') || norm.includes('noofarbs') || norm === 'arbs')) ||
+            (col.key === 'surveyRequirement' && (norm.includes('needing') || norm.includes('surveyrequirement') || norm.includes('surveystatus') || norm === 'lhs' || norm === 'lh')) ||
             (col.key === 'reportMonth' && (norm === 'reportmonth' || norm.includes('reportmonth') || norm === 'monthreported')))
       );
     }

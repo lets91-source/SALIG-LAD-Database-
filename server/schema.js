@@ -459,6 +459,7 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'datePreparedSigned', header: 'DATE PREPARED & SIGNED', label: 'Date Prepared & Signed', group: 'Dates & Reporting', type: 'date' },
     { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Dates & Reporting', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Dates & Reporting', type: 'select', options: getReportedMonthOptions() },
+    { key: 'surveyRequirement', header: 'LHs (Needing/Not Needing Survey)', label: 'LHs (Needing / Not Needing Survey)', group: 'Dates & Reporting', type: 'select', options: ['Needing Survey', 'Not Needing Survey'] },
     { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Dates & Reporting', type: 'text' },
     { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Reporting', type: 'text' }
   ],
@@ -634,6 +635,7 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'dateFiConducted',
     'datePreparedSigned',
     'target',
+    'surveyRequirement',
     'targetYear',
     'reportedMonth',
     'remarks'

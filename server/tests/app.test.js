@@ -88,7 +88,10 @@ test('Schema & Region VIII Registry integrity', () => {
   const workCol = OPTOOL_SHEET_SCHEMAS.Database.find((c) => c.key === 'workability');
   assert.equal(workCol?.type, 'select');
   assert.deepEqual(workCol?.options, ['Workable', 'For Replacement', 'Replacement']);
-  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 20);
+  assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].length, 21);
+  const cfSurveyReqCol = OPTOOL_SHEET_SCHEMAS['CF(DOC)'].find((c) => c.key === 'surveyRequirement');
+  assert.equal(cfSurveyReqCol?.type, 'select');
+  assert.deepEqual(cfSurveyReqCol?.options, ['Needing Survey', 'Not Needing Survey']);
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadForm18'), false);
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadForm20'), false);
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadNo49'), false);
@@ -718,10 +721,12 @@ test('Target dropdown (Current / Previous Year) & Reported Month (Month + Curren
     const normalizedCf = store.normalizeOptoolRow('CF(DOC)', {
       lhid: '803000135',
       reportedMonth: '2026-03-01',
-      targetYear: '2026.0'
+      targetYear: '2026.0',
+      'LHs (Needing/Not Needing Survey)': 'Needing Survey'
     });
     assert.equal(normalizedCf.reportedMonth, 'March 2026');
     assert.equal(normalizedCf.targetYear, '2026');
+    assert.equal(normalizedCf.surveyRequirement, 'Needing Survey');
 
     const cfHtml = renderOptoolView({
       state: store.state,
@@ -4335,6 +4340,8 @@ test('CF Whereabouts embeds CF(DOC) OPTool Support List Table right after cards 
   assert.ok(html.includes('id="panel-optool"'), 'panel-optool exists in CF Whereabouts');
   assert.ok(html.includes('CF(DOC) Operational Support List'), 'CF(DOC) Operational Support List title rendered');
   assert.ok(html.includes('id="optool-search"'), 'Search input exists on CF(DOC) OPTool panel');
+  assert.ok(html.includes('id="optool-cf-survey-filter"'), 'Survey requirement filter dropdown exists on CF(DOC) OPTool panel');
+  assert.ok(html.includes('id="cf-status-survey-filter"'), 'Survey requirement filter dropdown exists in CF status table header');
   assert.ok(html.includes('id="optool-col-mode"'), 'Column mode select exists on CF(DOC) OPTool panel');
   assert.ok(html.includes('id="btn-sync-provincial-optool"'), 'Sync Provincial Sheets button exists');
   assert.ok(html.includes('+ Add CF(DOC) Row'), '+ Add CF(DOC) Row button exists');

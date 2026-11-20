@@ -927,6 +927,19 @@ export class ConsolidatedStore {
           rowPayload.lhid ??
           '';
       }
+      if (col.key === 'surveyRequirement' && (!val || val === '')) {
+        val =
+          rowPayload['LHs (Needing/Not Needing Survey)'] ??
+          rowPayload['LHs (Needing / Not Needing Survey)'] ??
+          rowPayload['Needing Survey / Not Needing Survey'] ??
+          rowPayload['Needing/Not Needing Survey'] ??
+          rowPayload['Survey Requirement'] ??
+          rowPayload['surveyRequirement'] ??
+          rowPayload['LHs'] ??
+          rowPayload.surveyRequirement ??
+          rowPayload.surveyNeed ??
+          '';
+      }
       if (col.type === 'decimal' && val !== '' && val !== null && val !== undefined) {
         const num = Number(val);
         val = Number.isFinite(num) ? num.toFixed(4) : String(val);
