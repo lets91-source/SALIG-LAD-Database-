@@ -381,7 +381,31 @@ export function normalizeLeaseholdRow(raw = {}) {
   row.lotNo = String(row.lotNo || row['LOT NO.'] || '').trim();
   if (/^\d+\.0$/.test(row.lotNo)) row.lotNo = row.lotNo.replace(/\.0$/, '');
   row.areaPerTitle = row.areaPerTitle !== undefined && row.areaPerTitle !== '' ? String(row.areaPerTitle).trim() : (row['AREA PER TITLE (Has)'] ? String(row['AREA PER TITLE (Has)']).trim() : '');
-  row.areaTenanted = row.areaTenanted !== undefined && row.areaTenanted !== '' ? String(row.areaTenanted).trim() : (row['AREA TENANTED (Has)'] ? String(row['AREA TENANTED (Has)']).trim() : '');
+  
+  // Column M (13th column): AREA TENANTED (Has)
+  let rawAreaTenanted = row.areaTenanted;
+  if (rawAreaTenanted === undefined || rawAreaTenanted === '') {
+    rawAreaTenanted =
+      row['AREA TENANTED (Has)'] ||
+      row['Area Tenanted (Has)'] ||
+      row['AREA TENANTED (HAS)'] ||
+      row['area tenanted (has)'] ||
+      row['AREA TENANTED'] ||
+      row['Area Tenanted'] ||
+      row['area_tenanted'] ||
+      row['areaTenantedHas'];
+  }
+  if (rawAreaTenanted === undefined || rawAreaTenanted === '') {
+    for (const k of Object.keys(row)) {
+      const kNorm = k.toLowerCase().replace(/[^a-z]/g, '');
+      if (kNorm.includes('tenanted') || (kNorm.includes('area') && kNorm.includes('tenant'))) {
+        rawAreaTenanted = row[k];
+        break;
+      }
+    }
+  }
+  row.areaTenanted = rawAreaTenanted !== undefined && rawAreaTenanted !== '' ? String(rawAreaTenanted).trim() : '';
+
   row.withinRetainedArea = String(row.withinRetainedArea || row['WITHIN RETAINED AREA (Y,N)'] || '').trim().toUpperCase();
   row.leaseholderSurname = String(row.leaseholderSurname || row['LEASEHOLDER SURNAME'] || '').trim();
   row.leaseholderFirstname = String(row.leaseholderFirstname || row['LEASEHOLDER FIRSTNAME'] || '').trim();
@@ -401,8 +425,34 @@ export function normalizeLeaseholdRow(raw = {}) {
   row.datePlrRegistered = String(row.datePlrRegistered || row['*DATE PLR REGISTERED (mm/dd/yyyy)'] || '').trim();
   row.leaseRentalUnit = String(row.leaseRentalUnit || row['LEASE RENTAL UNIT'] || '').trim();
   row.leaseInPesos = row.leaseInPesos !== undefined && row.leaseInPesos !== '' ? String(row.leaseInPesos).trim() : (row['LEASE IN PESOS'] ? String(row['LEASE IN PESOS']).trim() : '');
-  row.targetYear = String(row.targetYear || row['TARGET YEAR'] || '').trim();
-  if (/^\d+\.0$/.test(row.targetYear)) row.targetYear = row.targetYear.replace(/\.0$/, '');
+  
+  // Column AF (32nd column): TARGET YEAR
+  let rawTargetYear = row.targetYear;
+  if (rawTargetYear === undefined || rawTargetYear === '') {
+    rawTargetYear =
+      row['TARGET YEAR'] ||
+      row['Target Year'] ||
+      row['TargetYear'] ||
+      row['TARGET_YEAR'] ||
+      row['target_year'] ||
+      row['TARGET'] ||
+      row['Target'] ||
+      row['YEAR'] ||
+      row['Year'];
+  }
+  if (rawTargetYear === undefined || rawTargetYear === '') {
+    for (const k of Object.keys(row)) {
+      const kNorm = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (kNorm.includes('targetyear') || (kNorm.includes('target') && kNorm.includes('year'))) {
+        rawTargetYear = row[k];
+        break;
+      }
+    }
+  }
+  let targetYearStr = String(rawTargetYear || '').trim();
+  if (/^\d+\.0$/.test(targetYearStr)) targetYearStr = targetYearStr.replace(/\.0$/, '');
+  const ym = targetYearStr.match(/\b(20\d{2})\b/);
+  row.targetYear = ym ? ym[1] : targetYearStr;
   row.reportMonth = String(row.reportMonth || row['Report Month (Words)'] || '').trim();
   row.remarks = String(row.remarks || row.REMARKS || '').trim();
   return row;

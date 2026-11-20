@@ -795,6 +795,38 @@ function getHubBootstrap() {
           if (tabName === 'Leasehold') {
             if (!row.provs && !row.PROVS) row.provs = node.name;
             if (!row.reg && !row.REG) row.reg = 'Region VIII';
+
+            // Column M (13th column): Area Tenanted
+            let tenantedAreaVal = row.areaTenanted || row['AREA TENANTED (Has)'] || row['Area Tenanted (Has)'] || row['AREA TENANTED'] || row['Area Tenanted'] || '';
+            if (!tenantedAreaVal) {
+              for (let k in row) {
+                const kNorm = String(k).toLowerCase().replace(/[^a-z]/g, '');
+                if (kNorm.indexOf('tenanted') !== -1 || (kNorm.indexOf('area') !== -1 && kNorm.indexOf('tenant') !== -1)) {
+                  tenantedAreaVal = row[k];
+                  break;
+                }
+              }
+            }
+            row.areaTenanted = tenantedAreaVal;
+            row['AREA TENANTED (Has)'] = tenantedAreaVal;
+
+            // Column AF (32nd column): Target Year
+            let targetYearVal = row.targetYear || row['TARGET YEAR'] || row['Target Year'] || row['TARGET_YEAR'] || row['TargetYear'] || '';
+            if (!targetYearVal) {
+              for (let k in row) {
+                const kNorm = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (kNorm.indexOf('targetyear') !== -1 || (kNorm.indexOf('target') !== -1 && kNorm.indexOf('year') !== -1)) {
+                  targetYearVal = row[k];
+                  break;
+                }
+              }
+            }
+            if (targetYearVal) {
+              const strY = String(targetYearVal).trim().replace(/\.0$/, '');
+              const ym = strY.match(/\b(20\d{2})\b/);
+              row.targetYear = ym ? ym[1] : strY;
+              row['TARGET YEAR'] = row.targetYear;
+            }
           }
           optool['Database'].push(row);
         });
@@ -1169,6 +1201,38 @@ function readProvincialMilestoneSupportLists_() {
           if (tabName === 'Leasehold') {
             if (!row.provs && !row.PROVS) row.provs = node.name;
             if (!row.reg && !row.REG) row.reg = 'Region VIII';
+
+            // Column M (13th column): Area Tenanted
+            let tenantedAreaVal = row.areaTenanted || row['AREA TENANTED (Has)'] || row['Area Tenanted (Has)'] || row['AREA TENANTED'] || row['Area Tenanted'] || '';
+            if (!tenantedAreaVal) {
+              for (let k in row) {
+                const kNorm = String(k).toLowerCase().replace(/[^a-z]/g, '');
+                if (kNorm.indexOf('tenanted') !== -1 || (kNorm.indexOf('area') !== -1 && kNorm.indexOf('tenant') !== -1)) {
+                  tenantedAreaVal = row[k];
+                  break;
+                }
+              }
+            }
+            row.areaTenanted = tenantedAreaVal;
+            row['AREA TENANTED (Has)'] = tenantedAreaVal;
+
+            // Column AF (32nd column): Target Year
+            let targetYearVal = row.targetYear || row['TARGET YEAR'] || row['Target Year'] || row['TARGET_YEAR'] || row['TargetYear'] || '';
+            if (!targetYearVal) {
+              for (let k in row) {
+                const kNorm = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (kNorm.indexOf('targetyear') !== -1 || (kNorm.indexOf('target') !== -1 && kNorm.indexOf('year') !== -1)) {
+                  targetYearVal = row[k];
+                  break;
+                }
+              }
+            }
+            if (targetYearVal) {
+              const strY = String(targetYearVal).trim().replace(/\.0$/, '');
+              const ym = strY.match(/\b(20\d{2})\b/);
+              row.targetYear = ym ? ym[1] : strY;
+              row['TARGET YEAR'] = row.targetYear;
+            }
           }
 
           // Normalize RegistrationDistribution area and date registered fields

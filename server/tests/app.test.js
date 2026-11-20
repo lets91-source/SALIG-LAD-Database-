@@ -53,7 +53,9 @@ import {
   renderMapDetailCardInner,
   renderLeaseholdView,
   renderLeaseholdModalHtml,
-  generateLeaseholdCsv
+  generateLeaseholdCsv,
+  getLeaseholdAreaTenanted,
+  getLeaseholdTargetYear
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -4635,7 +4637,20 @@ test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs
       ],
       RegistrationDistribution: [],
       Installation: [],
-      Leasehold: []
+      Leasehold: [
+        {
+          provs: 'EASTERN SAMAR',
+          'AREA TENANTED (Has)': '3.5000',
+          'TARGET YEAR': '2026',
+          leaseholderSurname: 'DELA CRUZ'
+        },
+        {
+          provs: 'LEYTE',
+          'AREA TENANTED (Has)': '2.2500',
+          'TARGET YEAR': '2025',
+          leaseholderSurname: 'SANTOS'
+        }
+      ]
     }
   };
 
@@ -4646,6 +4661,8 @@ test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs
   assert.equal(allBreakdown.cf.needingCount, 2);
   assert.equal(allBreakdown.cf.notNeedingCount, 1);
   assert.equal(allBreakdown.survey.count, 1);
+  assert.equal(allBreakdown.leasehold.count, 2);
+  assert.equal(allBreakdown.leasehold.area, 5.75); // Column M: Area Tenanted 3.5 + 2.25
   assert.equal(allBreakdown.targetLhs, 2); // 803000101 and 803000201
 
   // 2. Eastern Samar Provincial Filter Breakdown
@@ -4656,6 +4673,13 @@ test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs
   assert.equal(esaBreakdown.cf.needingCount, 1);
   assert.equal(esaBreakdown.cf.notNeedingCount, 1);
   assert.equal(esaBreakdown.survey.count, 1);
+  assert.equal(esaBreakdown.leasehold.count, 1);
+  assert.equal(esaBreakdown.leasehold.area, 3.5); // Column M: Area Tenanted for ESA
+
+  // Verify Leasehold helper functions for Column M (Area Tenanted) and Column AF (Target Year)
+  assert.equal(getLeaseholdAreaTenanted({ 'AREA TENANTED (Has)': '4.1250' }), 4.1250);
+  assert.equal(getLeaseholdTargetYear({ 'TARGET YEAR': '2026.0' }), '2026');
+  assert.equal(getLeaseholdTargetYear({ 'Target Year': '2027' }), '2027');
 
   // 3. renderProvTableDetailHtml renders milestone whereabouts and survey split directly below table with graph beside
   const detailHtml = renderProvTableDetailHtml({ breakdown: esaBreakdown, selectedCode: 'ESA' });

@@ -26,6 +26,8 @@ import {
   renderLeaseholdView,
   renderLeaseholdModalHtml,
   generateLeaseholdCsv,
+  getLeaseholdAreaTenanted,
+  getLeaseholdTargetYear,
   matchesWhereaboutsTargetYear,
   matchProvinceName,
   resolveProvinceCode,
@@ -4438,7 +4440,7 @@ function exportLeaseholdCsv() {
       if (rStatus !== appState.leaseholdStatusFilter.toLowerCase()) return false;
     }
     if (appState.leaseholdTargetYearFilter !== 'ALL') {
-      const rYear = String(r.targetYear || '').trim();
+      const rYear = getLeaseholdTargetYear(r);
       if (rYear !== String(appState.leaseholdTargetYearFilter).trim()) return false;
     }
     if (q) {
@@ -4448,7 +4450,7 @@ function exportLeaseholdCsv() {
         r.titleNo, r.taxDecNo, r.surveyNo, r.lotNo,
         r.leaseholderSurname, r.leaseholderFirstname, r.leaseholderMi,
         r.newLesseeName, r.mainCrops, r.auxilliaryCrops,
-        r.statusOfContract, r.targetYear, r.reportMonth, r.remarks
+        r.statusOfContract, getLeaseholdTargetYear(r), r.reportMonth, r.remarks
       ].filter(Boolean).join(' ').toLowerCase();
       if (!searchable.includes(q)) return false;
     }

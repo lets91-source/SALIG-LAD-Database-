@@ -4965,6 +4965,74 @@ export function renderInstallationWhereaboutsView(ctx) {
   return renderMilestoneWhereaboutsView(ctx, WHEREABOUTS_CONFIGS['installation-whereabouts']);
 }
 
+/**
+ * Extracts Area Tenanted (Column M, 13th column) from any Leasehold record.
+ */
+export function getLeaseholdAreaTenanted(r) {
+  if (!r || typeof r !== 'object') return 0;
+  const direct =
+    r.areaTenanted ??
+    r['AREA TENANTED (Has)'] ??
+    r['Area Tenanted (Has)'] ??
+    r['AREA TENANTED (HAS)'] ??
+    r['area tenanted (has)'] ??
+    r['AREA TENANTED'] ??
+    r['Area Tenanted'] ??
+    r['area_tenanted'] ??
+    r['areaTenantedHas'];
+  if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+    return parseNumericValue(direct);
+  }
+  for (const k of Object.keys(r)) {
+    const kNorm = k.toLowerCase().replace(/[^a-z]/g, '');
+    if (kNorm.includes('tenanted') || (kNorm.includes('area') && kNorm.includes('tenant'))) {
+      const val = parseNumericValue(r[k]);
+      if (val > 0) return val;
+    }
+  }
+  const fallback = r.areaPerTitle ?? r['AREA PER TITLE (Has)'] ?? r['Area Per Title (Has)'] ?? r.area ?? 0;
+  return parseNumericValue(fallback);
+}
+
+/**
+ * Extracts Target Year (Column AF, 32nd column) from any Leasehold record.
+ */
+export function getLeaseholdTargetYear(r) {
+  if (!r || typeof r !== 'object') return '';
+  const direct =
+    r.targetYear ??
+    r['TARGET YEAR'] ??
+    r['Target Year'] ??
+    r['TargetYear'] ??
+    r['TARGET_YEAR'] ??
+    r['target_year'] ??
+    r['TARGET'] ??
+    r['Target'] ??
+    r['YEAR'] ??
+    r['Year'] ??
+    r['targetYearAF'];
+  if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+    const str = String(direct).trim().replace(/\.0$/, '');
+    const m = str.match(/\b(20\d{2})\b/);
+    return m ? m[1] : str;
+  }
+  for (const k of Object.keys(r)) {
+    const kNorm = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (kNorm.includes('targetyear') || (kNorm.includes('target') && kNorm.includes('year'))) {
+      const str = String(r[k] || '').trim().replace(/\.0$/, '');
+      const m = str.match(/\b(20\d{2})\b/);
+      if (m) return m[1];
+      if (str) return str;
+    }
+  }
+  const dateVal = r.dateContractRegistered || r['*DATE CONTRACT REGISTERED (mm/dd/yyyy)'] || r.datePlrRegistered || r['*DATE PLR REGISTERED (mm/dd/yyyy)'] || '';
+  if (dateVal) {
+    const dm = String(dateVal).match(/\b(20\d{2})\b/);
+    if (dm) return dm[1];
+  }
+  return '';
+}
+
 export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCode = 'ALL') {
   const isAll = !selectedCode || selectedCode === 'ALL';
   const allDbRows = state?.optool?.Database || [];
@@ -4982,11 +5050,13 @@ export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCod
     const rawKey = String(r.lhid || '').trim().toLowerCase();
     const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
     const prov =
+      r.provs ||
+      r.Provs ||
+      r.PROVS ||
       r.province ||
       r.provincename ||
       r.prov ||
       r.PROVINCE ||
-      r.PROVS ||
       r.Province ||
       r.ProvinceName ||
       db.province ||
@@ -5005,7 +5075,17 @@ export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCod
     const db = (cleanKey ? dbMap.get(cleanKey) : null) || (rawKey ? dbMap.get(rawKey) : null) || {};
     return parseNumericValue(
       r.areaTenanted ||
+      r['AREA TENANTED (Has)'] ||
+      r['Area Tenanted (Has)'] ||
+      r['AREA TENANTED (HAS)'] ||
+      r['area tenanted (has)'] ||
+      r['AREA TENANTED'] ||
+      r['Area Tenanted'] ||
+      r['area_tenanted'] ||
+      r['areaTenantedHas'] ||
       r.areaPerTitle ||
+      r['AREA PER TITLE (Has)'] ||
+      r['Area Per Title (Has)'] ||
       r.totalArea ||
       r.carpable ||
       r.areaHas ||
@@ -5060,11 +5140,11 @@ export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCod
   const instCount = allInstRows.length;
   const instArea = allInstRows.reduce((s, r) => s + getArea(r), 0);
 
-  // 6. Leasehold
+  // 6. Leasehold (Uses Column M: Area Tenanted)
   const leaseRowsRaw = (state?.leasehold && state.leasehold.length) ? state.leasehold : (state?.optool?.Leasehold || []);
   const allLeaseRows = leaseRowsRaw.filter(matchesCode);
   const leaseCount = allLeaseRows.length;
-  const leaseArea = allLeaseRows.reduce((s, r) => s + getArea(r), 0);
+  const leaseArea = allLeaseRows.reduce((s, r) => s + getLeaseholdAreaTenanted(r), 0);
 
   // Targets from Database LAD Balance
   const scopedDb = allDbRows.filter(matchesCode);
@@ -8555,7 +8635,9 @@ export function renderLeaseholdView(ctx) {
     leaseholdPageSize = 25
   } = ctx;
 
-  const rawRows = Array.isArray(state?.leasehold) ? state.leasehold : [];
+  const rawRows = (Array.isArray(state?.leasehold) && state.leasehold.length > 0)
+    ? state.leasehold
+    : (Array.isArray(state?.optool?.Leasehold) ? state.optool.Leasehold : []);
   const q = String(leaseholdSearch || '').trim().toLowerCase();
   const isAdmin = currentUser?.role === 'admin';
 
@@ -8590,9 +8672,9 @@ export function renderLeaseholdView(ctx) {
       if (rStatus !== leaseholdStatusFilter.toLowerCase()) return false;
     }
 
-    // 4. Target Year filter
+    // 4. Target Year filter (Column AF)
     if (leaseholdTargetYearFilter !== 'ALL') {
-      const rYear = String(r.targetYear || r['TARGET YEAR'] || '').trim();
+      const rYear = getLeaseholdTargetYear(r);
       if (rYear !== String(leaseholdTargetYearFilter).trim()) return false;
     }
 
@@ -8604,7 +8686,7 @@ export function renderLeaseholdView(ctx) {
         r.titleNo, r.taxDecNo, r.surveyNo, r.lotNo,
         r.leaseholderSurname, r.leaseholderFirstname, r.leaseholderMi,
         r.newLesseeName, r.mainCrops, r.auxilliaryCrops,
-        r.statusOfContract, r.targetYear, r.reportMonth, r.remarks
+        r.statusOfContract, getLeaseholdTargetYear(r), r.reportMonth, r.remarks
       ].filter(Boolean).join(' ').toLowerCase();
       if (!searchable.includes(q)) return false;
     }
@@ -8612,15 +8694,15 @@ export function renderLeaseholdView(ctx) {
     return true;
   });
 
-  // Calculate KPIs
+  // Calculate KPIs (Column M: Area Tenanted)
   const totalCount = rows.length;
-  const totalTenantedArea = rows.reduce((sum, r) => sum + (parseNumericValue(r.areaTenanted || r['AREA TENANTED (Has)']) || 0), 0);
+  const totalTenantedArea = rows.reduce((sum, r) => sum + getLeaseholdAreaTenanted(r), 0);
   const totalTitleArea = rows.reduce((sum, r) => sum + (parseNumericValue(r.areaPerTitle || r['AREA PER TITLE (Has)']) || 0), 0);
   const totalArbs = rows.reduce((sum, r) => sum + (parseInt(r.noOfArbs || r['Number of ARBs'], 10) || 0), 0);
   const totalLeasePesos = rows.reduce((sum, r) => sum + (parseNumericValue(r.leaseInPesos || r['LEASE IN PESOS']) || 0), 0);
 
-  // Distinct target years for filter dropdown
-  const uniqueYears = Array.from(new Set(rawRows.map((r) => String(r.targetYear || r['TARGET YEAR'] || '').trim()).filter(Boolean))).sort();
+  // Distinct target years for filter dropdown (Column AF)
+  const uniqueYears = Array.from(new Set(rawRows.map(getLeaseholdTargetYear).filter(Boolean))).sort();
 
   // Pagination
   const pageSize = leaseholdPageSize === 'ALL' ? totalCount || 1 : Math.max(1, parseInt(leaseholdPageSize, 10) || 25);
@@ -8819,9 +8901,9 @@ export function renderLeaseholdView(ctx) {
                     </div>
                   </td>
                   <td style="padding:8px 10px;text-align:right;">
-                    <span class="badge badge-blue num font-bold" style="font-size:12px;">${fmtArea(r.areaTenanted)} HAS</span>
+                    <span class="badge badge-blue num font-bold" style="font-size:12px;">${fmtArea(getLeaseholdAreaTenanted(r))} HAS</span>
                   </td>
-                  <td style="padding:8px 10px;text-align:right;font-family:monospace;">${fmtArea(r.areaPerTitle)}</td>
+                  <td style="padding:8px 10px;text-align:right;font-family:monospace;">${fmtArea(r.areaPerTitle || r['AREA PER TITLE (Has)'])}</td>
                   <td style="padding:8px 10px;text-align:center;">
                     <span class="badge ${String(r.withinRetainedArea).toUpperCase() === 'Y' ? 'badge-green' : 'badge-gray'}">${esc(r.withinRetainedArea || '—')}</span>
                   </td>
@@ -8854,7 +8936,7 @@ export function renderLeaseholdView(ctx) {
                     <div>PLR: ${esc(r.datePlrRegistered || '—')}</div>
                   </td>
                   <td style="padding:8px 10px;text-align:center;">
-                    <div><span class="badge badge-gray">${esc(r.targetYear || '—')}</span></div>
+                    <div><span class="badge badge-gray">${esc(getLeaseholdTargetYear(r) || '—')}</span></div>
                     <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">${esc(r.reportMonth || '—')}</div>
                   </td>
                   <td style="padding:8px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${esc(r.remarks)}">
