@@ -4271,3 +4271,56 @@ test('Client scripts syntax verification (public/app.js, public/views.js, etc.)'
   }
 });
 
+test('CF Whereabouts embeds CF(DOC) OPTool Support List Table right after cards and removes Provincial Allocation Table', () => {
+  const store = JSON.parse(fs.readFileSync('./server/data/store.json', 'utf8'));
+  const cfg = WHEREABOUTS_CONFIGS['cf-whereabouts'];
+
+  const ctx = {
+    state: store,
+    schemas: {
+      registry: [],
+      optoolTabs: OPTOOL_SHEET_SCHEMAS,
+      optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS
+    },
+    provinceScope: null,
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': 'ALL' },
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {},
+    cfMetricMode: 'both',
+    cfTableLayout: 'standard'
+  };
+
+  const html = renderMilestoneWhereaboutsView(ctx, cfg);
+
+  // 1. Provincial Allocation Table is REMOVED from CF Whereabouts
+  assert.equal(html.includes('id="panel-cf-whereabouts-provincial"'), false, 'Provincial Allocation Table must be removed from CF Whereabouts');
+
+  // 2. CF(DOC) Operational Support List Table is embedded right after cards
+  assert.ok(html.includes('id="panel-optool"'), 'panel-optool exists in CF Whereabouts');
+  assert.ok(html.includes('CF(DOC) Operational Support List'), 'CF(DOC) Operational Support List title rendered');
+  assert.ok(html.includes('id="optool-search"'), 'Search input exists on CF(DOC) OPTool panel');
+  assert.ok(html.includes('id="optool-col-mode"'), 'Column mode select exists on CF(DOC) OPTool panel');
+  assert.ok(html.includes('id="btn-sync-provincial-optool"'), 'Sync Provincial Sheets button exists');
+  assert.ok(html.includes('+ Add CF(DOC) Row'), '+ Add CF(DOC) Row button exists');
+  assert.ok(html.includes('id="optool-table-wrap"'), 'Table wrapper exists');
+  assert.ok(html.includes('id="optool-table"'), 'Table element exists');
+  assert.ok(html.includes('id="optool-pagination-bar"'), 'Pagination bar exists');
+
+  // 3. Position verification: CF(DOC) OPTool Table must appear right after KPI cards and before Milestone Status Table
+  const pCards = html.indexOf('cf-kpi-global-grid');
+  const pOptoolPanel = html.indexOf('id="panel-optool"');
+  const pStatusTable = html.indexOf('id="panel-cf-status-table"');
+  assert.ok(pCards !== -1 && pOptoolPanel !== -1 && pStatusTable !== -1, 'All panels exist');
+  assert.ok(pCards < pOptoolPanel, 'CF(DOC) table must come after KPI cards');
+  assert.ok(pOptoolPanel < pStatusTable, 'CF(DOC) table must come before Status Table');
+
+  // 4. MOV Whereabouts still keeps its Provincial Allocation panel
+  const movCfg = WHEREABOUTS_CONFIGS['mov-whereabouts'];
+  const movHtml = renderMilestoneWhereaboutsView({ ...ctx, whereaboutsTargetYearFilter: { 'mov-whereabouts': 'ALL' } }, movCfg);
+  assert.ok(movHtml.includes('id="panel-mov-whereabouts-provincial"'), 'MOV Whereabouts keeps its Provincial Allocation Table');
+});
+
+

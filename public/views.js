@@ -4354,19 +4354,38 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     'leasehold': 'Leasehold'
   };
   const activeMilestoneLabel = milestoneLabelMap[activeNepMsKey] || cfg.tabName;
-  const nepAllocationHtml = renderProvincialAllocationSection(ctx, {
+  const nepAllocationHtml = isCfWhereabouts ? '' : renderProvincialAllocationSection(ctx, {
     milestoneKey: activeNepMsKey,
     milestoneLabel: activeMilestoneLabel,
     yearFilter: targetYearFilterVal,
     panelId: `panel-${viewKey}-provincial`
   });
 
+  let cfOptoolTableHtml = '';
+  if (isCfWhereabouts) {
+    const cfOptoolCtx = {
+      ...ctx,
+      activeOptoolTab: 'CF(DOC)',
+      searchTerm: ctx.optoolSearch || ctx.whereaboutsSearch?.[viewKey] || ctx.searchTerm || '',
+      optoolColMode: ctx.optoolColMode || 'preview',
+      optoolPage: ctx.optoolPage || 1,
+      optoolPageSize: ctx.optoolPageSize || 50,
+      optoolColPage: ctx.optoolColPage || 1,
+      optoolColFilters: ctx.optoolColFilters || {}
+    };
+    cfOptoolTableHtml = renderOptoolTablePanelHtml(cfOptoolCtx, {
+      showTabStrip: false,
+      panelTitle: 'CF(DOC) Operational Support List',
+      panelSubtitle: 'Active records in CF(DOC) worksheet • 31 Standardized Operational Columns • Google Sheets Live Sync'
+    });
+  }
+
   return `
     ${renderEmptyWorkspaceCallout(state)}
 
     ${isMilestoneTrackingView ? cfKpiHtml : isSurveyWhereabouts ? surveyKpiHtml : standardKpiHtml}
 
-    ${nepAllocationHtml}
+    ${isCfWhereabouts ? cfOptoolTableHtml : nepAllocationHtml}
 
     ${isMilestoneTrackingView ? cfStatusTableHtml : ''}
 
@@ -5681,6 +5700,49 @@ const LINKED_DB_TABLE_COLUMNS = LINKED_DB_PROFILE_FIELDS.map((f) => ({
   linkedFromDb: true
 }));
 
+export const DEFAULT_OPTOOL_CF_SCHEMA = [
+  { key: 'lhid', header: 'LHID', label: 'LHID', group: 'Identification', type: 'text' },
+  { key: 'denrCertification', header: 'DENR Certification', label: 'DENR Certification', group: 'Legal & Land Docs', type: 'checkbox' },
+  { key: 'asp', header: 'ASP', label: 'ASP', group: 'Technical Plans', type: 'checkbox' },
+  { key: 'marpoCert', header: 'MARPO Cert.', label: 'MARPO Certification', group: 'Legal & Land Docs', type: 'checkbox' },
+  { key: 'firCarperLadForm46', header: 'FIR Carper LAD Form 46', label: 'FIR CARPER LAD Form 46', group: 'CARPER Forms', type: 'checkbox' },
+  { key: 'copyOfAdvSp', header: 'Copy of the AdvSP', label: 'Copy of AdvSP', group: 'Technical Plans', type: 'checkbox' },
+  { key: 'carperLadNo37', header: 'Carper LAD No. 37/oathe of ARB', label: 'CARPER LAD No. 37 / Oath of ARB', group: 'CARPER Forms', type: 'checkbox' },
+  { key: 'carperLadForm42', header: 'Carper LAD Form 42', label: 'CARPER LAD Form 42', group: 'CARPER Forms', type: 'checkbox' },
+  { key: 'certificateOfTitle', header: 'Upload Certificate of Titles', label: 'Upload Certificate of Titles', group: 'Attached PDF Documents', type: 'pdfFile' },
+  { key: 'taxDeclaration', header: 'Upload Tax Declaration', label: 'Upload Tax Declaration', group: 'Attached PDF Documents', type: 'pdfFile' },
+  { key: 'carperLadForm1And2', header: 'Upload CARPER LAD Form 1 & 2', label: 'Upload CARPER LAD Form 1 & 2', group: 'Attached PDF Documents', type: 'pdfFile' },
+  { key: 'carperLadForm3', header: 'Upload CARPER LAD Form 3', label: 'Upload CARPER LAD Form 3', group: 'Attached PDF Documents', type: 'pdfFile' },
+  { key: 'landUsePerFi', header: 'Upload Land Use per FI', label: 'Upload Land Use per FI', group: 'Attached PDF Documents', type: 'pdfFile' },
+  { key: 'pdfFile', header: 'Upload CARPER LAD Form 46', label: 'Upload CARPER LAD Form 46', group: 'Attached PDF Documents', type: 'pdfFile' },
+  { key: 'dateFiConducted', header: 'DATE FI CONDUCTED', label: 'Date FI Conducted', group: 'Dates & Reporting', type: 'date' },
+  { key: 'datePreparedSigned', header: 'DATE PREPARED & SIGNED', label: 'Date Prepared & Signed', group: 'Dates & Reporting', type: 'date' },
+  { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Dates & Reporting', type: 'select', options: ['Current', 'Previous Year'] },
+  { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Dates & Reporting', type: 'select' },
+  { key: 'remarks', header: 'REMARKS', label: 'Remarks', group: 'Dates & Reporting', type: 'text' },
+  { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Dates & Reporting', type: 'text' }
+];
+
+export const DEFAULT_OPTOOL_CF_PREVIEW_KEYS = [
+  'lhid',
+  'certificateOfTitle',
+  'taxDeclaration',
+  'carperLadForm1And2',
+  'carperLadForm3',
+  'landUsePerFi',
+  'pdfFile',
+  'denrCertification',
+  'asp',
+  'marpoCert',
+  'carperLadForm42',
+  'dateFiConducted',
+  'datePreparedSigned',
+  'target',
+  'targetYear',
+  'reportedMonth',
+  'remarks'
+];
+
 export function getGroupVariantClass(groupName) {
   const norm = String(groupName || '').trim().toLowerCase();
   if (norm === 'darpo compliance') return 'group-darpo-compliance';
@@ -5729,7 +5791,8 @@ function buildDbByLhidMap(state) {
 }
 
   function insertLinkedColsAfterLhid(baseCols) {
-    const lhidIdx = baseCols.findIndex((c) => c.key === 'lhid');
+    if (!Array.isArray(baseCols)) return [...LINKED_DB_TABLE_COLUMNS];
+    const lhidIdx = baseCols.findIndex((c) => c && c.key === 'lhid');
     if (lhidIdx < 0) return [...LINKED_DB_TABLE_COLUMNS, ...baseCols];
     return [
       ...baseCols.slice(0, lhidIdx + 1),
@@ -5739,10 +5802,18 @@ function buildDbByLhidMap(state) {
   }
 
   function getOptoolTableColumns(schemas, tabName) {
-    const rawCols = schemas.optoolTabs[tabName] || [];
-    const previewKeys = schemas.optoolPreviewCols?.[tabName];
-    const rawPreviewCols = previewKeys
-      ? previewKeys.map((k) => rawCols.find((c) => c.key === k)).filter(Boolean)
+    let rawCols = schemas?.optoolTabs?.[tabName];
+    if (!Array.isArray(rawCols) && tabName === 'CF(DOC)') {
+      rawCols = DEFAULT_OPTOOL_CF_SCHEMA;
+    } else if (!Array.isArray(rawCols)) {
+      rawCols = [];
+    }
+    let previewKeys = schemas?.optoolPreviewCols?.[tabName];
+    if ((!Array.isArray(previewKeys) || previewKeys.length === 0) && tabName === 'CF(DOC)') {
+      previewKeys = DEFAULT_OPTOOL_CF_PREVIEW_KEYS;
+    }
+    const rawPreviewCols = Array.isArray(previewKeys)
+      ? previewKeys.map((k) => rawCols.find((c) => c && c.key === k)).filter(Boolean)
       : rawCols.slice(0, 10);
 
     if (!LINKED_DB_TABLE_TABS.has(tabName)) {
@@ -5796,8 +5867,11 @@ function buildDbByLhidMap(state) {
       filters
     } = ctx;
 
-    const tabNames = Object.keys(schemas.optoolTabs);
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
+    const tabNames = Object.keys(schemas?.optoolTabs || {});
+    if (tabNames.length === 0 && (activeOptoolTab === 'CF(DOC)' || !activeOptoolTab)) {
+      tabNames.push('CF(DOC)');
+    }
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (tabNames[0] || activeOptoolTab || 'CF(DOC)');
     const { cols } = getOptoolTableColumns(schemas, currentTab);
     const colByKey = new Map(cols.map((c) => [c.key, c]));
     const dbByLhid = dbByLhidOverride || buildDbByLhidMap(state).dbByLhid;
@@ -5869,8 +5943,11 @@ function buildDbByLhidMap(state) {
 
   export function getColumnFilterValues(ctx, colKey) {
     const { state, schemas, activeOptoolTab } = ctx;
-    const tabNames = Object.keys(schemas.optoolTabs);
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
+    const tabNames = Object.keys(schemas?.optoolTabs || {});
+    if (tabNames.length === 0 && (activeOptoolTab === 'CF(DOC)' || !activeOptoolTab)) {
+      tabNames.push('CF(DOC)');
+    }
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (tabNames[0] || activeOptoolTab || 'CF(DOC)');
     const { cols } = getOptoolTableColumns(schemas, currentTab);
     const col = cols.find((c) => c.key === colKey);
     const allRows = state.optool[currentTab] || [];
@@ -5918,11 +5995,14 @@ function buildDbByLhidMap(state) {
       optoolColPage = 1
     } = ctx;
 
-    const tabNames = Object.keys(schemas.optoolTabs);
-    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : tabNames[0];
+    const tabNames = Object.keys(schemas?.optoolTabs || {});
+    if (tabNames.length === 0 && (activeOptoolTab === 'CF(DOC)' || !activeOptoolTab)) {
+      tabNames.push('CF(DOC)');
+    }
+    const currentTab = tabNames.includes(activeOptoolTab) ? activeOptoolTab : (tabNames[0] || activeOptoolTab || 'CF(DOC)');
     const { cols, previewCols } = getOptoolTableColumns(schemas, currentTab);
-    const allRows = state.optool[currentTab] || [];
-    const targetTabs = schemas.milestoneTargetTabs || [
+    const allRows = state?.optool?.[currentTab] || [];
+    const targetTabs = schemas?.milestoneTargetTabs || [
       'CF(DOC)',
       'Survey',
       'Land Valuation',
@@ -6553,9 +6633,8 @@ function buildDbByLhidMap(state) {
     };
   }
 
-  export function renderOptoolView(ctx) {
-    const { state, searchTerm } = ctx;
-    const vm = buildOptoolViewModel(ctx);
+  export function renderOptoolTablePanelHtml(ctx, options = {}) {
+    const vm = options.vm || buildOptoolViewModel(ctx);
     const {
       tabNames,
       currentTab,
@@ -6570,26 +6649,55 @@ function buildDbByLhidMap(state) {
       optoolColMode,
       showMoreCol
     } = vm;
-
+    const { state } = ctx;
+    const searchTerm = ctx.searchTerm || ctx.optoolSearch || '';
     const hasGroupHeader = currentTab === 'Survey';
     const groupSpans = hasGroupHeader ? buildOptoolGroupSpans(displayCols, showMoreCol) : [];
+    const showTabStrip = options.showTabStrip !== false;
+    const panelId = options.panelId || 'panel-optool';
+    const panelTitle = options.panelTitle || `${currentTab} Operational Support List`;
+    const panelSubtitle = options.panelSubtitle || `Active records in ${currentTab} worksheet • Live synchronization with Provincial Google Sheets`;
 
     return `
-    ${renderEmptyWorkspaceCallout(state)}
-    <div class="optool-kpi-stack" id="optool-kpi-cards">${renderOptoolKpiCardsHtml(vm)}</div>
-    <div class="panel" id="panel-optool">
+    <div class="panel" id="${esc(panelId)}">
+      ${showTabStrip
+        ? `
       <div class="tab-strip">
         ${tabNames
         .map(
           (t) => `
           <button type="button" class="tab-btn ${t === currentTab ? 'active' : ''}" data-optool-tab="${esc(t)}">
             <span>${esc(t)}</span>
-            <span class="tab-count">${(state.optool[t] || []).length}</span>
+            <span class="tab-count">${(state?.optool?.[t] || []).length}</span>
           </button>
         `
         )
         .join('')}
       </div>
+      `
+        : `
+      <div class="panel-header nep-panel-header" style="padding:12px 16px;background:#ffffff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:6px;background:#0f4d2a;color:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">
+            📄
+          </div>
+          <div>
+            <h3 class="panel-title" style="margin:0;font-size:15px;font-weight:800;color:#0f4d2a;letter-spacing:-0.01em;">
+              ${esc(panelTitle)}
+            </h3>
+            <p class="panel-subtitle" style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">
+              ${esc(panelSubtitle)}
+            </p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge badge-green" style="font-size:11px;padding:3px 8px;">
+            ${(state?.optool?.[currentTab] || []).length} Active Records in ${esc(currentTab)}
+          </span>
+        </div>
+      </div>
+      `
+      }
 
       <div class="toolbar">
         <div class="toolbar-left">
@@ -6695,6 +6803,17 @@ function buildDbByLhidMap(state) {
         ${renderOptoolPaginationHtml(vm)}
       </div>
     </div>
+    `;
+  }
+
+  export function renderOptoolView(ctx) {
+    const { state } = ctx;
+    const vm = buildOptoolViewModel(ctx);
+
+    return `
+    ${renderEmptyWorkspaceCallout(state)}
+    <div class="optool-kpi-stack" id="optool-kpi-cards">${renderOptoolKpiCardsHtml(vm)}</div>
+    ${renderOptoolTablePanelHtml(ctx, { showTabStrip: true, vm })}
   `;
   }
 

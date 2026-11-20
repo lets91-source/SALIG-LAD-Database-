@@ -1166,8 +1166,17 @@ function renderActiveView() {
     container.innerHTML = renderTargetSummaryView(ctx);
     bindDashboardViewEvents(container);
   } else if (appState.view === 'cf-whereabouts') {
+    appState.activeOptoolTab = 'CF(DOC)';
     container.innerHTML = renderCfWhereaboutsView({
       ...ctx,
+      activeOptoolTab: 'CF(DOC)',
+      searchTerm: appState.optoolSearch || '',
+      optoolSearch: appState.optoolSearch || '',
+      optoolColMode: appState.optoolColMode || 'preview',
+      optoolPage: appState.optoolPage || 1,
+      optoolPageSize: appState.optoolPageSize || 50,
+      optoolColPage: appState.optoolColPage || 1,
+      optoolColFilters: appState.optoolColFilters || {},
       whereaboutsSearch: appState.whereaboutsSearch,
       whereaboutsProvinceFilter: appState.whereaboutsProvinceFilter,
       whereaboutsStatusFilter: appState.whereaboutsStatusFilter,
@@ -5044,6 +5053,11 @@ function bindWhereaboutsEvents(container, viewKey) {
   });
 
   bindProvincialAllocationTableEvents(container);
+
+  if (viewKey === 'cf-whereabouts') {
+    appState.activeOptoolTab = 'CF(DOC)';
+    bindOptoolViewEvents(container);
+  }
 }
 
 function exportWhereaboutsCsv(viewKey) {
