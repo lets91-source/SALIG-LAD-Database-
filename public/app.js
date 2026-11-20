@@ -5780,7 +5780,7 @@ async function bootAppSession(options = {}) {
     try {
       const syncResult = await withLoading(
         'fetching',
-        'Synchronizing with Google Sheets…',
+        'Synchronizing Live data…',
         'Fetching live CF, Survey, and milestone records across provincial sheets…',
         () => api('/api/sync/provincial-optool', { method: 'POST', timeoutMs: 25000 })
       );
