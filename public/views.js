@@ -413,7 +413,7 @@ function renderMilestoneNepSection(ctx) {
         <div class="nep-header-controls">
           <div class="nep-metric-pills" role="group" aria-label="Milestone Metric Display">
             <button type="button" class="btn btn-sm ${nepMetricMode === 'both' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="both">Both</button>
-            <button type="button" class="btn btn-sm ${nepMetricMode === 'count' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="count">Lots / eTitles</button>
+            <button type="button" class="btn btn-sm ${nepMetricMode === 'count' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="count">LHs</button>
             <button type="button" class="btn btn-sm ${nepMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="area">Area (HAS)</button>
           </div>
           ${!provinceScope

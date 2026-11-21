@@ -3968,7 +3968,7 @@ function openNepTargetsModal() {
               class="form-control num nep-target-c"
               data-ms="${esc(m.key)}"
               name="c_${esc(m.key)}"
-              title="NEP Total Lots / eTitles"
+              title="NEP Total LHs"
               value="${esc(t.targetCount || 0)}"
             />
           </td>
@@ -3982,7 +3982,7 @@ function openNepTargetsModal() {
               style="border-color:var(--dar-blue,#1d4ed8);background:#f0f7ff;"
               name="s1c_${esc(m.key)}"
               placeholder="1st Sem"
-              title="1st Sem Lots / eTitles Target"
+              title="1st Sem LHs Target"
               value="${esc(s1c)}"
             />
           </td>
@@ -3995,7 +3995,7 @@ function openNepTargetsModal() {
               readonly
               tabindex="-1"
               style="border-color:var(--dar-amber,#b45309);background:#fffbeb;font-weight:700;"
-              title="2nd Sem Lots / eTitles Target (Auto: NEP − 1st Sem)"
+              title="2nd Sem LHs Target (Auto: NEP − 1st Sem)"
               value="${esc(s2c)}"
             />
           </td>
@@ -4061,7 +4061,7 @@ function openNepTargetsModal() {
           <thead>
             <tr>
               <th rowspan="2" class="sticky-col-province" style="vertical-align:bottom;">Milestone</th>
-              <th colspan="3" class="center">Lots / eTitles</th>
+              <th colspan="3" class="center">LHs</th>
               <th colspan="3" class="center">Area (HAS)</th>
             </tr>
             <tr>
