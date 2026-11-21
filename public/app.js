@@ -3325,7 +3325,42 @@ function bindProvincialAllocationTableEvents(container) {
     btn.addEventListener('click', () => {
       const ms = btn.dataset.milestone || appState.nepMilestoneFilter || 'overall';
       const isAdd = btn.textContent.includes('Add');
-      openNepSheetModal(btn.dataset.prov, ms, isAdd ? 'add' : 'edit');
+      const yr = btn.dataset.year ? Number(btn.dataset.year) : null;
+      openNepSheetModal(btn.dataset.prov, ms, isAdd ? 'add' : 'edit', yr);
+    });
+  });
+  container.querySelectorAll('.btn-del-single-nep').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const prov = btn.dataset.prov;
+      const ms = btn.dataset.milestone || 'overall';
+      const yr = btn.dataset.year || '2026';
+      if (!confirm(`Are you sure you want to delete the NEP target for ${prov} (Year: ${yr}, Milestone: ${ms})?`)) {
+        return;
+      }
+      try {
+        const res = await withLoading(
+          'saving',
+          'Deleting NEP Target…',
+          `Removing NEP target for ${prov} (${yr}) and syncing with Google Sheet…`,
+          () =>
+            api('/api/nep-targets', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ year: yr, milestone: ms, provinceCode: prov })
+            })
+        );
+        if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
+        if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
+        if (res.nepProvinceList) appState.state.nepProvinceList = res.nepProvinceList;
+        if (res.nepMilestoneListByYear) appState.state.nepMilestoneListByYear = res.nepMilestoneListByYear;
+        if (res.nepProvinceListByYear) appState.state.nepProvinceListByYear = res.nepProvinceListByYear;
+        if (res.analytics) appState.analytics = res.analytics;
+        renderActiveView();
+        toast(`Deleted NEP target for ${prov} (Year ${yr})`);
+      } catch (err) {
+        toast(err.message, true);
+      }
     });
   });
   container.querySelectorAll('[data-nep-mode]').forEach((btn) => {
@@ -3363,6 +3398,8 @@ async function syncHubNepSheet() {
     appState.state.nepProvinceList = res.nepProvinceList;
     if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
     if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
+    if (res.nepMilestoneListByYear) appState.state.nepMilestoneListByYear = res.nepMilestoneListByYear;
+    if (res.nepProvinceListByYear) appState.state.nepProvinceListByYear = res.nepProvinceListByYear;
     appState.analytics = res.analytics;
     renderActiveView();
     toast('Fetched Regional Hub NEP Targets (' + (activeYear === 'ALL' ? 'All Years' : activeYear) + ')');
@@ -3371,7 +3408,7 @@ async function syncHubNepSheet() {
   }
 }
 
-function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'add') {
+function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'add', targetYear = null) {
   const isAdmin = appState.currentUser ? appState.currentUser.role === 'admin' : !appState.provinceScope;
   if (!isAdmin) {
     toast('Only Administrator accounts can edit the Regional Hub NEP Sheet.', true);
@@ -3394,19 +3431,28 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
     currentMilestone = 'overall';
   }
 
+  const defaultYear = targetYear
+    ? Number(targetYear)
+    : (appState.nepYearFilter !== 'ALL' && appState.nepYearFilter
+        ? Number(appState.nepYearFilter)
+        : (appState.state?.nepProvinceList?.LEY?.year || 2026));
+
   // In-memory working copy for each milestone
   const localData = {};
-  localData.overall = JSON.parse(JSON.stringify(appState.state?.nepProvinceList || {}));
+  const yearProvMap = appState.state?.nepProvinceListByYear?.[defaultYear];
+  const yearMsMap = appState.state?.nepMilestoneListByYear?.[defaultYear];
+
+  localData.overall = yearProvMap
+    ? JSON.parse(JSON.stringify(yearProvMap))
+    : (mode === 'add' ? {} : JSON.parse(JSON.stringify(appState.state?.nepProvinceList || {})));
+
   for (const m of milestoneOptions) {
     if (m.key !== 'overall') {
-      localData[m.key] = JSON.parse(JSON.stringify(appState.state?.nepMilestoneList?.[m.key] || {}));
+      localData[m.key] = yearMsMap?.[m.key]
+        ? JSON.parse(JSON.stringify(yearMsMap[m.key]))
+        : (mode === 'add' ? {} : JSON.parse(JSON.stringify(appState.state?.nepMilestoneList?.[m.key] || {})));
     }
   }
-
-  const defaultYear =
-    appState.nepYearFilter !== 'ALL' && appState.nepYearFilter
-      ? Number(appState.nepYearFilter)
-      : appState.state?.nepProvinceList?.LEY?.year || 2026;
 
   const getActiveMap = () => localData[currentMilestone] || {};
 
@@ -3910,18 +3956,20 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
     const payload = localData[currentMilestone];
     const msObj = milestoneOptions.find((m) => m.key === currentMilestone);
     const milestoneTitle = msObj ? msObj.label : currentMilestone;
+    const yearUsed = (payload && Object.values(payload)[0]?.year) || defaultYear;
 
     try {
       const res = await withLoading(
         'saving',
         'Saving NEP Sheet…',
-        `Updating Regional Hub NEP tab for ${milestoneTitle} (LHS, AREA, ARBs, Year)…`,
+        `Updating Regional Hub NEP tab for ${milestoneTitle} (Year ${yearUsed})…`,
         () =>
           api('/api/nep-sheet', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               milestone: currentMilestone,
+              targetYear: yearUsed,
               nepProvinceList: payload,
               nepMilestoneList: localData
             })
@@ -3930,14 +3978,18 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
       appState.state.nepProvinceList = res.nepProvinceList;
       if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
       if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
+      if (res.nepMilestoneListByYear) appState.state.nepMilestoneListByYear = res.nepMilestoneListByYear;
+      if (res.nepProvinceListByYear) appState.state.nepProvinceListByYear = res.nepProvinceListByYear;
       appState.analytics = res.analytics;
       appState.nepMilestoneFilter = currentMilestone;
+      appState.nepYearFilter = String(yearUsed);
+      if (appState.filters) appState.filters.milestoneYear = String(yearUsed);
       closeModal();
       renderActiveView();
       toast(
         res.gasSync?.ok
-          ? `Saved & synced Regional Hub NEP Sheet (${milestoneTitle})`
-          : `Saved Regional NEP Sheet locally (${milestoneTitle})`
+          ? `Saved & synced Regional Hub NEP Sheet (${milestoneTitle} - ${yearUsed})`
+          : `Saved Regional NEP Sheet locally (${milestoneTitle} - ${yearUsed})`
       );
     } catch (err) {
       toast(err.message, true);
@@ -3955,7 +4007,7 @@ function openNepTargetsModal() {
     appState.filters?.milestoneYear !== 'ALL' && appState.filters?.milestoneYear
       ? Number(appState.filters.milestoneYear)
       : 2027;
-  const currentTargets = appState.state?.nepTargets || {};
+  const currentTargets = appState.state?.nepTargetsByYear?.[selectedYear] || appState.state?.nepTargets || {};
 
   const rowsHtml = milestones
     .map((m) => {
@@ -4213,6 +4265,9 @@ function openNepTargetsModal() {
       if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
       if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
       if (res.nepProvinceList) appState.state.nepProvinceList = res.nepProvinceList;
+      if (res.nepTargetsByYear) appState.state.nepTargetsByYear = res.nepTargetsByYear;
+      if (res.nepMilestoneListByYear) appState.state.nepMilestoneListByYear = res.nepMilestoneListByYear;
+      if (res.nepProvinceListByYear) appState.state.nepProvinceListByYear = res.nepProvinceListByYear;
       appState.filters.milestoneYear = String(targetYear);
       appState.analytics = res.analytics;
       closeModal();

@@ -245,17 +245,27 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
         rowCount++;
         const parsedYear = parseInt(String(rec.year ?? '').replace(/,/g, ''), 10);
         const msKey = String(rec.milestone || '').trim().toLowerCase();
+        const yr = Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : new Date().getFullYear();
         const entry = {
           lhs: Math.max(0, Math.round(Number(String(rec.lhs ?? 0).replace(/,/g, '')) || 0)),
           area: Number((Number(String(rec.area ?? 0).replace(/,/g, '')) || 0).toFixed(4)),
           arbs: Math.max(0, Math.round(Number(String(rec.arbs ?? 0).replace(/,/g, '')) || 0)),
-          year: Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : new Date().getFullYear()
+          year: yr
         };
+
+        if (!result.nepMilestoneListByYear) result.nepMilestoneListByYear = {};
+        if (!result.nepProvinceListByYear) result.nepProvinceListByYear = {};
+        if (!result.nepMilestoneListByYear[yr]) result.nepMilestoneListByYear[yr] = {};
+        if (!result.nepProvinceListByYear[yr]) result.nepProvinceListByYear[yr] = {};
+
         if (!msKey || msKey === 'overall') {
           parsedNep[code] = entry;
+          result.nepProvinceListByYear[yr][code] = entry;
         } else {
           if (!parsedMilestoneNep[msKey]) parsedMilestoneNep[msKey] = {};
           parsedMilestoneNep[msKey][code] = entry;
+          if (!result.nepMilestoneListByYear[yr][msKey]) result.nepMilestoneListByYear[yr][msKey] = {};
+          result.nepMilestoneListByYear[yr][msKey][code] = entry;
         }
       }
       result.nepProvinceList = parsedNep;
@@ -298,6 +308,16 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
           }
           if (val !== '') nonEmptyCount++;
           record[colDef.key] = val;
+        }
+
+        // Positional rescue for Leasehold: Column M (13th column) for Area Tenanted, Column AF (32nd column) for Target Year
+        if (matchedOptoolTab === 'Leasehold') {
+          if ((record.areaTenanted === undefined || record.areaTenanted === '' || record.areaTenanted === '0.0000') && row.values[13] !== undefined && String(row.values[13]).trim() !== '') {
+            record.areaTenanted = String(row.values[13]).trim();
+          }
+          if ((record.targetYear === undefined || record.targetYear === '') && row.values[32] !== undefined && String(row.values[32]).trim() !== '') {
+            record.targetYear = String(row.values[32]).trim();
+          }
         }
         if (nonEmptyCount === 0) continue;
         if (matchedOptoolTab !== 'Leasehold' && !record.lhid && !record.LHID) continue;

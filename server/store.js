@@ -497,6 +497,38 @@ export class ConsolidatedStore {
     this.state.nepTargets = normalizeNepTargets(this.state.nepTargets);
     this.state.nepProvinceList = normalizeNepProvinceList(this.state.nepProvinceList);
     this.state.nepMilestoneList = normalizeNepMilestoneList(this.state.nepMilestoneList);
+
+    // Multi-Year NEP Targets support
+    if (!this.state.nepMilestoneListByYear || typeof this.state.nepMilestoneListByYear !== 'object') {
+      this.state.nepMilestoneListByYear = {};
+    }
+    if (!this.state.nepProvinceListByYear || typeof this.state.nepProvinceListByYear !== 'object') {
+      this.state.nepProvinceListByYear = {};
+    }
+    if (!this.state.nepTargetsByYear || typeof this.state.nepTargetsByYear !== 'object') {
+      this.state.nepTargetsByYear = {};
+    }
+
+    // Populate multi-year index from current nepProvinceList and nepMilestoneList
+    if (this.state.nepProvinceList) {
+      for (const [code, item] of Object.entries(this.state.nepProvinceList)) {
+        const yr = Math.round(Number(item.year) || 2026);
+        if (!this.state.nepProvinceListByYear[yr]) this.state.nepProvinceListByYear[yr] = {};
+        this.state.nepProvinceListByYear[yr][code] = item;
+      }
+    }
+    if (this.state.nepMilestoneList) {
+      for (const [msKey, provMap] of Object.entries(this.state.nepMilestoneList)) {
+        if (provMap && typeof provMap === 'object') {
+          for (const [code, item] of Object.entries(provMap)) {
+            const yr = Math.round(Number(item.year) || 2027);
+            if (!this.state.nepMilestoneListByYear[yr]) this.state.nepMilestoneListByYear[yr] = {};
+            if (!this.state.nepMilestoneListByYear[yr][msKey]) this.state.nepMilestoneListByYear[yr][msKey] = {};
+            this.state.nepMilestoneListByYear[yr][msKey][code] = item;
+          }
+        }
+      }
+    }
     if (!Array.isArray(this.state.milestoneData)) this.state.milestoneData = [];
     if (!this.state.uploadedFiles || typeof this.state.uploadedFiles !== 'object') {
       this.state.uploadedFiles = {};
@@ -1207,14 +1239,27 @@ export class ConsolidatedStore {
         }
       }
       this.state.nepProvinceList = normalizeNepProvinceList(mergedNep);
+      if (!this.state.nepProvinceListByYear) this.state.nepProvinceListByYear = {};
+      for (const [code, item] of Object.entries(this.state.nepProvinceList)) {
+        const yr = Math.round(Number(item.year) || 2026);
+        if (!this.state.nepProvinceListByYear[yr]) this.state.nepProvinceListByYear[yr] = {};
+        this.state.nepProvinceListByYear[yr][code] = item;
+      }
     }
 
     if (nepMilestoneList && typeof nepMilestoneList === 'object') {
       if (!this.state.nepMilestoneList) this.state.nepMilestoneList = {};
+      if (!this.state.nepMilestoneListByYear) this.state.nepMilestoneListByYear = {};
       for (const [msKey, provMap] of Object.entries(nepMilestoneList)) {
         if (provMap && typeof provMap === 'object') {
           const norm = normalizeNepProvinceList(provMap);
           this.state.nepMilestoneList[msKey] = norm;
+          for (const [code, item] of Object.entries(norm)) {
+            const yr = Math.round(Number(item.year) || 2027);
+            if (!this.state.nepMilestoneListByYear[yr]) this.state.nepMilestoneListByYear[yr] = {};
+            if (!this.state.nepMilestoneListByYear[yr][msKey]) this.state.nepMilestoneListByYear[yr][msKey] = {};
+            this.state.nepMilestoneListByYear[yr][msKey][code] = item;
+          }
           const totalLhs = Object.values(norm).reduce((s, r) => s + (Number(r.lhs) || 0), 0);
           const totalArea = Number(Object.values(norm).reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4));
           const totalSem1Lhs = Object.values(norm).reduce((s, r) => s + (Number(r.sem1Lhs) || 0), 0);
@@ -1683,8 +1728,11 @@ export class ConsolidatedStore {
       ...this.state,
       baselines: scopedBaselines,
       nepTargets: this.state.nepTargets,
+      nepTargetsByYear: this.state.nepTargetsByYear || {},
       nepProvinceList: scopedNepProvinceList,
       nepMilestoneList: scopeCode ? scopedNepMilestoneList : (this.state.nepMilestoneList || {}),
+      nepMilestoneListByYear: this.state.nepMilestoneListByYear || {},
+      nepProvinceListByYear: this.state.nepProvinceListByYear || {},
       nodeStatuses: scopedNodeStatuses,
       milestoneData: (this.state.milestoneData || []).filter(
         (m) => this.getMilestoneProvinceCode(m) === scopeCode
@@ -1724,21 +1772,57 @@ export class ConsolidatedStore {
   }
 
   /** Persist per-province, per-milestone NEP Target updates. */
-  updateNepTargets(newNepTargets) {
-    this.state.nepTargets = normalizeNepTargets(newNepTargets);
+  updateNepTargets(newNepTargets, targetYear = null) {
+    const yr = targetYear ? Math.round(Number(targetYear)) : null;
+    const existing = yr && this.state.nepTargetsByYear?.[yr]
+      ? this.state.nepTargetsByYear[yr]
+      : (this.state.nepTargets || {});
+    const merged = { ...existing, ...(newNepTargets || {}) };
+    this.state.nepTargets = normalizeNepTargets(merged);
+    if (yr) {
+      if (!this.state.nepTargetsByYear) this.state.nepTargetsByYear = {};
+      this.state.nepTargetsByYear[yr] = normalizeNepTargets(merged);
+    }
     this.save();
     return this.state.nepTargets;
   }
 
   /** Persist Regional Hub NEP Sheet per-province totals (LHS, AREA, ARBs, Year) for overall or a selected milestone. */
-  updateNepProvinceList(raw = {}, milestoneKey = 'overall') {
+  updateNepProvinceList(raw = {}, milestoneKey = 'overall', targetYear = null) {
     const isOverall = !milestoneKey || milestoneKey === 'overall';
-    const norm = normalizeNepProvinceList(raw);
+    let rawYear = null;
+    if (raw && typeof raw === 'object') {
+      for (const item of Object.values(raw)) {
+        const y = Math.round(Number(item?.year) || 0);
+        if (y >= 2000 && y <= 2099) {
+          rawYear = y;
+          break;
+        }
+      }
+    }
+    const resolvedYear = targetYear
+      ? Math.round(Number(targetYear))
+      : (rawYear || new Date().getFullYear());
+
+    const norm = normalizeNepProvinceList(raw, resolvedYear);
+
+    if (!this.state.nepMilestoneListByYear) this.state.nepMilestoneListByYear = {};
+    if (!this.state.nepProvinceListByYear) this.state.nepProvinceListByYear = {};
+    if (!this.state.nepMilestoneListByYear[resolvedYear]) this.state.nepMilestoneListByYear[resolvedYear] = {};
+    if (!this.state.nepProvinceListByYear[resolvedYear]) this.state.nepProvinceListByYear[resolvedYear] = {};
+
+    for (const code of Object.keys(norm)) {
+      if (norm[code]) norm[code].year = resolvedYear;
+    }
+
     if (isOverall) {
       this.state.nepProvinceList = norm;
+      this.state.nepProvinceListByYear[resolvedYear] = norm;
     } else {
       if (!this.state.nepMilestoneList) this.state.nepMilestoneList = {};
       this.state.nepMilestoneList[milestoneKey] = norm;
+      this.state.nepMilestoneListByYear[resolvedYear][milestoneKey] = norm;
+
       const totalLhs = Object.values(norm).reduce((s, r) => s + (Number(r.lhs) || 0), 0);
       const totalArea = Number(Object.values(norm).reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4));
       const totalSem1Lhs = Object.values(norm).reduce((s, r) => s + (Number(r.sem1Lhs) || 0), 0);
@@ -1760,9 +1844,252 @@ export class ConsolidatedStore {
         sem1TargetAreaHas: s1Area,
         sem2TargetAreaHas: s2Area
       };
+
+      if (!this.state.nepTargetsByYear) this.state.nepTargetsByYear = {};
+      if (!this.state.nepTargetsByYear[resolvedYear]) this.state.nepTargetsByYear[resolvedYear] = {};
+      this.state.nepTargetsByYear[resolvedYear][milestoneKey] = {
+        targetCount: totalLhs,
+        targetAreaHas: totalArea,
+        sem1TargetCount: s1Count,
+        sem2TargetCount: s2Count,
+        sem1TargetAreaHas: s1Area,
+        sem2TargetAreaHas: s2Area
+      };
     }
     this.save();
     return this.state.nepProvinceList;
+  }
+
+  /**
+   * CRUD: Create or Add a new NEP target for a specific year, milestone, and province.
+   */
+  createNepTarget({ year, milestone = 'overall', provinceCode, lhs = 0, area = 0, arbs = 0, sem1Lhs, sem2Lhs, sem1Area, sem2Area, sem1Arbs, sem2Arbs }) {
+    const yr = Math.round(Number(year) || new Date().getFullYear());
+    const msKey = String(milestone || 'overall').trim().toLowerCase();
+    const pCode = String(provinceCode || '').trim().toUpperCase();
+    if (!PROVINCE_CODES.includes(pCode)) {
+      throw new Error(`Invalid province code: "${pCode}". Allowed: ${PROVINCE_CODES.join(', ')}`);
+    }
+
+    const nLhs = Math.max(0, Math.round(Number(lhs) || 0));
+    const nArea = Math.max(0, Number((Number(area) || 0).toFixed(4)));
+    const nArbs = Math.max(0, Math.round(Number(arbs) || 0));
+
+    const s1Lhs = sem1Lhs !== undefined && sem1Lhs !== null && sem1Lhs !== ''
+      ? Math.max(0, Math.min(nLhs, Math.round(Number(sem1Lhs) || 0)))
+      : (nLhs > 0 ? Math.round(nLhs / 2) : 0);
+    const s2Lhs = sem2Lhs !== undefined && sem2Lhs !== null && sem2Lhs !== ''
+      ? Math.max(0, Math.round(Number(sem2Lhs) || 0))
+      : Math.max(0, nLhs - s1Lhs);
+
+    const s1Area = sem1Area !== undefined && sem1Area !== null && sem1Area !== ''
+      ? Math.max(0, Math.min(nArea, Number((Number(sem1Area) || 0).toFixed(4))))
+      : Number((nArea / 2).toFixed(4));
+    const s2Area = sem2Area !== undefined && sem2Area !== null && sem2Area !== ''
+      ? Math.max(0, Number((Number(sem2Area) || 0).toFixed(4)))
+      : Math.max(0, Number((nArea - s1Area).toFixed(4)));
+
+    const s1Arbs = sem1Arbs !== undefined && sem1Arbs !== null && sem1Arbs !== ''
+      ? Math.max(0, Math.min(nArbs, Math.round(Number(sem1Arbs) || 0)))
+      : (nArbs > 0 ? Math.round(nArbs / 2) : 0);
+    const s2Arbs = sem2Arbs !== undefined && sem2Arbs !== null && sem2Arbs !== ''
+      ? Math.max(0, Math.round(Number(sem2Arbs) || 0))
+      : Math.max(0, nArbs - s1Arbs);
+
+    const entry = {
+      lhs: nLhs,
+      area: nArea,
+      arbs: nArbs,
+      year: yr,
+      sem1Lhs: s1Lhs,
+      sem2Lhs: s2Lhs,
+      sem1Area: s1Area,
+      sem2Area: s2Area,
+      sem1Arbs: s1Arbs,
+      sem2Arbs: s2Arbs
+    };
+
+    if (!this.state.nepMilestoneListByYear) this.state.nepMilestoneListByYear = {};
+    if (!this.state.nepProvinceListByYear) this.state.nepProvinceListByYear = {};
+    if (!this.state.nepMilestoneListByYear[yr]) this.state.nepMilestoneListByYear[yr] = {};
+    if (!this.state.nepProvinceListByYear[yr]) this.state.nepProvinceListByYear[yr] = {};
+
+    if (msKey === 'overall') {
+      this.state.nepProvinceListByYear[yr][pCode] = entry;
+      if (!this.state.nepProvinceList) this.state.nepProvinceList = {};
+      this.state.nepProvinceList[pCode] = entry;
+    } else {
+      if (!this.state.nepMilestoneListByYear[yr][msKey]) this.state.nepMilestoneListByYear[yr][msKey] = {};
+      this.state.nepMilestoneListByYear[yr][msKey][pCode] = entry;
+      if (!this.state.nepMilestoneList) this.state.nepMilestoneList = {};
+      if (!this.state.nepMilestoneList[msKey]) this.state.nepMilestoneList[msKey] = {};
+      this.state.nepMilestoneList[msKey][pCode] = entry;
+    }
+
+    this.recalculateNepTargetsForYear(yr, msKey);
+    this.save();
+
+    return {
+      id: `NEP-${yr}-${msKey}-${pCode}`,
+      year: yr,
+      milestone: msKey,
+      provinceCode: pCode,
+      ...entry
+    };
+  }
+
+  /**
+   * CRUD: Update an existing NEP target.
+   */
+  updateNepTarget(payload) {
+    return this.createNepTarget(payload);
+  }
+
+  /**
+   * CRUD: Delete a specific NEP target by year, milestone, and province.
+   */
+  deleteNepTarget({ year, milestone = 'overall', provinceCode }) {
+    const yr = Math.round(Number(year) || 0);
+    const msKey = String(milestone || 'overall').trim().toLowerCase();
+    const pCode = String(provinceCode || '').trim().toUpperCase();
+
+    let deleted = false;
+    if (this.state.nepMilestoneListByYear?.[yr]?.[msKey]?.[pCode]) {
+      delete this.state.nepMilestoneListByYear[yr][msKey][pCode];
+      deleted = true;
+    }
+    if (this.state.nepProvinceListByYear?.[yr]?.[pCode] && (msKey === 'overall' || !msKey)) {
+      delete this.state.nepProvinceListByYear[yr][pCode];
+      deleted = true;
+    }
+
+    if (this.state.nepMilestoneList?.[msKey]?.[pCode]?.year === yr) {
+      delete this.state.nepMilestoneList[msKey][pCode];
+    }
+    if (this.state.nepProvinceList?.[pCode]?.year === yr && (msKey === 'overall' || !msKey)) {
+      delete this.state.nepProvinceList[pCode];
+    }
+
+    this.recalculateNepTargetsForYear(yr, msKey);
+    this.save();
+
+    return {
+      ok: true,
+      deleted: { year: yr, milestone: msKey, provinceCode: pCode }
+    };
+  }
+
+  /**
+   * Recalculate rollup totals in nepTargets and nepTargetsByYear for a specific year and milestone.
+   */
+  recalculateNepTargetsForYear(year, milestoneKey) {
+    const yr = Math.round(Number(year) || new Date().getFullYear());
+    const msKey = String(milestoneKey || 'overall').toLowerCase();
+    if (msKey === 'overall') return;
+
+    const msMap = this.state.nepMilestoneListByYear?.[yr]?.[msKey] || this.state.nepMilestoneList?.[msKey] || {};
+    const totalLhs = Object.values(msMap).reduce((s, r) => s + (Number(r.lhs) || 0), 0);
+    const totalArea = Number(Object.values(msMap).reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4));
+    const totalSem1Lhs = Object.values(msMap).reduce((s, r) => s + (Number(r.sem1Lhs) || 0), 0);
+    const totalSem2Lhs = Object.values(msMap).reduce((s, r) => s + (Number(r.sem2Lhs) || 0), 0);
+    const totalSem1Area = Number(Object.values(msMap).reduce((s, r) => s + (Number(r.sem1Area) || 0), 0).toFixed(4));
+    const totalSem2Area = Number(Object.values(msMap).reduce((s, r) => s + (Number(r.sem2Area) || 0), 0).toFixed(4));
+
+    const s1Count = totalSem1Lhs > 0 ? totalSem1Lhs : (totalLhs > 0 ? Math.round(totalLhs / 2) : 0);
+    const s2Count = totalSem2Lhs > 0 ? totalSem2Lhs : Math.max(0, totalLhs - s1Count);
+    const s1Area = totalSem1Area > 0 ? totalSem1Area : Number((totalArea / 2).toFixed(4));
+    const s2Area = totalSem2Area > 0 ? totalSem2Area : Math.max(0, Number((totalArea - s1Area).toFixed(4)));
+
+    if (!this.state.nepTargetsByYear) this.state.nepTargetsByYear = {};
+    if (!this.state.nepTargetsByYear[yr]) this.state.nepTargetsByYear[yr] = {};
+    this.state.nepTargetsByYear[yr][msKey] = {
+      targetCount: totalLhs,
+      targetAreaHas: totalArea,
+      sem1TargetCount: s1Count,
+      sem2TargetCount: s2Count,
+      sem1TargetAreaHas: s1Area,
+      sem2TargetAreaHas: s2Area
+    };
+
+    if (!this.state.nepTargets) this.state.nepTargets = {};
+    this.state.nepTargets[msKey] = {
+      targetCount: totalLhs,
+      targetAreaHas: totalArea,
+      sem1TargetCount: s1Count,
+      sem2TargetCount: s2Count,
+      sem1TargetAreaHas: s1Area,
+      sem2TargetAreaHas: s2Area
+    };
+  }
+
+  /**
+   * CRUD: Query NEP target records across all years, milestones, and provinces.
+   */
+  getNepTargetsList({ year = 'ALL', milestone = 'ALL', provinceCode = 'ALL' } = {}) {
+    const list = [];
+    const yrFilter = year && year !== 'ALL' ? Math.round(Number(year)) : null;
+    const msFilter = milestone && milestone !== 'ALL' ? String(milestone).toLowerCase() : null;
+    const provFilter = provinceCode && provinceCode !== 'ALL' ? String(provinceCode).toUpperCase() : null;
+
+    // Collect from nepProvinceListByYear (overall)
+    for (const [yrStr, provMap] of Object.entries(this.state.nepProvinceListByYear || {})) {
+      const yr = Math.round(Number(yrStr));
+      if (yrFilter && yr !== yrFilter) continue;
+      if (msFilter && msFilter !== 'overall') continue;
+      for (const [code, item] of Object.entries(provMap || {})) {
+        if (provFilter && code !== provFilter) continue;
+        list.push({
+          id: `NEP-${yr}-overall-${code}`,
+          year: yr,
+          milestone: 'overall',
+          milestoneLabel: 'Overall NEP (All Milestones)',
+          provinceCode: code,
+          provinceName: PROVINCIAL_NODES.find((n) => n.code === code)?.name || code,
+          lhs: item.lhs || 0,
+          sem1Lhs: item.sem1Lhs ?? (item.lhs > 0 ? Math.round(item.lhs / 2) : 0),
+          sem2Lhs: item.sem2Lhs ?? Math.max(0, (item.lhs || 0) - (item.sem1Lhs || 0)),
+          area: item.area || 0,
+          sem1Area: item.sem1Area ?? Number(((item.area || 0) / 2).toFixed(4)),
+          sem2Area: item.sem2Area ?? Math.max(0, Number(((item.area || 0) - (item.sem1Area || 0)).toFixed(4))),
+          arbs: item.arbs || 0,
+          sem1Arbs: item.sem1Arbs ?? (item.arbs > 0 ? Math.round(item.arbs / 2) : 0),
+          sem2Arbs: item.sem2Arbs ?? Math.max(0, (item.arbs || 0) - (item.sem1Arbs || 0))
+        });
+      }
+    }
+
+    // Collect from nepMilestoneListByYear
+    for (const [yrStr, msMap] of Object.entries(this.state.nepMilestoneListByYear || {})) {
+      const yr = Math.round(Number(yrStr));
+      if (yrFilter && yr !== yrFilter) continue;
+      for (const [msKey, provMap] of Object.entries(msMap || {})) {
+        if (msFilter && msKey !== msFilter) continue;
+        const msObj = DASHBOARD_MILESTONES.find((m) => m.key === msKey);
+        const msLabel = msObj ? msObj.label : msKey;
+        for (const [code, item] of Object.entries(provMap || {})) {
+          if (provFilter && code !== provFilter) continue;
+          list.push({
+            id: `NEP-${yr}-${msKey}-${code}`,
+            year: yr,
+            milestone: msKey,
+            milestoneLabel: msLabel,
+            provinceCode: code,
+            provinceName: PROVINCIAL_NODES.find((n) => n.code === code)?.name || code,
+            lhs: item.lhs || 0,
+            sem1Lhs: item.sem1Lhs ?? (item.lhs > 0 ? Math.round(item.lhs / 2) : 0),
+            sem2Lhs: item.sem2Lhs ?? Math.max(0, (item.lhs || 0) - (item.sem1Lhs || 0)),
+            area: item.area || 0,
+            sem1Area: item.sem1Area ?? Number(((item.area || 0) / 2).toFixed(4)),
+            sem2Area: item.sem2Area ?? Math.max(0, Number(((item.area || 0) - (item.sem1Area || 0)).toFixed(4))),
+            arbs: item.arbs || 0,
+            sem1Arbs: item.sem1Arbs ?? (item.arbs > 0 ? Math.round(item.arbs / 2) : 0),
+            sem2Arbs: item.sem2Arbs ?? Math.max(0, (item.arbs || 0) - (item.sem1Arbs || 0))
+          });
+        }
+      }
+    }
+
+    return list.sort((a, b) => b.year - a.year || a.milestone.localeCompare(b.milestone) || a.provinceCode.localeCompare(b.provinceCode));
   }
 
   resetToSample() {
@@ -1857,6 +2184,20 @@ export class ConsolidatedStore {
     const yearSet = new Set();
     const currentYear = new Date().getFullYear();
     yearSet.add(currentYear);
+
+    // Collect all target years from nepMilestoneListByYear & nepProvinceListByYear
+    if (this.state.nepMilestoneListByYear && typeof this.state.nepMilestoneListByYear === 'object') {
+      for (const yrStr of Object.keys(this.state.nepMilestoneListByYear)) {
+        const yr = Math.round(Number(yrStr) || 0);
+        if (yr >= 2000 && yr <= 2099) yearSet.add(yr);
+      }
+    }
+    if (this.state.nepProvinceListByYear && typeof this.state.nepProvinceListByYear === 'object') {
+      for (const yrStr of Object.keys(this.state.nepProvinceListByYear)) {
+        const yr = Math.round(Number(yrStr) || 0);
+        if (yr >= 2000 && yr <= 2099) yearSet.add(yr);
+      }
+    }
 
     // Collect all target years from Regional Hub nepProvinceList
     if (this.state.nepProvinceList && typeof this.state.nepProvinceList === 'object') {
@@ -1983,12 +2324,13 @@ export class ConsolidatedStore {
       const totalCount = q[1].count + q[2].count + q[3].count + q[4].count + q.undated.count;
       const totalArea = q[1].areaHas + q[2].areaHas + q[3].areaHas + q[4].areaHas + q.undated.areaHas;
 
-      const regTarget = this.state.nepTargets?.[meta.key] || {};
+      const regTarget = (filterYear && this.state.nepTargetsByYear?.[filterYear]?.[meta.key]) || this.state.nepTargets?.[meta.key] || {};
       let nepTargetCount = Number(regTarget.targetCount) || 0;
       let nepTargetAreaHas = Number(regTarget.targetAreaHas) || 0;
 
       // If milestone-specific provincial list has targets for this milestone, calculate from it
-      const msProvMap = this.state.nepMilestoneList?.[meta.key];
+      const msProvMap = (filterYear && this.state.nepMilestoneListByYear?.[filterYear]?.[meta.key]) ||
+                        this.state.nepMilestoneList?.[meta.key];
       if (msProvMap && typeof msProvMap === 'object') {
         const provEntries = Object.entries(msProvMap);
         const hasEntries = provEntries.some(([, d]) => (Number(d?.lhs) || 0) > 0 || (Number(d?.area) || 0) > 0);

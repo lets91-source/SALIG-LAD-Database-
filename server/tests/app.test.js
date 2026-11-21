@@ -4897,6 +4897,136 @@ test('Leasehold Column M & Column AF flexible header parsing and Target Summary 
   assert.ok(html2026.includes('id="btn-switch-to-active-nep-year"'), 'Includes switch to 2027 targets banner when viewing 2026');
 });
 
+test('Full CRUD operations for NEP targets across multiple years without overwriting', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-nep-crud-test-'));
+  const store = new ConsolidatedStore(tempDir);
+  store.state.gasWebAppUrl = 'https://script.google.com/macros/s/TEST/exec';
+
+  const gasCalls = [];
+  const mockGasPush = async (url, payload) => {
+    gasCalls.push(payload);
+    return { ok: true, syncedNodes: [{ code: 'HUB', ok: true }] };
+  };
+
+  const { handler } = createAppServer(store, {
+    pushToGasWebApp: mockGasPush,
+    autoFetchHubNep: false,
+    requireAuth: false
+  });
+
+  const callApi = (url, method = 'GET', bodyObj = null) =>
+    new Promise((resolve, reject) => {
+      const bodyBuf = bodyObj ? Buffer.from(JSON.stringify(bodyObj), 'utf8') : Buffer.alloc(0);
+      const chunks = [];
+      const req = {
+        url,
+        method,
+        headers: { host: 'localhost:3001', 'content-type': 'application/json' },
+        async *[Symbol.asyncIterator]() {
+          if (bodyBuf.length) yield bodyBuf;
+        }
+      };
+      const res = {
+        statusCode: 200,
+        headers: {},
+        writeHead(code, headers = {}) {
+          this.statusCode = code;
+          Object.assign(this.headers, headers);
+        },
+        setHeader(name, value) {
+          this.headers[name.toLowerCase()] = value;
+        },
+        write(chunk) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+        },
+        end(chunk) {
+          if (chunk) this.write(chunk);
+          resolve({
+            statusCode: this.statusCode,
+            body: JSON.parse(Buffer.concat(chunks).toString('utf8'))
+          });
+        }
+      };
+      Promise.resolve(handler(req, res)).catch(reject);
+    });
+
+  // 1. CREATE (POST): Add 2026 NEP Target for LEY in cf_doc
+  const post2026 = await callApi('/api/nep-targets', 'POST', {
+    year: 2026,
+    milestone: 'cf_doc',
+    provinceCode: 'LEY',
+    lhs: 50,
+    area: 250.5,
+    arbs: 40,
+    sem1Lhs: 25,
+    sem1Area: 125.25
+  });
+  assert.equal(post2026.statusCode, 201, 'POST 2026 target returns 201 Created');
+  assert.equal(post2026.body.target.year, 2026);
+  assert.equal(post2026.body.target.lhs, 50);
+
+  // 2. CREATE (POST): Add 2027 NEP Target for LEY in cf_doc without replacing 2026
+  const post2027 = await callApi('/api/nep-targets', 'POST', {
+    year: 2027,
+    milestone: 'cf_doc',
+    provinceCode: 'LEY',
+    lhs: 93,
+    area: 839.9117,
+    arbs: 80,
+    sem1Lhs: 46,
+    sem1Area: 419.9558
+  });
+  assert.equal(post2027.statusCode, 201, 'POST 2027 target returns 201 Created');
+  assert.equal(post2027.body.target.year, 2027);
+  assert.equal(post2027.body.target.lhs, 93);
+
+  // Verify multi-year coexistence in Store
+  assert.equal(store.state.nepMilestoneListByYear[2026].cf_doc.LEY.lhs, 50, '2026 LEY target preserved');
+  assert.equal(store.state.nepMilestoneListByYear[2027].cf_doc.LEY.lhs, 93, '2027 LEY target added independently');
+
+  // 3. READ (GET): Query NEP targets by year
+  const get2026 = await callApi('/api/nep-targets?year=2026&milestone=cf_doc', 'GET');
+  assert.equal(get2026.statusCode, 200);
+  assert.equal(get2026.body.targets.length, 1);
+  assert.equal(get2026.body.targets[0].lhs, 50);
+
+  const get2027 = await callApi('/api/nep-targets?year=2027&milestone=cf_doc', 'GET');
+  assert.equal(get2027.statusCode, 200);
+  assert.equal(get2027.body.targets.length, 1);
+  assert.equal(get2027.body.targets[0].lhs, 93);
+
+  // 4. UPDATE (PUT): Update 2027 target for LEY
+  const put2027 = await callApi('/api/nep-targets', 'PUT', {
+    year: 2027,
+    milestone: 'cf_doc',
+    provinceCode: 'LEY',
+    lhs: 100,
+    area: 900.0,
+    arbs: 85
+  });
+  assert.equal(put2027.statusCode, 200, 'PUT updates target');
+  assert.equal(store.state.nepMilestoneListByYear[2027].cf_doc.LEY.lhs, 100, '2027 updated to 100');
+  assert.equal(store.state.nepMilestoneListByYear[2026].cf_doc.LEY.lhs, 50, '2026 remains intact at 50');
+
+  // 5. DELETE (DELETE): Delete 2026 target for LEY
+  const del2026 = await callApi('/api/nep-targets', 'DELETE', {
+    year: 2026,
+    milestone: 'cf_doc',
+    provinceCode: 'LEY'
+  });
+  assert.equal(del2026.statusCode, 200, 'DELETE returns 200');
+  assert.equal(store.state.nepMilestoneListByYear[2026]?.cf_doc?.LEY, undefined, '2026 LEY removed');
+  assert.equal(store.state.nepMilestoneListByYear[2027].cf_doc.LEY.lhs, 100, '2027 LEY still exists');
+
+  // Check GAS push actions called for mutations
+  const actions = gasCalls.map((c) => c.action);
+  assert.ok(actions.includes('saveNepSheet'), 'saveNepSheet pushed to GAS');
+  assert.ok(actions.includes('deleteNepTarget'), 'deleteNepTarget pushed to GAS');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
+
 
 
 

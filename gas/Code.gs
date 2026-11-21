@@ -573,7 +573,9 @@ function doGet(e) {
           ok: true,
           spreadsheetId: HUB_SPREADSHEET_ID,
           nepProvinceList: hubNep.nepProvinceList,
-          nepMilestoneList: hubNep.nepMilestoneList || {}
+          nepMilestoneList: hubNep.nepMilestoneList || {},
+          nepMilestoneListByYear: hubNep.nepMilestoneListByYear || {},
+          nepProvinceListByYear: hubNep.nepProvinceListByYear || {}
         })
       ).setMimeType(ContentService.MimeType.JSON);
     }
@@ -670,11 +672,12 @@ function doPost(e) {
 
     if (body.action === 'saveNepSheet' && (body.nepProvinceList || body.nep)) {
       const milestone = body.milestone || 'overall';
-      saveNepSheetRecord_(body.nepProvinceList || body.nep, milestone);
+      const targetYear = body.targetYear || null;
+      saveNepSheetRecord_(body.nepProvinceList || body.nep, milestone, targetYear);
       if (body.nepMilestoneList && typeof body.nepMilestoneList === 'object') {
         for (const ms in body.nepMilestoneList) {
           if (ms !== milestone) {
-            saveNepSheetRecord_(body.nepMilestoneList[ms], ms);
+            saveNepSheetRecord_(body.nepMilestoneList[ms], ms, targetYear);
           }
         }
       }
@@ -684,7 +687,24 @@ function doPost(e) {
           ok: true,
           sheetName: 'NEP',
           nepProvinceList: hubNep.nepProvinceList,
-          nepMilestoneList: hubNep.nepMilestoneList || {}
+          nepMilestoneList: hubNep.nepMilestoneList || {},
+          nepMilestoneListByYear: hubNep.nepMilestoneListByYear || {},
+          nepProvinceListByYear: hubNep.nepProvinceListByYear || {}
+        })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'deleteNepTarget') {
+      deleteNepSheetRecord_(body.provinceCode || body.code, body.milestone || 'overall', body.targetYear || body.year);
+      const hubNep = readNepSheetFromHub_();
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          ok: true,
+          deleted: true,
+          nepProvinceList: hubNep.nepProvinceList,
+          nepMilestoneList: hubNep.nepMilestoneList || {},
+          nepMilestoneListByYear: hubNep.nepMilestoneListByYear || {},
+          nepProvinceListByYear: hubNep.nepProvinceListByYear || {}
         })
       ).setMimeType(ContentService.MimeType.JSON);
     }
@@ -865,6 +885,8 @@ function getHubBootstrap() {
     optoolHeaders: optoolHeaders,
     nepProvinceList: hubNep.nepProvinceList,
     nepMilestoneList: hubNep.nepMilestoneList || {},
+    nepMilestoneListByYear: hubNep.nepMilestoneListByYear || {},
+    nepProvinceListByYear: hubNep.nepProvinceListByYear || {},
     users: readUserAccountsFromHub_(),
     syncLogs: logs
   };
@@ -901,16 +923,23 @@ function saveBaselinesRecord_(baselinesMap) {
 function readNepSheetFromHub_() {
   const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
   const sheet = hub.getSheetByName('NEP');
+  const currentYear = new Date().getFullYear();
   const out = {};
   const nepMilestoneList = {};
-  const currentYear = new Date().getFullYear();
+  const nepMilestoneListByYear = {};
+  const nepProvinceListByYear = {};
+  const nepRecords = [];
+
   PROVINCIAL_NODES.forEach(function (n) {
     out[n.code] = { lhs: 0, area: 0, arbs: 0, year: currentYear };
   });
   if (!sheet || sheet.getLastRow() <= 1) {
     return {
       nepProvinceList: out,
-      nepMilestoneList: nepMilestoneList
+      nepMilestoneList: nepMilestoneList,
+      nepMilestoneListByYear: nepMilestoneListByYear,
+      nepProvinceListByYear: nepProvinceListByYear,
+      nepRecords: nepRecords
     };
   }
   const rows = sheet.getDataRange().getValues();
@@ -933,7 +962,7 @@ function readNepSheetFromHub_() {
     const rawCode = String(rows[i][codeCol] || '').trim().toUpperCase();
     const rawProv = String(rows[i][provCol] || '').trim().toLowerCase();
     if (!rawCode || rawCode === 'TOTAL' || rawProv.indexOf('total') >= 0) continue;
-    let code = out[rawCode] ? rawCode : '';
+    let code = PROVINCE_CODES.indexOf(rawCode) >= 0 ? rawCode : '';
     if (!code) {
       PROVINCIAL_NODES.forEach(function (n) {
         if (!code && (n.name.toLowerCase().indexOf(rawProv) >= 0 || rawProv.indexOf(n.name.toLowerCase()) >= 0)) {
@@ -944,64 +973,56 @@ function readNepSheetFromHub_() {
     if (code) {
       const parsedYear = yearCol >= 0 ? Math.round(parseNum(rows[i][yearCol])) : 0;
       const msKey = msCol >= 0 ? String(rows[i][msCol] || '').trim().toLowerCase() : '';
+      const yr = parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear;
       const rec = {
         lhs: Math.max(0, Math.round(parseNum(rows[i][lhsCol]))),
         area: Math.max(0, Number(parseNum(rows[i][areaCol]).toFixed(4))),
         arbs: Math.max(0, Math.round(parseNum(rows[i][arbsCol]))),
-        year: parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear
+        year: yr,
+        milestone: msKey || 'overall',
+        provinceCode: code
       };
+      nepRecords.push(rec);
+
+      if (!nepMilestoneListByYear[yr]) nepMilestoneListByYear[yr] = {};
+      if (!nepProvinceListByYear[yr]) nepProvinceListByYear[yr] = {};
 
       if (!msKey || msKey === 'overall') {
         out[code] = rec;
+        nepProvinceListByYear[yr][code] = rec;
       } else {
         if (!nepMilestoneList[msKey]) nepMilestoneList[msKey] = {};
         nepMilestoneList[msKey][code] = rec;
+        if (!nepMilestoneListByYear[yr][msKey]) nepMilestoneListByYear[yr][msKey] = {};
+        nepMilestoneListByYear[yr][msKey][code] = rec;
       }
     }
   }
   return {
     nepProvinceList: out,
-    nepMilestoneList: nepMilestoneList
+    nepMilestoneList: nepMilestoneList,
+    nepMilestoneListByYear: nepMilestoneListByYear,
+    nepProvinceListByYear: nepProvinceListByYear,
+    nepRecords: nepRecords
   };
 }
 
-/** Write per-province LHS, AREA, ARBs, and Year into the Regional Hub NEP tab. */
-function saveNepSheetRecord_(nepMap, milestoneKey) {
+/** Write per-province LHS, AREA, ARBs, and Year into the Regional Hub NEP tab without overwriting other years. */
+function saveNepSheetRecord_(nepMap, milestoneKey, targetYear) {
   const sheet = ensureNepSheet_();
   const currentYear = new Date().getFullYear();
   const isOverall = !milestoneKey || milestoneKey === 'overall';
+  const resolvedMilestone = isOverall ? 'overall' : String(milestoneKey).toLowerCase();
 
-  if (isOverall) {
-    const rows = PROVINCIAL_NODES.map(function (n) {
-      const item = (nepMap && nepMap[n.code]) || {};
-      const parsedYear = Math.round(Number(item.year) || 0);
-      return [
-        n.code,
-        n.name,
-        Math.max(0, Math.round(Number(item.lhs) || 0)),
-        Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
-        Math.max(0, Math.round(Number(item.arbs) || 0)),
-        parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear,
-        'overall'
-      ];
-    });
-    sheet.getRange(2, 1, rows.length, NEP_SHEET_HEADERS.length).setValues(rows);
-    sheet
-      .getRange(PROVINCIAL_NODES.length + 2, 1, 1, NEP_SHEET_HEADERS.length)
-      .setValues([['TOTAL', 'Region VIII Total', '=SUM(C2:C7)', '=SUM(D2:D7)', '=SUM(E2:E7)', '-', '-']]);
-    formatNepSheetRanges_(sheet);
-    return;
-  }
-
-  // Milestone-specific rows: locate existing rows or append
   const allValues = sheet.getDataRange().getValues();
   const headers = allValues[0].map(function (h) { return String(h || '').trim().toUpperCase(); });
   const codeCol = Math.max(0, headers.indexOf('PROVINCE_CODE'));
   const msCol = headers.indexOf('MILESTONE') >= 0 ? headers.indexOf('MILESTONE') : 6;
+  const yearCol = headers.indexOf('YEAR') >= 0 ? headers.indexOf('YEAR') : 5;
 
   PROVINCIAL_NODES.forEach(function (n) {
     const item = (nepMap && nepMap[n.code]) || {};
-    const parsedYear = Math.round(Number(item.year) || 0);
+    const parsedYear = Math.round(Number(targetYear || item.year) || 0);
     const yr = parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear;
     const rowVals = [
       n.code,
@@ -1010,15 +1031,15 @@ function saveNepSheetRecord_(nepMap, milestoneKey) {
       Math.max(0, Number((Number(item.area) || 0).toFixed(4))),
       Math.max(0, Math.round(Number(item.arbs) || 0)),
       yr,
-      milestoneKey
+      resolvedMilestone
     ];
 
     let foundRow = -1;
-    for (let r = 8; r < allValues.length; r++) {
-      if (
-        String(allValues[r][codeCol] || '').trim().toUpperCase() === n.code &&
-        String(allValues[r][msCol] || '').trim().toLowerCase() === milestoneKey
-      ) {
+    for (let r = 1; r < allValues.length; r++) {
+      const rowCode = String(allValues[r][codeCol] || '').trim().toUpperCase();
+      const rowMs = String(allValues[r][msCol] || '').trim().toLowerCase();
+      const rowYr = Math.round(Number(allValues[r][yearCol]) || 0);
+      if (rowCode === n.code && rowMs === resolvedMilestone && rowYr === yr) {
         foundRow = r + 1;
         break;
       }
@@ -1031,6 +1052,35 @@ function saveNepSheetRecord_(nepMap, milestoneKey) {
     }
   });
 
+  formatNepSheetRanges_(sheet);
+}
+
+/** Delete NEP Target rows for a specific province, milestone, and target year. */
+function deleteNepSheetRecord_(code, milestoneKey, targetYear) {
+  const sheet = ensureNepSheet_();
+  const allValues = sheet.getDataRange().getValues();
+  const headers = allValues[0].map(function (h) { return String(h || '').trim().toUpperCase(); });
+  const codeCol = Math.max(0, headers.indexOf('PROVINCE_CODE'));
+  const msCol = headers.indexOf('MILESTONE') >= 0 ? headers.indexOf('MILESTONE') : 6;
+  const yearCol = headers.indexOf('YEAR') >= 0 ? headers.indexOf('YEAR') : 5;
+
+  const targetCode = String(code || '').trim().toUpperCase();
+  const targetMs = String(milestoneKey || 'overall').trim().toLowerCase();
+  const targetYr = Math.round(Number(targetYear) || 0);
+
+  for (let r = allValues.length - 1; r >= 1; r--) {
+    const rowCode = String(allValues[r][codeCol] || '').trim().toUpperCase();
+    const rowMs = String(allValues[r][msCol] || '').trim().toLowerCase();
+    const rowYr = Math.round(Number(allValues[r][yearCol]) || 0);
+
+    const matchCode = !targetCode || targetCode === 'ALL' || rowCode === targetCode;
+    const matchMs = !targetMs || targetMs === 'all' || rowMs === targetMs;
+    const matchYr = !targetYr || rowYr === targetYr;
+
+    if (matchCode && matchMs && matchYr) {
+      sheet.deleteRow(r + 1);
+    }
+  }
   formatNepSheetRanges_(sheet);
 }
 

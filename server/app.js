@@ -243,8 +243,11 @@ function buildScopedStatePayload(store, scopeCode, includeStaticConfig = true) {
     payload.gasWebAppUrl = view.gasWebAppUrl;
     payload.baselines = view.baselines;
     payload.nepTargets = view.nepTargets;
+    payload.nepTargetsByYear = view.nepTargetsByYear || store.state.nepTargetsByYear || {};
     payload.nepProvinceList = view.nepProvinceList;
     payload.nepMilestoneList = view.nepMilestoneList;
+    payload.nepMilestoneListByYear = view.nepMilestoneListByYear || store.state.nepMilestoneListByYear || {};
+    payload.nepProvinceListByYear = view.nepProvinceListByYear || store.state.nepProvinceListByYear || {};
   }
   return payload;
 }
@@ -1236,49 +1239,242 @@ export function createAppServer(dataDir, options = {}) {
         return sendJson(res, 200, { baselines, gasPushResult, analytics: computeScopedAnalytics(store, query, scopeCode) });
       }
 
-      if (req.method === 'PUT' && pathname === '/api/nep-targets') {
+      // --- NEP Target Full CRUD Suite ---
+
+      if (req.method === 'GET' && pathname === '/api/nep-targets') {
+        const yearFilter = query.year || query.milestoneYear || 'ALL';
+        const msFilter = query.milestone || 'ALL';
+        const provFilter = scopeCode || query.provinceCode || query.province || 'ALL';
+        const targetsList = store.getNepTargetsList({
+          year: yearFilter,
+          milestone: msFilter,
+          provinceCode: provFilter
+        });
+
+        const distinctYears = Array.from(
+          new Set(
+            store.getNepTargetsList()
+              .map((t) => t.year)
+              .concat([new Date().getFullYear(), 2026, 2027])
+          )
+        ).sort((a, b) => b - a);
+
+        return sendJson(res, 200, {
+          ok: true,
+          targets: targetsList,
+          availableYears: distinctYears,
+          nepTargets: store.state.nepTargets || {},
+          nepTargetsByYear: store.state.nepTargetsByYear || {},
+          nepMilestoneList: store.state.nepMilestoneList || {},
+          nepProvinceList: store.state.nepProvinceList || {},
+          nepMilestoneListByYear: store.state.nepMilestoneListByYear || {},
+          nepProvinceListByYear: store.state.nepProvinceListByYear || {},
+          analytics: computeScopedAnalytics(store, query, scopeCode)
+        });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/nep-targets') {
         if (scopeCode) {
-          return sendJson(res, 403, { error: 'Only Regional Accounts can edit the Regional NEP Target List.' });
+          return sendJson(res, 403, { error: 'Only Regional Accounts can create Regional NEP Targets.' });
         }
         const body = await readJsonBody(req);
-        const targetYear = Math.round(Number(body.year) || (query && Number(query.milestoneYear)) || 2027);
-        const rawTargets = body.targets && typeof body.targets === 'object' ? body.targets : body;
-        const nepTargets = store.updateNepTargets(rawTargets);
+        const targetYear = Math.round(Number(body.year) || (query && Number(query.milestoneYear)) || new Date().getFullYear());
+        const milestone = String(body.milestone || 'overall').trim().toLowerCase();
+        const createdList = [];
 
-        if (store.state.nepMilestoneList) {
-          for (const [msKey, provMap] of Object.entries(store.state.nepMilestoneList)) {
-            if (provMap && typeof provMap === 'object') {
-              for (const pCode of Object.keys(provMap)) {
-                if (provMap[pCode]) provMap[pCode].year = targetYear;
-              }
+        if (body.targets && typeof body.targets === 'object') {
+          for (const [code, item] of Object.entries(body.targets)) {
+            if (item && typeof item === 'object') {
+              const resTarget = store.createNepTarget({
+                year: targetYear,
+                milestone,
+                provinceCode: code,
+                lhs: item.lhs ?? item.targetCount ?? 0,
+                area: item.area ?? item.targetAreaHas ?? 0,
+                arbs: item.arbs ?? 0,
+                sem1Lhs: item.sem1Lhs ?? item.sem1TargetCount,
+                sem2Lhs: item.sem2Lhs ?? item.sem2TargetCount,
+                sem1Area: item.sem1Area ?? item.sem1TargetAreaHas,
+                sem2Area: item.sem2Area ?? item.sem2TargetAreaHas,
+                sem1Arbs: item.sem1Arbs,
+                sem2Arbs: item.sem2Arbs
+              });
+              createdList.push(resTarget);
             }
           }
-        }
-        if (store.state.nepProvinceList) {
-          for (const pCode of Object.keys(store.state.nepProvinceList)) {
-            if (store.state.nepProvinceList[pCode]) store.state.nepProvinceList[pCode].year = targetYear;
-          }
+        } else if (body.provinceCode) {
+          const resTarget = store.createNepTarget({
+            year: targetYear,
+            milestone,
+            provinceCode: body.provinceCode,
+            lhs: body.lhs ?? body.targetCount ?? 0,
+            area: body.area ?? body.targetAreaHas ?? 0,
+            arbs: body.arbs ?? 0,
+            sem1Lhs: body.sem1Lhs ?? body.sem1TargetCount,
+            sem2Lhs: body.sem2Lhs ?? body.sem2TargetCount,
+            sem1Area: body.sem1Area ?? body.sem1TargetAreaHas,
+            sem2Area: body.sem2Area ?? body.sem2TargetAreaHas,
+            sem1Arbs: body.sem1Arbs,
+            sem2Arbs: body.sem2Arbs
+          });
+          createdList.push(resTarget);
         }
 
         const gasSync = await pushMutationToGas(
           store,
           {
             action: 'saveNepSheet',
-            milestone: 'overall',
-            nepProvinceList: store.state.nepProvinceList,
-            nepMilestoneList: store.state.nepMilestoneList
+            milestone,
+            targetYear,
+            nepProvinceList: store.state.nepProvinceListByYear?.[targetYear] || store.state.nepProvinceList,
+            nepMilestoneList: store.state.nepMilestoneListByYear?.[targetYear] || store.state.nepMilestoneList
+          },
+          `Created Regional NEP Targets for Year ${targetYear} (${milestone}) directly in Live Google Sheet.`,
+          gasPushFn
+        );
+
+        return sendJson(res, 201, {
+          ok: true,
+          created: createdList,
+          target: createdList[0] || null,
+          targetYear,
+          milestone,
+          nepTargets: store.state.nepTargets || {},
+          nepTargetsByYear: store.state.nepTargetsByYear || {},
+          nepMilestoneList: store.state.nepMilestoneList || {},
+          nepProvinceList: store.state.nepProvinceList || {},
+          nepMilestoneListByYear: store.state.nepMilestoneListByYear || {},
+          nepProvinceListByYear: store.state.nepProvinceListByYear || {},
+          gasSync,
+          analytics: computeScopedAnalytics(store, query, scopeCode)
+        });
+      }
+
+      if (req.method === 'PUT' && pathname === '/api/nep-targets') {
+        if (scopeCode) {
+          return sendJson(res, 403, { error: 'Only Regional Accounts can edit the Regional NEP Target List.' });
+        }
+        const body = await readJsonBody(req);
+        const targetYear = Math.round(Number(body.year) || (query && Number(query.milestoneYear)) || 2027);
+        const milestone = String(body.milestone || 'overall').trim().toLowerCase();
+        const updatedList = [];
+
+        if (body.targets && typeof body.targets === 'object') {
+          const firstKey = Object.keys(body.targets)[0]?.toUpperCase();
+          if (firstKey && PROVINCE_CODES.includes(firstKey)) {
+            for (const [code, item] of Object.entries(body.targets)) {
+              if (item && typeof item === 'object') {
+                const resTarget = store.updateNepTarget({
+                  year: targetYear,
+                  milestone,
+                  provinceCode: code,
+                  lhs: item.lhs ?? item.targetCount ?? 0,
+                  area: item.area ?? item.targetAreaHas ?? 0,
+                  arbs: item.arbs ?? 0,
+                  sem1Lhs: item.sem1Lhs ?? item.sem1TargetCount,
+                  sem2Lhs: item.sem2Lhs ?? item.sem2TargetCount,
+                  sem1Area: item.sem1Area ?? item.sem1TargetAreaHas,
+                  sem2Area: item.sem2Area ?? item.sem2TargetAreaHas,
+                  sem1Arbs: item.sem1Arbs,
+                  sem2Arbs: item.sem2Arbs
+                });
+                updatedList.push(resTarget);
+              }
+            }
+          } else {
+            store.updateNepTargets(body.targets, targetYear);
+          }
+        } else if (body.provinceCode) {
+          const resTarget = store.updateNepTarget({
+            year: targetYear,
+            milestone,
+            provinceCode: body.provinceCode,
+            lhs: body.lhs ?? body.targetCount ?? 0,
+            area: body.area ?? body.targetAreaHas ?? 0,
+            arbs: body.arbs ?? 0,
+            sem1Lhs: body.sem1Lhs ?? body.sem1TargetCount,
+            sem2Lhs: body.sem2Lhs ?? body.sem2TargetCount,
+            sem1Area: body.sem1Area ?? body.sem1TargetAreaHas,
+            sem2Area: body.sem2Area ?? body.sem2TargetAreaHas,
+            sem1Arbs: body.sem1Arbs,
+            sem2Arbs: body.sem2Arbs
+          });
+          updatedList.push(resTarget);
+        } else {
+          // Direct milestone total updates
+          store.updateNepTargets(body, targetYear);
+        }
+
+        const gasSync = await pushMutationToGas(
+          store,
+          {
+            action: 'saveNepSheet',
+            milestone,
+            targetYear,
+            nepProvinceList: store.state.nepProvinceListByYear?.[targetYear] || store.state.nepProvinceList,
+            nepMilestoneList: store.state.nepMilestoneListByYear?.[targetYear] || store.state.nepMilestoneList
           },
           `Updated Regional NEP Targets for ${targetYear} directly to Live Google Sheet.`,
           gasPushFn
         );
 
-        store.save();
+        return sendJson(res, 200, {
+          ok: true,
+          updated: updatedList,
+          target: updatedList[0] || null,
+          targetYear,
+          nepTargets: store.state.nepTargets || {},
+          nepTargetsByYear: store.state.nepTargetsByYear || {},
+          nepMilestoneList: store.state.nepMilestoneList || {},
+          nepProvinceList: store.state.nepProvinceList || {},
+          nepMilestoneListByYear: store.state.nepMilestoneListByYear || {},
+          nepProvinceListByYear: store.state.nepProvinceListByYear || {},
+          gasSync,
+          analytics: computeScopedAnalytics(store, query, scopeCode)
+        });
+      }
+
+      if (req.method === 'DELETE' && pathname === '/api/nep-targets') {
+        if (scopeCode) {
+          return sendJson(res, 403, { error: 'Only Regional Accounts can delete Regional NEP Targets.' });
+        }
+        let body = {};
+        try { body = await readJsonBody(req); } catch (_) {}
+        const targetYear = Math.round(Number(body.year || query.year) || 0);
+        const milestone = String(body.milestone || query.milestone || 'overall').trim().toLowerCase();
+        const provinceCode = String(body.provinceCode || query.provinceCode || query.province || '').trim().toUpperCase();
+
+        if (!targetYear || !provinceCode) {
+          return sendJson(res, 400, { error: 'Target Year and Province Code are required for deletion.' });
+        }
+
+        const delRes = store.deleteNepTarget({
+          year: targetYear,
+          milestone,
+          provinceCode
+        });
+
+        const gasSync = await pushMutationToGas(
+          store,
+          {
+            action: 'deleteNepTarget',
+            milestone,
+            targetYear,
+            provinceCode
+          },
+          `Deleted Regional NEP Target for Year ${targetYear} (${milestone} / ${provinceCode}) from Live Google Sheet.`,
+          gasPushFn
+        );
 
         return sendJson(res, 200, {
           ok: true,
-          nepTargets,
+          deleted: delRes.deleted,
+          nepTargets: store.state.nepTargets || {},
+          nepTargetsByYear: store.state.nepTargetsByYear || {},
           nepMilestoneList: store.state.nepMilestoneList || {},
           nepProvinceList: store.state.nepProvinceList || {},
+          nepMilestoneListByYear: store.state.nepMilestoneListByYear || {},
+          nepProvinceListByYear: store.state.nepProvinceListByYear || {},
           gasSync,
           analytics: computeScopedAnalytics(store, query, scopeCode)
         });
@@ -1290,18 +1486,20 @@ export function createAppServer(dataDir, options = {}) {
         }
         const body = await readJsonBody(req);
         const milestone = body.milestone || 'overall';
+        const targetYear = body.targetYear ? Number(body.targetYear) : null;
         const payloadData = body.nepProvinceList || (body.BIL ? body : {});
         if (body.nepMilestoneList && typeof body.nepMilestoneList === 'object') {
           for (const [ms, map] of Object.entries(body.nepMilestoneList)) {
-            store.updateNepProvinceList(map, ms);
+            store.updateNepProvinceList(map, ms, targetYear);
           }
         }
-        store.updateNepProvinceList(payloadData, milestone);
+        store.updateNepProvinceList(payloadData, milestone, targetYear);
         const gasSync = await pushMutationToGas(
           store,
           {
             action: 'saveNepSheet',
             milestone,
+            targetYear,
             nepProvinceList: payloadData,
             nepMilestoneList: store.state.nepMilestoneList
           },
@@ -1313,6 +1511,8 @@ export function createAppServer(dataDir, options = {}) {
           nepProvinceList: store.state.nepProvinceList,
           nepMilestoneList: store.state.nepMilestoneList || {},
           nepTargets: store.state.nepTargets,
+          nepMilestoneListByYear: store.state.nepMilestoneListByYear || {},
+          nepProvinceListByYear: store.state.nepProvinceListByYear || {},
           gasSync,
           analytics: computeScopedAnalytics(store, query, scopeCode)
         });
@@ -1345,6 +1545,18 @@ export function createAppServer(dataDir, options = {}) {
               store.updateNepProvinceList(map, ms);
             }
           }
+          if (remote.nepMilestoneListByYear && typeof remote.nepMilestoneListByYear === 'object') {
+            for (const [yr, msMap] of Object.entries(remote.nepMilestoneListByYear)) {
+              for (const [ms, pMap] of Object.entries(msMap)) {
+                store.updateNepProvinceList(pMap, ms, yr);
+              }
+            }
+          }
+          if (remote.nepProvinceListByYear && typeof remote.nepProvinceListByYear === 'object') {
+            for (const [yr, pMap] of Object.entries(remote.nepProvinceListByYear)) {
+              store.updateNepProvinceList(pMap, 'overall', yr);
+            }
+          }
           store.addSyncLog('Hub NEP Sync', 'success', 'Synced Regional Hub NEP targets from Google Sheet.');
           store.save();
           return sendJson(res, 200, {
@@ -1352,6 +1564,8 @@ export function createAppServer(dataDir, options = {}) {
             nepProvinceList,
             nepMilestoneList: store.state.nepMilestoneList || {},
             nepTargets: store.state.nepTargets || {},
+            nepMilestoneListByYear: store.state.nepMilestoneListByYear || {},
+            nepProvinceListByYear: store.state.nepProvinceListByYear || {},
             analytics: computeScopedAnalytics(store, query, scopeCode)
           });
         } catch (err) {

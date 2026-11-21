@@ -244,8 +244,19 @@ export function normalizeNepTargets(raw = {}) {
 }
 
 /** Create or normalize per-province Regional Hub NEP Sheet entries (LHS, AREA, ARBs) with 1st Sem & auto 2nd Sem. */
-export function normalizeNepProvinceList(raw = {}) {
-  const currentYear = new Date().getFullYear();
+export function normalizeNepProvinceList(raw = {}, fallbackYear = null) {
+  const parsedFallback = fallbackYear ? Math.round(Number(fallbackYear) || 0) : 0;
+  let detectedYear = parsedFallback >= 2000 && parsedFallback <= 2099 ? parsedFallback : null;
+  if (!detectedYear && raw && typeof raw === 'object') {
+    for (const item of Object.values(raw)) {
+      const y = Math.round(Number(item?.year) || 0);
+      if (y >= 2000 && y <= 2099) {
+        detectedYear = y;
+        break;
+      }
+    }
+  }
+  const currentYear = detectedYear || new Date().getFullYear();
   const out = {};
   const src = raw && typeof raw === 'object' ? raw : {};
   for (const code of PROVINCE_CODES) {

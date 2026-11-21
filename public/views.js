@@ -1034,9 +1034,16 @@ export function renderProvincialAllocationSection(ctx, {
               <div class="nep-card-footer">
                 <span>Target Year: <strong>${esc(String(r.year || 2026))}</strong></span>
                 ${canEditNep
-              ? `<button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:2px 8px;font-size:11.5px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
-                   ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
-                 </button>`
+              ? `<div style="display:flex;align-items:center;gap:4px;">
+                   <button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" data-year="${esc(String(r.year || 2026))}" style="padding:2px 8px;font-size:11.5px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
+                     ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit' : '+ Add'}
+                   </button>
+                   ${((r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0) ? `
+                     <button type="button" class="btn btn-secondary btn-sm btn-del-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" data-year="${esc(String(r.year || 2026))}" title="Delete this NEP target" style="padding:2px 6px;font-size:11.5px;color:#dc2626;border-color:#fca5a5;">
+                       🗑
+                     </button>
+                   ` : ''}
+                 </div>`
               : '<span class="badge badge-gray">Read-Only</span>'
             }
               </div>
@@ -1095,9 +1102,16 @@ export function renderProvincialAllocationSection(ctx, {
                   <td class="center"><span class="badge badge-gray" style="font-weight:700;">${esc(String(r.year || 2026))}</span></td>
                   ${canEditNep
               ? `<td class="center">
-                   <button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" style="padding:3px 10px;font-size:12px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
-                     ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit Figure ↗' : '+ Add Target'}
-                   </button>
+                   <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+                     <button type="button" class="btn ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'btn-ghost' : 'btn-primary'} btn-sm btn-edit-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" data-year="${esc(String(r.year || 2026))}" style="padding:3px 8px;font-size:11.5px;font-weight:700;${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'color:var(--dar-green-dark);' : ''}">
+                       ${(r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0 ? 'Edit' : '+ Add'}
+                     </button>
+                     ${((r.area || 0) > 0 || (r.lhs || 0) > 0 || (r.arbs || 0) > 0) ? `
+                       <button type="button" class="btn btn-secondary btn-sm btn-del-single-nep" data-prov="${esc(r.code)}" data-milestone="${esc(activeMilestone)}" data-year="${esc(String(r.year || 2026))}" title="Delete this NEP target" style="padding:3px 7px;font-size:11.5px;color:#dc2626;border-color:#fca5a5;">
+                         🗑
+                       </button>
+                     ` : ''}
+                   </div>
                  </td>`
               : ''
             }
@@ -5003,17 +5017,19 @@ export function getLeaseholdAreaTenanted(r) {
     r['area_tenanted'] ??
     r['areaTenantedHas'];
   if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
-    return parseNumericValue(direct);
+    const val = parseNumericValue(direct);
+    if (Number.isFinite(val) && val > 0) return val;
   }
   for (const k of Object.keys(r)) {
     const kNorm = k.toLowerCase().replace(/[^a-z]/g, '');
     if (kNorm.includes('tenanted') || (kNorm.includes('area') && kNorm.includes('tenant'))) {
       const val = parseNumericValue(r[k]);
-      if (val > 0) return val;
+      if (Number.isFinite(val) && val > 0) return val;
     }
   }
   const fallback = r.areaPerTitle ?? r['AREA PER TITLE (Has)'] ?? r['Area Per Title (Has)'] ?? r.area ?? 0;
-  return parseNumericValue(fallback);
+  const fbVal = parseNumericValue(fallback);
+  return Number.isFinite(fbVal) && fbVal >= 0 ? fbVal : 0;
 }
 
 /**
@@ -5163,7 +5179,7 @@ export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCod
   const leaseRowsRaw = (state?.leasehold && state.leasehold.length) ? state.leasehold : (state?.optool?.Leasehold || []);
   const allLeaseRows = leaseRowsRaw.filter(matchesCode);
   const leaseCount = allLeaseRows.length;
-  const leaseArea = allLeaseRows.reduce((s, r) => s + getLeaseholdAreaTenanted(r), 0);
+  const leaseArea = allLeaseRows.reduce((s, r) => s + (getLeaseholdAreaTenanted(r) || 0), 0);
 
   // Targets from Database LAD Balance
   const scopedDb = allDbRows.filter(matchesCode);
