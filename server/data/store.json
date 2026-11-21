@@ -301779,5 +301779,88 @@
   "deletedUserIds": [
     "usr-d4251a44ab6a"
   ],
-  "leasehold": []
+  "leasehold": [],
+  "nepMilestoneListByYear": {
+    "2026": {
+      "cf_doc": {
+        "BIL": {
+          "lhs": 0,
+          "area": 0,
+          "arbs": 0,
+          "year": 2026
+        },
+        "ESA": {
+          "lhs": 0,
+          "area": 23.5124,
+          "arbs": 0,
+          "year": 2026
+        },
+        "LEY": {
+          "lhs": 0,
+          "area": 140.6996,
+          "arbs": 0,
+          "year": 2026
+        },
+        "NSA": {
+          "lhs": 0,
+          "area": 121.8952,
+          "arbs": 0,
+          "year": 2026
+        },
+        "SAM": {
+          "lhs": 0,
+          "area": 151.8667,
+          "arbs": 0,
+          "year": 2026
+        },
+        "SLE": {
+          "lhs": 0,
+          "area": 21.2352,
+          "arbs": 0,
+          "year": 2026
+        }
+      }
+    },
+    "2027": {
+      "cf_doc": {
+        "BIL": {
+          "lhs": 0,
+          "area": 0,
+          "arbs": 0,
+          "year": 2027
+        },
+        "ESA": {
+          "lhs": 4,
+          "area": 19.7475,
+          "arbs": 0,
+          "year": 2027
+        },
+        "LEY": {
+          "lhs": 93,
+          "area": 839.9117,
+          "arbs": 80,
+          "year": 2027
+        },
+        "NSA": {
+          "lhs": 55,
+          "area": 495.3229,
+          "arbs": 0,
+          "year": 2027
+        },
+        "SAM": {
+          "lhs": 22,
+          "area": 218.6347,
+          "arbs": 0,
+          "year": 2027
+        },
+        "SLE": {
+          "lhs": 21,
+          "area": 20.7469,
+          "arbs": 0,
+          "year": 2027
+        }
+      }
+    }
+  },
+  "nepProvinceListByYear": {}
 }
