@@ -605,7 +605,7 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
 }
 
 /** Execute a GET query against a deployed GAS Web App action endpoint. */
-async function fetchGasAction(gasUrl, action, timeoutMs = 6000) {
+async function fetchGasAction(gasUrl, action, timeoutMs = 25000) {
   const sep = gasUrl.includes('?') ? '&' : '?';
   const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
   const resp = await fetch(`${gasUrl}${sep}action=${encodeURIComponent(action)}`, {
@@ -638,7 +638,7 @@ export async function pullNepFromGasWebApp(gasUrl) {
   return fetchGasAction(gasUrl, 'nep');
 }
 
-export async function pushToGasWebApp(gasUrl, payload, timeoutMs = 15000) {
+export async function pushToGasWebApp(gasUrl, payload, timeoutMs = 40000) {
   const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
   const resp = await fetch(gasUrl, {
     method: 'POST',

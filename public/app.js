@@ -667,8 +667,15 @@ function showAppShell() {
 
 async function api(path, options = {}) {
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs || 15000;
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutMs = options.timeoutMs || 45000;
+  const timeoutError = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please check your network or try again.`);
+  const timer = setTimeout(() => {
+    try {
+      controller.abort(timeoutError);
+    } catch (_) {
+      controller.abort();
+    }
+  }, timeoutMs);
   try {
     const { timeoutMs: _t, signal: extSignal, ...fetchOpts } = options;
     const signal = extSignal || controller.signal;
@@ -691,6 +698,11 @@ async function api(path, options = {}) {
       throw new Error(`HTTP ${resp.status}`);
     }
     return resp;
+  } catch (err) {
+    if (err?.name === 'AbortError' || String(err?.message || '').toLowerCase().includes('abort')) {
+      throw new Error(err.message && !err.message.includes('without reason') ? err.message : 'The request timed out or was interrupted. The server may still be updating Google Sheets in the background.');
+    }
+    throw err;
   } finally {
     clearTimeout(timer);
   }
