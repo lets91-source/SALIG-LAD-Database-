@@ -456,6 +456,17 @@ function renderMilestoneNepSection(ctx) {
           <button type="button" class="btn btn-sm ${nepExpandedAccompSems ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-accomp-sems" title="Toggle 1st Sem &amp; 2nd Sem Accomplishment columns">
             <span class="fs-icon">📊</span> <span>${nepExpandedAccompSems ? 'Hide Sem Accomp' : 'Semester Accomp'}</span>
           </button>
+          ${canEditNepTargets
+      ? `
+          <button type="button" class="btn btn-sm btn-primary" id="btn-edit-nep-targets" title="Edit Regional NEP Targets and sync directly to Live Google Sheet">
+            <span class="fs-icon">🎯</span> <span>Edit NEP Targets</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" id="btn-sync-hub-nep" title="Sync live NEP targets directly from Regional Hub Google Sheet">
+            <span class="fs-icon">🔄</span> <span>Sync Live Sheet</span>
+          </button>
+        `
+      : ''
+    }
           <button type="button" class="btn btn-secondary btn-sm btn-fullscreen" id="btn-fullscreen-nep" title="Full Screen Report / Table">
             <span class="fs-icon">⛶</span> <span class="fs-label">Full Screen</span>
           </button>

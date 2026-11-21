@@ -4721,6 +4721,97 @@ test('Dashboard interactive milestone whereabouts details and CF(DOC) Needing vs
   assert.ok(cfHtml.includes('data-cf-survey-kpi="Not Needing Survey"'), 'Renders Not Needing Survey interactive KPI card');
 });
 
+test('NEP Targets direct Live Google Sheet Sync & 2027 Target Year integrity', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-nep-sync-test-'));
+  const store = new ConsolidatedStore(tempDir);
+  store.state.gasWebAppUrl = 'https://script.google.com/macros/s/TEST/exec';
+
+  let pushedGasAction = null;
+  let pushedPayload = null;
+  const mockGasPush = async (url, payload) => {
+    pushedGasAction = payload.action;
+    pushedPayload = payload;
+    return { ok: true, syncedNodes: [{ code: 'HUB', ok: true }] };
+  };
+
+  const { handler } = createAppServer(store, {
+    pushToGasWebApp: mockGasPush,
+    autoFetchHubNep: false,
+    requireAuth: false
+  });
+
+  // 1. Initial targets for 2027 in CF Documentation
+  store.updateNepProvinceList({
+    LEY: { lhs: 93, area: 839.9117, arbs: 80, year: 2027, sem1Lhs: 46, sem1Area: 419.9558 },
+    ESA: { lhs: 4, area: 19.7475, arbs: 0, year: 2027, sem1Lhs: 2, sem1Area: 9.8737 }
+  }, 'cf_doc');
+
+  const analytics2027 = store.computeAnalytics({ milestoneYear: '2027' });
+  const cf2027 = analytics2027.milestoneNepBreakdown.find((m) => m.key === 'cf_doc');
+  assert.equal(cf2027.nepTargetCount, 97, 'CF target count sums 93 + 4 = 97 for 2027');
+  assert.equal(cf2027.nepTargetAreaHas, 859.6592, 'CF target area sums 839.9117 + 19.7475 = 859.6592 HAS');
+  assert.equal(cf2027.nepTargetSem1Count, 48, '1st Sem target count sums 46 + 2 = 48');
+
+  // 2. PUT /api/nep-targets pushes directly to Live Google Sheet via GAS
+  const putPayload = {
+    year: 2027,
+    targets: {
+      cf_doc: {
+        targetCount: 195,
+        targetAreaHas: 1594.3637,
+        sem1TargetCount: 98,
+        sem1TargetAreaHas: 797.1819
+      }
+    }
+  };
+
+  const callApi = (url, method = 'GET', bodyObj = null) =>
+    new Promise((resolve, reject) => {
+      const bodyBuf = bodyObj ? Buffer.from(JSON.stringify(bodyObj), 'utf8') : Buffer.alloc(0);
+      const chunks = [];
+      const req = {
+        url,
+        method,
+        headers: { host: 'localhost:3001', 'content-type': 'application/json' },
+        async *[Symbol.asyncIterator]() {
+          if (bodyBuf.length) yield bodyBuf;
+        }
+      };
+      const res = {
+        statusCode: 200,
+        headers: {},
+        writeHead(code, headers = {}) {
+          this.statusCode = code;
+          Object.assign(this.headers, headers);
+        },
+        setHeader(name, value) {
+          this.headers[name.toLowerCase()] = value;
+        },
+        write(chunk) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+        },
+        end(chunk) {
+          if (chunk) this.write(chunk);
+          resolve({
+            statusCode: this.statusCode,
+            body: JSON.parse(Buffer.concat(chunks).toString('utf8'))
+          });
+        }
+      };
+      Promise.resolve(handler(req, res)).catch(reject);
+    });
+
+  const res = await callApi('/api/nep-targets?milestoneYear=2027', 'PUT', putPayload);
+  assert.equal(res.statusCode, 200, 'PUT /api/nep-targets returns 200');
+  assert.equal(pushedGasAction, 'saveNepSheet', 'Pushes mutation action saveNepSheet to GAS');
+  assert.ok(pushedPayload.nepMilestoneList, 'Pushes milestone list to GAS');
+  assert.equal(res.body.gasSync.ok, true, 'Returns gasSync success');
+  assert.equal(res.body.nepTargets.cf_doc.targetCount, 195, 'Target count updated to 195');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
+
 
 
 

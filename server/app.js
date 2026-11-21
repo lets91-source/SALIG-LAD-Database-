@@ -1241,9 +1241,45 @@ export function createAppServer(dataDir, options = {}) {
           return sendJson(res, 403, { error: 'Only Regional Accounts can edit the Regional NEP Target List.' });
         }
         const body = await readJsonBody(req);
-        const nepTargets = store.updateNepTargets(body);
+        const targetYear = Math.round(Number(body.year) || (query && Number(query.milestoneYear)) || 2027);
+        const rawTargets = body.targets && typeof body.targets === 'object' ? body.targets : body;
+        const nepTargets = store.updateNepTargets(rawTargets);
+
+        if (store.state.nepMilestoneList) {
+          for (const [msKey, provMap] of Object.entries(store.state.nepMilestoneList)) {
+            if (provMap && typeof provMap === 'object') {
+              for (const pCode of Object.keys(provMap)) {
+                if (provMap[pCode]) provMap[pCode].year = targetYear;
+              }
+            }
+          }
+        }
+        if (store.state.nepProvinceList) {
+          for (const pCode of Object.keys(store.state.nepProvinceList)) {
+            if (store.state.nepProvinceList[pCode]) store.state.nepProvinceList[pCode].year = targetYear;
+          }
+        }
+
+        const gasSync = await pushMutationToGas(
+          store,
+          {
+            action: 'saveNepSheet',
+            milestone: 'overall',
+            nepProvinceList: store.state.nepProvinceList,
+            nepMilestoneList: store.state.nepMilestoneList
+          },
+          `Updated Regional NEP Targets for ${targetYear} directly to Live Google Sheet.`,
+          gasPushFn
+        );
+
+        store.save();
+
         return sendJson(res, 200, {
+          ok: true,
           nepTargets,
+          nepMilestoneList: store.state.nepMilestoneList || {},
+          nepProvinceList: store.state.nepProvinceList || {},
+          gasSync,
           analytics: computeScopedAnalytics(store, query, scopeCode)
         });
       }

@@ -3943,6 +3943,10 @@ function openNepTargetsModal() {
     return;
   }
   const milestones = appState.schemas?.dashboardMilestones || [];
+  const selectedYear =
+    appState.filters?.milestoneYear !== 'ALL' && appState.filters?.milestoneYear
+      ? Number(appState.filters.milestoneYear)
+      : 2027;
   const currentTargets = appState.state?.nepTargets || {};
 
   const rowsHtml = milestones
@@ -4049,9 +4053,16 @@ function openNepTargetsModal() {
     cancelId: 'nep-cancel',
     bodyHtml: `
       <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;gap:8px;flex-wrap:wrap">
-        <p style="margin:0;font-size:12.5px;color:var(--text-muted)">
-          Region VIII consolidated NEP Target per milestone. Enter <strong>1st Sem Target</strong> and <strong>2nd Sem Target</strong> will automatically compute as <code>NEP − 1st Sem Target</code>.
-        </p>
+        <div>
+          <p style="margin:0;font-size:12.5px;color:var(--text-muted)">
+            Region VIII consolidated NEP Target per milestone. Enter <strong>1st Sem Target</strong> and <strong>2nd Sem Target</strong> will automatically compute as <code>NEP − 1st Sem Target</code>.
+          </p>
+          <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+            <label for="nep-modal-target-year" style="font-size:12px;font-weight:700;">Target Year:</label>
+            <input type="number" min="2000" max="2099" id="nep-modal-target-year" name="targetYear" class="form-control form-control-sm" style="width:85px;font-weight:700;display:inline-block;" value="${esc(selectedYear)}" />
+            <span class="badge badge-green" style="font-size:11px;">🟢 Direct Live Google Sheet Sync</span>
+          </div>
+        </div>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-fetch-hub-nep-modal" style="white-space:nowrap">
           Fetch from Regional Hub NEP
         </button>
@@ -4156,6 +4167,8 @@ function openNepTargetsModal() {
   document.getElementById('nep-targets-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const yrInp = document.getElementById('nep-modal-target-year');
+    const targetYear = Math.round(Number(yrInp?.value) || selectedYear || 2027);
     const payload = {};
     for (const m of milestones) {
       const c = Math.max(0, Number(fd.get(`c_${m.key}`)) || 0);
@@ -4178,19 +4191,28 @@ function openNepTargetsModal() {
       const res = await withLoading(
         'saving',
         'Saving Regional NEP Targets…',
-        'Updating Region VIII Regional NEP Target List…',
+        `Updating Regional NEP Targets for ${targetYear} directly to Live Google Sheet…`,
         () =>
           api('/api/nep-targets', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              year: targetYear,
+              targets: payload
+            })
           })
       );
-      appState.state.nepTargets = res.nepTargets;
+      if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
+      if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
+      if (res.nepProvinceList) appState.state.nepProvinceList = res.nepProvinceList;
       appState.analytics = res.analytics;
       closeModal();
       renderActiveView();
-      toast('Updated Regional NEP Target List');
+      toast(
+        res.gasSync?.ok
+          ? `Saved & synced Regional NEP Targets for ${targetYear} to Live Google Sheet`
+          : `Saved Regional NEP Targets locally for ${targetYear}`
+      );
     } catch (err) {
       toast(err.message, true);
     }

@@ -1215,12 +1215,26 @@ export class ConsolidatedStore {
         if (provMap && typeof provMap === 'object') {
           const norm = normalizeNepProvinceList(provMap);
           this.state.nepMilestoneList[msKey] = norm;
-          const totalLhs = Object.values(norm).reduce((s, r) => s + r.lhs, 0);
-          const totalArea = Number(Object.values(norm).reduce((s, r) => s + r.area, 0).toFixed(4));
+          const totalLhs = Object.values(norm).reduce((s, r) => s + (Number(r.lhs) || 0), 0);
+          const totalArea = Number(Object.values(norm).reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4));
+          const totalSem1Lhs = Object.values(norm).reduce((s, r) => s + (Number(r.sem1Lhs) || 0), 0);
+          const totalSem2Lhs = Object.values(norm).reduce((s, r) => s + (Number(r.sem2Lhs) || 0), 0);
+          const totalSem1Area = Number(Object.values(norm).reduce((s, r) => s + (Number(r.sem1Area) || 0), 0).toFixed(4));
+          const totalSem2Area = Number(Object.values(norm).reduce((s, r) => s + (Number(r.sem2Area) || 0), 0).toFixed(4));
+
+          const s1Count = totalSem1Lhs > 0 ? totalSem1Lhs : (totalLhs > 0 ? Math.round(totalLhs / 2) : 0);
+          const s2Count = totalSem2Lhs > 0 ? totalSem2Lhs : Math.max(0, totalLhs - s1Count);
+          const s1Area = totalSem1Area > 0 ? totalSem1Area : Number((totalArea / 2).toFixed(4));
+          const s2Area = totalSem2Area > 0 ? totalSem2Area : Math.max(0, Number((totalArea - s1Area).toFixed(4)));
+
           if (!this.state.nepTargets) this.state.nepTargets = {};
           this.state.nepTargets[msKey] = {
             targetCount: totalLhs,
-            targetAreaHas: totalArea
+            targetAreaHas: totalArea,
+            sem1TargetCount: s1Count,
+            sem2TargetCount: s2Count,
+            sem1TargetAreaHas: s1Area,
+            sem2TargetAreaHas: s2Area
           };
           importedCount++;
         }
@@ -1725,12 +1739,26 @@ export class ConsolidatedStore {
     } else {
       if (!this.state.nepMilestoneList) this.state.nepMilestoneList = {};
       this.state.nepMilestoneList[milestoneKey] = norm;
-      const totalLhs = Object.values(norm).reduce((s, r) => s + r.lhs, 0);
-      const totalArea = Number(Object.values(norm).reduce((s, r) => s + r.area, 0).toFixed(4));
+      const totalLhs = Object.values(norm).reduce((s, r) => s + (Number(r.lhs) || 0), 0);
+      const totalArea = Number(Object.values(norm).reduce((s, r) => s + (Number(r.area) || 0), 0).toFixed(4));
+      const totalSem1Lhs = Object.values(norm).reduce((s, r) => s + (Number(r.sem1Lhs) || 0), 0);
+      const totalSem2Lhs = Object.values(norm).reduce((s, r) => s + (Number(r.sem2Lhs) || 0), 0);
+      const totalSem1Area = Number(Object.values(norm).reduce((s, r) => s + (Number(r.sem1Area) || 0), 0).toFixed(4));
+      const totalSem2Area = Number(Object.values(norm).reduce((s, r) => s + (Number(r.sem2Area) || 0), 0).toFixed(4));
+
+      const s1Count = totalSem1Lhs > 0 ? totalSem1Lhs : (totalLhs > 0 ? Math.round(totalLhs / 2) : 0);
+      const s2Count = totalSem2Lhs > 0 ? totalSem2Lhs : Math.max(0, totalLhs - s1Count);
+      const s1Area = totalSem1Area > 0 ? totalSem1Area : Number((totalArea / 2).toFixed(4));
+      const s2Area = totalSem2Area > 0 ? totalSem2Area : Math.max(0, Number((totalArea - s1Area).toFixed(4)));
+
       if (!this.state.nepTargets) this.state.nepTargets = {};
       this.state.nepTargets[milestoneKey] = {
         targetCount: totalLhs,
-        targetAreaHas: totalArea
+        targetAreaHas: totalArea,
+        sem1TargetCount: s1Count,
+        sem2TargetCount: s2Count,
+        sem1TargetAreaHas: s1Area,
+        sem2TargetAreaHas: s2Area
       };
     }
     this.save();
@@ -2112,15 +2140,18 @@ export class ConsolidatedStore {
         (p) => (p.targetCount || 0) > 0 || (p.targetAreaHas || 0) > 0
       );
 
-      if (regTarget.sem1TargetCount !== undefined && regTarget.sem1TargetCount !== null && regTarget.sem1TargetCount !== '') {
+      if (filterYear && hasProvBreakdownTargets) {
+        sem1TargetCount = Object.values(provinceBreakdown).reduce((s, p) => s + (p.targetSem1Count || 0), 0);
+        sem1TargetAreaHas = roundArea(Object.values(provinceBreakdown).reduce((s, p) => s + (p.targetSem1AreaHas || 0), 0));
+      } else if (regTarget.sem1TargetCount !== undefined && regTarget.sem1TargetCount !== null && regTarget.sem1TargetCount !== '') {
         sem1TargetCount = Math.max(0, Math.min(nepTargetCount, Number(regTarget.sem1TargetCount) || 0));
+        if (regTarget.sem1TargetAreaHas !== undefined && regTarget.sem1TargetAreaHas !== null && regTarget.sem1TargetAreaHas !== '') {
+          sem1TargetAreaHas = Math.max(0, Math.min(nepTargetAreaHas, roundArea(Number(regTarget.sem1TargetAreaHas) || 0)));
+        } else if (hasProvBreakdownTargets) {
+          sem1TargetAreaHas = roundArea(Object.values(provinceBreakdown).reduce((s, p) => s + (p.targetSem1AreaHas || 0), 0));
+        }
       } else if (hasProvBreakdownTargets) {
         sem1TargetCount = Object.values(provinceBreakdown).reduce((s, p) => s + (p.targetSem1Count || 0), 0);
-      }
-
-      if (regTarget.sem1TargetAreaHas !== undefined && regTarget.sem1TargetAreaHas !== null && regTarget.sem1TargetAreaHas !== '') {
-        sem1TargetAreaHas = Math.max(0, Math.min(nepTargetAreaHas, roundArea(Number(regTarget.sem1TargetAreaHas) || 0)));
-      } else if (hasProvBreakdownTargets) {
         sem1TargetAreaHas = roundArea(Object.values(provinceBreakdown).reduce((s, p) => s + (p.targetSem1AreaHas || 0), 0));
       }
 
