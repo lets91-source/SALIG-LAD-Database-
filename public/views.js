@@ -880,14 +880,43 @@ export function renderProvincialAllocationSection(ctx, {
     { code: 'SLE', provinceName: 'Southern Leyte', jurisdiction: 'Southern Leyte', role: 'Provincial Node' }
   ];
 
+  const selectedYear = yearFilter !== 'ALL' && yearFilter ? Number(yearFilter) : null;
   let rawRows = [];
   if (activeMilestone === 'overall') {
-    rawRows = analytics?.nepProvinceBreakdown || [];
+    const yearProvMap = selectedYear
+      ? (state?.nepProvinceListByYear?.[selectedYear] || analytics?.nepProvinceListByYear?.[selectedYear])
+      : null;
+    if (yearProvMap) {
+      rawRows = provNodes.map((n) => {
+        const item = yearProvMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: selectedYear };
+        return {
+          code: n.code,
+          jurisdiction: n.jurisdiction || n.provinceName || n.code,
+          provinceName: n.provinceName || n.jurisdiction || n.code,
+          lhs: item.lhs || 0,
+          sem1Lhs: item.sem1Lhs,
+          sem2Lhs: item.sem2Lhs,
+          area: item.area || 0,
+          sem1Area: item.sem1Area,
+          sem2Area: item.sem2Area,
+          arbs: item.arbs || 0,
+          sem1Arbs: item.sem1Arbs,
+          sem2Arbs: item.sem2Arbs,
+          year: item.year || selectedYear
+        };
+      });
+    } else {
+      rawRows = analytics?.nepProvinceBreakdown || [];
+    }
   } else {
-    const msMap = (analytics?.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
+    const yearMsMap = selectedYear
+      ? (state?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone] || analytics?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone])
+      : null;
+    const msMap = yearMsMap ||
+      (analytics?.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
       (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
     rawRows = provNodes.map((n) => {
-      const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
+      const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: selectedYear || 2026 };
       return {
         code: n.code,
         jurisdiction: n.jurisdiction || n.provinceName || n.code,
@@ -901,7 +930,7 @@ export function renderProvincialAllocationSection(ctx, {
         arbs: item.arbs || 0,
         sem1Arbs: item.sem1Arbs,
         sem2Arbs: item.sem2Arbs,
-        year: item.year || 2026
+        year: item.year || selectedYear || 2026
       };
     });
   }
@@ -913,6 +942,30 @@ export function renderProvincialAllocationSection(ctx, {
 
   const availableYearsSet = new Set(rawRows.map((r) => r.year).filter(Boolean));
   availableYearsSet.add(new Date().getFullYear());
+  if (state?.nepMilestoneListByYear) {
+    for (const yr of Object.keys(state.nepMilestoneListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
+  if (state?.nepProvinceListByYear) {
+    for (const yr of Object.keys(state.nepProvinceListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
+  if (analytics?.nepMilestoneListByYear) {
+    for (const yr of Object.keys(analytics.nepMilestoneListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
+  if (analytics?.nepProvinceListByYear) {
+    for (const yr of Object.keys(analytics.nepProvinceListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
   for (const r of analytics?.nepProvinceBreakdown || []) {
     const yr = Math.round(Number(r?.year) || 0);
     if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);
@@ -1143,7 +1196,7 @@ export function renderProvincialAllocationSection(ctx, {
 }
 
 export function renderNepView(ctx) {
-  const { analytics, currentUser, provinceScope, nepYearFilter = 'ALL', nepMilestoneFilter = 'overall', nepDisplayMode = 'table', nepColVisibility = { lhs: true, area: true, arbs: true }, schemas } = ctx;
+  const { analytics, state = {}, currentUser, provinceScope, nepYearFilter = 'ALL', nepMilestoneFilter = 'overall', nepDisplayMode = 'table', nepColVisibility = { lhs: true, area: true, arbs: true }, schemas } = ctx;
   const activeMilestone = String(nepMilestoneFilter || 'overall');
   const milestoneOptions = schemas?.nepMilestoneOptions || [
     { key: 'overall', label: 'Overall NEP (All Milestones)' },
@@ -1159,13 +1212,43 @@ export function renderNepView(ctx) {
   const milestoneLabel = activeMilestoneObj.label;
 
   const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  const selectedYear = nepYearFilter !== 'ALL' && nepYearFilter ? Number(nepYearFilter) : null;
   let rawRows = [];
   if (activeMilestone === 'overall') {
-    rawRows = analytics.nepProvinceBreakdown || [];
+    const yearProvMap = selectedYear
+      ? (state?.nepProvinceListByYear?.[selectedYear] || analytics?.nepProvinceListByYear?.[selectedYear])
+      : null;
+    if (yearProvMap) {
+      rawRows = provNodes.map((n) => {
+        const item = yearProvMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: selectedYear };
+        return {
+          code: n.code,
+          jurisdiction: n.jurisdiction,
+          provinceName: n.provinceName,
+          lhs: item.lhs || 0,
+          sem1Lhs: item.sem1Lhs,
+          sem2Lhs: item.sem2Lhs,
+          area: item.area || 0,
+          sem1Area: item.sem1Area,
+          sem2Area: item.sem2Area,
+          arbs: item.arbs || 0,
+          sem1Arbs: item.sem1Arbs,
+          sem2Arbs: item.sem2Arbs,
+          year: item.year || selectedYear
+        };
+      });
+    } else {
+      rawRows = analytics.nepProvinceBreakdown || [];
+    }
   } else {
-    const msMap = (analytics.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) || {};
+    const yearMsMap = selectedYear
+      ? (state?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone] || analytics?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone])
+      : null;
+    const msMap = yearMsMap ||
+      (analytics.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
+      (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
     rawRows = provNodes.map((n) => {
-      const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
+      const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: selectedYear || 2026 };
       return {
         code: n.code,
         jurisdiction: n.jurisdiction,
@@ -1179,7 +1262,7 @@ export function renderNepView(ctx) {
         arbs: item.arbs || 0,
         sem1Arbs: item.sem1Arbs,
         sem2Arbs: item.sem2Arbs,
-        year: item.year || 2026
+        year: item.year || selectedYear || 2026
       };
     });
   }
@@ -1192,6 +1275,30 @@ export function renderNepView(ctx) {
 
   const availableYearsSet = new Set(rawRows.map((r) => r.year).filter(Boolean));
   availableYearsSet.add(new Date().getFullYear());
+  if (state?.nepMilestoneListByYear) {
+    for (const yr of Object.keys(state.nepMilestoneListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
+  if (state?.nepProvinceListByYear) {
+    for (const yr of Object.keys(state.nepProvinceListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
+  if (analytics?.nepMilestoneListByYear) {
+    for (const yr of Object.keys(analytics.nepMilestoneListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
+  if (analytics?.nepProvinceListByYear) {
+    for (const yr of Object.keys(analytics.nepProvinceListByYear)) {
+      const numYr = Math.round(Number(yr) || 0);
+      if (numYr >= 2000 && numYr <= 2099) availableYearsSet.add(numYr);
+    }
+  }
   for (const r of analytics.nepProvinceBreakdown || []) {
     const yr = Math.round(Number(r?.year) || 0);
     if (yr >= 2000 && yr <= 2099) availableYearsSet.add(yr);

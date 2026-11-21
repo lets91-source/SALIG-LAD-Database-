@@ -3330,7 +3330,8 @@ function bindProvincialAllocationTableEvents(container) {
     btn.addEventListener('click', (e) => {
       const ms = e.currentTarget?.dataset?.milestone || appState.nepMilestoneFilter || 'overall';
       const isAdd = btn.id === 'btn-add-nep-target' || btn.classList.contains('btn-add-nep-target') || btn.classList.contains('btn-add-nep-target-empty') || btn.id === 'btn-edit-nep-sheet';
-      openNepSheetModal(null, ms, isAdd ? 'add' : 'edit');
+      const yr = appState.nepYearFilter !== 'ALL' && appState.nepYearFilter ? Number(appState.nepYearFilter) : null;
+      openNepSheetModal(null, ms, isAdd ? 'add' : 'edit', yr);
     });
   });
   container.querySelectorAll('.btn-edit-single-nep').forEach((btn) => {
