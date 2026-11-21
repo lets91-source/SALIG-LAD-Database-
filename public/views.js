@@ -476,7 +476,7 @@ function renderMilestoneNepSection(ctx) {
         <div class="alert alert-info nep-year-alert" style="margin:8px 0 12px;padding:9px 14px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:12.5px;">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:16px;">🎯</span>
-            <span>Currently viewing Year <strong>${esc(String(activeYear))}</strong>. NEP Targets are active for Year <strong>2027</strong> (195 LHs / 1,594.36 HAS CF • 1,212.61 HAS Survey • 119 LHs / 939.50 HAS Valuation • 881.64 HAS Reg • 799.19 HAS Dist).</span>
+            <span>Currently viewing Year <strong>${esc(String(activeYear))}</strong> NEP Targets (459.21 HAS CF • 1,212.61 HAS Survey • 119 LHs / 939.50 HAS Valuation • 881.64 HAS Reg • 799.19 HAS Dist).</span>
           </div>
           <button type="button" class="btn btn-xs btn-primary" id="btn-switch-to-active-nep-year" data-target-year="2027" style="font-size:11.5px;padding:4px 12px;font-weight:700;">
             Switch to 2027 Targets ➔

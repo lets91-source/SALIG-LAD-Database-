@@ -628,13 +628,21 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
 }
 
 /** Execute a GET query against a deployed GAS Web App action endpoint. */
-async function fetchGasAction(gasUrl, action, timeoutMs = 25000) {
+async function fetchGasAction(gasUrl, action, timeoutMs = 35000) {
   const sep = gasUrl.includes('?') ? '&' : '?';
   const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
-  const resp = await fetch(`${gasUrl}${sep}action=${encodeURIComponent(action)}`, {
-    redirect: 'follow',
-    signal
-  });
+  let resp;
+  try {
+    resp = await fetch(`${gasUrl}${sep}action=${encodeURIComponent(action)}`, {
+      redirect: 'follow',
+      signal
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError' || err?.name === 'TimeoutError' || String(err?.message || '').toLowerCase().includes('abort')) {
+      throw new Error(`Google Apps Script action "${action}" timed out after ${Math.round(timeoutMs / 1000)}s.`);
+    }
+    throw err;
+  }
   if (!resp.ok) {
     throw new Error(`GAS Web App returned HTTP ${resp.status}`);
   }
@@ -661,15 +669,23 @@ export async function pullNepFromGasWebApp(gasUrl) {
   return fetchGasAction(gasUrl, 'nep');
 }
 
-export async function pushToGasWebApp(gasUrl, payload, timeoutMs = 40000) {
+export async function pushToGasWebApp(gasUrl, payload, timeoutMs = 45000) {
   const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
-  const resp = await fetch(gasUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    redirect: 'follow',
-    signal
-  });
+  let resp;
+  try {
+    resp = await fetch(gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+      signal
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError' || err?.name === 'TimeoutError' || String(err?.message || '').toLowerCase().includes('abort')) {
+      throw new Error(`Google Apps Script update timed out after ${Math.round(timeoutMs / 1000)}s. Changes may still be saving in the Google Sheet in the background.`);
+    }
+    throw err;
+  }
   if (!resp.ok) {
     throw new Error(`GAS Web App POST returned HTTP ${resp.status}`);
   }

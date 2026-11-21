@@ -1095,6 +1095,10 @@ export class ConsolidatedStore {
           const arr = Array.isArray(incoming) ? incoming : [];
           if (!Array.isArray(this.state.leasehold)) this.state.leasehold = [];
           if (options.replaceMilestoneTabs) {
+            // Safeguard: do not wipe existing populated leasehold records if incoming array is empty
+            if (arr.length === 0 && this.state.leasehold.length > 0) {
+              continue;
+            }
             const cleanedIncoming = arr.map((rawRow) => normalizeLeaseholdRow(rawRow));
             let merged = [];
             if (options.scopeCode) {
@@ -1145,6 +1149,10 @@ export class ConsolidatedStore {
 
         if (options.replaceMilestoneTabs && tabName !== 'Database') {
           const arr = Array.isArray(incoming) ? incoming : [];
+          // Safeguard: do not wipe existing populated tab records if incoming array is empty
+          if (arr.length === 0 && (this.state.optool[tabName] || []).length > 0) {
+            continue;
+          }
           const cleanedIncoming = arr.map((rawRow) => {
             const lhidKey = String(rawRow?.lhid || '').trim().toLowerCase();
             const linkedDb =

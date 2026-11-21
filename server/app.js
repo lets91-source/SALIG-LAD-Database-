@@ -432,14 +432,20 @@ export async function performProvincialSync(store, options = {}) {
     try {
       const snapshot = await gasPullFn(store.state.gasWebAppUrl);
       if (snapshot && snapshot.optool) {
+        const supportTabs = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation', 'Leasehold'];
+        const hasSupportRows = supportTabs.some(
+          (t) => (snapshot.optool?.[t] || []).length > 0 || (t === 'Leasehold' && (snapshot.leasehold || []).length > 0)
+        );
+
         const count = store.importParsedDataset(
           {
             optool: snapshot.optool,
             milestoneData: snapshot.milestoneData,
+            leasehold: snapshot.leasehold || snapshot.optool?.Leasehold || null,
             nepProvinceList: snapshot.nepProvinceList || null,
             nepMilestoneList: snapshot.nepMilestoneList || null
           },
-          { skipSave: true, replaceMilestoneTabs: true, scopeCode }
+          { skipSave: true, replaceMilestoneTabs: hasSupportRows, scopeCode }
         );
         if (Array.isArray(snapshot.users) && snapshot.users.length > 0) {
           store.mergeUsersFromSheet(snapshot.users);
@@ -453,12 +459,16 @@ export async function performProvincialSync(store, options = {}) {
           `Auto-pulled ${count} records directly from provincial Google Sheets via GAS Web App.`
         );
         store.save();
-        return {
-          ok: true,
-          totalImported,
-          via: 'gas',
-          lastSyncAt: store.state.lastSyncAt
-        };
+
+        if (hasSupportRows) {
+          return {
+            ok: true,
+            totalImported,
+            via: 'gas',
+            lastSyncAt: store.state.lastSyncAt
+          };
+        }
+        // If GAS did not supply provincial milestone support lists, fall through to Step 2
       }
     } catch (_) {
       // fallback to direct sheet fetch
@@ -1758,12 +1768,13 @@ export function createAppServer(dataDir, options = {}) {
                 {
                   milestoneData: parsed.milestoneData,
                   optool: parsed.optool,
+                  leasehold: parsed.leasehold,
                   nepProvinceList: !scopeCode ? parsed.nepProvinceList : null,
                   nepMilestoneList: !scopeCode ? parsed.nepMilestoneList : null
                 },
                 {
                   skipSave: true,
-                  replaceMilestoneTabs: true,
+                  replaceMilestoneTabs: node.code !== 'HUB',
                   scopeCode: node.code === 'HUB' ? null : node.code
                 }
               );

@@ -139,7 +139,11 @@ function stopAutoSync() {
     autoSyncTimer = null;
   }
   if (autoSyncAbortController) {
-    autoSyncAbortController.abort();
+    try {
+      autoSyncAbortController.abort(new Error('Auto-sync cancelled'));
+    } catch (_) {
+      autoSyncAbortController.abort();
+    }
     autoSyncAbortController = null;
   }
 }
@@ -699,8 +703,13 @@ async function api(path, options = {}) {
     }
     return resp;
   } catch (err) {
-    if (err?.name === 'AbortError' || String(err?.message || '').toLowerCase().includes('abort')) {
-      throw new Error(err.message && !err.message.includes('without reason') ? err.message : 'The request timed out or was interrupted. The server may still be updating Google Sheets in the background.');
+    const isAbort = err?.name === 'AbortError' || err?.name === 'TimeoutError' || String(err?.message || '').toLowerCase().includes('abort');
+    if (isAbort) {
+      const msg = String(err?.message || '');
+      if (msg && !msg.toLowerCase().includes('abort') && !msg.toLowerCase().includes('without reason')) {
+        throw new Error(msg);
+      }
+      throw new Error('The request timed out or was interrupted. The server may still be updating Google Sheets in the background.');
     }
     throw err;
   } finally {
@@ -2121,7 +2130,8 @@ async function syncAllNodes(mode = 'merge', options = {}) {
       toast(`Auto-synced ${res.totalImported} rows across ${synced}/7 Google Sheets`);
     }
   } catch (err) {
-    if (!quiet && err?.name !== 'AbortError') toast(err.message, true);
+    const isAbort = err?.name === 'AbortError' || String(err?.message || '').toLowerCase().includes('abort');
+    if (!quiet && !isAbort) toast(err.message, true);
   } finally {
     autoSyncAbortController = null;
     if (!quiet) hideLoadingOverlay();
