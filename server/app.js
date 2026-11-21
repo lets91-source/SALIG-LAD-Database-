@@ -1320,14 +1320,21 @@ export function createAppServer(dataDir, options = {}) {
           createdList.push(resTarget);
         }
 
+        const syncProvinceMap = milestone === 'overall'
+          ? (store.state.nepProvinceListByYear?.[targetYear] || store.state.nepProvinceList)
+          : (store.state.nepMilestoneListByYear?.[targetYear]?.[milestone]);
+        const syncMilestoneMap = store.state.nepMilestoneListByYear?.[targetYear]
+          ? { [milestone]: store.state.nepMilestoneListByYear[targetYear][milestone] }
+          : (syncProvinceMap ? { [milestone]: syncProvinceMap } : {});
+
         const gasSync = await pushMutationToGas(
           store,
           {
             action: 'saveNepSheet',
             milestone,
             targetYear,
-            nepProvinceList: store.state.nepProvinceListByYear?.[targetYear] || store.state.nepProvinceList,
-            nepMilestoneList: store.state.nepMilestoneListByYear?.[targetYear] || store.state.nepMilestoneList
+            nepProvinceList: syncProvinceMap,
+            nepMilestoneList: syncMilestoneMap
           },
           `Created Regional NEP Targets for Year ${targetYear} (${milestone}) directly in Live Google Sheet.`,
           gasPushFn
@@ -1405,14 +1412,21 @@ export function createAppServer(dataDir, options = {}) {
           store.updateNepTargets(body, targetYear);
         }
 
+        const syncProvinceMap = milestone === 'overall'
+          ? (store.state.nepProvinceListByYear?.[targetYear] || store.state.nepProvinceList)
+          : (store.state.nepMilestoneListByYear?.[targetYear]?.[milestone]);
+        const syncMilestoneMap = store.state.nepMilestoneListByYear?.[targetYear]
+          ? { [milestone]: store.state.nepMilestoneListByYear[targetYear][milestone] }
+          : (syncProvinceMap ? { [milestone]: syncProvinceMap } : {});
+
         const gasSync = await pushMutationToGas(
           store,
           {
             action: 'saveNepSheet',
             milestone,
             targetYear,
-            nepProvinceList: store.state.nepProvinceListByYear?.[targetYear] || store.state.nepProvinceList,
-            nepMilestoneList: store.state.nepMilestoneListByYear?.[targetYear] || store.state.nepMilestoneList
+            nepProvinceList: syncProvinceMap,
+            nepMilestoneList: syncMilestoneMap
           },
           `Updated Regional NEP Targets for ${targetYear} directly to Live Google Sheet.`,
           gasPushFn
@@ -1494,16 +1508,21 @@ export function createAppServer(dataDir, options = {}) {
           }
         }
         store.updateNepProvinceList(payloadData, milestone, targetYear);
+        const syncProvinceMap = milestone === 'overall'
+          ? (store.state.nepProvinceListByYear?.[targetYear] || payloadData)
+          : (store.state.nepMilestoneListByYear?.[targetYear]?.[milestone] || payloadData);
+        const syncMilestoneMap = { [milestone]: syncProvinceMap };
+
         const gasSync = await pushMutationToGas(
           store,
           {
             action: 'saveNepSheet',
             milestone,
             targetYear,
-            nepProvinceList: payloadData,
-            nepMilestoneList: store.state.nepMilestoneList
+            nepProvinceList: syncProvinceMap,
+            nepMilestoneList: syncMilestoneMap
           },
-          `Updated Regional Hub NEP Sheet (${milestone}).`,
+          `Updated Regional Hub NEP Sheet (${milestone} - ${targetYear || 'All'}).`,
           gasPushFn
         );
         return sendJson(res, 200, {

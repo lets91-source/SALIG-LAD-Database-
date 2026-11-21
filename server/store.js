@@ -521,7 +521,7 @@ export class ConsolidatedStore {
       for (const [msKey, provMap] of Object.entries(this.state.nepMilestoneList)) {
         if (provMap && typeof provMap === 'object') {
           for (const [code, item] of Object.entries(provMap)) {
-            const yr = Math.round(Number(item.year) || 2027);
+            const yr = Math.round(Number(item.year) || new Date().getFullYear());
             if (!this.state.nepMilestoneListByYear[yr]) this.state.nepMilestoneListByYear[yr] = {};
             if (!this.state.nepMilestoneListByYear[yr][msKey]) this.state.nepMilestoneListByYear[yr][msKey] = {};
             this.state.nepMilestoneListByYear[yr][msKey][code] = item;
@@ -2324,13 +2324,14 @@ export class ConsolidatedStore {
       const totalCount = q[1].count + q[2].count + q[3].count + q[4].count + q.undated.count;
       const totalArea = q[1].areaHas + q[2].areaHas + q[3].areaHas + q[4].areaHas + q.undated.areaHas;
 
-      const regTarget = (filterYear && this.state.nepTargetsByYear?.[filterYear]?.[meta.key]) || this.state.nepTargets?.[meta.key] || {};
+      const regTarget = (filterYear && this.state.nepTargetsByYear?.[filterYear]?.[meta.key]) ||
+                        this.state.nepTargets?.[meta.key] || {};
       let nepTargetCount = Number(regTarget.targetCount) || 0;
       let nepTargetAreaHas = Number(regTarget.targetAreaHas) || 0;
 
       // If milestone-specific provincial list has targets for this milestone, calculate from it
       const msProvMap = (filterYear && this.state.nepMilestoneListByYear?.[filterYear]?.[meta.key]) ||
-                        this.state.nepMilestoneList?.[meta.key];
+                        (filterYear ? null : this.state.nepMilestoneList?.[meta.key]);
       if (msProvMap && typeof msProvMap === 'object') {
         const provEntries = Object.entries(msProvMap);
         const hasEntries = provEntries.some(([, d]) => (Number(d?.lhs) || 0) > 0 || (Number(d?.area) || 0) > 0);

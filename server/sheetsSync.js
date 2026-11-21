@@ -517,36 +517,59 @@ export async function buildConsolidatedWorkbookBuffer(state, analytics) {
     rows: summaryRows
   });
 
-  // 2. NEP Province Sheet (LHS, AREA, ARBs, Year)
+  // 2. NEP Province Sheet (LHS, AREA, ARBs, Year, Milestone)
   const nepSheet = normalizeNepProvinceList(state.nepProvinceList);
   const provNodes = REGIONAL_REGISTRY.filter((n) => n.role === 'Provincial Node');
   const defaultNepYear = new Date().getFullYear();
   const nepRows = [
-    ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year'],
-    ...provNodes.map((n) => {
-      const entry = nepSheet[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultNepYear };
-      return [
-        n.code,
-        n.provinceName,
-        entry.lhs,
-        Number(entry.area.toFixed(4)),
-        entry.arbs,
-        entry.year || defaultNepYear
-      ];
-    }),
-    [
-      'TOTAL',
-      'Region VIII Total',
-      provNodes.reduce((s, n) => s + (nepSheet[n.code]?.lhs || 0), 0),
-      Number(provNodes.reduce((s, n) => s + (nepSheet[n.code]?.area || 0), 0).toFixed(4)),
-      provNodes.reduce((s, n) => s + (nepSheet[n.code]?.arbs || 0), 0),
-      '-'
-    ]
+    ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year', 'Milestone']
   ];
+  for (const n of provNodes) {
+    const entry = nepSheet[n.code] || { lhs: 0, area: 0, arbs: 0, year: defaultNepYear };
+    nepRows.push([
+      n.code,
+      n.provinceName,
+      entry.lhs,
+      Number(entry.area.toFixed(4)),
+      entry.arbs,
+      entry.year || defaultNepYear,
+      'overall'
+    ]);
+  }
+  nepRows.push([
+    'TOTAL',
+    'Region VIII Total',
+    provNodes.reduce((s, n) => s + (nepSheet[n.code]?.lhs || 0), 0),
+    Number(provNodes.reduce((s, n) => s + (nepSheet[n.code]?.area || 0), 0).toFixed(4)),
+    provNodes.reduce((s, n) => s + (nepSheet[n.code]?.arbs || 0), 0),
+    '-',
+    '-'
+  ]);
+
+  if (state.nepMilestoneListByYear) {
+    for (const [yr, msMap] of Object.entries(state.nepMilestoneListByYear)) {
+      for (const [msKey, pMap] of Object.entries(msMap || {})) {
+        for (const n of provNodes) {
+          const entry = pMap?.[n.code];
+          if (entry) {
+            nepRows.push([
+              n.code,
+              n.provinceName,
+              entry.lhs || 0,
+              Number((Number(entry.area) || 0).toFixed(4)),
+              entry.arbs || 0,
+              Number(yr),
+              msKey
+            ]);
+          }
+        }
+      }
+    }
+  }
   sheetsSpec.push({
     name: 'NEP',
     headerStyle: 1,
-    colWidths: [16, 22, 16, 18, 16, 14],
+    colWidths: [16, 22, 16, 18, 16, 14, 20],
     fourDecCols: new Set([4]),
     rows: nepRows
   });

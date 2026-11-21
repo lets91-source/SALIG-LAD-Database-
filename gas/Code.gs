@@ -1022,7 +1022,7 @@ function saveNepSheetBatch_(milestoneMapList, defaultTargetYear) {
 
     PROVINCIAL_NODES.forEach(function (n) {
       const item = nepMap[n.code] || {};
-      const parsedYear = Math.round(Number(defaultTargetYear || item.year) || 0);
+      const parsedYear = Math.round(Number(item.year || defaultTargetYear) || 0);
       const yr = parsedYear >= 2000 && parsedYear <= 2099 ? parsedYear : currentYear;
       const rowVals = [
         n.code,

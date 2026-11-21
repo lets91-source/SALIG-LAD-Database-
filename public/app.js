@@ -3984,7 +3984,7 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
               milestone: currentMilestone,
               targetYear: yearUsed,
               nepProvinceList: payload,
-              nepMilestoneList: localData
+              nepMilestoneList: { [currentMilestone]: payload }
             })
           })
       );

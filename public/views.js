@@ -912,9 +912,10 @@ export function renderProvincialAllocationSection(ctx, {
     const yearMsMap = selectedYear
       ? (state?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone] || analytics?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone])
       : null;
-    const msMap = yearMsMap ||
-      (analytics?.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
-      (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
+    const msMap = selectedYear
+      ? (yearMsMap || {})
+      : ((analytics?.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
+         (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {});
     rawRows = provNodes.map((n) => {
       const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: selectedYear || 2026 };
       return {
@@ -984,14 +985,10 @@ export function renderProvincialAllocationSection(ctx, {
   const availableYears = Array.from(availableYearsSet).sort((a, b) => b - a);
 
   const activeFilter = String(yearFilter || 'ALL');
-  let filteredRows =
+  const filteredRows =
     activeFilter === 'ALL'
       ? rawRows
       : rawRows.filter((r) => String(r.year || 2026) === activeFilter);
-
-  if (filteredRows.length === 0 && rawRows.length > 0) {
-    filteredRows = rawRows;
-  }
 
   const totals = {
     lhs: filteredRows.reduce((s, r) => s + (Number(r.lhs) || 0), 0),
@@ -1244,9 +1241,10 @@ export function renderNepView(ctx) {
     const yearMsMap = selectedYear
       ? (state?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone] || analytics?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone])
       : null;
-    const msMap = yearMsMap ||
-      (analytics.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
-      (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
+    const msMap = selectedYear
+      ? (yearMsMap || {})
+      : ((analytics.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
+         (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {});
     rawRows = provNodes.map((n) => {
       const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: selectedYear || 2026 };
       return {
@@ -1317,15 +1315,10 @@ export function renderNepView(ctx) {
   const availableYears = Array.from(availableYearsSet).sort((a, b) => b - a);
 
   const activeFilter = String(nepYearFilter || 'ALL');
-  let filteredRows =
+  const filteredRows =
     activeFilter === 'ALL'
       ? rawRows
       : rawRows.filter((r) => String(r.year || 2026) === activeFilter);
-
-  // If year filter resulted in 0 rows but rawRows has data, fallback to rawRows so the table is never empty/hidden
-  if (filteredRows.length === 0 && rawRows.length > 0) {
-    filteredRows = rawRows;
-  }
 
   const totals = {
     lhs: filteredRows.reduce((s, r) => s + (Number(r.lhs) || 0), 0),
