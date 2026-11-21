@@ -27,6 +27,7 @@ import {
   parseWorkbookBuffer,
   parseCsvText
 } from '../sheetsSync.js';
+import { writeXlsxWorkbook } from '../xlsxCodec.js';
 import { createAppServer } from '../app.js';
 import vercelHandler from '../../api/index.js';
 import {
@@ -55,7 +56,8 @@ import {
   renderLeaseholdModalHtml,
   generateLeaseholdCsv,
   getLeaseholdAreaTenanted,
-  getLeaseholdTargetYear
+  getLeaseholdTargetYear,
+  renderTargetSummaryView
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -4810,6 +4812,91 @@ test('NEP Targets direct Live Google Sheet Sync & 2027 Target Year integrity', a
 
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
+
+test('Leasehold Column M & Column AF flexible header parsing and Target Summary 2027 navigation', async () => {
+  // 1. Verify buildHeaderMapping on diverse variants of Column M and Column AF
+  const sampleLeaseholdHeaders = [
+    'REG', 'PROVS', 'MUN', 'BRGY', 'LO SURNAME', 'LO FIRSTNAME', 'LO MI',
+    'TITLE NO.', 'TAX DEC NO.', 'SURVEY NO.', 'LOT NO.',
+    'AREA PER TITLE', 'AREA TENANTED', 'WITHIN RETAINED AREA',
+    'LEASEHOLDER SURNAME', 'LEASEHOLDER FIRSTNAME', 'LEASEHOLDER MI',
+    'TENANT STATUS', 'NEW LESSEE NAME', 'RELATIONSHIP TO TENANT',
+    'GENDER', 'Number of ARBs', 'MAIN CROPS', 'AUXILLIARY CROPS',
+    'SHARING ARRANGEMENT', 'TENURIAL ARRANGEMENT', 'STATUS OF CONTRACT',
+    'DATE CONTRACT REGISTERED', 'DATE PLR REGISTERED',
+    'LEASE RENTAL UNIT', 'LEASE IN PESOS', 'TARGET YEAR',
+    'Report Month', 'REMARKS'
+  ];
+
+  const workbookBuf = writeXlsxWorkbook([
+    {
+      name: 'Leasehold',
+      rows: [
+        sampleLeaseholdHeaders,
+        [
+          'Region VIII', 'Leyte', 'Alangalang', 'San Antonio', 'DELA CRUZ', 'JUAN', 'P',
+          'T-12345', 'TD-9988', 'S-100', '1-A',
+          '4.5000', '3.7500', 'No',
+          'SANTOS', 'PEDRO', 'M', 'alive', '', '',
+          'M', '1', 'Rice', 'Corn', '75/25', 'Agricultural Leasehold', 'New',
+          '03/15/2026', '03/20/2026', 'Per Hectare', '15000', '2027',
+          'March', 'Target registered'
+        ]
+      ]
+    }
+  ]);
+
+  const parsed = await parseWorkbookBuffer(workbookBuf);
+  assert.equal(parsed.leasehold.length, 1, 'Parses 1 Leasehold row');
+  assert.equal(parsed.leasehold[0].areaTenanted, '3.7500', 'Column M AREA TENANTED parsed into areaTenanted');
+  assert.equal(parsed.leasehold[0].targetYear, '2027', 'Column AF TARGET YEAR parsed into targetYear');
+  assert.equal(getLeaseholdAreaTenanted(parsed.leasehold[0]), 3.75, 'getLeaseholdAreaTenanted extracts 3.75 HAS');
+
+  // 2. Verify Target Summary 2027 active label & 2026 navigation banner
+  const mockAnalytics = {
+    availableMilestoneYears: [2026, 2027],
+    nepProvinceBreakdown: [],
+    nepMilestoneList: {
+      cf_doc: { LEY: { lhs: 195, area: 1594.3637, year: 2027 } }
+    },
+    milestoneNepBreakdown: [
+      {
+        key: 'cf_doc',
+        label: 'CF Documentation',
+        nepTargetCount: 195,
+        nepTargetAreaHas: 1594.3637,
+        total: { count: 2, areaHas: 3.9051 },
+        q1: { count: 2, areaHas: 3.9051 },
+        q2: { count: 0, areaHas: 0 },
+        q3: { count: 0, areaHas: 0 },
+        q4: { count: 0, areaHas: 0 },
+        sem1: { count: 2, areaHas: 3.9051 },
+        sem2: { count: 0, areaHas: 0 },
+        undated: { count: 0, areaHas: 0 },
+        provinceBreakdown: {}
+      }
+    ]
+  };
+
+  const html2027 = renderTargetSummaryView({
+    analytics: mockAnalytics,
+    filters: { milestoneYear: '2027', province: 'ALL' },
+    nepMetricMode: 'both',
+    nepMilestoneTableFilter: 'ALL',
+    schemas: { registry: [] }
+  });
+  assert.ok(html2027.includes('2027 (Active NEP Targets)'), 'Includes 2027 (Active NEP Targets) label in dropdown');
+
+  const html2026 = renderTargetSummaryView({
+    analytics: mockAnalytics,
+    filters: { milestoneYear: '2026', province: 'ALL' },
+    nepMetricMode: 'both',
+    nepMilestoneTableFilter: 'ALL',
+    schemas: { registry: [] }
+  });
+  assert.ok(html2026.includes('id="btn-switch-to-active-nep-year"'), 'Includes switch to 2027 targets banner when viewing 2026');
+});
+
 
 
 

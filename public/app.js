@@ -88,7 +88,7 @@ const appState = {
     province: 'ALL',
     periodMonth: 'LATEST',
     batch: 'ALL',
-    milestoneYear: 'ALL'
+    milestoneYear: '2027'
   },
   msSearch: '',
   optoolSearch: '',
@@ -3294,6 +3294,13 @@ function bindDashboardViewEvents(container) {
 
   container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
   container.querySelector('#btn-sync-hub-nep')?.addEventListener('click', syncHubNepSheet);
+  container.querySelector('#btn-switch-to-active-nep-year')?.addEventListener('click', async (e) => {
+    const yr = e.currentTarget?.dataset?.targetYear || '2027';
+    appState.filters.milestoneYear = yr;
+    const yearSelect = container.querySelector('#nep-year-select');
+    if (yearSelect) yearSelect.value = yr;
+    await refreshAnalytics();
+  });
   bindProvincialAllocationTableEvents(container);
   container.querySelector('#nep-milestone-filter')?.addEventListener('change', (e) => {
     appState.nepMilestoneFilter = e.target.value;
@@ -3346,18 +3353,19 @@ function bindProvincialAllocationTableEvents(container) {
 
 async function syncHubNepSheet() {
   try {
+    const activeYear = appState.filters.milestoneYear || '2027';
     const res = await withLoading(
       'fetching',
       'Syncing Hub NEP Targets…',
       'Reading NEP target data (LHS, AREA, ARBs, Year) from Regional Hub Google Sheet…',
-      () => api('/api/nep-sheet/sync', { method: 'POST' })
+      () => api('/api/nep-sheet/sync?milestoneYear=' + encodeURIComponent(activeYear), { method: 'POST' })
     );
     appState.state.nepProvinceList = res.nepProvinceList;
     if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
     if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
     appState.analytics = res.analytics;
     renderActiveView();
-    toast('Fetched Regional Hub NEP Targets');
+    toast('Fetched Regional Hub NEP Targets (' + (activeYear === 'ALL' ? 'All Years' : activeYear) + ')');
   } catch (err) {
     toast(err.message, true);
   }
@@ -4205,6 +4213,7 @@ function openNepTargetsModal() {
       if (res.nepTargets) appState.state.nepTargets = res.nepTargets;
       if (res.nepMilestoneList) appState.state.nepMilestoneList = res.nepMilestoneList;
       if (res.nepProvinceList) appState.state.nepProvinceList = res.nepProvinceList;
+      appState.filters.milestoneYear = String(targetYear);
       appState.analytics = res.analytics;
       closeModal();
       renderActiveView();

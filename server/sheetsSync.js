@@ -76,38 +76,62 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
     );
 
     if (matchedIdx < 0) {
+      const cleanNorm = norm.replace(/[^a-z0-9]/g, '');
       matchedIdx = schemaCols.findIndex(
-        (col, idx) =>
-          !usedSchemaIndices.has(idx) &&
-          (normalizeHeader(col.label) === norm ||
-            normalizeHeader(col.key) === norm ||
+        (col, idx) => {
+          if (usedSchemaIndices.has(idx)) return false;
+          const cleanHeader = normalizeHeader(col.header).replace(/[^a-z0-9]/g, '');
+          const cleanLabel = normalizeHeader(col.label).replace(/[^a-z0-9]/g, '');
+          const cleanKey = normalizeHeader(col.key).replace(/[^a-z0-9]/g, '');
+
+          if (cleanNorm === cleanHeader || cleanNorm === cleanLabel || cleanNorm === cleanKey) return true;
+
+          return (
             (col.key === 'ladStatus' && (norm === 'lad' || norm === 'ladcolumn' || norm === 'ladstatus')) ||
             (col.key === 'workability' && norm === 'workability') ||
             (col.key === 'carperLadForm42' && (norm.includes('form42') || norm.includes('form47'))) ||
             (col.key === 'pdfFile' && (norm.includes('form46') || norm.includes('pdffile') || norm === 'pdf')) ||
-            (col.key === 'certificateOfTitle' && norm.includes('certificateoftitle')) ||
-            (col.key === 'taxDeclaration' && norm.includes('taxdeclaration')) ||
+            (col.key === 'certificateOfTitle' && (norm.includes('certificateoftitle') || cleanNorm.includes('certtitle'))) ||
+            (col.key === 'taxDeclaration' && (norm.includes('taxdeclaration') || cleanNorm.includes('taxdec'))) ||
             (col.key === 'carperLadForm1And2' && (norm.includes('form12') || norm.includes('form1and2') || norm.includes('form1&2'))) ||
             (col.key === 'carperLadForm3' && norm.includes('form3')) ||
             (col.key === 'landUsePerFi' && norm.includes('landuse')) ||
             (col.key === 'subLotNumber' && (norm.includes('sublot') || norm.includes('sub lot') || norm.includes('sub-lot'))) ||
-            (col.key === 'lotNumber' && (norm === 'lot' || norm === 'lot number' || norm === 'lotnumber' || norm === 'lot no.' || norm === 'lot no' || norm === 'lotno')) ||
-            (col.key === 'provs' && (norm === 'province' || norm === 'prov' || norm === 'provs')) ||
-            (col.key === 'mun' && (norm === 'municipality' || norm === 'muni' || norm === 'mun')) ||
-            (col.key === 'brgy' && (norm === 'barangay' || norm === 'brgy')) ||
-            (col.key === 'dateContractRegistered' && (norm.includes('contractregistered') || norm.includes('contractreg'))) ||
-            (col.key === 'datePlrRegistered' && (norm.includes('plrregistered') || norm.includes('plrreg'))) ||
-            (col.key === 'areaPerTitle' && (norm.includes('areapertitle') || norm === 'areatitle')) ||
-            (col.key === 'areaTenanted' && (norm.includes('areatenanted') || norm === 'tenantedarea')) ||
-            (col.key === 'withinRetainedArea' && norm.includes('retainedarea')) ||
-            (col.key === 'tenantStatus' && (norm.includes('tenantstatus') || norm.includes('lesseestatus'))) ||
-            (col.key === 'newLesseeName' && (norm.includes('newlessee') || norm.includes('newlesseename'))) ||
-            (col.key === 'relationshipToTenant' && norm.includes('relationshipto')) ||
-            (col.key === 'gender' && (norm === 'gender' || norm === 'gendermf' || norm === 'sex')) ||
-            (col.key === 'noOfArbs' && (norm.includes('numberofarbs') || norm.includes('noofarbs') || norm === 'arbs')) ||
-            (col.key === 'surveyRequirement' && (norm.includes('needing') || norm.includes('surveyrequirement') || norm.includes('surveystatus') || norm === 'lhs' || norm === 'lh')) ||
-            (col.key === 'reportMonth' && (norm === 'reportmonth' || norm.includes('reportmonth') || norm === 'monthreported')))
+            (col.key === 'lotNumber' && (norm === 'lot' || norm === 'lot number' || norm === 'lotnumber' || norm === 'lot no.' || norm === 'lot no' || norm === 'lotno' || cleanNorm === 'lotno')) ||
+            (col.key === 'provs' && (norm === 'province' || norm === 'prov' || norm === 'provs' || cleanNorm === 'province')) ||
+            (col.key === 'mun' && (norm === 'municipality' || norm === 'muni' || norm === 'mun' || cleanNorm === 'municipality')) ||
+            (col.key === 'brgy' && (norm === 'barangay' || norm === 'brgy' || cleanNorm === 'barangay')) ||
+            (col.key === 'dateContractRegistered' && (cleanNorm.includes('contractregistered') || cleanNorm.includes('contractreg'))) ||
+            (col.key === 'datePlrRegistered' && (cleanNorm.includes('plrregistered') || cleanNorm.includes('plrreg'))) ||
+            (col.key === 'areaPerTitle' && (cleanNorm.includes('areapertitle') || cleanNorm === 'areatitle' || (cleanNorm.includes('area') && cleanNorm.includes('title')))) ||
+            (col.key === 'areaTenanted' && (cleanNorm.includes('tenanted') || cleanNorm.includes('areatenanted') || cleanNorm === 'tenantedarea' || (cleanNorm.includes('area') && cleanNorm.includes('tenant')))) ||
+            (col.key === 'withinRetainedArea' && cleanNorm.includes('retainedarea')) ||
+            (col.key === 'tenantStatus' && (cleanNorm.includes('tenantstatus') || cleanNorm.includes('lesseestatus'))) ||
+            (col.key === 'newLesseeName' && (cleanNorm.includes('newlessee') || cleanNorm.includes('newlesseename'))) ||
+            (col.key === 'relationshipToTenant' && cleanNorm.includes('relationshipto')) ||
+            (col.key === 'gender' && (norm === 'gender' || norm === 'gendermf' || norm === 'sex' || cleanNorm === 'gender')) ||
+            (col.key === 'noOfArbs' && (cleanNorm.includes('numberofarbs') || cleanNorm.includes('noofarbs') || cleanNorm === 'arbs' || cleanNorm === 'arbtotal')) ||
+            (col.key === 'surveyRequirement' && (cleanNorm.includes('needing') || cleanNorm.includes('surveyrequirement') || cleanNorm.includes('surveystatus') || norm === 'lhs' || norm === 'lh')) ||
+            (col.key === 'leaseRentalUnit' && (cleanNorm.includes('rentalunit') || cleanNorm.includes('leaserental'))) ||
+            (col.key === 'leaseInPesos' && (cleanNorm.includes('leaseinpesos') || cleanNorm.includes('rentalpesos') || cleanNorm === 'pesos')) ||
+            (col.key === 'targetYear' && (cleanNorm.includes('targetyear') || cleanNorm === 'targetyr' || (cleanNorm.includes('target') && cleanNorm.includes('year')))) ||
+            (col.key === 'reportMonth' && (norm === 'reportmonth' || cleanNorm.includes('reportmonth') || cleanNorm.includes('monthreported')))
+          );
+        }
       );
+    }
+
+    // Positional fallback for standard Leasehold schema (34 columns: Col M = idx 13 (0-based 12), Col AF = idx 32 (0-based 31))
+    if (matchedIdx < 0 && schemaCols.length === 34) {
+      if (colIdx === 12 && !usedSchemaIndices.has(11) && schemaCols[11]?.key === 'areaPerTitle') {
+        matchedIdx = 11;
+      } else if (colIdx === 13 && !usedSchemaIndices.has(12) && schemaCols[12]?.key === 'areaTenanted') {
+        matchedIdx = 12;
+      } else if (colIdx === 31 && !usedSchemaIndices.has(30) && schemaCols[30]?.key === 'leaseInPesos') {
+        matchedIdx = 30;
+      } else if (colIdx === 32 && !usedSchemaIndices.has(31) && schemaCols[31]?.key === 'targetYear') {
+        matchedIdx = 31;
+      }
     }
 
     if (matchedIdx >= 0) {
