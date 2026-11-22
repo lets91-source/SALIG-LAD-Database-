@@ -738,7 +738,13 @@ function renderProvincialNepSheetSection(ctx) {
   if (activeMilestone === 'overall') {
     rows = analytics.nepProvinceBreakdown || [];
   } else {
-    const msMap = (analytics.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) || {};
+    const selectedYear = ctx.nepYearFilter || ctx.filters?.milestoneYear || ctx.filters?.year;
+    const yearMsMap = selectedYear && selectedYear !== 'ALL'
+      ? (state?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone] || analytics?.nepMilestoneListByYear?.[selectedYear]?.[activeMilestone])
+      : null;
+    const msMap = yearMsMap ||
+                  (analytics?.nepMilestoneList && analytics.nepMilestoneList[activeMilestone]) ||
+                  (state?.nepMilestoneList && state.nepMilestoneList[activeMilestone]) || {};
     rows = provNodes.map((n) => {
       const item = msMap[n.code] || { lhs: 0, area: 0, arbs: 0, year: 2026 };
       return {
@@ -1635,6 +1641,104 @@ export function matchesMilestoneDatabaseTag(dbRow, viewKey) {
   return true;
 }
 
+export function getWhereaboutsNepTargetMap(nepMsKey, targetYearFilterVal, state = {}, analytics = {}) {
+  const isTargetYearAll = !targetYearFilterVal || targetYearFilterVal === 'ALL';
+  const aliasKeys = [nepMsKey];
+  if (nepMsKey === 'cf_doc') aliasKeys.push('cf');
+  if (nepMsKey === 'land_survey') aliasKeys.push('survey');
+  if (nepMsKey === 'land_valuation') aliasKeys.push('mov', 'valuation');
+  if (nepMsKey === 'ep_cloa_registration') aliasKeys.push('registration', 'regdist');
+  if (nepMsKey === 'installation') aliasKeys.push('ep_cloa_distribution', 'dist', 'inst');
+  if (nepMsKey === 'ep_cloa_distribution') aliasKeys.push('installation', 'dist', 'inst');
+  if (nepMsKey === 'leasehold') aliasKeys.push('lh');
+
+  if (!isTargetYearAll) {
+    const yr = String(targetYearFilterVal).trim();
+    const yearSources = [
+      state?.nepMilestoneListByYear?.[yr],
+      analytics?.nepMilestoneListByYear?.[yr]
+    ];
+    for (const src of yearSources) {
+      if (!src || typeof src !== 'object') continue;
+      for (const k of aliasKeys) {
+        if (src[k] && typeof src[k] === 'object' && Object.keys(src[k]).length > 0) {
+          return src[k];
+        }
+      }
+    }
+    const singleSources = [
+      state?.nepMilestoneList,
+      analytics?.nepMilestoneList
+    ];
+    for (const src of singleSources) {
+      if (!src || typeof src !== 'object') continue;
+      for (const k of aliasKeys) {
+        if (src[k] && typeof src[k] === 'object' && Object.keys(src[k]).length > 0) {
+          const firstItem = Object.values(src[k])[0];
+          if (firstItem && String(firstItem.year || '') === yr) {
+            return src[k];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // When 'ALL': aggregate across all available years in nepMilestoneListByYear
+  const allYears = Array.from(new Set([
+    ...Object.keys(state?.nepMilestoneListByYear || {}),
+    ...Object.keys(analytics?.nepMilestoneListByYear || {})
+  ])).filter((y) => /^\d{4}$/.test(y));
+
+  if (allYears.length > 0) {
+    const aggregated = {};
+    for (const yr of allYears) {
+      const yearSources = [
+        state?.nepMilestoneListByYear?.[yr],
+        analytics?.nepMilestoneListByYear?.[yr]
+      ];
+      for (const src of yearSources) {
+        if (!src || typeof src !== 'object') continue;
+        let matchedMap = null;
+        for (const k of aliasKeys) {
+          if (src[k] && typeof src[k] === 'object' && Object.keys(src[k]).length > 0) {
+            matchedMap = src[k];
+            break;
+          }
+        }
+        if (matchedMap) {
+          for (const [pCode, pData] of Object.entries(matchedMap)) {
+            if (!aggregated[pCode]) {
+              aggregated[pCode] = { lhs: 0, area: 0, arbs: 0, year: 'ALL' };
+            }
+            aggregated[pCode].lhs += Math.max(0, Math.round(Number(pData.lhs) || 0));
+            aggregated[pCode].area += Math.max(0, Number(pData.area) || 0);
+            aggregated[pCode].arbs += Math.max(0, Math.round(Number(pData.arbs) || 0));
+          }
+          break;
+        }
+      }
+    }
+    if (Object.keys(aggregated).length > 0) {
+      for (const pCode of Object.keys(aggregated)) {
+        aggregated[pCode].area = Number(aggregated[pCode].area.toFixed(4));
+      }
+      return aggregated;
+    }
+  }
+
+  const singleSources = [state?.nepMilestoneList, analytics?.nepMilestoneList];
+  for (const src of singleSources) {
+    if (!src || typeof src !== 'object') continue;
+    for (const k of aliasKeys) {
+      if (src[k] && typeof src[k] === 'object' && Object.keys(src[k]).length > 0) {
+        return src[k];
+      }
+    }
+  }
+  return null;
+}
+
 export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new Date().getFullYear()) {
   if (!selectedYear || selectedYear === 'ALL') return true;
   const s = String(selectedYear).trim();
@@ -1922,6 +2026,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
 
   const {
     state,
+    analytics = ctx.analytics || ctx.state?.analytics || {},
     schemas,
     provinceScope,
     whereaboutsColFilters = {},
@@ -2145,6 +2250,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
 export function renderMilestoneWhereaboutsView(ctx, cfg) {
   const {
     state,
+    analytics = ctx.analytics || ctx.state?.analytics || {},
     schemas,
     provinceScope,
     whereaboutsSearch = {},
@@ -2477,6 +2583,32 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const targetYearSet = new Set();
     targetYearSet.add(String(curYear));
     targetYearSet.add(String(curYear - 1));
+    targetYearSet.add(String(curYear + 1));
+    if (state?.nepMilestoneListByYear) {
+      for (const y of Object.keys(state.nepMilestoneListByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (analytics?.nepMilestoneListByYear) {
+      for (const y of Object.keys(analytics.nepMilestoneListByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (state?.nepTargetsByYear) {
+      for (const y of Object.keys(state.nepTargetsByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (analytics?.nepTargetsByYear) {
+      for (const y of Object.keys(analytics.nepTargetsByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (state?.nepProvinceListByYear) {
+      for (const y of Object.keys(state.nepProvinceListByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
     for (const pData of Object.values(state?.nepMilestoneList?.[nepMsKey] || {})) {
       if (pData?.year) {
         const m = String(pData.year).match(/\b(20\d{2})\b/);
@@ -2520,7 +2652,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
     // Fallback to nepMilestoneList / nepTargets if Database worksheet has no records
     const targetProvCodes = selectedProvs.map((p) => resolveProvinceCode(p, schemas)).filter(Boolean);
-    const msMap = state?.nepMilestoneList?.[nepMsKey] || {};
+    const nepTargetMap = getWhereaboutsNepTargetMap(nepMsKey, targetYearFilterVal, state, analytics);
+    const msMap = nepTargetMap || state?.nepMilestoneList?.[nepMsKey] || {};
     if (globalTargetLhs === 0 && globalTargetArea === 0) {
       if (targetProvCodes.length > 0) {
         for (const pCode of targetProvCodes) {
@@ -2556,31 +2689,25 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const globalAccompArea = scopeArea;
     const accompBadgeText = targetBadgeText;
 
-    // 4. Selected Year Target (Dynamic based on selected province & year)
+    // 4. Selected Year Target (Dynamic based on selected province & year strictly from Regional Hub NEP sheet)
     let selectedYearTargetLhs = 0;
     let selectedYearTargetArea = 0;
-    if (targetProvCodes.length > 0) {
-      for (const pCode of targetProvCodes) {
-        const pData = msMap[pCode];
-        const pYear = String(pData?.year || curYear);
-        if (targetYearFilterVal === 'ALL' || pYear === String(targetYearFilterVal)) {
+    if (nepTargetMap) {
+      if (targetProvCodes.length > 0) {
+        for (const pCode of targetProvCodes) {
+          const pData = nepTargetMap[pCode];
+          selectedYearTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
+          selectedYearTargetArea += Math.max(0, Number(pData?.area) || 0);
+        }
+      } else {
+        for (const [pCode, pData] of Object.entries(nepTargetMap)) {
+          if (provinceScope && pCode !== provinceScope.code) continue;
           selectedYearTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
           selectedYearTargetArea += Math.max(0, Number(pData?.area) || 0);
         }
       }
     } else {
-      for (const [pCode, pData] of Object.entries(msMap)) {
-        if (provinceScope && pCode !== provinceScope.code) continue;
-        const pYear = String(pData?.year || curYear);
-        if (targetYearFilterVal === 'ALL' || pYear === String(targetYearFilterVal)) {
-          selectedYearTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
-          selectedYearTargetArea += Math.max(0, Number(pData?.area) || 0);
-        }
-      }
-    }
-
-    // If no milestone target entered in nepMilestoneList for this year/province, fallback to Database target
-    if (selectedYearTargetLhs === 0 && selectedYearTargetArea === 0) {
+      // If no milestone target entered in nepMilestoneListByYear / nepMilestoneList for this year/province, fallback to Database target
       if (targetYearFilterVal === 'ALL' || targetYearFilterVal === String(curYear)) {
         selectedYearTargetLhs = globalTargetLhs;
         selectedYearTargetArea = globalTargetArea;
@@ -2594,6 +2721,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         }
       }
     }
+    selectedYearTargetArea = Number(selectedYearTargetArea.toFixed(4));
 
     // 5. Selected Year Actual Milestones (Filtered by both Target Year AND the active scope)
     const yearMatchingRows = scopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
@@ -2766,27 +2894,23 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       </section>
     `;
 
-    // 6. Provincial Milestone Tracking Table for CF(DOC) (NEP Target, Status, FI, Prep & Signed, Reported Month with Balances)
+    // 6. Provincial Milestone Tracking Table for CF, MOV, RegDist, Installation (NEP Target strictly from Regional Hub NEP Sheet)
     const isTargetYearAll = !targetYearFilterVal || targetYearFilterVal === 'ALL';
 
     const cfTableRows = DEFAULT_CF_PROVINCES.map((p) => {
-      const nepOverride = state?.nepMilestoneList?.[nepMsKey]?.[p.code];
-      const nepYear = String(nepOverride?.year || curYear);
-
-      let isNepYearMatch = false;
-      if (isTargetYearAll) {
-        isNepYearMatch = true;
-      } else if (String(nepYear) === String(targetYearFilterVal)) {
-        isNepYearMatch = true;
-      }
-
       let targetLhs = 0;
       let targetArea = 0;
 
-      if (isNepYearMatch && nepOverride && ((nepOverride.lhs !== undefined && nepOverride.lhs !== null && nepOverride.lhs !== '') || (nepOverride.area !== undefined && nepOverride.area !== null && nepOverride.area !== ''))) {
+      if (nepTargetMap && nepTargetMap[p.code]) {
+        const nepOverride = nepTargetMap[p.code];
         targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
         targetArea = Math.max(0, Number(nepOverride.area) || 0);
+      } else if (nepTargetMap) {
+        // Milestone NEP target exists for this year in Hub sheet, but this province is 0
+        targetLhs = 0;
+        targetArea = 0;
       } else {
+        // Fallback to Database tagged rows if no NEP target definition exists for this milestone/year
         let dbProvRows = dbRows.filter((r) => matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
         if (!isTargetYearAll) {
           dbProvRows = dbProvRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
@@ -2797,9 +2921,6 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         if (taggedDb.length > 0) {
           targetLhs = taggedDb.length;
           targetArea = taggedDb.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
-        } else if (isNepYearMatch && nepOverride && Number(nepOverride.lhs || nepOverride.area)) {
-          targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
-          targetArea = Math.max(0, Number(nepOverride.area) || 0);
         } else {
           targetLhs = activePool.length;
           targetArea = activePool.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
@@ -3563,6 +3684,32 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const targetYearSet = new Set();
     targetYearSet.add(String(curYear));
     targetYearSet.add(String(curYear - 1));
+    targetYearSet.add(String(curYear + 1));
+    if (state?.nepMilestoneListByYear) {
+      for (const y of Object.keys(state.nepMilestoneListByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (analytics?.nepMilestoneListByYear) {
+      for (const y of Object.keys(analytics.nepMilestoneListByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (state?.nepTargetsByYear) {
+      for (const y of Object.keys(state.nepTargetsByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (analytics?.nepTargetsByYear) {
+      for (const y of Object.keys(analytics.nepTargetsByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
+    if (state?.nepProvinceListByYear) {
+      for (const y of Object.keys(state.nepProvinceListByYear)) {
+        if (/^\d{4}$/.test(y)) targetYearSet.add(y);
+      }
+    }
     for (const pData of Object.values(state?.nepMilestoneList?.land_survey || state?.nepMilestoneList?.survey || {})) {
       if (pData?.year) {
         const m = String(pData.year).match(/\b(20\d{2})\b/);
@@ -3646,38 +3793,25 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const isTargetYearPrev = targetYearFilterVal === '2025' || targetYearFilterVal === String(curYear - 1) || String(targetYearFilterVal).toLowerCase().includes('prev');
     const isTargetYearCurr = targetYearFilterVal === String(curYear) || String(targetYearFilterVal).toLowerCase().includes('curr');
 
+    const surveyNepMap = getWhereaboutsNepTargetMap('land_survey', targetYearFilterVal, state, analytics);
+
     const surveyTableRows = DEFAULT_SURVEY_STATUS_BENCHMARKS.map((b) => {
-      const nepOverride = state?.nepMilestoneList?.land_survey?.[b.code] || state?.nepMilestoneList?.survey?.[b.code];
-      const nepYear = String(nepOverride?.year || '2025');
-
-      let isNepYearMatch = false;
-      if (isTargetYearAll) {
-        isNepYearMatch = true;
-      } else if (String(nepYear) === String(targetYearFilterVal)) {
-        isNepYearMatch = true;
-      } else if (isTargetYearPrev && (nepYear === '2025' || nepYear === String(curYear - 1) || nepYear.toLowerCase().includes('prev'))) {
-        isNepYearMatch = true;
-      } else if (isTargetYearCurr && (nepYear === String(curYear) || nepYear.toLowerCase().includes('curr'))) {
-        isNepYearMatch = true;
-      }
-
-      const hasNep = Boolean(
-        isNepYearMatch &&
-        nepOverride &&
-        ((nepOverride.lhs !== undefined && nepOverride.lhs !== null && nepOverride.lhs !== '') ||
-          (nepOverride.area !== undefined && nepOverride.area !== null && nepOverride.area !== ''))
-      );
-
       let targetLhs = 0;
       let targetArea = 0;
 
-      if (hasNep) {
-        targetLhs = Math.max(0, Number(nepOverride.lhs) || 0);
+      if (surveyNepMap && surveyNepMap[b.code]) {
+        const nepOverride = surveyNepMap[b.code];
+        targetLhs = Math.max(0, Math.round(Number(nepOverride.lhs) || 0));
         targetArea = Math.max(0, Number(nepOverride.area) || 0);
-      } else if (isNepYearMatch && (b.targetLhs || b.targetArea)) {
+      } else if (surveyNepMap) {
+        // Milestone NEP target exists for this year in Hub sheet, but this province has 0
+        targetLhs = 0;
+        targetArea = 0;
+      } else if (b.targetLhs || b.targetArea) {
         targetLhs = b.targetLhs || 0;
         targetArea = b.targetArea || 0;
       }
+      targetArea = Number(targetArea.toFixed(4));
 
       let provRows = enrichedRows.filter((r) => matchProvinceName(r.province, b.name) || matchProvinceName(r.province, b.code));
       if (!isTargetYearAll) {
@@ -7024,6 +7158,7 @@ export function getOptoolCellValue(row, col, dbByLhid) {
 function filterOptoolRows(rows, ctx, skipColKey = null, dbByLhidOverride = null) {
   const {
     state,
+    analytics = ctx.analytics || ctx.state?.analytics || {},
     schemas,
     activeOptoolTab,
     searchTerm,
@@ -7169,6 +7304,7 @@ export function getColumnFilterValues(ctx, colKey) {
 export function buildOptoolViewModel(ctx) {
   const {
     state,
+    analytics = ctx.analytics || ctx.state?.analytics || {},
     schemas,
     activeOptoolTab,
     searchTerm,
@@ -8829,6 +8965,7 @@ export function renderCfSupportListModalHtml({
 export function renderLeaseholdView(ctx) {
   const {
     state,
+    analytics = ctx.analytics || ctx.state?.analytics || {},
     schemas,
     currentUser,
     provinceScope,

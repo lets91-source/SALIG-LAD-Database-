@@ -5143,6 +5143,133 @@ test('Multi-year Land Survey NEP targets: 2026 is 1610.8163 HAS and 2027 is 1212
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
+test('Whereabouts milestone views display authentic NEP targets from Regional Hub NEP sheet per selected Target Year', async () => {
+  const store = createSeedState();
+
+  store.nepMilestoneListByYear = {
+    '2026': {
+      cf_doc: {
+        BIL: { lhs: 0, area: 0, arbs: 0, year: 2026 },
+        ESA: { lhs: 0, area: 23.5124, arbs: 0, year: 2026 },
+        LEY: { lhs: 0, area: 140.6996, arbs: 0, year: 2026 },
+        NSA: { lhs: 0, area: 121.8952, arbs: 0, year: 2026 },
+        SAM: { lhs: 0, area: 151.8667, arbs: 0, year: 2026 },
+        SLE: { lhs: 0, area: 21.2352, arbs: 0, year: 2026 }
+      },
+      land_survey: {
+        BIL: { lhs: 0, area: 0, arbs: 0, year: 2026 },
+        ESA: { lhs: 0, area: 23.5124, arbs: 0, year: 2026 },
+        LEY: { lhs: 0, area: 1056.7400, arbs: 0, year: 2026 },
+        NSA: { lhs: 0, area: 358.5037, arbs: 0, year: 2026 },
+        SAM: { lhs: 0, area: 165.3974, arbs: 0, year: 2026 },
+        SLE: { lhs: 0, area: 6.6628, arbs: 0, year: 2026 }
+      },
+      land_valuation: {
+        BIL: { lhs: 0, area: 0, arbs: 0, year: 2026 },
+        ESA: { lhs: 1, area: 6.7469, arbs: 0, year: 2026 },
+        LEY: { lhs: 106, area: 713.6900, arbs: 0, year: 2026 },
+        NSA: { lhs: 26, area: 244.4584, arbs: 0, year: 2026 },
+        SAM: { lhs: 13, area: 165.1951, arbs: 0, year: 2026 },
+        SLE: { lhs: 5, area: 14.3747, arbs: 0, year: 2026 }
+      }
+    },
+    '2027': {
+      cf_doc: {
+        BIL: { lhs: 0, area: 0, arbs: 0, year: 2027 },
+        ESA: { lhs: 4, area: 19.7475, arbs: 0, year: 2027 },
+        LEY: { lhs: 93, area: 839.9117, arbs: 80, year: 2027 },
+        NSA: { lhs: 55, area: 495.3229, arbs: 0, year: 2027 },
+        SAM: { lhs: 22, area: 218.6347, arbs: 0, year: 2027 },
+        SLE: { lhs: 21, area: 20.7469, arbs: 0, year: 2027 }
+      },
+      land_survey: {
+        BIL: { lhs: 0, area: 0, arbs: 0, year: 2027 },
+        ESA: { lhs: 0, area: 9.2577, arbs: 0, year: 2027 },
+        LEY: { lhs: 0, area: 606.2694, arbs: 0, year: 2027 },
+        NSA: { lhs: 0, area: 476.0673, arbs: 0, year: 2027 },
+        SAM: { lhs: 0, area: 119.5397, arbs: 0, year: 2027 },
+        SLE: { lhs: 0, area: 1.4742, arbs: 0, year: 2027 }
+      },
+      land_valuation: {
+        BIL: { lhs: 0, area: 0, arbs: 0, year: 2027 },
+        ESA: { lhs: 2, area: 9.2577, arbs: 0, year: 2027 },
+        LEY: { lhs: 75, area: 588.2565, arbs: 0, year: 2027 },
+        NSA: { lhs: 24, area: 201.4833, arbs: 0, year: 2027 },
+        SAM: { lhs: 13, area: 127.9280, arbs: 0, year: 2027 },
+        SLE: { lhs: 5, area: 12.5732, arbs: 0, year: 2027 }
+      }
+    }
+  };
+
+  const baseCtx = {
+    state: store,
+    schemas: { registry: [] },
+    provinceScope: null,
+    whereaboutsProvinceFilter: {},
+    whereaboutsStatusFilter: {},
+    whereaboutsSearch: {},
+    whereaboutsColFilters: {},
+    whereaboutsPage: {},
+    whereaboutsPageSize: {},
+    cfMetricMode: 'both',
+    cfTableLayout: 'standard',
+    surveyMetricMode: 'both',
+    surveyIndicatorTab: 'all'
+  };
+
+  // 1. CF(DOC) Whereabouts 2026: Must display 459.2091 HAS and 0 LHS
+  const cf2026Html = renderMilestoneWhereaboutsView({
+    ...baseCtx,
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': '2026' }
+  }, WHEREABOUTS_CONFIGS['cf-whereabouts']);
+
+  assert.ok(cf2026Html.includes('459.2091'), 'CF 2026 displays 459.2091 HAS target');
+  assert.ok(cf2026Html.includes('23.5124'), 'CF 2026 displays Eastern Samar 23.5124 HAS');
+  assert.ok(cf2026Html.includes('140.6996'), 'CF 2026 displays Leyte 140.6996 HAS');
+  assert.ok(cf2026Html.includes('151.8667'), 'CF 2026 displays Samar 151.8667 HAS');
+  assert.ok(!cf2026Html.includes('115.7301'), 'CF 2026 does NOT fall back to 115.7301 tagged Database parcels');
+
+  // 2. CF(DOC) Whereabouts 2027: Must display 1,594.3637 HAS and 195 LHS
+  const cf2027Html = renderMilestoneWhereaboutsView({
+    ...baseCtx,
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': '2027' }
+  }, WHEREABOUTS_CONFIGS['cf-whereabouts']);
+
+  assert.ok(cf2027Html.includes('1,594.3637'), 'CF 2027 displays 1,594.3637 HAS target');
+  assert.ok(cf2027Html.includes('195'), 'CF 2027 displays 195 LHS target');
+  assert.ok(cf2027Html.includes('19.7475'), 'CF 2027 displays Eastern Samar 19.7475 HAS');
+  assert.ok(cf2027Html.includes('839.9117'), 'CF 2027 displays Leyte 839.9117 HAS');
+
+  // 3. Survey Whereabouts: 2026 must display 1,610.8163 HAS; 2027 must display 1,212.6083 HAS
+  const survey2026Html = renderMilestoneWhereaboutsView({
+    ...baseCtx,
+    whereaboutsTargetYearFilter: { 'survey-whereabouts': '2026' }
+  }, WHEREABOUTS_CONFIGS['survey-whereabouts']);
+  assert.ok(survey2026Html.includes('1,610.8163'), 'Survey 2026 displays 1,610.8163 HAS target');
+
+  const survey2027Html = renderMilestoneWhereaboutsView({
+    ...baseCtx,
+    whereaboutsTargetYearFilter: { 'survey-whereabouts': '2027' }
+  }, WHEREABOUTS_CONFIGS['survey-whereabouts']);
+  assert.ok(survey2027Html.includes('1,212.6083'), 'Survey 2027 displays 1,212.6083 HAS target');
+
+  // 4. MOV Whereabouts: 2026 must display 1,144.4651 HAS (151 LHS); 2027 must display 939.4987 HAS (119 LHS)
+  const mov2026Html = renderMilestoneWhereaboutsView({
+    ...baseCtx,
+    whereaboutsTargetYearFilter: { 'mov-whereabouts': '2026' }
+  }, WHEREABOUTS_CONFIGS['mov-whereabouts']);
+  assert.ok(mov2026Html.includes('1,144.4651'), 'MOV 2026 displays 1,144.4651 HAS target');
+  assert.ok(mov2026Html.includes('151'), 'MOV 2026 displays 151 LHS target');
+
+  const mov2027Html = renderMilestoneWhereaboutsView({
+    ...baseCtx,
+    whereaboutsTargetYearFilter: { 'mov-whereabouts': '2027' }
+  }, WHEREABOUTS_CONFIGS['mov-whereabouts']);
+  assert.ok(mov2027Html.includes('939.4987'), 'MOV 2027 displays 939.4987 HAS target');
+  assert.ok(mov2027Html.includes('119'), 'MOV 2027 displays 119 LHS target');
+});
+
+
 
 
 
