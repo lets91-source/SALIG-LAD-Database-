@@ -1706,6 +1706,64 @@ export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new 
   return false;
 }
 
+export function isSurveyAccomplished(r, selectedYear = null) {
+  if (!r) return false;
+  const repMonth = String(
+    r.reportedMonth ||
+    r['Reported Month'] ||
+    r.monthReported ||
+    r['Month Reported'] ||
+    r.reportMonth ||
+    r['Report Month'] ||
+    r['REPORT MONTH'] ||
+    ''
+  ).trim();
+
+  if (
+    !repMonth ||
+    repMonth === '-' ||
+    repMonth === '—' ||
+    repMonth === 'N/A' ||
+    repMonth.toLowerCase() === 'null' ||
+    repMonth.toLowerCase() === 'undated' ||
+    repMonth.toLowerCase() === 'pending'
+  ) {
+    return false;
+  }
+
+  const targetYearRaw = String(
+    r.targetYear ||
+    r['Target Year'] ||
+    r['TARGET YEAR'] ||
+    r.year ||
+    r['Year'] ||
+    ''
+  ).trim();
+
+  const ym = targetYearRaw.match(/\b(20\d{2})\b/);
+  const targetYear = ym ? Number(ym[1]) : (selectedYear && selectedYear !== 'ALL' ? Number(selectedYear) : null);
+  if (!targetYear) return false;
+
+  let repYear = null;
+  const wordMatch = repMonth.match(/\b([A-Za-z]+)\s*,?\s*(\d{4})\b/);
+  if (wordMatch) {
+    repYear = Number(wordMatch[2]);
+  } else {
+    const singleMonth = repMonth.match(/^[A-Za-z]+\.?$/);
+    if (singleMonth) {
+      repYear = targetYear;
+    } else {
+      const dt = new Date(repMonth);
+      if (!Number.isNaN(dt.getTime())) repYear = dt.getFullYear();
+    }
+  }
+
+  if (!repYear || repYear !== targetYear) return false;
+  if (selectedYear && selectedYear !== 'ALL' && targetYear !== Number(selectedYear)) return false;
+
+  return true;
+}
+
 export function matchProvinceName(rowProv, targetProv) {
   const p = String(rowProv || '').trim().toUpperCase();
   const t = String(targetProv || '').trim().toUpperCase();
@@ -3639,6 +3697,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         stages[st.key] = { lhs, area, balLhs, balArea };
       }
 
+      const accompRows = provRows.filter((r) => isSurveyAccomplished(r, targetYearFilterVal));
+      const accompLhs = accompRows.length;
+      const accompArea = Number(accompRows.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0).toFixed(4));
+
       const isActive = selectedProvs.some((p) => matchProvinceName(b.name, p) || matchProvinceName(b.code, p));
 
       return {
@@ -3646,6 +3708,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         targetLhs,
         targetArea,
         stages,
+        accompLhs,
+        accompArea,
         isActive
       };
     });
@@ -3695,9 +3759,9 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     const finalSurveyGlobalTargetLhs = surveyDbLadLhs > 0 ? surveyDbLadLhs : surveyGlobalTargetLhs;
     const finalSurveyGlobalTargetArea = surveyDbLadLhs > 0 ? surveyDbLadArea : surveyGlobalTargetArea;
 
-    // Accomplishment for Survey is strictly based on Column AC (Accepted by DENR-SMD)
-    const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + (r.stages.acceptedDenr ? r.stages.acceptedDenr.lhs : 0), 0);
-    const surveyGlobalAccompArea = Number(activeBenchmarkRows.reduce((s, r) => s + (r.stages.acceptedDenr ? r.stages.acceptedDenr.area : 0), 0).toFixed(4));
+    // Survey Accomplishment: count if the LHs have Reported Month is equal to the year Target in Column AR
+    const surveyGlobalAccompLhs = activeBenchmarkRows.reduce((s, r) => s + (r.accompLhs !== undefined ? r.accompLhs : 0), 0);
+    const surveyGlobalAccompArea = Number(activeBenchmarkRows.reduce((s, r) => s + (r.accompArea !== undefined ? r.accompArea : 0), 0).toFixed(4));
 
     const surveyTargetYearLhs = surveyGlobalTargetLhs;
     const surveyTargetYearArea = surveyGlobalTargetArea;

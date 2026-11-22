@@ -1806,9 +1806,9 @@ test('Per-Milestone Dashboard NEP Target, Quarterly Accomplishment (Q1-Q4), Rate
     store.upsertOptoolRow('CF(DOC)', { lhid: 'LH-Q1', reportedMonth: '2026-02-15' });
     store.upsertOptoolRow('CF(DOC)', { lhid: 'LH-Q3', reportedMonth: 'August 2026' });
 
-    // Land Survey: 1 in Q2 via Column AC (Date Accepted by DENR-SMD), plus 1 with empty Column AC (must be excluded from accomplishment)
-    store.upsertOptoolRow('Survey', { lhid: 'LH-Q2', dateAcceptedDenrSmd: '2026-05-19' });
-    store.upsertOptoolRow('Survey', { lhid: 'LH-Q3', currentDate: '2026-05-19', dateAcceptedDenrSmd: '' });
+    // Land Survey: 1 in Q2 via Reported Month matching Target Year, plus 1 with empty Reported Month (must be excluded from accomplishment)
+    store.upsertOptoolRow('Survey', { lhid: 'LH-Q2', reportedMonth: 'May 2026', targetYear: '2026', dateAcceptedDenrSmd: '2026-05-19' });
+    store.upsertOptoolRow('Survey', { lhid: 'LH-Q3', currentDate: '2026-05-19', reportedMonth: '', targetYear: '2026', dateAcceptedDenrSmd: '' });
 
     // Land Valuation: 1 in Q4 via dateTransLbpAoc
     store.upsertOptoolRow('MOV', { lhid: 'LH-Q1', dateTransLbpAoc: '2026-10-12' });
@@ -3795,7 +3795,7 @@ test('Registered Data dynamically calculates per province from Google Sheet Colu
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
-test('Survey Accomplishment counts strictly and only when Column AC (Date Accepted by DENR-SMD) is not empty', async () => {
+test('Survey Accomplishment counts if the LHs have Reported Month is equal the year Target in Column AR', async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-survey-test-'));
   const store = new ConsolidatedStore(tempDir);
 
@@ -3808,48 +3808,53 @@ test('Survey Accomplishment counts strictly and only when Column AC (Date Accept
     { lhid: '806000002', province: 'Samar', carpable: '6.0000' }
   ];
 
-  // Setup Survey rows with varying Column AC (Date Accepted by DENR-SMD) states
+  // Setup Survey rows with varying Reported Month and Target Year (Column AR) states
   store.state.optool.Survey = [
-    // 1. Valid ISO date in Column AC -> Accompolished in Q1 (March)
+    // 1. Valid Reported Month matching Target Year -> Accomplished in Q1 (March)
     {
       lhid: '803000001',
       province: 'Leyte',
       provinceCode: 'LEY',
-      'Date Accepted by DENR-SMD\nDATE': '2026-03-15',
+      reportedMonth: 'March 2026',
+      targetYear: '2026',
       kindOfSurvey: 'By Admin'
     },
-    // 2. Valid US slash date in Column AC -> Accomplished in Q3 (July)
+    // 2. Valid Reported Month matching Target Year -> Accomplished in Q3 (July)
     {
       lhid: '806000001',
       province: 'Samar',
       provinceCode: 'SAM',
-      dateAcceptedDenrSmd: '7/20/2026',
-      fieldWorkStartDate: '2/10/2026' // Earlier date must NOT override Column AC
+      reportedMonth: 'July 2026',
+      targetYear: '2026',
+      fieldWorkStartDate: '2/10/2026'
     },
-    // 3. Empty Column AC (with earlier workflow dates filled) -> Must NOT be counted as accomplishment
+    // 3. Empty Reported Month -> Must NOT be counted as accomplishment
     {
       lhid: '803000002',
       province: 'Leyte',
       provinceCode: 'LEY',
-      dateAcceptedDenrSmd: '',
+      reportedMonth: '',
+      targetYear: '2026',
       fieldWorkStartDate: '2026-01-20',
       fieldWorkCompletionDate: '2026-02-15',
       kindOfSurvey: 'By Admin'
     },
-    // 4. Dash placeholder in Column AC -> Must NOT be counted
+    // 4. Reported Month year (2026) NOT equal to Target Year in Column AR (2027) -> Must NOT be counted
     {
       lhid: '803000003',
       province: 'Leyte',
       provinceCode: 'LEY',
-      'Date Accepted by DENR-SMD\nDATE': '-',
+      reportedMonth: 'March 2026',
+      targetYear: '2027',
       kindOfSurvey: 'By Admin'
     },
-    // 5. 'N/A' placeholder in Column AC -> Must NOT be counted
+    // 5. Dash placeholder in Reported Month -> Must NOT be counted
     {
       lhid: '806000002',
       province: 'Samar',
       provinceCode: 'SAM',
-      dateAcceptedDenrSmd: 'N/A',
+      reportedMonth: '-',
+      targetYear: '2026',
       currentDate: '2026-04-10'
     }
   ];
@@ -3860,12 +3865,12 @@ test('Survey Accomplishment counts strictly and only when Column AC (Date Accept
     land_survey: { targetCount: 10, targetAreaHas: 50.0 }
   };
 
-  const analytics = store.getAnalytics({ province: 'ALL' });
+  const analytics = store.getAnalytics({ province: 'ALL', milestoneYear: '2026' });
   const surveyMs = analytics.milestoneNepBreakdown.find((m) => m.key === 'land_survey');
   assert.ok(surveyMs, 'Land Survey milestone breakdown exists');
 
-  // Total count must be exactly 2 (only rows 1 & 2 where Column AC is not empty)
-  assert.equal(surveyMs.total.count, 2, 'Only 2 rows with non-empty Column AC are counted in Survey accomplishment');
+  // Total count must be exactly 2 (only rows 1 & 2 where Reported Month year equals Target Year)
+  assert.equal(surveyMs.total.count, 2, 'Only 2 rows with Reported Month equal to Target Year in Column AR are counted in Survey accomplishment');
   assert.equal(surveyMs.total.areaHas, 9.25, 'Total area is 5.5000 + 3.7500 = 9.2500 HAS');
 
   // Breakdown by quarter: Q1 = 1 (March), Q3 = 1 (July), Q2 = 0, Q4 = 0, undated = 0
@@ -3875,7 +3880,7 @@ test('Survey Accomplishment counts strictly and only when Column AC (Date Accept
   assert.equal(surveyMs.q3.count, 1, 'Row 2 is counted in Q3');
   assert.equal(surveyMs.q3.areaHas, 3.75);
   assert.equal(surveyMs.q4.count, 0, 'No accomplishment in Q4');
-  assert.equal(surveyMs.undated.count, 0, 'No undated accomplishment because non-AC rows are excluded');
+  assert.equal(surveyMs.undated.count, 0, 'No undated accomplishment because non-matching rows are excluded');
 
   // Provincial breakdown: Leyte = 1 (Row 1), Samar = 1 (Row 2), Other provinces = 0
   assert.equal(surveyMs.provinceBreakdown.LEY.count, 1, 'Leyte has exactly 1 accomplished survey');

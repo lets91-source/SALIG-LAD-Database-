@@ -388,30 +388,61 @@ function getDbParcelArea(dbRow) {
   );
 }
 
-export function isSurveyAccomplished(r) {
+export function isSurveyAccomplished(r, targetYearFilter = null) {
   if (!r) return false;
-  const colAcVal = String(
-    r.dateAcceptedDenrSmd ??
-    r['Date Accepted by DENR-SMD\nDATE'] ??
-    r['Date Accepted by DENR-SMD DATE'] ??
-    r['Date Accepted by DENR-SMD'] ??
-    r['Date accepted by DENR-SMD'] ??
-    r.date_accepted_denr_smd ??
-    r.dateAcceptedDenr ??
-    r.dateAccepted ??
-    r.AC ??
-    r['Column AC'] ??
-    (Array.isArray(r) ? r[28] : '') ??
+  const repMonth = String(
+    (Array.isArray(r) ? r[39] : '') ||
+    r.reportedMonth ||
+    r['Reported Month'] ||
+    r.monthReported ||
+    r['Month Reported'] ||
+    r.reportMonth ||
+    r['Report Month'] ||
+    r['REPORT MONTH'] ||
     ''
   ).trim();
 
-  return (
-    colAcVal !== '' &&
-    colAcVal !== '-' &&
-    colAcVal !== 'N/A' &&
-    colAcVal.toLowerCase() !== 'null' &&
-    colAcVal.toLowerCase() !== 'undefined'
-  );
+  if (
+    !repMonth ||
+    repMonth === '-' ||
+    repMonth === '—' ||
+    repMonth === 'N/A' ||
+    repMonth.toLowerCase() === 'null' ||
+    repMonth.toLowerCase() === 'undated' ||
+    repMonth.toLowerCase() === 'pending'
+  ) {
+    return false;
+  }
+
+  const targetYearRaw = String(
+    (Array.isArray(r) ? r[43] : '') ||
+    r.targetYear ||
+    r['Target Year'] ||
+    r['TARGET YEAR'] ||
+    r.year ||
+    r['Year'] ||
+    ''
+  ).trim();
+
+  const targetYearMatch = targetYearRaw.match(/\b(20\d{2})\b/);
+  const targetYear = targetYearMatch
+    ? Number(targetYearMatch[1])
+    : targetYearFilter && targetYearFilter !== 'ALL'
+    ? Number(targetYearFilter)
+    : null;
+
+  if (!targetYear) return false;
+
+  const parsed = parseQuarterAndYear(repMonth, targetYear);
+  if (!parsed || !parsed.year) return false;
+
+  // Accomplishment rule: count if the LHs have Reported Month is equal to the year Target in Column AR
+  if (parsed.year !== targetYear) return false;
+  if (targetYearFilter && targetYearFilter !== 'ALL' && targetYear !== Number(targetYearFilter)) {
+    return false;
+  }
+
+  return true;
 }
 
 const MILESTONE_ANALYTICS_SPECS = {
@@ -426,16 +457,14 @@ const MILESTONE_ANALYTICS_SPECS = {
     tabName: 'Survey',
     dateKeys: [
       'reportedMonth',
-      'dateAcceptedDenrSmd',
-      'Date Accepted by DENR-SMD\nDATE',
-      'Date Accepted by DENR-SMD DATE',
-      'Date Accepted by DENR-SMD',
-      'Date accepted by DENR-SMD',
-      'currentDate',
-      'aspDate'
+      'Reported Month',
+      'monthReported',
+      'Month Reported',
+      'reportMonth',
+      'Report Month'
     ],
-    // Accomplishment rule: count only if Column AC (Date Accepted by DENR-SMD) is not empty
-    include: (r) => isSurveyAccomplished(r),
+    // Accomplishment rule: count if the LHs have Reported Month is equal to the year Target in Column AR
+    include: (r, filterYear) => isSurveyAccomplished(r, filterYear),
     getCount: () => 1,
     getArea: (_r, db) => getDbParcelArea(db)
   },
@@ -2282,7 +2311,7 @@ export class ConsolidatedStore {
     const rows = DASHBOARD_MILESTONES.map((meta) => {
       const spec = MILESTONE_ANALYTICS_SPECS[meta.key];
       const sourceRows = this.getScopedOptoolTabRows(spec.tabName, activeScope, dbLhidMap).filter(
-        (r) => spec.include(r)
+        (r) => spec.include(r, filterYear)
       );
 
       const q = {
