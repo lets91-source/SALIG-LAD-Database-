@@ -5026,6 +5026,66 @@ test('Full CRUD operations for NEP targets across multiple years without overwri
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
+test('Milestone Accomplishment filtering strictly by Reported Month year matching Target Year', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-nep-accomp-filter-'));
+  const store = new ConsolidatedStore(tempDir);
+
+  // Setup Database records with areas
+  store.state.optool.Database = [
+    { lhid: '803000136', province: 'Eastern Samar', provinceCode: 'ESA', carpable: '2.0234', totalArea: '2.0234' },
+    { lhid: '803000135', province: 'Eastern Samar', provinceCode: 'ESA', carpable: '1.8817', totalArea: '1.8817' },
+    { lhid: '803000200', province: 'Leyte', provinceCode: 'LEY', carpable: '10.5000', totalArea: '10.5000' }
+  ];
+
+  // Setup CF(DOC) milestone records with Reported Month in different years
+  store.state.optool['CF(DOC)'] = [
+    { lhid: '803000136', province: 'Eastern Samar', provinceCode: 'ESA', reportedMonth: 'March 2026', targetYear: '2026' },
+    { lhid: '803000135', province: 'Eastern Samar', provinceCode: 'ESA', reportedMonth: 'March 2026', targetYear: '2026' },
+    { lhid: '803000200', province: 'Leyte', provinceCode: 'LEY', reportedMonth: 'January 2027', targetYear: '2027' }
+  ];
+
+  // Setup Targets for 2026 and 2027
+  store.updateNepProvinceList({ ESA: { lhs: 4, area: 19.7475, arbs: 0, year: 2026 } }, 'cf_doc', 2026);
+  store.updateNepProvinceList({ ESA: { lhs: 4, area: 19.7475, arbs: 0, year: 2027 }, LEY: { lhs: 1, area: 10.5, arbs: 0, year: 2027 } }, 'cf_doc', 2027);
+
+  // 1. When filtering for Target Year 2027:
+  // Only accomplishments whose Reported Month year is equal to 2027 should be counted!
+  const res2027 = store.computeMilestoneNepBreakdown({ activeScope: null, milestoneYear: '2027' });
+  const cf2027 = res2027.milestoneNepBreakdown.find((r) => r.key === 'cf_doc');
+  assert.equal(cf2027.q1.count, 1, '2027 Q1 count should only be 1 (LEY)');
+  assert.equal(cf2027.q1.areaHas, 10.5, '2027 Q1 area should be 10.5 HAS');
+  assert.equal(cf2027.provinceBreakdown.ESA.count, 0, '2027 ESA accomplishment count must be 0 (2026 excluded)');
+  assert.equal(cf2027.provinceBreakdown.ESA.areaHas, 0, '2027 ESA accomplishment area must be 0 (2026 excluded)');
+  assert.equal(cf2027.provinceBreakdown.ESA.hasAccomp, false, '2027 ESA hasAccomp should be false');
+  assert.equal(cf2027.provinceBreakdown.LEY.count, 1, '2027 LEY accomplishment count should be 1');
+  assert.equal(cf2027.provinceBreakdown.LEY.areaHas, 10.5, '2027 LEY accomplishment area should be 10.5');
+  assert.equal(cf2027.provinceBreakdown.LEY.hasAccomp, true, '2027 LEY hasAccomp should be true');
+
+  // 2. When filtering for Target Year 2026:
+  // Only accomplishments whose Reported Month year is equal to 2026 should be counted!
+  const res2026 = store.computeMilestoneNepBreakdown({ activeScope: null, milestoneYear: '2026' });
+  const cf2026 = res2026.milestoneNepBreakdown.find((r) => r.key === 'cf_doc');
+  assert.equal(cf2026.q1.count, 2, '2026 Q1 count should be 2 (ESA)');
+  assert.equal(cf2026.q1.areaHas, 3.9051, '2026 Q1 area should be 3.9051 HAS (2.0234 + 1.8817)');
+  assert.equal(cf2026.provinceBreakdown.ESA.count, 2, '2026 ESA count should be 2');
+  assert.equal(cf2026.provinceBreakdown.ESA.areaHas, 3.9051, '2026 ESA area should be 3.9051');
+  assert.equal(cf2026.provinceBreakdown.ESA.hasAccomp, true, '2026 ESA hasAccomp should be true');
+  assert.equal(cf2026.provinceBreakdown.LEY.count, 0, '2026 LEY count should be 0 (2027 excluded)');
+  assert.equal(cf2026.provinceBreakdown.LEY.hasAccomp, false, '2026 LEY hasAccomp should be false');
+
+  // 3. When filtering for ALL Years:
+  // All accomplishments across years should be included in their respective quarters
+  const resAll = store.computeMilestoneNepBreakdown({ activeScope: null, milestoneYear: 'ALL' });
+  const cfAll = resAll.milestoneNepBreakdown.find((r) => r.key === 'cf_doc');
+  assert.equal(cfAll.q1.count, 3, 'ALL Years Q1 count should be 3');
+  assert.equal(cfAll.q1.areaHas, 14.4051, 'ALL Years Q1 area should be 14.4051');
+  assert.equal(cfAll.provinceBreakdown.ESA.count, 2, 'ALL Years ESA count should be 2');
+  assert.equal(cfAll.provinceBreakdown.LEY.count, 1, 'ALL Years LEY count should be 1');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
+
 
 
 

@@ -1320,6 +1320,24 @@ function readProvincialMilestoneSupportLists_() {
             row['TARGET YEAR'] = row.targetYear;
           }
 
+          // Normalize Reported Month across all milestone support tabs
+          if (!row.reportedMonth) {
+            row.reportedMonth =
+              row['Reported Month'] ||
+              row['Month Reported'] ||
+              row['MONTH REPORTED'] ||
+              row['Report Month'] ||
+              row['REPORT MONTH'] ||
+              row['Report Month (Words)'] ||
+              row['REPORT MONTH (WORDS)'] ||
+              row.monthReported ||
+              row.reportMonth ||
+              '';
+          }
+          if (!row['Reported Month'] && row.reportedMonth) {
+            row['Reported Month'] = row.reportedMonth;
+          }
+
           // Normalize RegistrationDistribution area and date registered fields
           if (tabName === 'RegistrationDistribution') {
             if (!row.areaHas) {

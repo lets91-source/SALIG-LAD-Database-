@@ -289,7 +289,7 @@ function parseMetricNumber(val) {
 }
 
 /** Extract `{ year, month, quarter }` from ISO, MM/DD/YYYY, or "Month YYYY" strings. */
-function parseQuarterAndYear(raw) {
+function parseQuarterAndYear(raw, fallbackYear = null) {
   const str = String(raw ?? '').trim();
   if (!str) return null;
 
@@ -322,6 +322,16 @@ function parseQuarterAndYear(raw) {
     }
   }
 
+  // Check MonthName alone (e.g. "March", "November") with fallbackYear
+  const singleMonthMatch = str.match(/^([A-Za-z]+)\.?$/);
+  if (singleMonthMatch) {
+    const month = MONTH_NAME_INDEX[singleMonthMatch[1].toLowerCase()];
+    const year = Number(fallbackYear);
+    if (month && year >= 1900 && year <= 2100) {
+      return { year, month, quarter: Math.ceil(month / 3) };
+    }
+  }
+
   if (!/^\d+(?:\.\d+)?$/.test(str)) {
     const dt = new Date(str);
     if (!Number.isNaN(dt.getTime())) {
@@ -336,10 +346,34 @@ function parseQuarterAndYear(raw) {
   return null;
 }
 
-function resolveFirstDateQuarter(row, dateKeys) {
+const REPORTED_MONTH_KEYS = [
+  'reportedMonth',
+  'Reported Month',
+  'monthReported',
+  'Month Reported',
+  'reportMonth',
+  'Report Month',
+  'Report Month (Words)'
+];
+
+function resolveFirstDateQuarter(row, dateKeys, fallbackYear = null) {
+  const rowTargetYear =
+    Number(row?.targetYear || row?.['Target Year'] || row?.year || row?.['Year']) || fallbackYear;
+
+  // 1. Accomplishment quarter/month/year must be derived primarily from Reported Month
+  for (const key of REPORTED_MONTH_KEYS) {
+    if (row?.[key]) {
+      const parsed = parseQuarterAndYear(row[key], rowTargetYear);
+      if (parsed) return parsed;
+    }
+  }
+
+  // 2. Fall back to milestone completion date keys
   for (const key of dateKeys) {
-    const parsed = parseQuarterAndYear(row?.[key]);
-    if (parsed) return parsed;
+    if (!REPORTED_MONTH_KEYS.includes(key) && row?.[key]) {
+      const parsed = parseQuarterAndYear(row[key], rowTargetYear);
+      if (parsed) return parsed;
+    }
   }
   return null;
 }
@@ -391,12 +425,12 @@ const MILESTONE_ANALYTICS_SPECS = {
   land_survey: {
     tabName: 'Survey',
     dateKeys: [
+      'reportedMonth',
       'dateAcceptedDenrSmd',
       'Date Accepted by DENR-SMD\nDATE',
       'Date Accepted by DENR-SMD DATE',
       'Date Accepted by DENR-SMD',
       'Date accepted by DENR-SMD',
-      'reportedMonth',
       'currentDate',
       'aspDate'
     ],
@@ -414,7 +448,7 @@ const MILESTONE_ANALYTICS_SPECS = {
   },
   ep_cloa_registration: {
     tabName: 'RegistrationDistribution',
-    dateKeys: ['dateRegistered', 'monthReported'],
+    dateKeys: ['monthReported', 'reportedMonth', 'dateRegistered'],
     include: (r) => {
       const d = String(r?.dateRegistered || r?.['DATE REGISTERED'] || r?.['Date Registered'] || r?.date_registered || '').trim();
       return d !== '' && d !== '-' && d !== 'N/A' && d.toLowerCase() !== 'null';
@@ -424,14 +458,14 @@ const MILESTONE_ANALYTICS_SPECS = {
   },
   ep_cloa_distribution: {
     tabName: 'RegistrationDistribution',
-    dateKeys: ['dateOfDistribution', 'monthReported'],
+    dateKeys: ['monthReported', 'reportedMonth', 'dateOfDistribution'],
     include: (r) => String(r?.dateOfDistribution || '').trim() !== '',
     getCount: (r) => Math.max(1, Number.parseInt(r?.noOfTitles, 10) || 1),
     getArea: (r, db) => parseMetricNumber(r?.areaHas) || getDbParcelArea(db)
   },
   installation: {
     tabName: 'Installation',
-    dateKeys: ['dateOfInstallation', 'monthReported', 'dateDistributed', 'dateRegistered'],
+    dateKeys: ['monthReported', 'reportedMonth', 'dateOfInstallation', 'dateDistributed', 'dateRegistered'],
     include: (r) => !['no', 'false', '0'].includes(String(r?.installedStatus || '').trim().toLowerCase()),
     getCount: (r) => Math.max(1, Number.parseInt(r?.noOfTitles, 10) || 1),
     getArea: (r, db) =>
@@ -439,7 +473,7 @@ const MILESTONE_ANALYTICS_SPECS = {
   },
   leasehold: {
     tabName: 'Leasehold',
-    dateKeys: ['dateContractRegistered', 'datePlrRegistered', 'reportMonth'],
+    dateKeys: ['reportMonth', 'reportedMonth', 'monthReported', 'dateContractRegistered', 'datePlrRegistered'],
     include: () => true,
     getCount: () => 1,
     getArea: (r) => parseMetricNumber(r?.areaTenanted) || parseMetricNumber(r?.areaPerTitle) || 0
@@ -2299,7 +2333,7 @@ export class ConsolidatedStore {
       }
 
       for (const r of sourceRows) {
-        const parsed = resolveFirstDateQuarter(r, spec.dateKeys);
+        const parsed = resolveFirstDateQuarter(r, spec.dateKeys, filterYear);
         if (parsed?.year) yearSet.add(parsed.year);
         if (filterYear && parsed?.year !== filterYear) continue;
 

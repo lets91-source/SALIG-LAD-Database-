@@ -834,7 +834,11 @@ export function createAppServer(dataDir, options = {}) {
             ]);
           } catch (_) {}
         }
-        const analytics = computeScopedAnalytics(store, query, scopeCode);
+        const bootstrapFilters = {
+          milestoneYear: query.milestoneYear || '2027',
+          ...query
+        };
+        const analytics = computeScopedAnalytics(store, bootstrapFilters, scopeCode);
         const scopedRegistry = scopeCode
           ? REGIONAL_REGISTRY.filter((n) => n.code === scopeCode)
           : REGIONAL_REGISTRY;
@@ -2077,7 +2081,11 @@ export function createAppServer(dataDir, options = {}) {
       }
 
       if (req.method === 'GET' && pathname === '/api/export/xlsx') {
-        const analytics = computeScopedAnalytics(store, query, scopeCode);
+        const bootstrapFilters = {
+          milestoneYear: query.milestoneYear || '2027',
+          ...query
+        };
+        const analytics = computeScopedAnalytics(store, bootstrapFilters, scopeCode);
         const scopedState = store.getScopedState(scopeCode);
         const buffer = await buildConsolidatedWorkbookBuffer(scopedState, analytics);
         res.writeHead(200, {
