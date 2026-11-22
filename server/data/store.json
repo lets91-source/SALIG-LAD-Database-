@@ -363172,58 +363172,42 @@
     "cf_doc": {
       "targetCount": 195,
       "targetAreaHas": 1594.3637,
-      "sem1TargetCount": 97.5,
+      "sem1TargetCount": 98,
+      "sem2TargetCount": 97,
       "sem1TargetAreaHas": 797.1819,
-      "sem2TargetCount": 97.5,
       "sem2TargetAreaHas": 797.1818
     },
     "land_survey": {
       "targetCount": 0,
       "targetAreaHas": 1212.6083,
       "sem1TargetCount": 0,
-      "sem1TargetAreaHas": 606.3042,
       "sem2TargetCount": 0,
+      "sem1TargetAreaHas": 606.3042,
       "sem2TargetAreaHas": 606.3041
     },
     "land_valuation": {
       "targetCount": 119,
       "targetAreaHas": 939.4987,
-      "sem1TargetCount": 59.5,
-      "sem1TargetAreaHas": 469.7493,
-      "sem2TargetCount": 59.5,
-      "sem2TargetAreaHas": 469.7494
+      "sem1TargetCount": 60,
+      "sem2TargetCount": 59,
+      "sem1TargetAreaHas": 469.7494,
+      "sem2TargetAreaHas": 469.7493
     },
     "ep_cloa_registration": {
       "targetCount": 0,
       "targetAreaHas": 881.6387,
       "sem1TargetCount": 0,
-      "sem1TargetAreaHas": 440.8193,
       "sem2TargetCount": 0,
-      "sem2TargetAreaHas": 440.8194
+      "sem1TargetAreaHas": 440.8194,
+      "sem2TargetAreaHas": 440.8193
     },
     "ep_cloa_distribution": {
       "targetCount": 0,
       "targetAreaHas": 799.1908,
       "sem1TargetCount": 0,
+      "sem2TargetCount": 0,
       "sem1TargetAreaHas": 399.5954,
-      "sem2TargetCount": 0,
       "sem2TargetAreaHas": 399.5954
-    },
-    "installation": {
-      "targetCount": 0,
-      "targetAreaHas": 0,
-      "sem1TargetCount": 0,
-      "sem1TargetAreaHas": 0,
-      "sem2TargetCount": 0,
-      "sem2TargetAreaHas": 0
-    },
-    "leasehold": {
-      "targetCount": 0,
-      "targetAreaHas": 1688,
-      "sem1TargetCount": 0,
-      "sem1TargetAreaHas": 844,
-      "sem2TargetCount": 0,
-      "sem2TargetAreaHas": 844
     }
   },
   "nepProvinceList": {
@@ -363344,10 +363328,10 @@
         "arbs": 0,
         "year": 2027,
         "sem1Lhs": 28,
-        "sem1Area": 247.6615,
+        "sem1Area": 247.6614,
         "sem1Arbs": 0,
         "sem2Lhs": 27,
-        "sem2Area": 247.6614,
+        "sem2Area": 247.6615,
         "sem2Arbs": 0
       },
       "SAM": {
@@ -363356,10 +363340,10 @@
         "arbs": 0,
         "year": 2027,
         "sem1Lhs": 11,
-        "sem1Area": 109.3174,
+        "sem1Area": 109.3173,
         "sem1Arbs": 0,
         "sem2Lhs": 11,
-        "sem2Area": 109.3173,
+        "sem2Area": 109.3174,
         "sem2Arbs": 0
       },
       "SLE": {
@@ -363368,10 +363352,10 @@
         "arbs": 0,
         "year": 2027,
         "sem1Lhs": 11,
-        "sem1Area": 10.3735,
+        "sem1Area": 10.3734,
         "sem1Arbs": 0,
         "sem2Lhs": 10,
-        "sem2Area": 10.3734,
+        "sem2Area": 10.3735,
         "sem2Arbs": 0
       }
     },
@@ -363492,10 +363476,10 @@
         "arbs": 0,
         "year": 2027,
         "sem1Lhs": 12,
-        "sem1Area": 100.7417,
+        "sem1Area": 100.7416,
         "sem1Arbs": 0,
         "sem2Lhs": 12,
-        "sem2Area": 100.7416,
+        "sem2Area": 100.7417,
         "sem2Arbs": 0
       },
       "SAM": {
@@ -363566,10 +363550,10 @@
         "arbs": 20,
         "year": 2027,
         "sem1Lhs": 0,
-        "sem1Area": 100.7417,
+        "sem1Area": 100.7416,
         "sem1Arbs": 10,
         "sem2Lhs": 0,
-        "sem2Area": 100.7416,
+        "sem2Area": 100.7417,
         "sem2Arbs": 10
       },
       "SAM": {
@@ -363669,154 +363653,6 @@
         "sem2Lhs": 0,
         "sem2Area": 16.0775,
         "sem2Arbs": 6
-      }
-    },
-    "installation": {
-      "BIL": {
-        "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 0,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 0,
-        "sem2Arbs": 0
-      },
-      "ESA": {
-        "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 0,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 0,
-        "sem2Arbs": 0
-      },
-      "LEY": {
-        "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 0,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 0,
-        "sem2Arbs": 0
-      },
-      "NSA": {
-        "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 0,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 0,
-        "sem2Arbs": 0
-      },
-      "SAM": {
-        "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 0,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 0,
-        "sem2Arbs": 0
-      },
-      "SLE": {
-        "lhs": 0,
-        "area": 0,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 0,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 0,
-        "sem2Arbs": 0
-      }
-    },
-    "leasehold": {
-      "BIL": {
-        "lhs": 0,
-        "area": 100,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 50,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 50,
-        "sem2Arbs": 0
-      },
-      "ESA": {
-        "lhs": 0,
-        "area": 330,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 165,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 165,
-        "sem2Arbs": 0
-      },
-      "LEY": {
-        "lhs": 0,
-        "area": 558,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 279,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 279,
-        "sem2Arbs": 0
-      },
-      "NSA": {
-        "lhs": 0,
-        "area": 150,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 75,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 75,
-        "sem2Arbs": 0
-      },
-      "SAM": {
-        "lhs": 0,
-        "area": 300,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 150,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 150,
-        "sem2Arbs": 0
-      },
-      "SLE": {
-        "lhs": 0,
-        "area": 250,
-        "arbs": 0,
-        "year": 2026,
-        "sem1Lhs": 0,
-        "sem1Area": 125,
-        "sem1Arbs": 0,
-        "sem2Lhs": 0,
-        "sem2Area": 125,
-        "sem2Arbs": 0
       }
     }
   },
@@ -419853,37 +419689,73 @@
           "lhs": 0,
           "area": 0,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 0,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 0,
+          "sem2Arbs": 0
         },
         "ESA": {
           "lhs": 0,
           "area": 23.5124,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 11.7562,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 11.7562,
+          "sem2Arbs": 0
         },
         "LEY": {
           "lhs": 0,
           "area": 140.6996,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 70.3498,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 70.3498,
+          "sem2Arbs": 0
         },
         "NSA": {
           "lhs": 0,
           "area": 121.8952,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 60.9476,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 60.9476,
+          "sem2Arbs": 0
         },
         "SAM": {
           "lhs": 0,
           "area": 151.8667,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 75.9334,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 75.9333,
+          "sem2Arbs": 0
         },
         "SLE": {
           "lhs": 0,
           "area": 21.2352,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 10.6176,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 10.6176,
+          "sem2Arbs": 0
         }
       },
       "land_survey": {
@@ -419891,37 +419763,73 @@
           "lhs": 0,
           "area": 0,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 0,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 0,
+          "sem2Arbs": 0
         },
         "ESA": {
           "lhs": 0,
-          "area": 9.2577,
+          "area": 23.5124,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 11.7562,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 11.7562,
+          "sem2Arbs": 0
         },
         "LEY": {
           "lhs": 0,
-          "area": 606.2694,
+          "area": 1056.74,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 528.37,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 528.37,
+          "sem2Arbs": 0
         },
         "NSA": {
           "lhs": 0,
-          "area": 476.0673,
+          "area": 358.5037,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 179.2519,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 179.2518,
+          "sem2Arbs": 0
         },
         "SAM": {
           "lhs": 0,
-          "area": 119.5397,
+          "area": 165.3974,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 82.6987,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 82.6987,
+          "sem2Arbs": 0
         },
         "SLE": {
           "lhs": 0,
-          "area": 1.4742,
+          "area": 6.6628,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 3.3314,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 3.3314,
+          "sem2Arbs": 0
         }
       },
       "land_valuation": {
@@ -419929,37 +419837,73 @@
           "lhs": 0,
           "area": 0,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 0,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 0,
+          "sem2Arbs": 0
         },
         "ESA": {
-          "lhs": 2,
-          "area": 9.2577,
+          "lhs": 1,
+          "area": 6.7469,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 1,
+          "sem1Area": 3.3735,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 3.3734,
+          "sem2Arbs": 0
         },
         "LEY": {
-          "lhs": 75,
-          "area": 588.2565,
+          "lhs": 106,
+          "area": 713.69,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 53,
+          "sem1Area": 356.845,
+          "sem1Arbs": 0,
+          "sem2Lhs": 53,
+          "sem2Area": 356.845,
+          "sem2Arbs": 0
         },
         "NSA": {
-          "lhs": 24,
-          "area": 201.4833,
+          "lhs": 26,
+          "area": 244.4584,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 13,
+          "sem1Area": 122.2292,
+          "sem1Arbs": 0,
+          "sem2Lhs": 13,
+          "sem2Area": 122.2292,
+          "sem2Arbs": 0
         },
         "SAM": {
           "lhs": 13,
-          "area": 127.928,
+          "area": 165.1951,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 7,
+          "sem1Area": 82.5976,
+          "sem1Arbs": 0,
+          "sem2Lhs": 6,
+          "sem2Area": 82.5975,
+          "sem2Arbs": 0
         },
         "SLE": {
           "lhs": 5,
-          "area": 12.5732,
+          "area": 14.3747,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 3,
+          "sem1Area": 7.1874,
+          "sem1Arbs": 0,
+          "sem2Lhs": 2,
+          "sem2Area": 7.1873,
+          "sem2Arbs": 0
         }
       },
       "ep_cloa_registration": {
@@ -419967,37 +419911,73 @@
           "lhs": 0,
           "area": 0,
           "arbs": 0,
-          "year": 2026
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 0,
+          "sem1Arbs": 0,
+          "sem2Lhs": 0,
+          "sem2Area": 0,
+          "sem2Arbs": 0
         },
         "ESA": {
           "lhs": 0,
-          "area": 9.2577,
-          "arbs": 3,
-          "year": 2026
+          "area": 23.5124,
+          "arbs": 9,
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 11.7562,
+          "sem1Arbs": 5,
+          "sem2Lhs": 0,
+          "sem2Area": 11.7562,
+          "sem2Arbs": 4
         },
         "LEY": {
           "lhs": 0,
-          "area": 507.7889,
-          "arbs": 204,
-          "year": 2026
+          "area": 1804.74,
+          "arbs": 301,
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 902.37,
+          "sem1Arbs": 151,
+          "sem2Lhs": 0,
+          "sem2Area": 902.37,
+          "sem2Arbs": 150
         },
         "NSA": {
           "lhs": 0,
-          "area": 201.4833,
-          "arbs": 20,
-          "year": 2026
+          "area": 575.5516,
+          "arbs": 175,
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 287.7758,
+          "sem1Arbs": 88,
+          "sem2Lhs": 0,
+          "sem2Area": 287.7758,
+          "sem2Arbs": 87
         },
         "SAM": {
           "lhs": 0,
-          "area": 130.9538,
-          "arbs": 77,
-          "year": 2026
+          "area": 174.0747,
+          "arbs": 50,
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 87.0374,
+          "sem1Arbs": 25,
+          "sem2Lhs": 0,
+          "sem2Area": 87.0373,
+          "sem2Arbs": 25
         },
         "SLE": {
           "lhs": 0,
-          "area": 32.155,
-          "arbs": 12,
-          "year": 2026
+          "area": 35.2902,
+          "arbs": 30,
+          "year": 2026,
+          "sem1Lhs": 0,
+          "sem1Area": 17.6451,
+          "sem1Arbs": 15,
+          "sem2Lhs": 0,
+          "sem2Area": 17.6451,
+          "sem2Arbs": 15
         }
       },
       "ep_cloa_distribution": {
@@ -420005,44 +419985,6 @@
           "lhs": 0,
           "area": 0,
           "arbs": 0,
-          "year": 2026
-        },
-        "ESA": {
-          "lhs": 0,
-          "area": 9.2577,
-          "arbs": 3,
-          "year": 2026
-        },
-        "LEY": {
-          "lhs": 0,
-          "area": 507.7889,
-          "arbs": 204,
-          "year": 2026
-        },
-        "NSA": {
-          "lhs": 0,
-          "area": 119.0354,
-          "arbs": 78,
-          "year": 2026
-        },
-        "SAM": {
-          "lhs": 0,
-          "area": 130.9538,
-          "arbs": 77,
-          "year": 2026
-        },
-        "SLE": {
-          "lhs": 0,
-          "area": 32.155,
-          "arbs": 12,
-          "year": 2026
-        }
-      },
-      "installation": {
-        "BIL": {
-          "lhs": 0,
-          "area": 0,
-          "arbs": 0,
           "year": 2026,
           "sem1Lhs": 0,
           "sem1Area": 0,
@@ -420053,63 +419995,63 @@
         },
         "ESA": {
           "lhs": 0,
-          "area": 0,
-          "arbs": 0,
+          "area": 23.512,
+          "arbs": 9,
           "year": 2026,
           "sem1Lhs": 0,
-          "sem1Area": 0,
-          "sem1Arbs": 0,
+          "sem1Area": 11.756,
+          "sem1Arbs": 5,
           "sem2Lhs": 0,
-          "sem2Area": 0,
-          "sem2Arbs": 0
+          "sem2Area": 11.756,
+          "sem2Arbs": 4
         },
         "LEY": {
           "lhs": 0,
-          "area": 0,
-          "arbs": 0,
+          "area": 1804.74,
+          "arbs": 120,
           "year": 2026,
           "sem1Lhs": 0,
-          "sem1Area": 0,
-          "sem1Arbs": 0,
+          "sem1Area": 902.37,
+          "sem1Arbs": 60,
           "sem2Lhs": 0,
-          "sem2Area": 0,
-          "sem2Arbs": 0
+          "sem2Area": 902.37,
+          "sem2Arbs": 60
         },
         "NSA": {
           "lhs": 0,
-          "area": 0,
-          "arbs": 0,
+          "area": 575.552,
+          "arbs": 175,
           "year": 2026,
           "sem1Lhs": 0,
-          "sem1Area": 0,
-          "sem1Arbs": 0,
+          "sem1Area": 287.776,
+          "sem1Arbs": 88,
           "sem2Lhs": 0,
-          "sem2Area": 0,
-          "sem2Arbs": 0
+          "sem2Area": 287.776,
+          "sem2Arbs": 87
         },
         "SAM": {
           "lhs": 0,
-          "area": 0,
-          "arbs": 0,
+          "area": 174.075,
+          "arbs": 50,
           "year": 2026,
           "sem1Lhs": 0,
-          "sem1Area": 0,
-          "sem1Arbs": 0,
+          "sem1Area": 87.0375,
+          "sem1Arbs": 25,
           "sem2Lhs": 0,
-          "sem2Area": 0,
-          "sem2Arbs": 0
+          "sem2Area": 87.0375,
+          "sem2Arbs": 25
         },
         "SLE": {
           "lhs": 0,
-          "area": 0,
-          "arbs": 0,
+          "area": 55.702,
+          "arbs": 36,
           "year": 2026,
           "sem1Lhs": 0,
-          "sem1Area": 0,
-          "sem1Arbs": 0,
+          "sem1Area": 27.851,
+          "sem1Arbs": 18,
           "sem2Lhs": 0,
-          "sem2Area": 0,
-          "sem2Arbs": 0
+          "sem2Area": 27.851,
+          "sem2Arbs": 18
         }
       },
       "leasehold": {
@@ -420231,10 +420173,10 @@
           "arbs": 0,
           "year": 2027,
           "sem1Lhs": 28,
-          "sem1Area": 247.6615,
+          "sem1Area": 247.6614,
           "sem1Arbs": 0,
           "sem2Lhs": 27,
-          "sem2Area": 247.6614,
+          "sem2Area": 247.6615,
           "sem2Arbs": 0
         },
         "SAM": {
@@ -420243,10 +420185,10 @@
           "arbs": 0,
           "year": 2027,
           "sem1Lhs": 11,
-          "sem1Area": 109.3174,
+          "sem1Area": 109.3173,
           "sem1Arbs": 0,
           "sem2Lhs": 11,
-          "sem2Area": 109.3173,
+          "sem2Area": 109.3174,
           "sem2Arbs": 0
         },
         "SLE": {
@@ -420255,10 +420197,10 @@
           "arbs": 0,
           "year": 2027,
           "sem1Lhs": 11,
-          "sem1Area": 10.3735,
+          "sem1Area": 10.3734,
           "sem1Arbs": 0,
           "sem2Lhs": 10,
-          "sem2Area": 10.3734,
+          "sem2Area": 10.3735,
           "sem2Arbs": 0
         }
       },
@@ -420379,10 +420321,10 @@
           "arbs": 0,
           "year": 2027,
           "sem1Lhs": 12,
-          "sem1Area": 100.7417,
+          "sem1Area": 100.7416,
           "sem1Arbs": 0,
           "sem2Lhs": 12,
-          "sem2Area": 100.7416,
+          "sem2Area": 100.7417,
           "sem2Arbs": 0
         },
         "SAM": {
@@ -420453,10 +420395,10 @@
           "arbs": 20,
           "year": 2027,
           "sem1Lhs": 0,
-          "sem1Area": 100.7417,
+          "sem1Area": 100.7416,
           "sem1Arbs": 10,
           "sem2Lhs": 0,
-          "sem2Area": 100.7416,
+          "sem2Area": 100.7417,
           "sem2Arbs": 10
         },
         "SAM": {
@@ -420638,6 +420580,64 @@
   },
   "nepTargetsByYear": {
     "2026": {
+      "cf_doc": {
+        "targetCount": 0,
+        "targetAreaHas": 459.2091,
+        "sem1TargetCount": 0,
+        "sem2TargetCount": 0,
+        "sem1TargetAreaHas": 229.6046,
+        "sem2TargetAreaHas": 229.6045
+      },
+      "land_survey": {
+        "targetCount": 0,
+        "targetAreaHas": 1610.8163,
+        "sem1TargetCount": 0,
+        "sem2TargetCount": 0,
+        "sem1TargetAreaHas": 805.4082,
+        "sem2TargetAreaHas": 805.4081
+      },
+      "land_valuation": {
+        "targetCount": 151,
+        "targetAreaHas": 1144.4582,
+        "sem1TargetCount": 76,
+        "sem2TargetCount": 75,
+        "sem1TargetAreaHas": 572.2291,
+        "sem2TargetAreaHas": 572.2291
+      },
+      "ep_cloa_registration": {
+        "targetCount": 0,
+        "targetAreaHas": 2613.1689,
+        "sem1TargetCount": 0,
+        "sem2TargetCount": 0,
+        "sem1TargetAreaHas": 1306.5845,
+        "sem2TargetAreaHas": 1306.5844
+      },
+      "ep_cloa_distribution": {
+        "targetCount": 0,
+        "targetAreaHas": 2633.581,
+        "sem1TargetCount": 0,
+        "sem2TargetCount": 0,
+        "sem1TargetAreaHas": 1316.7905,
+        "sem2TargetAreaHas": 1316.7905
+      },
+      "leasehold": {
+        "targetCount": 0,
+        "targetAreaHas": 1688,
+        "sem1TargetCount": 0,
+        "sem2TargetCount": 0,
+        "sem1TargetAreaHas": 844,
+        "sem2TargetAreaHas": 844
+      }
+    },
+    "2027": {
+      "cf_doc": {
+        "targetCount": 195,
+        "targetAreaHas": 1594.3637,
+        "sem1TargetCount": 98,
+        "sem2TargetCount": 97,
+        "sem1TargetAreaHas": 797.1819,
+        "sem2TargetAreaHas": 797.1818
+      },
       "land_survey": {
         "targetCount": 0,
         "targetAreaHas": 1212.6083,
@@ -420670,7 +420670,6 @@
         "sem1TargetAreaHas": 399.5954,
         "sem2TargetAreaHas": 399.5954
       }
-    },
-    "2027": {}
+    }
   }
 }

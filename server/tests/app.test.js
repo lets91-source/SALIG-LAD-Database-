@@ -5085,6 +5085,59 @@ test('Milestone Accomplishment filtering strictly by Reported Month year matchin
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
+test('Multi-year Land Survey NEP targets: 2026 is 1610.8163 HAS and 2027 is 1212.6083 HAS without cross-year collision', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'salig-survey-nep-test-'));
+  const store = new ConsolidatedStore(tempDir);
+
+  // 1. Setup multi-year Land Survey targets from Regional Hub Google Sheet
+  const survey2026 = {
+    BIL: { lhs: 0, area: 0, arbs: 0, year: 2026 },
+    ESA: { lhs: 0, area: 23.5124, arbs: 0, year: 2026 },
+    LEY: { lhs: 0, area: 1056.7400, arbs: 0, year: 2026 },
+    NSA: { lhs: 0, area: 358.5037, arbs: 0, year: 2026 },
+    SAM: { lhs: 0, area: 165.3974, arbs: 0, year: 2026 },
+    SLE: { lhs: 0, area: 6.6628, arbs: 0, year: 2026 }
+  };
+  const survey2027 = {
+    BIL: { lhs: 0, area: 0, arbs: 0, year: 2027 },
+    ESA: { lhs: 0, area: 9.2577, arbs: 0, year: 2027 },
+    LEY: { lhs: 0, area: 606.2694, arbs: 0, year: 2027 },
+    NSA: { lhs: 0, area: 476.0673, arbs: 0, year: 2027 },
+    SAM: { lhs: 0, area: 119.5397, arbs: 0, year: 2027 },
+    SLE: { lhs: 0, area: 1.4742, arbs: 0, year: 2027 }
+  };
+
+  store.updateNepProvinceList(survey2026, 'land_survey', 2026);
+  store.updateNepProvinceList(survey2027, 'land_survey', 2027);
+
+  // 2. Verify targets are stored independently per year
+  assert.equal(store.state.nepTargetsByYear[2026].land_survey.targetAreaHas, 1610.8163, '2026 Survey target area is 1,610.8163 HAS');
+  assert.equal(store.state.nepTargetsByYear[2027].land_survey.targetAreaHas, 1212.6083, '2027 Survey target area is 1,212.6083 HAS');
+
+  // 3. Verify analytics compute separate target totals for each year
+  const a2026 = store.computeAnalytics({ milestoneYear: '2026' });
+  const a2027 = store.computeAnalytics({ milestoneYear: '2027' });
+
+  const surveyRow2026 = a2026.milestoneNepBreakdown.find((r) => r.key === 'land_survey');
+  const surveyRow2027 = a2027.milestoneNepBreakdown.find((r) => r.key === 'land_survey');
+
+  assert.equal(surveyRow2026.nepTargetAreaHas, 1610.8163, 'Analytics 2026 Land Survey target is 1,610.8163 HAS');
+  assert.equal(surveyRow2026.provinceBreakdown.LEY.targetAreaHas, 1056.7400, '2026 Leyte Land Survey target is 1,056.74 HAS');
+  assert.equal(surveyRow2026.provinceBreakdown.NSA.targetAreaHas, 358.5037, '2026 Northern Samar Land Survey target is 358.5037 HAS');
+
+  assert.equal(surveyRow2027.nepTargetAreaHas, 1212.6083, 'Analytics 2027 Land Survey target is 1,212.6083 HAS');
+  assert.equal(surveyRow2027.provinceBreakdown.LEY.targetAreaHas, 606.2694, '2027 Leyte Land Survey target is 606.2694 HAS');
+  assert.equal(surveyRow2027.provinceBreakdown.NSA.targetAreaHas, 476.0673, '2027 Northern Samar Land Survey target is 476.0673 HAS');
+
+  // 4. Verify persist and reload preserves both 2026 and 2027 intact
+  store.save();
+  const reloadedStore = new ConsolidatedStore(tempDir);
+  assert.equal(reloadedStore.state.nepTargetsByYear[2026].land_survey.targetAreaHas, 1610.8163, 'Reloaded 2026 Survey target is 1,610.8163 HAS');
+  assert.equal(reloadedStore.state.nepTargetsByYear[2027].land_survey.targetAreaHas, 1212.6083, 'Reloaded 2027 Survey target is 1,212.6083 HAS');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
 
 
 
