@@ -2290,7 +2290,7 @@ function showModal(title, bodyHtml) {
   document.getElementById('modal-backdrop').classList.remove('hidden');
 }
 
-function showFormModal(title, { formId, contentHtml, bodyHtml, cancelId, submitLabel }) {
+function showFormModal(title, { formId, contentHtml, bodyHtml, cancelId, submitLabel, extraActionsHtml }) {
   const modalContent = contentHtml !== undefined ? contentHtml : bodyHtml !== undefined ? bodyHtml : '';
   showModal(
     title,
@@ -2298,6 +2298,7 @@ function showFormModal(title, { formId, contentHtml, bodyHtml, cancelId, submitL
       <form id="${esc(formId)}" class="modal-form">
         <div class="modal-scroll">${modalContent}</div>
         <div class="form-actions">
+          ${extraActionsHtml || ''}
           <button type="button" class="btn btn-secondary" id="${esc(cancelId)}">Cancel</button>
           <button type="submit" class="btn btn-primary">${esc(submitLabel)}</button>
         </div>
@@ -3642,6 +3643,12 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
     formId: 'nep-sheet-form',
     submitLabel: mode === 'add' ? '+ Add / Save NEP Targets' : 'Save & Push to Hub NEP Sheet',
     cancelId: 'nep-sheet-cancel',
+    extraActionsHtml: `
+      <button type="button" class="btn btn-secondary" id="btn-clear-nep-sheet" style="color:#dc2626;border-color:#fca5a5;margin-right:auto;font-weight:600;display:flex;align-items:center;gap:6px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        <span>Clear Figures</span>
+      </button>
+    `,
     contentHtml: `
       <p style="margin:0 0 10px;font-size:12.5px;color:var(--text-muted)">
         ${mode === 'add' ? 'Add official NEP targets' : 'Enter or update NEP targets'} (<strong>Total NEP</strong>, <strong>1st Sem Target</strong>, automatic <strong>2nd Sem Target</strong> (<code>NEP − 1st Sem</code>) for <strong>LHS</strong>, <strong>AREA</strong>, and <strong>ARBs</strong>, plus <strong>Target Year</strong>) stored in the Regional Hub Google Sheet.
@@ -3666,7 +3673,7 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
           </span>
         </div>
 
-        <!-- Batch Year Updater & Column Toggles -->
+        <!-- Batch Year Updater & Column Toggles & Clear Button -->
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Apply Year:</span>
@@ -3690,6 +3697,11 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
             <button type="button" class="btn btn-xs nep-modal-col-btn btn-primary" data-modal-col="area" title="Click to hide/show AREA">✓ AREA</button>
             <button type="button" class="btn btn-xs nep-modal-col-btn btn-primary" data-modal-col="arbs" title="Click to hide/show ARBs">✓ ARBs</button>
           </div>
+
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-nep-sheet-top" title="Clear all figures in this form to 0" style="height:34px;color:#dc2626;border-color:#fca5a5;font-weight:600;display:flex;align-items:center;gap:5px;">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+            <span>Clear</span>
+          </button>
         </div>
       </div>
 
@@ -3972,6 +3984,28 @@ function openNepSheetModal(targetProv = null, initialMilestone = null, mode = 'a
     }, 60);
   }
 
+  const handleClearFigures = () => {
+    const form = document.getElementById('nep-sheet-form');
+    if (!form) return;
+    for (const n of provNodes) {
+      if (form.elements[`lhs_${n.code}`]) form.elements[`lhs_${n.code}`].value = '0';
+      if (form.elements[`s1_lhs_${n.code}`]) form.elements[`s1_lhs_${n.code}`].value = '0';
+      if (form.elements[`s2_lhs_${n.code}`]) form.elements[`s2_lhs_${n.code}`].value = '0';
+      if (form.elements[`area_${n.code}`]) form.elements[`area_${n.code}`].value = '0.0000';
+      if (form.elements[`s1_area_${n.code}`]) form.elements[`s1_area_${n.code}`].value = '0.0000';
+      if (form.elements[`s2_area_${n.code}`]) form.elements[`s2_area_${n.code}`].value = '0.0000';
+      if (form.elements[`arbs_${n.code}`]) form.elements[`arbs_${n.code}`].value = '0';
+      if (form.elements[`s1_arbs_${n.code}`]) form.elements[`s1_arbs_${n.code}`].value = '0';
+      if (form.elements[`s2_arbs_${n.code}`]) form.elements[`s2_arbs_${n.code}`].value = '0';
+    }
+    updateModalTotals();
+    localData[currentMilestone] = readCurrentFormInputs();
+    toast(`Cleared target figures for ${milestoneTitle}`);
+  };
+
+  document.getElementById('btn-clear-nep-sheet')?.addEventListener('click', handleClearFigures);
+  document.getElementById('btn-clear-nep-sheet-top')?.addEventListener('click', handleClearFigures);
+
   document.getElementById('nep-sheet-cancel')?.addEventListener('click', closeModal);
   document.getElementById('nep-sheet-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -4134,6 +4168,12 @@ function openNepTargetsModal() {
     formId: 'nep-targets-form',
     submitLabel: 'Save Regional NEP Targets',
     cancelId: 'nep-cancel',
+    extraActionsHtml: `
+      <button type="button" class="btn btn-secondary" id="btn-clear-nep-targets" style="color:#dc2626;border-color:#fca5a5;margin-right:auto;font-weight:600;display:flex;align-items:center;gap:6px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        <span>Clear Figures</span>
+      </button>
+    `,
     bodyHtml: `
       <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;gap:8px;flex-wrap:wrap">
         <div>
@@ -4244,6 +4284,20 @@ function openNepTargetsModal() {
     } catch (err) {
       toast(err.message, true);
     }
+  });
+
+  document.getElementById('btn-clear-nep-targets')?.addEventListener('click', () => {
+    const form = document.getElementById('nep-targets-form');
+    if (!form) return;
+    for (const m of milestones) {
+      if (form.elements[`c_${m.key}`]) form.elements[`c_${m.key}`].value = '0';
+      if (form.elements[`s1c_${m.key}`]) form.elements[`s1c_${m.key}`].value = '0';
+      if (form.elements[`s2c_${m.key}`]) form.elements[`s2c_${m.key}`].value = '0';
+      if (form.elements[`a_${m.key}`]) form.elements[`a_${m.key}`].value = '0.0000';
+      if (form.elements[`s1a_${m.key}`]) form.elements[`s1a_${m.key}`].value = '0.0000';
+      if (form.elements[`s2a_${m.key}`]) form.elements[`s2a_${m.key}`].value = '0.0000';
+    }
+    toast('Cleared Regional NEP Targets');
   });
 
   document.getElementById('nep-cancel')?.addEventListener('click', closeModal);
