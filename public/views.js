@@ -5421,12 +5421,15 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       <span class="badge ${esc(r.stageBadge)}" style="font-weight:700;">${esc(r.stage)}</span>
                     </td>
                     <td class="right" style="white-space:nowrap;">
-                      ${r.row && (r.row.pdfFile || r.row.transmittalSrPdf) ? `<a href="${esc(normalizePdfUrl(r.row.pdfFile || r.row.transmittalSrPdf))}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="${esc(r.row.pdfFile || r.row.transmittalSrPdf)}"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
+                      ${(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf) ? `<a href="${esc(normalizePdfUrl(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf))}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="${esc(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf)}"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
                       <button
                         type="button"
-                        class="btn btn-secondary btn-xs"
+                        class="btn btn-secondary btn-xs btn-whereabouts-edit-record"
                         data-open-optool-tab="${esc(cfg.openTabName)}"
-                        title="Open in Optool ${esc(cfg.openTabName)} worksheet"
+                        data-edit-tab="${esc(cfg.tabName)}"
+                        data-edit-row-index="${r.__originalIndex !== undefined ? r.__originalIndex : ''}"
+                        data-edit-lhid="${esc(formatLhidDisplay(r.lhid))}"
+                        title="Directly edit this ${esc(cfg.tabName)} record"
                       >
                         Open in ${esc(cfg.openTabName)}
                       </button>

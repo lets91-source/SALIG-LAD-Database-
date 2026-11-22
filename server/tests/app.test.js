@@ -5433,6 +5433,57 @@ test('50. Frozen / Sticky NEP Target columns in Provincial Whereabouts matrix ta
   assert.ok(movHtml.includes('survey-td-nep-area'), 'MOV table includes survey-td-nep-area body cells');
 });
 
+test('51. Whereabouts row action button directs directly to edit Action with data-edit-tab, data-edit-row-index, and data-edit-lhid', () => {
+  const sampleState = {
+    records: [],
+    optool: {
+      'CF(DOC)': [
+        {
+          lhid: 'LH-0801-0001',
+          province: 'Leyte',
+          municipality: 'Alangalang',
+          barangay: 'Buri',
+          landOwner: 'Dela Cruz, Juan',
+          titleNumber: 'OCT-12345',
+          carpable: 12.5,
+          dateFiConducted: '2026-03-10',
+          datePreparedSigned: '',
+          reportedMonth: ''
+        }
+      ]
+    },
+    nepMilestoneListByYear: {
+      '2026': {
+        cf_doc: {
+          LEY: { lhs: 93, area: 839.9117, arbs: 0, year: 2026 }
+        }
+      }
+    }
+  };
+
+  const testCtx = {
+    state: sampleState,
+    analytics: { nepMilestoneListByYear: sampleState.nepMilestoneListByYear },
+    schemas: { registry: REGIONAL_REGISTRY },
+    whereaboutsTargetYearFilter: { 'cf-whereabouts': 'ALL' },
+    whereaboutsProvinceFilter: { 'cf-whereabouts': 'ALL' },
+    whereaboutsColFilters: {},
+    whereaboutsSearch: {},
+    whereaboutsPage: {},
+    whereaboutsPageSize: {},
+    whereaboutsShowGraph: {},
+    whereaboutsGraphMode: {}
+  };
+
+  const cfHtml = renderMilestoneWhereaboutsView(testCtx, WHEREABOUTS_CONFIGS['cf-whereabouts']);
+  assert.ok(cfHtml.includes('data-edit-tab="CF(DOC)"'), 'Includes data-edit-tab="CF(DOC)"');
+  assert.ok(cfHtml.includes('data-edit-row-index="0"'), 'Includes data-edit-row-index="0"');
+  assert.ok(cfHtml.includes('data-edit-lhid="LH-0801-0001"'), 'Includes data-edit-lhid="LH-0801-0001"');
+  assert.ok(cfHtml.includes('Open in CF(DOC)'), 'Preserves Open in CF(DOC) button label');
+  assert.ok(cfHtml.includes('btn-whereabouts-edit-record'), 'Includes btn-whereabouts-edit-record class');
+});
+
+
 
 
 

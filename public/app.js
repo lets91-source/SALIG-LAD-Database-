@@ -2767,11 +2767,28 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
     })
     .join('');
 
+  const viewWorksheetBtnHtml = isEdit && existingRow?.lhid
+    ? `<button type="button" class="btn btn-outline-secondary btn-sm" id="opt-switch-worksheet" style="margin-right:auto;">📊 Open in ${esc(tabName)} Worksheet</button>`
+    : '';
+
   showFormModal(`${isEdit ? 'Edit' : 'Add'} ${tabName} Row`, {
     formId: 'optool-form',
     cancelId: 'opt-cancel',
     submitLabel: isEdit ? 'Save Changes' : 'Add Row',
+    extraActionsHtml: viewWorksheetBtnHtml,
     contentHtml: `<div class="form-grid">${fieldsHtml}</div>`
+  });
+
+  document.getElementById('opt-switch-worksheet')?.addEventListener('click', () => {
+    closeModal();
+    appState.activeOptoolTab = tabName;
+    if (existingRow?.lhid) {
+      appState.optoolSearch = formatLhidDisplay(existingRow.lhid);
+    }
+    appState.optoolPage = 1;
+    appState.optoolColPage = 1;
+    appState.view = 'optool';
+    renderActiveView();
   });
 
   if (tabName !== 'Database') {
@@ -3307,7 +3324,43 @@ function bindDashboardViewEvents(container) {
 
   container.querySelectorAll('[data-open-optool-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      appState.activeOptoolTab = btn.dataset.openOptoolTab;
+      const tabName = btn.dataset.editTab || btn.dataset.openOptoolTab;
+      const lhid = btn.dataset.editLhid || btn.dataset.filterLhid || btn.dataset.lhid;
+      const rawIdx = btn.dataset.editRowIndex;
+
+      // When clicked from a table row (has editRowIndex or editLhid), DIRECT TO THE EDIT ACTION!
+      if ((rawIdx !== undefined && rawIdx !== '') || lhid) {
+        const tabRows = appState.state?.optool?.[tabName] || [];
+        let idx = rawIdx !== undefined && rawIdx !== '' ? Number(rawIdx) : -1;
+        let row = idx >= 0 && tabRows[idx] ? tabRows[idx] : null;
+
+        if (!row && lhid) {
+          const cleanLhid = formatLhidDisplay(lhid).toLowerCase();
+          const foundIdx = tabRows.findIndex(
+            (r) => formatLhidDisplay(r.lhid || r.LHID).toLowerCase() === cleanLhid
+          );
+          if (foundIdx >= 0) {
+            idx = foundIdx;
+            row = tabRows[foundIdx];
+          }
+        }
+
+        if (row && idx >= 0) {
+          appState.activeOptoolTab = tabName;
+          if (lhid) {
+            appState.optoolSearch = formatLhidDisplay(lhid);
+          }
+          if (tabName === 'Leasehold') {
+            openLeaseholdModal(row, idx);
+          } else {
+            openOptoolModal(tabName, row, idx);
+          }
+          return;
+        }
+      }
+
+      // Default behavior for general toolbar buttons: switch to OPTool tab
+      appState.activeOptoolTab = tabName;
       appState.optoolPage = 1;
       appState.optoolColPage = 1;
       appState.view = 'optool';
@@ -5400,7 +5453,43 @@ function bindWhereaboutsEvents(container, viewKey) {
 
   container.querySelectorAll('[data-open-optool-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      appState.activeOptoolTab = btn.dataset.openOptoolTab;
+      const tabName = btn.dataset.editTab || btn.dataset.openOptoolTab;
+      const lhid = btn.dataset.editLhid || btn.dataset.filterLhid || btn.dataset.lhid;
+      const rawIdx = btn.dataset.editRowIndex;
+
+      // When clicked from a table row (has editRowIndex or editLhid), DIRECT TO THE EDIT ACTION!
+      if ((rawIdx !== undefined && rawIdx !== '') || lhid) {
+        const tabRows = appState.state?.optool?.[tabName] || [];
+        let idx = rawIdx !== undefined && rawIdx !== '' ? Number(rawIdx) : -1;
+        let row = idx >= 0 && tabRows[idx] ? tabRows[idx] : null;
+
+        if (!row && lhid) {
+          const cleanLhid = formatLhidDisplay(lhid).toLowerCase();
+          const foundIdx = tabRows.findIndex(
+            (r) => formatLhidDisplay(r.lhid || r.LHID).toLowerCase() === cleanLhid
+          );
+          if (foundIdx >= 0) {
+            idx = foundIdx;
+            row = tabRows[foundIdx];
+          }
+        }
+
+        if (row && idx >= 0) {
+          appState.activeOptoolTab = tabName;
+          if (lhid) {
+            appState.optoolSearch = formatLhidDisplay(lhid);
+          }
+          if (tabName === 'Leasehold') {
+            openLeaseholdModal(row, idx);
+          } else {
+            openOptoolModal(tabName, row, idx);
+          }
+          return;
+        }
+      }
+
+      // Default behavior for general toolbar buttons: switch to OPTool tab
+      appState.activeOptoolTab = tabName;
       appState.optoolPage = 1;
       appState.optoolColPage = 1;
       appState.view = 'optool';
@@ -5960,6 +6049,17 @@ function bindSupportListModalEvents(allMatchedRows, { province, status, stageKey
       appState.optoolColPage = 1;
       appState.view = 'optool';
       renderActiveView();
+
+      if (lhid) {
+        const tabRows = appState.state?.optool?.Survey || [];
+        const cleanLhid = formatLhidDisplay(lhid).toLowerCase();
+        const foundIdx = tabRows.findIndex(
+          (r) => formatLhidDisplay(r.lhid || r.LHID).toLowerCase() === cleanLhid
+        );
+        if (foundIdx >= 0) {
+          openOptoolModal('Survey', tabRows[foundIdx], foundIdx);
+        }
+      }
     });
   });
 }
