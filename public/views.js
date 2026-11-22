@@ -258,6 +258,7 @@ function renderMilestoneNepSection(ctx) {
   const activeProvince = filters.province || 'ALL';
   const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
   const canEditNepTargets = !provinceScope;
+  const hasNepTargetFilters = activeMilestoneTable !== 'ALL' || (activeYear !== 'ALL' && activeYear !== '') || (activeProvince !== 'ALL' && activeProvince !== '');
 
   const quartersConfig = [
     {
@@ -447,6 +448,10 @@ function renderMilestoneNepSection(ctx) {
       )
       .join('')}
           </select>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-nep-targets-filter" title="Clear all filters (Milestone, Province, Year)" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;padding:5px 10px;${hasNepTargetFilters ? 'border-color:var(--dar-green,#15803d);color:var(--dar-green-dark,#166534);background:rgba(21,128,61,0.08);' : 'opacity:0.75;'}">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span>Clear Filter</span>
+          </button>
           <button type="button" class="btn btn-sm ${hasAnyMonthExpanded ? 'btn-primary' : 'btn-secondary'}" id="btn-toggle-nep-months" title="Toggle monthly accomplishment in each quarter">
             <span class="fs-icon">📅</span> <span>${hasAnyMonthExpanded ? 'Hide Monthly' : 'Monthly Accomp.'}</span>
           </button>
@@ -1330,6 +1335,7 @@ export function renderNepView(ctx) {
   const visibleColCount = 1 + (activeMetricCols || 1) + 1 + (canEditNep ? 1 : 0);
 
   const yearText = activeFilter === 'ALL' ? (availableYears.join(', ') || 'All Years') : activeFilter;
+  const isNepFiltered = activeMilestone !== 'overall' || (activeFilter !== 'ALL' && activeFilter !== '');
 
   return `
     <!-- Top Filter & Action Toolbar -->
@@ -1362,6 +1368,10 @@ export function renderNepView(ctx) {
       .join('')}
             </select>
           </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-nep-filters" title="Reset filters to Overall NEP and All Years" style="display:inline-flex;align-items:center;gap:5px;font-weight:600;padding:5px 12px;cursor:pointer;${isNepFiltered ? 'border-color:var(--dar-green,#15803d);color:var(--dar-green-dark,#166534);background:rgba(21,128,61,0.08);' : 'opacity:0.75;'}">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span>Clear Filter</span>
+          </button>
           <span class="badge badge-green">${filteredRows.length} ${filteredRows.length === 1 ? 'Province' : 'Provinces'} Shown</span>
           <span class="badge badge-blue">${esc(milestoneLabel)}</span>
         </div>

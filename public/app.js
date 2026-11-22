@@ -3317,6 +3317,23 @@ function bindDashboardViewEvents(container) {
 
   container.querySelector('#btn-edit-nep-targets')?.addEventListener('click', openNepTargetsModal);
   container.querySelector('#btn-sync-hub-nep')?.addEventListener('click', syncHubNepSheet);
+  container.querySelectorAll('#btn-clear-nep-targets-filter').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (appState.filters) {
+        appState.filters.province = 'ALL';
+        appState.filters.milestoneYear = 'ALL';
+      }
+      appState.nepMilestoneTableFilter = 'ALL';
+      const provSelect = container.querySelector('#nep-province-filter');
+      if (provSelect) provSelect.value = 'ALL';
+      const msSelect = container.querySelector('#nep-milestone-table-filter');
+      if (msSelect) msSelect.value = 'ALL';
+      const yrSelect = container.querySelector('#nep-year-select');
+      if (yrSelect) yrSelect.value = 'ALL';
+      await refreshAnalytics();
+      toast('NEP targets filters cleared (showing All Provinces, Milestones & Years)', 'info');
+    });
+  });
   container.querySelector('#btn-switch-to-active-nep-year')?.addEventListener('click', async (e) => {
     const yr = e.currentTarget?.dataset?.targetYear || '2027';
     appState.filters.milestoneYear = yr;
@@ -3332,6 +3349,21 @@ function bindDashboardViewEvents(container) {
   container.querySelector('#nep-year-filter')?.addEventListener('change', (e) => {
     appState.nepYearFilter = e.target.value;
     renderActiveView();
+  });
+  container.querySelectorAll('#btn-clear-nep-filters, .btn-clear-nep-filters').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      appState.nepMilestoneFilter = 'overall';
+      appState.nepYearFilter = 'ALL';
+      if (appState.filters) {
+        appState.filters.milestoneYear = 'ALL';
+      }
+      const msFilter = container.querySelector('#nep-milestone-filter');
+      if (msFilter) msFilter.value = 'overall';
+      const yrFilter = container.querySelector('#nep-year-filter');
+      if (yrFilter) yrFilter.value = 'ALL';
+      renderActiveView();
+      toast('NEP filters cleared (showing Overall NEP across All Years)', 'info');
+    });
   });
   container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
 }
