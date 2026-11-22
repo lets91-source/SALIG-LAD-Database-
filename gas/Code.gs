@@ -1054,6 +1054,9 @@ function saveNepSheetBatch_(milestoneMapList, defaultTargetYear) {
   }
 
   if (allValues.length > 1) {
+    if (allValues.length > sheet.getMaxRows()) {
+      sheet.insertRowsAfter(sheet.getMaxRows(), allValues.length - sheet.getMaxRows() + 10);
+    }
     sheet.getRange(1, 1, allValues.length, NEP_SHEET_HEADERS.length).setValues(allValues);
     formatNepSheetRanges_(sheet);
   }
