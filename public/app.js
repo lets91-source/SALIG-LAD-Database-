@@ -17,6 +17,7 @@ import {
   renderSyncView,
   renderUsersView,
   renderNepView,
+  renderAuditLogsView,
   renderTargetSummaryView,
   renderCfWhereaboutsView,
   renderSurveyWhereaboutsView,
@@ -1357,6 +1358,14 @@ function renderActiveView() {
       currentUser: appState.currentUser
     });
     bindUsersViewEvents(container);
+  } else if (appState.view === 'audit-logs') {
+    container.innerHTML = renderAuditLogsView({
+      logs: appState.auditLogs || [],
+      total: appState.auditLogsTotal || 0,
+      filters: appState.auditLogsFilters || {},
+      currentUser: appState.currentUser
+    });
+    bindAuditLogsEvents(container);
   }
 
   // Restore fullscreen state if a panel was full screen before re-rendering
@@ -2587,6 +2596,14 @@ function attachRegistrationArbCountListeners(formEl, existingRow) {
 }
 
 function openOptoolModal(tabName, existingRow, rowIndex) {
+  // Rescue year mistakenly placed in pdfFile for Survey or other support tabs
+  if (existingRow && existingRow.pdfFile && /^(20\d{2})(\.0)?$/.test(String(existingRow.pdfFile).trim())) {
+    const ym = String(existingRow.pdfFile).trim().replace(/\.0$/, '').match(/^(20\d{2})$/);
+    if (ym && (!existingRow.targetYear || String(existingRow.targetYear).trim() === '')) {
+      existingRow.targetYear = ym[1];
+    }
+    existingRow.pdfFile = '';
+  }
   const schemaCols = appState.schemas.optoolTabs[tabName] || [];
   const isEdit = existingRow !== null;
   const supportsAutoTarget = ['CF(DOC)', 'Survey', 'MOV', 'RegistrationDistribution', 'Installation'].includes(tabName);
@@ -2733,9 +2750,11 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
         `;
       }
       if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
-        const isPdfAttached = val && typeof val === 'string' && (val.startsWith('http') || val.startsWith('/api/pdf/') || val.startsWith('/uploads/') || val.startsWith('data:application/pdf') || val.toLowerCase().endsWith('.pdf'));
-        const isMarkedYes = val === 'Yes' || val === true || val === 'true';
-        const displayVal = isPdfAttached ? val : (isMarkedYes ? '' : val);
+        const isYearString = typeof val === 'string' && /^(20\d{2})(\.0)?$/.test(val.trim());
+        const effectiveVal = isYearString ? '' : val;
+        const isPdfAttached = effectiveVal && typeof effectiveVal === 'string' && (effectiveVal.startsWith('http') || effectiveVal.startsWith('/api/pdf/') || effectiveVal.startsWith('/uploads/') || effectiveVal.startsWith('data:application/pdf') || effectiveVal.toLowerCase().endsWith('.pdf'));
+        const isMarkedYes = effectiveVal === 'Yes' || effectiveVal === true || effectiveVal === 'true';
+        const displayVal = isPdfAttached ? effectiveVal : (isMarkedYes ? '' : effectiveVal);
         return `
           ${groupHtml}
           <div class="${fieldClass}">
@@ -2748,8 +2767,25 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
               <button type="button" class="btn-modal-upload-pdf" data-upload-pdf-tab="${esc(tabName)}" data-upload-pdf-idx="${isEdit ? rowIndex : -1}" data-upload-pdf-col="${esc(c.key)}" title="Upload PDF">
                 📎 Upload PDF
               </button>
-              ${isPdfAttached ? `<a href="${esc(normalizePdfUrl(val))}" target="_blank" rel="noopener noreferrer" class="pdf-link-merged pdf-link" title="${esc(val)}">📄 View</a>` : ''}
+              ${isPdfAttached ? `<a href="${esc(normalizePdfUrl(effectiveVal))}" target="_blank" rel="noopener noreferrer" class="pdf-link-merged pdf-link" title="${esc(effectiveVal)}">📄 View</a>` : ''}
             </div>
+          </div>${linkedAfterLhid}
+        `;
+      }
+      if (c.key === 'targetYear' || c.key === 'year') {
+        const yrVal = formatYearDisplay(val);
+        return `
+          ${groupHtml}
+          <div class="${fieldClass}">
+            <label for="opt-${esc(c.key)}">${esc(c.label)} (Enter Year)</label>
+            <input
+              id="opt-${esc(c.key)}"
+              name="${esc(c.key)}"
+              type="text"
+              class="form-control"
+              value="${esc(yrVal)}"
+              placeholder="e.g. 2026"
+            />
           </div>${linkedAfterLhid}
         `;
       }
@@ -4513,6 +4549,59 @@ async function openLandholdingDrawer(lhid) {
       `);
     }
 
+    if (Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
+      blocks.push(`
+        <div class="panel">
+          <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 class="panel-title">📜 User Edit & Revision History (${data.auditLogs.length})</h3>
+            <span class="badge badge-teal" style="font-size:11px;">Tracked Updates</span>
+          </div>
+          <div class="panel-body">
+            <div class="audit-history-timeline" style="display:flex;flex-direction:column;gap:10px;">
+              ${data.auditLogs.map((log) => `
+                <div class="card" style="padding:10px;border-left:4px solid var(--accent);background:var(--bg-subtle,#f8fafc);margin-bottom:6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <div>
+                      <strong>${esc(log.user?.name || 'Staff')}</strong>
+                      <span style="color:var(--text-muted);font-size:12px;"> (${esc(log.user?.email || '')})</span>
+                      <span class="badge badge-gray" style="font-size:10px;margin-left:4px;">${esc(log.user?.province || '')}</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);">${esc(new Date(log.timestamp).toLocaleString())}</div>
+                  </div>
+                  <div style="font-size:12px;margin-bottom:6px;">
+                    <span class="badge ${log.action === 'create' ? 'badge-blue' : log.action === 'delete' ? 'badge-danger' : 'badge-green'}" style="font-size:10px;text-transform:uppercase;">${esc(log.action)}</span>
+                    <strong style="margin-left:6px;">${esc(log.tabName)}</strong>
+                  </div>
+                  ${log.changes && log.changes.length > 0 ? `
+                    <div style="overflow-x:auto;border-radius:4px;border:1px solid var(--border,#e2e8f0);">
+                      <table class="table" style="width:100%;font-size:11px;margin:0;">
+                        <thead>
+                          <tr style="background:var(--bg-alt,#edf2f7);">
+                            <th style="padding:4px 8px;">Field</th>
+                            <th style="padding:4px 8px;color:#c53030;">Previous Value</th>
+                            <th style="padding:4px 8px;color:#276749;">Current / Updated Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${log.changes.map((ch) => `
+                            <tr>
+                              <td style="padding:4px 8px;font-weight:600;">${esc(ch.label || ch.field)}</td>
+                              <td style="padding:4px 8px;background:#fff5f5;color:#c53030;font-family:var(--font-mono);">${esc(ch.oldValue || '— (empty)')}</td>
+                              <td style="padding:4px 8px;background:#f0fff4;color:#276749;font-weight:600;font-family:var(--font-mono);">${esc(ch.newValue || '— (empty)')}</td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  ` : `<div style="font-size:12px;color:var(--text-muted);">${esc(log.summary || 'Record modified')}</div>`}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
     document.getElementById('drawer-body').innerHTML =
       blocks.length > 0
         ? blocks.join('')
@@ -4656,6 +4745,83 @@ function bindUsersViewEvents(container) {
       } catch (err) {
         toast(err.message, true);
       }
+    });
+  });
+}
+
+/** Fetch user edit audit logs with current filters. */
+async function loadAuditLogs(filters = {}) {
+  const merged = { ...(appState.auditLogsFilters || {}), ...filters };
+  appState.auditLogsFilters = merged;
+  const params = new URLSearchParams();
+  if (merged.search) params.set('lhid', merged.search);
+  if (merged.tabName && merged.tabName !== 'all') params.set('tabName', merged.tabName);
+  if (merged.action && merged.action !== 'all') params.set('action', merged.action);
+  if (merged.user) params.set('user', merged.user);
+  params.set('limit', '100');
+
+  const data = await withLoading(
+    'fetching',
+    'Fetching Log History…',
+    'Loading user revisions and parcel edit audit trail…',
+    () => api(`/api/audit-logs?${params.toString()}`)
+  );
+  if (data && data.ok) {
+    appState.auditLogs = data.logs || [];
+    appState.auditLogsTotal = data.total || 0;
+  }
+}
+
+/** Attach event listeners for the User Revision Log History view. */
+function bindAuditLogsEvents(container) {
+  const searchInput = container.querySelector('#audit-filter-search');
+  if (searchInput) {
+    let debounceTimer = null;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        await loadAuditLogs({ search: searchInput.value.trim() });
+        renderActiveView();
+      }, 300);
+    });
+  }
+
+  const tabSelect = container.querySelector('#audit-filter-tab');
+  if (tabSelect) {
+    tabSelect.addEventListener('change', async () => {
+      await loadAuditLogs({ tabName: tabSelect.value });
+      renderActiveView();
+    });
+  }
+
+  const actionSelect = container.querySelector('#audit-filter-action');
+  if (actionSelect) {
+    actionSelect.addEventListener('change', async () => {
+      await loadAuditLogs({ action: actionSelect.value });
+      renderActiveView();
+    });
+  }
+
+  container.querySelector('#btn-clear-audit-filters')?.addEventListener('click', async () => {
+    appState.auditLogsFilters = {};
+    await loadAuditLogs({ search: '', tabName: 'all', action: 'all', user: '' });
+    renderActiveView();
+  });
+
+  container.querySelector('#btn-refresh-audit-logs')?.addEventListener('click', async () => {
+    try {
+      await loadAuditLogs();
+      renderActiveView();
+      toast('Refreshed revision log history');
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+
+  container.querySelectorAll('.btn-drawer-link').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLandholdingDrawer(btn.dataset.lhid);
     });
   });
 }
@@ -6638,6 +6804,12 @@ async function init() {
       if (appState.view === 'users') {
         try {
           await loadUsersDirectory();
+        } catch (err) {
+          toast(err.message, true);
+        }
+      } else if (appState.view === 'audit-logs') {
+        try {
+          await loadAuditLogs();
         } catch (err) {
           toast(err.message, true);
         }

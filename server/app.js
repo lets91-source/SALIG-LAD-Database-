@@ -1047,9 +1047,52 @@ export function createAppServer(dataDir, options = {}) {
 
           const prevRow =
             globalIdx !== null && Number.isInteger(globalIdx) && globalIdx >= 0
-              ? store.state.optool[tabName]?.[globalIdx] || null
+              ? store.state.optool[tabName]?.[globalIdx] ? { ...store.state.optool[tabName][globalIdx] } : null
               : null;
           const saved = store.upsertOptoolRow(tabName, rowPayload, globalIdx);
+
+          // Compute field changes for User Revision Audit Log History
+          try {
+            const schemaCols = OPTOOL_SHEET_SCHEMAS[tabName] || [];
+            const auditChanges = [];
+            if (prevRow) {
+              for (const col of schemaCols) {
+                const oldVal = prevRow[col.key] !== undefined && prevRow[col.key] !== null ? String(prevRow[col.key]).trim() : '';
+                const newVal = saved[col.key] !== undefined && saved[col.key] !== null ? String(saved[col.key]).trim() : '';
+                if (oldVal !== newVal) {
+                  auditChanges.push({
+                    field: col.key,
+                    label: col.label || col.header || col.key,
+                    oldValue: oldVal,
+                    newValue: newVal
+                  });
+                }
+              }
+            } else {
+              for (const col of schemaCols) {
+                const newVal = saved[col.key] !== undefined && saved[col.key] !== null ? String(saved[col.key]).trim() : '';
+                if (newVal !== '') {
+                  auditChanges.push({
+                    field: col.key,
+                    label: col.label || col.header || col.key,
+                    oldValue: '',
+                    newValue: newVal
+                  });
+                }
+              }
+            }
+            if (auditChanges.length > 0) {
+              store.recordAuditLog({
+                user: sessionUser,
+                action: prevRow ? 'update' : 'create',
+                tabName,
+                lhid: saved.lhid || prevRow?.lhid || '',
+                rowIndex: globalIdx,
+                changes: auditChanges
+              });
+            }
+          } catch (_) {}
+
           const isTargetTab = MILESTONE_TARGET_TABS.includes(saved.milestoneTarget) || saved.milestoneTarget === 'MOV' || saved.milestoneTarget === 'Land Valuation';
           const createdInTab =
             tabName === 'Database' && isTargetTab
@@ -1089,6 +1132,23 @@ export function createAppServer(dataDir, options = {}) {
           const deletedRow = globalIdx >= 0 ? store.state.optool[tabName]?.[globalIdx] || null : null;
           const ok = globalIdx >= 0 ? store.deleteOptoolRow(tabName, globalIdx) : false;
           if (!ok) return sendJson(res, 404, { error: 'OPTool row not found' });
+          if (deletedRow) {
+            try {
+              store.recordAuditLog({
+                user: sessionUser,
+                action: 'delete',
+                tabName,
+                lhid: deletedRow.lhid || '',
+                rowIndex: globalIdx,
+                changes: [{
+                  field: 'lhid',
+                  label: 'Landholding Deleted',
+                  oldValue: deletedRow.lhid || `Row #${globalIdx + 1}`,
+                  newValue: '(Deleted)'
+                }]
+              });
+            } catch (_) {}
+          }
           const gasPushResult = deletedRow
             ? await pushMutationToGas(
                 store,
@@ -1236,6 +1296,21 @@ export function createAppServer(dataDir, options = {}) {
         const lhid = decodeURIComponent(pathname.slice('/api/landholding/'.length));
         const dossier = store.getLandholding360(lhid);
         return sendJson(res, 200, store.filterLandholding360ByScope(dossier, scopeCode));
+      }
+
+      if (req.method === 'GET' && pathname === '/api/audit-logs') {
+        const auditRes = store.getAuditLogs({
+          lhid: query.lhid,
+          userEmail: query.user,
+          tabName: query.tabName || query.tab,
+          action: query.action,
+          limit: query.limit,
+          offset: query.offset
+        });
+        return sendJson(res, 200, {
+          ok: true,
+          ...auditRes
+        });
       }
 
       if (req.method === 'PUT' && pathname === '/api/baselines') {

@@ -1358,8 +1358,35 @@ function readProvincialMilestoneSupportLists_() {
                 '';
             }
           }
-          // Normalize Survey Column AC (Date Accepted by DENR-SMD)
+          // Normalize Survey Column AC (Date Accepted by DENR-SMD), Column AR (Target Year), and rescue year from PDF File
           if (tabName === 'Survey') {
+            // Check if PDF File mistakenly holds a year (e.g. 2026.0 or 2026) instead of a PDF URL
+            const rawPdf = String(row.pdfFile || row['PDF File'] || '').trim();
+            const ymPdf = rawPdf.replace(/\.0$/, '').match(/^(20\d{2})$/);
+            if (ymPdf) {
+              if (!row.targetYear) row.targetYear = ymPdf[1];
+              if (!row['Target Year']) row['Target Year'] = ymPdf[1];
+              row.pdfFile = '';
+              row['PDF File'] = '';
+            }
+
+            // Check Column 44 / Column AR (row.__rawRow[43]) for Target Year
+            if (!row.targetYear && row.__rawRow && row.__rawRow[43]) {
+              const valAR = String(row.__rawRow[43]).trim().replace(/\.0$/, '');
+              const ymAR = valAR.match(/\b(20\d{2})\b/);
+              if (ymAR) {
+                row.targetYear = ymAR[1];
+                row['Target Year'] = ymAR[1];
+              }
+            }
+            if (row.targetYear) {
+              const cleanYr = String(row.targetYear).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+              if (cleanYr) {
+                row.targetYear = cleanYr[1];
+                row['Target Year'] = cleanYr[1];
+              }
+            }
+
             if (!row.dateAcceptedDenrSmd) {
               row.dateAcceptedDenrSmd =
                 row['Date Accepted by DENR-SMD\nDATE'] ||
@@ -1723,14 +1750,12 @@ function applyMilestoneTargetYearFormula_(sheet, tabName) {
 
   let targetCriteria = '';
   const normTab = normalizeHeaderKey_(tabName);
-  if (normTab === 'mov') {
-    // User requested: in MOV (Land Valuation) Column M, do not add any formula; let the user manually enter Year
+  if (normTab === 'mov' || normTab === 'survey') {
+    // User requested: in MOV and Survey (Column AR), do not add any formula; let the user or admin manually enter Year
     return;
   }
   if (normTab === 'cfdoc') {
     targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="CF(DOC)", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
-  } else if (normTab === 'survey') {
-    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Survey", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'registrationdistribution') {
     targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Registration/Distribution", VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="RegistrationDistribution", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'installation') {

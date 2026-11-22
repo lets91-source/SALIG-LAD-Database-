@@ -781,9 +781,27 @@ export class ConsolidatedStore {
             delete row.test;
             dirty = true;
           }
-          if (tab === 'Survey' && Object.prototype.hasOwnProperty.call(row, 'srForwardedPreIvas')) {
-            delete row.srForwardedPreIvas;
-            dirty = true;
+          if (tab === 'Survey') {
+            if (Object.prototype.hasOwnProperty.call(row, 'srForwardedPreIvas')) {
+              delete row.srForwardedPreIvas;
+              dirty = true;
+            }
+            if (row.pdfFile && /^(20\d{2})(\.0)?$/.test(String(row.pdfFile).trim())) {
+              const ym = String(row.pdfFile).trim().replace(/\.0$/, '').match(/^(20\d{2})$/);
+              if (ym && (!row.targetYear || String(row.targetYear).trim() === '')) {
+                row.targetYear = ym[1];
+              }
+              row.pdfFile = '';
+              dirty = true;
+            }
+            if (row['PDF File'] && /^(20\d{2})(\.0)?$/.test(String(row['PDF File']).trim())) {
+              const ym = String(row['PDF File']).trim().replace(/\.0$/, '').match(/^(20\d{2})$/);
+              if (ym && (!row.targetYear || String(row.targetYear).trim() === '')) {
+                row.targetYear = ym[1];
+              }
+              delete row['PDF File'];
+              dirty = true;
+            }
           }
           for (const col of schemaCols) {
             if (!Object.prototype.hasOwnProperty.call(row, col.key) || row[col.key] === '') {
@@ -870,6 +888,10 @@ export class ConsolidatedStore {
     }
     if (!Array.isArray(this.state.users)) {
       this.state.users = [];
+      dirty = true;
+    }
+    if (!Array.isArray(this.state.auditLogs)) {
+      this.state.auditLogs = [];
       dirty = true;
     }
     if (!Array.isArray(this.state.deletedUserEmails)) {
@@ -1143,16 +1165,24 @@ export class ConsolidatedStore {
         val = Number.isFinite(num) ? num.toFixed(4) : String(val);
       } else if (col.type === 'checkbox') {
         val = normalizeChecklistValue(val);
-      } else if (col.type === 'pdfFile') {
-        if (val === true || val === 'true' || val === 'TRUE') {
+      } else if (col.type === 'pdfFile' || col.key === 'pdfFile') {
+        const strVal = String(val ?? '').trim();
+        const yearMatch = strVal.replace(/\.0$/, '').match(/^(20\d{2})$/);
+        if (yearMatch) {
+          // Mistakenly put Year into PDF File column: redirect to targetYear if not set
+          if (!rowPayload.targetYear && !cleanRow.targetYear) {
+            cleanRow.targetYear = yearMatch[1];
+          }
+          val = '';
+        } else if (val === true || val === 'true' || val === 'TRUE') {
           val = 'Yes';
         } else if (val === false || val === 'false' || val === 'FALSE') {
           val = '';
         } else {
-          val = String(val ?? '').trim();
+          val = strVal;
         }
       } else if (['targetYear', 'year', 'pipelineYear', 'reportYear'].includes(col.key)) {
-        val = formatYearDisplay(val);
+        val = formatYearDisplay(val || cleanRow[col.key] || '');
       } else if (col.key === 'reportedMonth' || col.key === 'monthReported') {
         val = formatReportedMonthWord(val) || String(val ?? '').trim();
       } else {
@@ -1563,7 +1593,112 @@ export class ConsolidatedStore {
         (rawTarget && mClean.toLowerCase() === rawTarget.toLowerCase())
       );
     });
-    return { lhid: cleanTarget || rawTarget, tabs, milestones };
+    const auditLogs = this.getAuditLogs({ lhid: cleanTarget || rawTarget, limit: 50 }).logs;
+    return { lhid: cleanTarget || rawTarget, tabs, milestones, auditLogs };
+  }
+
+  /**
+   * Record a user revision audit log entry for changes made to Landholdings across OPTool, Milestones, or Leasehold.
+   * Tracks previous update vs current update per user and LHID.
+   */
+  recordAuditLog({ user = null, action = 'update', tabName = '', lhid = '', rowIndex = null, changes = [], summary = '' } = {}) {
+    if (!Array.isArray(this.state.auditLogs)) {
+      this.state.auditLogs = [];
+    }
+
+    const cleanLhid = formatLhidDisplay(lhid) || String(lhid || '').trim();
+    const userMeta = {
+      id: user?.id || 'usr-system',
+      name: user?.name || user?.fullName || 'Staff / Anonymous',
+      email: user?.email || 'user@dar8.gov.ph',
+      role: user?.role || 'staff',
+      province: user?.province || user?.provinceName || 'Region VIII Hub'
+    };
+
+    const cleanChanges = (Array.isArray(changes) ? changes : [])
+      .map((ch) => ({
+        field: String(ch.field || ch.key || ''),
+        label: String(ch.label || ch.field || ch.key || ''),
+        oldValue: ch.oldValue !== undefined && ch.oldValue !== null ? String(ch.oldValue) : '',
+        newValue: ch.newValue !== undefined && ch.newValue !== null ? String(ch.newValue) : ''
+      }))
+      .filter((ch) => ch.field && (ch.oldValue !== ch.newValue || action === 'create' || action === 'delete'));
+
+    // Generate descriptive summary if none provided
+    let autoSummary = summary;
+    if (!autoSummary && cleanChanges.length > 0) {
+      const fieldSummaries = cleanChanges.slice(0, 3).map((ch) => {
+        if (action === 'create') return `${ch.label}: "${ch.newValue}"`;
+        if (action === 'delete') return `${ch.label} was "${ch.oldValue}"`;
+        return `${ch.label} ("${ch.oldValue || '(empty)'}" → "${ch.newValue || '(empty)'}")`;
+      });
+      const extraCount = cleanChanges.length - 3;
+      autoSummary = `${action.toUpperCase()}: ${fieldSummaries.join(', ')}${extraCount > 0 ? ` (+${extraCount} more)` : ''}`;
+    }
+
+    const logEntry = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      user: userMeta,
+      action: action.toLowerCase(), // 'create', 'update', 'delete'
+      tabName: String(tabName || '').trim(),
+      lhid: cleanLhid,
+      rowIndex: typeof rowIndex === 'number' ? rowIndex : null,
+      changes: cleanChanges,
+      summary: autoSummary || `${action.toUpperCase()} on ${tabName} for LHID ${cleanLhid}`
+    };
+
+    this.state.auditLogs.unshift(logEntry);
+    // Keep max 2,500 logs to maintain fast performance and JSON storage limits
+    if (this.state.auditLogs.length > 2500) {
+      this.state.auditLogs = this.state.auditLogs.slice(0, 2500);
+    }
+    this.save();
+    return logEntry;
+  }
+
+  /**
+   * Retrieve filtered audit logs by LHID, user email, tab, or action with pagination.
+   */
+  getAuditLogs({ lhid = '', userEmail = '', tabName = '', action = '', limit = 100, offset = 0 } = {}) {
+    if (!Array.isArray(this.state.auditLogs)) return { logs: [], total: 0 };
+
+    const normLhid = lhid ? formatLhidDisplay(lhid).toLowerCase() : '';
+    const normRawLhid = lhid ? String(lhid).trim().toLowerCase() : '';
+    const normUser = userEmail ? String(userEmail).trim().toLowerCase() : '';
+    const normTab = tabName ? String(tabName).trim().toLowerCase() : '';
+    const normAction = action ? String(action).trim().toLowerCase() : '';
+
+    const filtered = this.state.auditLogs.filter((entry) => {
+      if (normLhid) {
+        const eLhid = formatLhidDisplay(entry.lhid).toLowerCase();
+        const eRawLhid = String(entry.lhid || '').trim().toLowerCase();
+        if (eLhid !== normLhid && eRawLhid !== normRawLhid && !eLhid.includes(normLhid)) return false;
+      }
+      if (normUser) {
+        const email = String(entry.user?.email || '').toLowerCase();
+        const name = String(entry.user?.name || '').toLowerCase();
+        if (!email.includes(normUser) && !name.includes(normUser)) return false;
+      }
+      if (normTab && normTab !== 'all') {
+        const eTab = String(entry.tabName || '').toLowerCase();
+        if (eTab !== normTab && !eTab.includes(normTab)) return false;
+      }
+      if (normAction && normAction !== 'all') {
+        if (String(entry.action || '').toLowerCase() !== normAction) return false;
+      }
+      return true;
+    });
+
+    const parsedLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+    const parsedOffset = Math.max(0, Number(offset) || 0);
+
+    return {
+      total: filtered.length,
+      logs: filtered.slice(parsedOffset, parsedOffset + parsedLimit),
+      limit: parsedLimit,
+      offset: parsedOffset
+    };
   }
 
   /** Resolve province code for a milestone record (returns null if unknown). */

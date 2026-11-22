@@ -356,6 +356,38 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
             if (ym) record.targetYear = ym[1];
           }
         }
+
+        // Positional & value rescue for Survey:
+        // Col AM (1-based 39, idx 38): TARGET (Current/Previous)
+        // Col AN (1-based 40, idx 39): Reported Month
+        // Col AO (1-based 41, idx 40): PDF File
+        // Col AP (1-based 42, idx 41): Current Status
+        // Col AQ (1-based 43, idx 42): Current Date
+        // Col AR (1-based 44, idx 43): Target Year
+        if (matchedOptoolTab === 'Survey') {
+          // If pdfFile contains a year (e.g. 2026.0 or 2026), it was entered in the wrong column
+          if (record.pdfFile) {
+            const ym = String(record.pdfFile).trim().replace(/\.0$/, '').match(/^(20\d{2})$/);
+            if (ym) {
+              if (!record.targetYear) record.targetYear = ym[1];
+              record.pdfFile = '';
+            }
+          }
+          // Positional check from Column AR (1-based 44 / idx 43) for Target Year
+          if (!record.targetYear && row.values[43] !== undefined && String(row.values[43]).trim() !== '') {
+            const ym = String(row.values[43]).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+            if (ym) record.targetYear = ym[1];
+          }
+          // Clean targetYear formatting
+          if (record.targetYear) {
+            const ym = String(record.targetYear).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+            if (ym) record.targetYear = ym[1];
+          }
+          // Positional check for Reported Month (Column AN, idx 39)
+          if (!record.reportedMonth && row.values[39] !== undefined && String(row.values[39]).trim() !== '') {
+            record.reportedMonth = formatReportedMonthWord(String(row.values[39]).trim()) || String(row.values[39]).trim();
+          }
+        }
         if (nonEmptyCount === 0) continue;
         const rawLhid = String(record.lhid || record.LHID || '').trim();
         const isInvalidHeaderLhid = !rawLhid || /^(date|\(with\/out\)|if applicable|\(sr returned|lhid|with|pending)/i.test(rawLhid);

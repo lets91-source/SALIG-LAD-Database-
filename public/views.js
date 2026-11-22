@@ -9808,4 +9808,197 @@ export function generateLeaseholdCsv(rows = []) {
   return lines.join('\r\n');
 }
 
+/**
+ * Render the dedicated User Audit & Revision Log History view.
+ * Enables staff and administrators to track who edited what LH, previous vs current values,
+ * timestamp, province, and milestone tab.
+ */
+export function renderAuditLogsView({ logs = [], total = 0, filters = {}, currentUser = null }) {
+  const currentSearch = String(filters.search || '').trim();
+  const currentTab = String(filters.tabName || 'all').trim();
+  const currentAction = String(filters.action || 'all').trim();
+
+  const totalLogs = total || logs.length;
+  const uniqueLhs = new Set(logs.map((l) => l.lhid).filter(Boolean)).size;
+  const uniqueUsers = new Set(logs.map((l) => l.user?.email || l.user?.name).filter(Boolean)).size;
+  const todayCount = logs.filter((l) => {
+    const d = new Date(l.timestamp);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  }).length;
+
+  return `
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">📜 User Edit & Revision Log History</h1>
+        <p class="view-subtitle">Audit trail of Landholding (LH) modifications: determine who edited each LHID, previous update vs current update, and exact field diffs.</p>
+      </div>
+      <div class="view-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-audit-logs">
+          🔄 Refresh Logs
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <div class="kpi-grid" style="margin-bottom:20px;">
+      <div class="kpi-card">
+        <div class="kpi-label">TOTAL EDITS LOGGED</div>
+        <div class="kpi-value text-primary">${totalLogs.toLocaleString()}</div>
+        <div class="kpi-caption">Cross-milestone updates</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">LANDHOLDINGS MODIFIED</div>
+        <div class="kpi-value text-success">${uniqueLhs.toLocaleString()}</div>
+        <div class="kpi-caption">Unique LHIDs with revisions</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">ACTIVE EDITORS</div>
+        <div class="kpi-value text-info">${uniqueUsers.toLocaleString()}</div>
+        <div class="kpi-caption">Regional & provincial users</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">TODAY'S REVISIONS</div>
+        <div class="kpi-value text-warning">${todayCount.toLocaleString()}</div>
+        <div class="kpi-caption">Updates recorded today</div>
+      </div>
+    </div>
+
+    <!-- Filter Toolbar -->
+    <div class="card" style="margin-bottom:20px;padding:14px;">
+      <div class="audit-filter-bar" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <div style="flex:1;min-width:220px;">
+          <input
+            id="audit-filter-search"
+            type="text"
+            class="form-control"
+            placeholder="🔍 Search by LHID or User name/email…"
+            value="${esc(currentSearch)}"
+          />
+        </div>
+        <div style="min-width:160px;">
+          <select id="audit-filter-tab" class="form-control">
+            <option value="all" ${currentTab === 'all' ? 'selected' : ''}>All Milestones / Tabs</option>
+            <option value="Survey" ${currentTab === 'Survey' ? 'selected' : ''}>Land Survey (Survey)</option>
+            <option value="CF(DOC)" ${currentTab === 'CF(DOC)' ? 'selected' : ''}>CF Documentation (CF(DOC))</option>
+            <option value="MOV" ${currentTab === 'MOV' ? 'selected' : ''}>Land Valuation (MOV)</option>
+            <option value="RegistrationDistribution" ${currentTab === 'RegistrationDistribution' ? 'selected' : ''}>Registration/Distribution</option>
+            <option value="Installation" ${currentTab === 'Installation' ? 'selected' : ''}>Installation</option>
+            <option value="Leasehold" ${currentTab === 'Leasehold' ? 'selected' : ''}>Agricultural Leasehold</option>
+            <option value="Database" ${currentTab === 'Database' ? 'selected' : ''}>Master Database</option>
+          </select>
+        </div>
+        <div style="min-width:140px;">
+          <select id="audit-filter-action" class="form-control">
+            <option value="all" ${currentAction === 'all' ? 'selected' : ''}>All Actions</option>
+            <option value="update" ${currentAction === 'update' ? 'selected' : ''}>Updates Only</option>
+            <option value="create" ${currentAction === 'create' ? 'selected' : ''}>New Records (Create)</option>
+            <option value="delete" ${currentAction === 'delete' ? 'selected' : ''}>Deletions Only</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-audit-filters">
+          Clear Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Audit Log Entries Timeline -->
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px;">
+        <h3 style="margin:0;font-size:16px;font-weight:700;">Revisions Feed (${logs.length} displayed)</h3>
+        <span style="font-size:12px;color:var(--text-muted);">Sorted newest first • Instant diff tracking</span>
+      </div>
+
+      ${logs.length === 0 ? `
+        <div class="empty-state" style="padding:40px 20px;text-align:center;color:var(--text-muted);">
+          <div style="font-size:36px;margin-bottom:10px;">📜</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:4px;">No Revision Logs Found</div>
+          <div>Edits made to Landholdings will automatically appear here with exact previous vs current field comparisons.</div>
+        </div>
+      ` : `
+        <div class="audit-feed-list" style="display:flex;flex-direction:column;gap:14px;">
+          ${logs.map((log) => {
+            const dateStr = new Date(log.timestamp).toLocaleString('en-US', {
+              dateStyle: 'medium',
+              timeStyle: 'short'
+            });
+            const actionBadgeClass =
+              log.action === 'create'
+                ? 'badge-blue'
+                : log.action === 'delete'
+                ? 'badge-danger'
+                : 'badge-green';
+
+            return `
+              <div class="card audit-entry-card" style="padding:14px;border-left:4px solid var(--accent);background:var(--bg-surface,#ffffff);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span class="badge ${actionBadgeClass}" style="text-transform:uppercase;font-size:11px;font-weight:700;padding:2px 8px;">
+                      ${esc(log.action)}
+                    </span>
+                    <span class="badge badge-teal" style="font-size:11px;font-weight:600;">
+                      ${esc(log.tabName)}
+                    </span>
+                    ${log.lhid ? `
+                      <button type="button" class="btn btn-ghost btn-sm btn-drawer-link" data-lhid="${esc(log.lhid)}" style="padding:2px 8px;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--accent);">
+                        LHID: ${esc(formatLhidDisplay(log.lhid))} ↗
+                      </button>
+                    ` : ''}
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+                    <span>🕒 ${esc(dateStr)}</span>
+                  </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px;">
+                  <div>
+                    <strong style="color:var(--text);">${esc(log.user?.name || 'Staff')}</strong>
+                    <span style="color:var(--text-muted);font-size:12px;"> (${esc(log.user?.email || 'user@dar8.gov.ph')})</span>
+                    <span class="badge badge-gray" style="font-size:10px;margin-left:4px;">${esc(log.user?.province || 'Region VIII')}</span>
+                    <span class="badge badge-outline" style="font-size:10px;margin-left:4px;text-transform:capitalize;">${esc(log.user?.role || 'staff')}</span>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);">
+                    ${log.changes ? `${log.changes.length} field(s) changed` : ''}
+                  </div>
+                </div>
+
+                ${log.changes && log.changes.length > 0 ? `
+                  <div style="overflow-x:auto;border-radius:6px;border:1px solid var(--border);">
+                    <table class="table" style="margin:0;font-size:12px;">
+                      <thead>
+                        <tr style="background:var(--bg-subtle,#f8fafc);">
+                          <th style="width:28%;padding:6px 10px;">Field Name</th>
+                          <th style="width:36%;padding:6px 10px;color:#c53030;">Previous Value</th>
+                          <th style="width:36%;padding:6px 10px;color:#276749;">Current / Updated Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${log.changes.map((ch) => `
+                          <tr>
+                            <td style="padding:6px 10px;font-weight:600;">${esc(ch.label || ch.field)}</td>
+                            <td style="padding:6px 10px;background:#fff5f5;color:#c53030;font-family:var(--font-mono);word-break:break-word;">
+                              ${esc(ch.oldValue || '— (empty)')}
+                            </td>
+                            <td style="padding:6px 10px;background:#f0fff4;color:#276749;font-weight:600;font-family:var(--font-mono);word-break:break-word;">
+                              ${esc(ch.newValue || '— (empty)')}
+                            </td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                ` : `
+                  <div style="font-size:12px;color:var(--text-muted);font-style:italic;">
+                    ${esc(log.summary || 'Record modified')}
+                  </div>
+                `}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `}
+    </div>
+  `;
+}
+
 

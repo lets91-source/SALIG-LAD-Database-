@@ -956,9 +956,21 @@ textarea.form-control {
   color: var(--dar-blue);
 }
 
-.badge-red {
+.badge-red,
+.badge-danger {
   background: var(--dar-red-soft);
   color: var(--dar-red);
+}
+
+.badge-teal {
+  background: #e6fffa;
+  color: #234e52;
+}
+
+.badge-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
 
 .badge-gray {

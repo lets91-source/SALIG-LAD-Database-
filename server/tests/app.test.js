@@ -5483,6 +5483,90 @@ test('51. Whereabouts row action button directs directly to edit Action with dat
   assert.ok(cfHtml.includes('btn-whereabouts-edit-record'), 'Includes btn-whereabouts-edit-record class');
 });
 
+test('52. Survey data alignment, no formula for Target Year, and User Revision Audit Log History', async () => {
+  const tmpDir = path.join(os.tmpdir(), `salig-audit-test-${Date.now()}`);
+  const store = new ConsolidatedStore(tmpDir);
+
+  // 1. Verify Survey column alignment & year rescue from PDF File
+  const surveyPayloadWithYearInPdf = {
+    lhid: '801009999',
+    kindOfSurvey: 'By Admin',
+    target: 'Previous Year',
+    reportedMonth: 'April 2026',
+    pdfFile: '2026.0', // mistakenly entered year into PDF File column
+    targetYear: ''
+  };
+
+  const normalizedSurveyRow = store.normalizeOptoolRow('Survey', surveyPayloadWithYearInPdf);
+  assert.strictEqual(normalizedSurveyRow.targetYear, '2026', 'Rescues 2026.0 from pdfFile to targetYear');
+  assert.strictEqual(normalizedSurveyRow.pdfFile, '', 'Empties pdfFile when it held a year string');
+
+  // 2. Verify GAS Code.gs does not inject formula for Target Year in Survey or MOV
+  const gasCode = fs.readFileSync(path.join(__dirname, '../../gas/Code.gs'), 'utf8');
+  assert.ok(
+    gasCode.includes("normTab === 'mov' || normTab === 'survey'"),
+    'Code.gs skips formula injection for both MOV and Survey'
+  );
+
+  // 3. Verify User Revision Audit Log History
+  const staffUser = {
+    id: 'usr-staff-1',
+    name: 'Maria Santos',
+    email: 'maria.santos@dar8.gov.ph',
+    role: 'staff',
+    province: 'Leyte'
+  };
+
+  // Upsert a test row to establish initial state
+  const initialRow = store.upsertOptoolRow('Survey', {
+    lhid: '801008888',
+    target: 'Current',
+    reportedMonth: 'March 2026',
+    targetYear: '2025'
+  });
+
+  // Record an audit update
+  const log = store.recordAuditLog({
+    user: staffUser,
+    action: 'update',
+    tabName: 'Survey',
+    lhid: initialRow.lhid,
+    rowIndex: 0,
+    changes: [
+      { field: 'target', label: 'Target (Current / Previous)', oldValue: 'Current', newValue: 'Previous Year' },
+      { field: 'targetYear', label: 'Target Year', oldValue: '2025', newValue: '2026' }
+    ]
+  });
+
+  assert.ok(log.id, 'Log has unique ID');
+  assert.strictEqual(log.user.name, 'Maria Santos', 'Tracks user name');
+  assert.strictEqual(log.user.email, 'maria.santos@dar8.gov.ph', 'Tracks user email');
+  assert.strictEqual(log.user.province, 'Leyte', 'Tracks user province');
+  assert.strictEqual(log.lhid, '801008888', 'Tracks modified LHID');
+  assert.strictEqual(log.tabName, 'Survey', 'Tracks milestone tab');
+  assert.strictEqual(log.changes.length, 2, 'Records exact changed fields');
+  assert.strictEqual(log.changes[1].field, 'targetYear');
+  assert.strictEqual(log.changes[1].oldValue, '2025', 'Tracks previous value');
+  assert.strictEqual(log.changes[1].newValue, '2026', 'Tracks updated value');
+
+  // Query audit logs
+  const logsRes = store.getAuditLogs({ lhid: '801008888' });
+  assert.strictEqual(logsRes.logs.length, 1, 'Finds log by LHID');
+  assert.strictEqual(logsRes.logs[0].user.email, 'maria.santos@dar8.gov.ph');
+
+  // Query dossier
+  const dossier = store.getLandholding360('801008888');
+  assert.ok(Array.isArray(dossier.auditLogs), 'Dossier returns auditLogs');
+  assert.strictEqual(dossier.auditLogs.length, 1, 'Contains revision for this LHID');
+  assert.strictEqual(dossier.auditLogs[0].changes[1].newValue, '2026');
+
+  // Cleanup tmp dir
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
+
 
 
 
