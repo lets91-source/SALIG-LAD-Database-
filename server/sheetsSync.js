@@ -320,7 +320,9 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
           }
         }
         if (nonEmptyCount === 0) continue;
-        if (matchedOptoolTab !== 'Leasehold' && !record.lhid && !record.LHID) continue;
+        const rawLhid = String(record.lhid || record.LHID || '').trim();
+        const isInvalidHeaderLhid = !rawLhid || /^(date|\(with\/out\)|if applicable|\(sr returned|lhid|with|pending)/i.test(rawLhid);
+        if (matchedOptoolTab !== 'Leasehold' && isInvalidHeaderLhid) continue;
         if (
           matchedOptoolTab === 'Leasehold' &&
           !record.leaseholderSurname &&

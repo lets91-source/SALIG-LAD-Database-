@@ -1940,7 +1940,7 @@ function findOptoolRowNumber_(sheet, colMap, tabName, targetRow, prevRow) {
     }
     if (secondaryMatches) return r + 1;
   }
-  return prevRow ? -1 : firstLhidMatch;
+  return firstLhidMatch !== -1 ? firstLhidMatch : -1;
 }
 
 function upsertOptoolInSpreadsheet_(ss, tabName, headersSpec, rowObj, prevRow) {
