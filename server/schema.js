@@ -598,15 +598,13 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'dateReceivedDarpo', header: 'Date Received at DARPO', label: 'Date Received at DARPO', group: 'Valuation & PPU', type: 'date' },
     { key: 'compensationAmount', header: 'Compensation Amount', label: 'Compensation Amount (PHP)', group: 'Compensation & LBP', type: 'decimal' },
     { key: 'dateOfMov', header: 'Date of MOV', label: 'Date of MOV', group: 'Compensation & LBP', type: 'date' },
+    { key: 'dateTransLbpAoc', header: 'Date Trans to LBP/AOC', label: 'Date Transmitted to LBP/AOC', group: 'Compensation & LBP', type: 'date' },
     { key: 'lotNumber', header: 'Lot Number', label: 'Lot Number', group: 'Compensation & LBP', type: 'text' },
     { key: 'subLotNumber', header: 'Sub Lot Number', label: 'Sub Lot Number', group: 'Compensation & LBP', type: 'text' },
-    { key: 'dateTransLbpAoc', header: 'Date Trans to LBP/AOC', label: 'Date Transmitted to LBP/AOC', group: 'Compensation & LBP', type: 'date' },
-    { key: 'lbpClaimNumber', header: 'LBP Claim Number', label: 'LBP Claim Number', group: 'Compensation & LBP', type: 'text' },
-    { key: 'aocNumber', header: 'AOC Number', label: 'AOC Number', group: 'Compensation & LBP', type: 'text' },
     { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Reporting', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Reporting', type: 'select', options: getReportedMonthOptions() },
     { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
-    { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
+    { key: 'targetYear', header: 'Year Target', label: 'Year Target', group: 'Reporting', type: 'text' }
   ],
   RegistrationDistribution: [
     { key: 'lhid', header: 'LHID/ Sequence No.', label: 'LHID / Sequence No.', group: 'Identification', type: 'text' },
@@ -735,15 +733,13 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'dateReceivedDarpo',
     'compensationAmount',
     'dateOfMov',
+    'dateTransLbpAoc',
     'lotNumber',
     'subLotNumber',
-    'dateTransLbpAoc',
-    'lbpClaimNumber',
-    'aocNumber',
     'target',
-    'targetYear',
     'reportedMonth',
-    'pdfFile'
+    'pdfFile',
+    'targetYear'
   ],
   RegistrationDistribution: [
     'lhid',

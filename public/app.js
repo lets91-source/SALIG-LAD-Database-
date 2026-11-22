@@ -5614,12 +5614,36 @@ function getCfSupportRows(appState, tabName = 'CF(DOC)') {
     const datesMap = {};
     if (Array.isArray(cfgEntry.dates)) {
       for (const d of cfgEntry.dates) {
-        datesMap[d.key] = row[d.key] || row.datesMap?.[d.key] || '';
+        let rawVal = String(row[d.key] || row.datesMap?.[d.key] || '').trim();
+        if (!rawVal && (tabName === 'MOV' || cfgEntry.tabName === 'MOV')) {
+          if (d.key === 'ppuDate') {
+            rawVal = String(row['PPU Date'] || row['PPU DATE'] || row['WITH PPU DATE'] || row.ppu || row.B || '').trim();
+          } else if (d.key === 'dateReceivedDarpo') {
+            rawVal = String(row['Date Received at DARPO'] || row['Date Received DARPO'] || row['Received DARPO'] || row['WITH RECEIVED DARPO'] || row['RECEIVED DARPO'] || row.date_received_darpo || row.D || '').trim();
+          } else if (d.key === 'dateOfMov') {
+            rawVal = String(row['Date of MOV'] || row['DATE OF MOV'] || row['WITH DATE OF MOV'] || row['MOV Date'] || row.date_of_mov || row.F || '').trim();
+          } else if (d.key === 'dateTransLbpAoc') {
+            rawVal = String(row['Date Trans to LBP/AOC'] || row['Date Transmitted to LBP/AOC'] || row['TRANS TO LBP/AOC'] || row['WITH TRANS TO LBP/AOC'] || row['Trans to LBP/AOC'] || row.date_trans_lbp_aoc || row.G || '').trim();
+          } else if (d.key === 'reportedMonth') {
+            rawVal = String(row['Reported Month'] || row['REPORTED MONTH'] || row['WITH REPORTED MONTH'] || row['Month Reported'] || row.monthReported || row.K || '').trim();
+          }
+        }
+        datesMap[d.key] = rawVal;
       }
     }
     if (row.dateFiConducted) datesMap.dateFiConducted = row.dateFiConducted;
     if (row.datePreparedSigned) datesMap.datePreparedSigned = row.datePreparedSigned;
     if (row.reportedMonth) datesMap.reportedMonth = row.reportedMonth;
+
+    let rowTargetYear = row.targetYear || row['Year Target'] || row['YEAR TARGET'] || row['Target Year'] || row['TARGET YEAR'] || row.year || '';
+    if (!rowTargetYear && (tabName === 'MOV' || cfgEntry.tabName === 'MOV') && row.M) {
+      rowTargetYear = row.M;
+    }
+    if (!rowTargetYear) {
+      rowTargetYear = db.targetYear || db.year || '';
+    }
+    const ymTarget = String(rowTargetYear).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+    const resolvedTargetYear = ymTarget ? ymTarget[1] : String(rowTargetYear).trim();
 
     return {
       ...row,
@@ -5634,7 +5658,7 @@ function getCfSupportRows(appState, tabName = 'CF(DOC)') {
       areaHas: carpableNum,
       currentStatus: row.currentStatus || stage,
       stage,
-      targetYear: formatYearDisplay(row.targetYear || db.year || db.targetYear || ''),
+      targetYear: formatYearDisplay(resolvedTargetYear),
       target: row.target || db.target || 'Current',
       surveyRequirement: row.surveyRequirement || db.surveyRequirement || '',
       datesMap
@@ -5695,7 +5719,19 @@ function openCfSupportListModal({
         if (!matchProvinceName(r.province, province)) return false;
       }
       if (stageKey) {
-        const hasDate = Boolean(String(r[stageKey] || r.datesMap?.[stageKey] || '').trim());
+        const rawDate = r[stageKey] || r.datesMap?.[stageKey] || '';
+        let hasDate = isMilestoneDatePopulated(rawDate);
+        if (hasDate && effectiveTabName === 'MOV' && stageKey === 'reportedMonth') {
+          const repMonth = String(rawDate).trim();
+          const ym = String(r.targetYear || '').trim().match(/\b(20\d{2})\b/);
+          const rowTargetYear = ym ? Number(ym[1]) : (targetYear !== 'ALL' ? Number(targetYear) : null);
+          if (rowTargetYear) {
+            const wordMatch = repMonth.match(/\b([A-Za-z]+)\s*,?\s*(\d{4})\b/);
+            if (wordMatch && Number(wordMatch[2]) !== rowTargetYear) {
+              hasDate = false;
+            }
+          }
+        }
         if (isBalanceMode) {
           if (hasDate) return false;
         } else {

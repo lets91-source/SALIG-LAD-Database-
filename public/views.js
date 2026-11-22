@@ -1750,7 +1750,16 @@ export function matchesWhereaboutsTargetYear(r, selectedYear, currentYear = new 
   const isPreviousSelected = (sLower === prevStr || sLower === 'previous' || sLower === 'previous year' || sLower.includes('prev'));
 
   // 1. Primary: Check targetYear or year column (base on current update year target column)
-  const rYear = String(r.targetYear || r.year || '').trim();
+  const rYear = String(
+    r.targetYear ||
+    r['Year Target'] ||
+    r['YEAR TARGET'] ||
+    r['Target Year'] ||
+    r['TARGET YEAR'] ||
+    r.year ||
+    r['Year'] ||
+    ''
+  ).trim();
   if (rYear) {
     const ym = rYear.match(/\b(20\d{2})\b/);
     if (ym) {
@@ -1864,6 +1873,87 @@ export function isSurveyAccomplished(r, selectedYear = null) {
 
   if (!repYear || repYear !== targetYear) return false;
   if (selectedYear && selectedYear !== 'ALL' && targetYear !== Number(selectedYear)) return false;
+
+  return true;
+}
+
+export function isMilestoneDatePopulated(val) {
+  if (val === null || val === undefined) return false;
+  const s = String(val).trim();
+  if (
+    !s ||
+    s === '-' ||
+    s === '—' ||
+    s === 'N/A' ||
+    s === 'n/a' ||
+    s.toLowerCase() === 'null' ||
+    s.toLowerCase() === 'undated' ||
+    s.toLowerCase() === 'pending'
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function isMovAccomplished(r, selectedYear = null) {
+  if (!r) return false;
+  const targetYearRaw = String(
+    (Array.isArray(r) ? r[12] : '') ||
+    r.targetYear ||
+    r['Year Target'] ||
+    r['YEAR TARGET'] ||
+    r['Target Year'] ||
+    r['TARGET YEAR'] ||
+    r.year ||
+    r['Year'] ||
+    ''
+  ).trim();
+
+  const targetYearMatch = targetYearRaw.match(/\b(20\d{2})\b/);
+  let targetYear = targetYearMatch ? Number(targetYearMatch[1]) : null;
+  if (!targetYear && selectedYear && selectedYear !== 'ALL') {
+    targetYear = Number(selectedYear);
+  }
+  if (!targetYear) {
+    const dateStr = [
+      (Array.isArray(r) ? r[1] : '') || r.ppuDate || r['PPU Date'] || r['PPU DATE'] || r['WITH PPU DATE'],
+      (Array.isArray(r) ? r[3] : '') || r.dateReceivedDarpo || r['Date Received at DARPO'] || r['Received DARPO'] || r['WITH RECEIVED DARPO'],
+      (Array.isArray(r) ? r[5] : '') || r.dateOfMov || r['Date of MOV'] || r['DATE OF MOV'] || r['WITH DATE OF MOV'],
+      (Array.isArray(r) ? r[6] : '') || r.dateTransLbpAoc || r['Date Trans to LBP/AOC'] || r['TRANS TO LBP/AOC'] || r['WITH TRANS TO LBP/AOC'],
+      (Array.isArray(r) ? r[10] : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH']
+    ].filter(isMilestoneDatePopulated).join(' ');
+    const dm = dateStr.match(/\b(20\d{2})\b/);
+    if (dm) targetYear = Number(dm[1]);
+  }
+
+  if (!targetYear) return false;
+  if (selectedYear && selectedYear !== 'ALL' && targetYear !== Number(selectedYear)) {
+    return false;
+  }
+
+  // Count if any of the Land Valuation milestone indicators are populated:
+  // Column B: PPU Date
+  // Column D: WITH RECEIVED DARPO
+  // Column F: WITH DATE OF MOV
+  // Column G: WITH TRANS TO LBP/AOC
+  // Column K: WITH REPORTED MONTH
+  const hasPpu = isMilestoneDatePopulated((Array.isArray(r) ? r[1] : '') || r.ppuDate || r['PPU Date'] || r['PPU DATE'] || r['WITH PPU DATE']);
+  const hasDarpo = isMilestoneDatePopulated((Array.isArray(r) ? r[3] : '') || r.dateReceivedDarpo || r['Date Received at DARPO'] || r['Received DARPO'] || r['WITH RECEIVED DARPO']);
+  const hasMov = isMilestoneDatePopulated((Array.isArray(r) ? r[5] : '') || r.dateOfMov || r['Date of MOV'] || r['DATE OF MOV'] || r['WITH DATE OF MOV']);
+  const hasTrans = isMilestoneDatePopulated((Array.isArray(r) ? r[6] : '') || r.dateTransLbpAoc || r['Date Trans to LBP/AOC'] || r['TRANS TO LBP/AOC'] || r['WITH TRANS TO LBP/AOC']);
+  const repMonth = String((Array.isArray(r) ? r[10] : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH'] || '').trim();
+  const hasRepMonth = isMilestoneDatePopulated(repMonth);
+
+  if (!hasPpu && !hasDarpo && !hasMov && !hasTrans && !hasRepMonth) {
+    return false;
+  }
+
+  if (hasRepMonth) {
+    const wordMatch = repMonth.match(/\b([A-Za-z]+)\s*,?\s*(\d{4})\b/);
+    if (wordMatch && Number(wordMatch[2]) !== targetYear) {
+      return false;
+    }
+  }
 
   return true;
 }
@@ -2063,6 +2153,19 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
     let populatedDatesCount = 0;
     for (const d of cfg.dates) {
       let rawVal = String(row[d.key] || '').trim();
+      if (!rawVal && viewKey === 'mov-whereabouts') {
+        if (d.key === 'ppuDate') {
+          rawVal = String(row['PPU Date'] || row['PPU DATE'] || row['WITH PPU DATE'] || row.ppu || row.B || '').trim();
+        } else if (d.key === 'dateReceivedDarpo') {
+          rawVal = String(row['Date Received at DARPO'] || row['Date Received DARPO'] || row['Received DARPO'] || row['WITH RECEIVED DARPO'] || row['RECEIVED DARPO'] || row.date_received_darpo || row.D || '').trim();
+        } else if (d.key === 'dateOfMov') {
+          rawVal = String(row['Date of MOV'] || row['DATE OF MOV'] || row['WITH DATE OF MOV'] || row['MOV Date'] || row.date_of_mov || row.F || '').trim();
+        } else if (d.key === 'dateTransLbpAoc') {
+          rawVal = String(row['Date Trans to LBP/AOC'] || row['Date Transmitted to LBP/AOC'] || row['TRANS TO LBP/AOC'] || row['WITH TRANS TO LBP/AOC'] || row['Trans to LBP/AOC'] || row.date_trans_lbp_aoc || row.G || '').trim();
+        } else if (d.key === 'reportedMonth') {
+          rawVal = String(row['Reported Month'] || row['REPORTED MONTH'] || row['WITH REPORTED MONTH'] || row['Month Reported'] || row.monthReported || row.K || '').trim();
+        }
+      }
       if (!rawVal && d.key === 'dateAcceptedDenrSmd') {
         rawVal = String(
           row['Date Accepted by DENR-SMD\nDATE'] ||
@@ -2077,7 +2180,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
         ).trim();
       }
       datesMap[d.key] = rawVal;
-      if (rawVal) populatedDatesCount++;
+      if (isMilestoneDatePopulated(rawVal)) populatedDatesCount++;
     }
     const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
     let stage = '';
@@ -2093,6 +2196,16 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       stageBadge = resolved.badge;
     }
 
+    let rowTargetYear = row.targetYear || row['Year Target'] || row['YEAR TARGET'] || row['Target Year'] || row['TARGET YEAR'] || row.year || '';
+    if (!rowTargetYear && viewKey === 'mov-whereabouts' && row.M) {
+      rowTargetYear = row.M;
+    }
+    if (!rowTargetYear) {
+      rowTargetYear = db.targetYear || db.year || '';
+    }
+    const ymTarget = String(rowTargetYear).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+    const resolvedTargetYear = ymTarget ? ymTarget[1] : String(rowTargetYear).trim();
+
     return {
       ...row,
       lhid: formatLhidDisplay(row.lhid || db.lhid || '') || '—',
@@ -2106,7 +2219,7 @@ export function getWhereaboutsColumnFilterValues(ctx, viewKey, colKey) {
       totalArea: carpableNum,
       carpable: carpableNum,
       areaHas: carpableNum,
-      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
+      targetYear: resolvedTargetYear,
       currentStatus: row.currentStatus || stage,
       datesMap,
       populatedDatesCount,
@@ -2330,6 +2443,19 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
     let populatedDatesCount = 0;
     for (const d of cfg.dates) {
       let rawVal = String(row[d.key] || '').trim();
+      if (!rawVal && viewKey === 'mov-whereabouts') {
+        if (d.key === 'ppuDate') {
+          rawVal = String(row['PPU Date'] || row['PPU DATE'] || row['WITH PPU DATE'] || row.ppu || row.B || '').trim();
+        } else if (d.key === 'dateReceivedDarpo') {
+          rawVal = String(row['Date Received at DARPO'] || row['Date Received DARPO'] || row['Received DARPO'] || row['WITH RECEIVED DARPO'] || row['RECEIVED DARPO'] || row.date_received_darpo || row.D || '').trim();
+        } else if (d.key === 'dateOfMov') {
+          rawVal = String(row['Date of MOV'] || row['DATE OF MOV'] || row['WITH DATE OF MOV'] || row['MOV Date'] || row.date_of_mov || row.F || '').trim();
+        } else if (d.key === 'dateTransLbpAoc') {
+          rawVal = String(row['Date Trans to LBP/AOC'] || row['Date Transmitted to LBP/AOC'] || row['TRANS TO LBP/AOC'] || row['WITH TRANS TO LBP/AOC'] || row['Trans to LBP/AOC'] || row.date_trans_lbp_aoc || row.G || '').trim();
+        } else if (d.key === 'reportedMonth') {
+          rawVal = String(row['Reported Month'] || row['REPORTED MONTH'] || row['WITH REPORTED MONTH'] || row['Month Reported'] || row.monthReported || row.K || '').trim();
+        }
+      }
       if (!rawVal && d.key === 'dateAcceptedDenrSmd') {
         rawVal = String(
           row['Date Accepted by DENR-SMD\nDATE'] ||
@@ -2344,7 +2470,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         ).trim();
       }
       datesMap[d.key] = rawVal;
-      if (rawVal) populatedDatesCount++;
+      if (isMilestoneDatePopulated(rawVal)) populatedDatesCount++;
     }
     const isAllDatesPopulated = populatedDatesCount === cfg.dates.length;
     let stage = '';
@@ -2360,6 +2486,16 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       stageBadge = resolved.badge;
     }
 
+    let rowTargetYear = row.targetYear || row['Year Target'] || row['YEAR TARGET'] || row['Target Year'] || row['TARGET YEAR'] || row.year || '';
+    if (!rowTargetYear && viewKey === 'mov-whereabouts' && row.M) {
+      rowTargetYear = row.M;
+    }
+    if (!rowTargetYear) {
+      rowTargetYear = db.targetYear || db.year || '';
+    }
+    const ymTarget = String(rowTargetYear).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+    const resolvedTargetYear = ymTarget ? ymTarget[1] : String(rowTargetYear).trim();
+
     return {
       ...row,
       lhid: formatLhidDisplay(row.lhid || db.lhid || '') || '—',
@@ -2373,7 +2509,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       totalArea: carpableNum,
       carpable: carpableNum,
       areaHas: carpableNum,
-      targetYear: String(row.targetYear || db.year || db.targetYear || '').trim(),
+      targetYear: resolvedTargetYear,
       currentStatus: row.currentStatus || stage,
       datesMap,
       populatedDatesCount,
@@ -2869,7 +3005,29 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         </div>
 
         ${cfg.dates.map((d) => {
-      const matchingRows = yearMatchingRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
+      const matchingRows = yearMatchingRows.filter((r) => {
+        const val = r.datesMap?.[d.key] || r[d.key];
+        if (!isMilestoneDatePopulated(val)) return false;
+        if (viewKey === 'mov-whereabouts') {
+          if (targetYearFilterVal !== 'ALL') {
+            const rowY = String(r.targetYear || r['Year Target'] || r['YEAR TARGET'] || r['Target Year'] || r['TARGET YEAR'] || '').trim();
+            const ym = rowY.match(/\b(20\d{2})\b/);
+            if (ym && ym[1] !== targetYearFilterVal) return false;
+          }
+          if (d.key === 'reportedMonth') {
+            const repMonth = String(val).trim();
+            const ym = String(r.targetYear || '').trim().match(/\b(20\d{2})\b/);
+            const rowTargetYear = ym ? Number(ym[1]) : (targetYearFilterVal !== 'ALL' ? Number(targetYearFilterVal) : null);
+            if (rowTargetYear) {
+              const wordMatch = repMonth.match(/\b([A-Za-z]+)\s*,?\s*(\d{4})\b/);
+              if (wordMatch && Number(wordMatch[2]) !== rowTargetYear) {
+                return false;
+              }
+            }
+          }
+        }
+        return true;
+      });
       const dLhs = matchingRows.length;
       const dArea = matchingRows.reduce((s, r) => s + (Number(r.carpable) || 0), 0);
       return `
@@ -2938,7 +3096,29 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
 
       const dateStats = {};
       for (const d of cfg.dates) {
-        const dRows = provRows.filter((r) => Boolean(r.datesMap?.[d.key] || r[d.key]));
+        const dRows = provRows.filter((r) => {
+          const val = r.datesMap?.[d.key] || r[d.key];
+          if (!isMilestoneDatePopulated(val)) return false;
+          if (viewKey === 'mov-whereabouts') {
+            if (!isTargetYearAll) {
+              const rowY = String(r.targetYear || r['Year Target'] || r['YEAR TARGET'] || r['Target Year'] || r['TARGET YEAR'] || '').trim();
+              const ym = rowY.match(/\b(20\d{2})\b/);
+              if (ym && ym[1] !== targetYearFilterVal) return false;
+            }
+            if (d.key === 'reportedMonth') {
+              const repMonth = String(val).trim();
+              const ym = String(r.targetYear || '').trim().match(/\b(20\d{2})\b/);
+              const rowTargetYear = ym ? Number(ym[1]) : (!isTargetYearAll ? Number(targetYearFilterVal) : null);
+              if (rowTargetYear) {
+                const wordMatch = repMonth.match(/\b([A-Za-z]+)\s*,?\s*(\d{4})\b/);
+                if (wordMatch && Number(wordMatch[2]) !== rowTargetYear) {
+                  return false;
+                }
+              }
+            }
+          }
+          return true;
+        });
         const dLhs = dRows.length;
         const dArea = Number(dRows.reduce((s, r) => s + parseNumericValue(r.carpable || 0), 0).toFixed(4));
         const balLhs = Math.max(0, targetLhs - dLhs);

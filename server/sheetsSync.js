@@ -114,8 +114,13 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
             (col.key === 'surveyRequirement' && (cleanNorm.includes('needing') || cleanNorm.includes('surveyrequirement') || cleanNorm.includes('surveystatus') || norm === 'lhs' || norm === 'lh')) ||
             (col.key === 'leaseRentalUnit' && (cleanNorm.includes('rentalunit') || cleanNorm.includes('leaserental'))) ||
             (col.key === 'leaseInPesos' && (cleanNorm.includes('leaseinpesos') || cleanNorm.includes('rentalpesos') || cleanNorm === 'pesos')) ||
-            (col.key === 'targetYear' && (cleanNorm.includes('targetyear') || cleanNorm === 'targetyr' || (cleanNorm.includes('target') && cleanNorm.includes('year')))) ||
-            (col.key === 'reportMonth' && (norm === 'reportmonth' || cleanNorm.includes('reportmonth') || cleanNorm.includes('monthreported')))
+            (col.key === 'ppuDate' && (norm === 'ppu' || norm.includes('ppudate') || cleanNorm.includes('withppudate'))) ||
+            (col.key === 'dateReceivedDarpo' && (cleanNorm.includes('datereceivedatdarpo') || cleanNorm.includes('receiveddarpo') || cleanNorm.includes('receivedatdarpo') || cleanNorm.includes('withreceiveddarpo'))) ||
+            (col.key === 'dateOfMov' && (cleanNorm.includes('dateofmov') || cleanNorm === 'movdate' || cleanNorm.includes('withdateofmov'))) ||
+            (col.key === 'dateTransLbpAoc' && (cleanNorm.includes('translbpaoc') || cleanNorm.includes('transmittedtolbp') || cleanNorm.includes('transmittedlbpaoc') || cleanNorm.includes('withtranslbpaoc') || cleanNorm.includes('withtrans'))) ||
+            (col.key === 'targetYear' && (cleanNorm.includes('targetyear') || cleanNorm.includes('yeartarget') || cleanNorm === 'targetyr' || (cleanNorm.includes('target') && cleanNorm.includes('year')))) ||
+            (col.key === 'reportMonth' && (norm === 'reportmonth' || cleanNorm.includes('reportmonth') || cleanNorm.includes('monthreported'))) ||
+            (col.key === 'reportedMonth' && (cleanNorm.includes('reportedmonth') || cleanNorm.includes('monthreported') || cleanNorm.includes('withreportedmonth')))
           );
         }
       );
@@ -317,6 +322,38 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
           }
           if ((record.targetYear === undefined || record.targetYear === '') && row.values[32] !== undefined && String(row.values[32]).trim() !== '') {
             record.targetYear = String(row.values[32]).trim();
+          }
+        }
+
+        // Positional rescue for Land Valuation (MOV):
+        // Col B (1-based 2): PPU Date
+        // Col D (1-based 4): Date Received at DARPO
+        // Col F (1-based 6): Date of MOV
+        // Col G (1-based 7): Date Trans to LBP/AOC
+        // Col K (1-based 11): Reported Month
+        // Col M (1-based 13): Year Target
+        if (matchedOptoolTab === 'MOV') {
+          if (!record.ppuDate && row.values[2] !== undefined && String(row.values[2]).trim() !== '') {
+            record.ppuDate = String(row.values[2]).trim();
+          }
+          if (!record.dateReceivedDarpo && row.values[4] !== undefined && String(row.values[4]).trim() !== '') {
+            record.dateReceivedDarpo = String(row.values[4]).trim();
+          }
+          if (!record.dateOfMov && row.values[6] !== undefined && String(row.values[6]).trim() !== '') {
+            record.dateOfMov = String(row.values[6]).trim();
+          }
+          if (!record.dateTransLbpAoc && row.values[7] !== undefined && String(row.values[7]).trim() !== '') {
+            record.dateTransLbpAoc = String(row.values[7]).trim();
+          }
+          if (!record.reportedMonth && row.values[11] !== undefined && String(row.values[11]).trim() !== '') {
+            record.reportedMonth = formatReportedMonthWord(String(row.values[11]).trim()) || String(row.values[11]).trim();
+          }
+          if (!record.targetYear && row.values[13] !== undefined && String(row.values[13]).trim() !== '') {
+            record.targetYear = formatYearDisplay(String(row.values[13]).trim());
+          }
+          if (record.targetYear) {
+            const ym = String(record.targetYear).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+            if (ym) record.targetYear = ym[1];
           }
         }
         if (nonEmptyCount === 0) continue;

@@ -19,7 +19,7 @@ import {
   LEASEHOLD_COLUMNS,
   normalizeLeaseholdRow
 } from '../schema.js';
-import { ConsolidatedStore, resolveDefaultDataDir } from '../store.js';
+import { ConsolidatedStore, resolveDefaultDataDir, isMovAccomplished } from '../store.js';
 import { createSeedState } from '../seedData.js';
 import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from '../auth.js';
 import {
@@ -105,12 +105,13 @@ test('Schema & Region VIII Registry integrity', () => {
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadNo49'), false);
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'approvedSubdivisionPlan'), false);
   assert.equal(OPTOOL_SHEET_SCHEMAS.Survey.length, 44);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 15);
-  const movDateMovIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'dateOfMov');
+  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 13);
+  const movDateTransIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'dateTransLbpAoc');
   const movLotIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'lotNumber');
   const movSubLotIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'subLotNumber');
-  assert.equal(movLotIdx, movDateMovIdx + 1, 'Lot Number must immediately follow Date of MOV in MOV schema');
-  assert.equal(movSubLotIdx, movDateMovIdx + 2, 'Sub Lot Number must immediately follow Lot Number in MOV schema');
+  assert.equal(movDateTransIdx, 6, 'Date Trans to LBP/AOC is Column G (index 6)');
+  assert.equal(movLotIdx, movDateTransIdx + 1, 'Lot Number must immediately follow Date Trans to LBP/AOC in MOV schema');
+  assert.equal(movSubLotIdx, movLotIdx + 1, 'Sub Lot Number must immediately follow Lot Number in MOV schema');
   const movLotCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'lotNumber');
   assert.equal(movLotCol?.header, 'Lot Number');
   assert.equal(movLotCol?.group, 'Compensation & LBP');
@@ -5267,6 +5268,118 @@ test('Whereabouts milestone views display authentic NEP targets from Regional Hu
   }, WHEREABOUTS_CONFIGS['mov-whereabouts']);
   assert.ok(mov2027Html.includes('939.4987'), 'MOV 2027 displays 939.4987 HAS target');
   assert.ok(mov2027Html.includes('119'), 'MOV 2027 displays 119 LHS target');
+});
+
+test('Land Valuation (MOV) counts PPU Date (Col B), Received DARPO (Col D), Date of MOV (Col F), Trans to LBP/AOC (Col G), Reported Month (Col K) equal to Year Target in Col M', () => {
+  // 1. Verify OPTOOL_SCHEMAS.MOV mapping
+  const movSchema = OPTOOL_SHEET_SCHEMAS.MOV;
+  assert.equal(movSchema[0].key, 'lhid', 'Col 1 (A): LHID');
+  assert.equal(movSchema[1].key, 'ppuDate', 'Col 2 (B): PPU Date');
+  assert.equal(movSchema[2].key, 'ppuReviewResult', 'Col 3 (C): PPU Review Result');
+  assert.equal(movSchema[3].key, 'dateReceivedDarpo', 'Col 4 (D): Date Received at DARPO');
+  assert.equal(movSchema[4].key, 'compensationAmount', 'Col 5 (E): Compensation Amount');
+  assert.equal(movSchema[5].key, 'dateOfMov', 'Col 6 (F): Date of MOV');
+  assert.equal(movSchema[6].key, 'dateTransLbpAoc', 'Col 7 (G): Date Trans to LBP/AOC');
+  assert.equal(movSchema[10].key, 'reportedMonth', 'Col 11 (K): Reported Month');
+  assert.equal(movSchema[12].key, 'targetYear', 'Col 13 (M): Year Target');
+  assert.equal(movSchema[12].header, 'Year Target', 'Col 13 header is Year Target');
+
+  // 2. Test isMovAccomplished rule
+  // A row with Col B (PPU Date) and Col M (Year Target 2026) is accomplished for 2026
+  const rowPpu = { ppuDate: '2026-03-15', targetYear: '2026' };
+  assert.equal(isMovAccomplished(rowPpu, '2026'), true, 'PPU Date with Year Target 2026 is accomplished');
+  assert.equal(isMovAccomplished(rowPpu, '2027'), false, 'PPU Date with Year Target 2026 is not accomplished for 2027');
+
+  // A row with Col D (Date Received at DARPO) and Col M (Year Target)
+  const rowDarpo = { dateReceivedDarpo: '2026-04-10', 'Year Target': '2026' };
+  assert.equal(isMovAccomplished(rowDarpo, '2026'), true, 'Date Received DARPO with Year Target 2026 is accomplished');
+
+  // A row with Col F (Date of MOV) and Col M (Target Year)
+  const rowMov = { dateOfMov: '2026-05-20', 'Target Year': '2026' };
+  assert.equal(isMovAccomplished(rowMov, '2026'), true, 'Date of MOV with Year Target 2026 is accomplished');
+
+  // A row with Col G (Date Trans to LBP/AOC)
+  const rowTrans = { dateTransLbpAoc: '2026-06-25', targetYear: '2026' };
+  assert.equal(isMovAccomplished(rowTrans, '2026'), true, 'Trans to LBP/AOC with Year Target 2026 is accomplished');
+
+  // A row with Col K (Reported Month) matching Target Year
+  const rowRepMatch = { reportedMonth: 'August 2026', targetYear: '2026' };
+  assert.equal(isMovAccomplished(rowRepMatch, '2026'), true, 'Reported Month August 2026 with Year Target 2026 is accomplished');
+
+  // A row with Reported Month year mismatching Target Year
+  const rowRepMismatch = { reportedMonth: 'August 2025', targetYear: '2026' };
+  assert.equal(isMovAccomplished(rowRepMismatch, '2026'), false, 'Reported Month August 2025 does NOT match Year Target 2026');
+
+  // A row with no milestone dates
+  const rowEmpty = { targetYear: '2026' };
+  assert.equal(isMovAccomplished(rowEmpty, '2026'), false, 'Empty milestone dates is not accomplished');
+
+  // 3. Test renderMilestoneWhereaboutsView with mov-whereabouts
+  const sampleState = {
+    optool: {
+      Database: [
+        { lhid: 'LH-0837-0001', province: 'Leyte', totalArea: '10.5000', statusLad: 'LAD Balance', workability: 'Workable' },
+        { lhid: 'LH-0837-0002', province: 'Leyte', totalArea: '5.2500', statusLad: 'LAD Balance', workability: 'Workable' },
+        { lhid: 'LH-0860-0001', province: 'Samar', totalArea: '8.0000', statusLad: 'LAD Balance', workability: 'Workable' }
+      ],
+      MOV: [
+        {
+          lhid: 'LH-0837-0001',
+          'PPU Date': '2026-02-15',
+          'Date Received at DARPO': '2026-03-01',
+          'Date of MOV': '2026-04-10',
+          'Date Trans to LBP/AOC': '2026-05-15',
+          'Reported Month': 'May 2026',
+          'Year Target': '2026'
+        },
+        {
+          lhid: 'LH-0837-0002',
+          'PPU Date': '2026-03-20',
+          'Date Received at DARPO': '2026-04-05',
+          'Year Target': '2026'
+        },
+        {
+          lhid: 'LH-0860-0001',
+          'Date of MOV': '2027-01-10',
+          'Year Target': '2027'
+        }
+      ]
+    },
+    nepMilestoneListByYear: {
+      '2026': {
+        land_valuation: {
+          LEY: { lhs: 106, area: 713.69, arbs: 0, year: 2026 },
+          SAM: { lhs: 13, area: 165.1951, arbs: 0, year: 2026 }
+        }
+      }
+    }
+  };
+
+  const testCtx2026 = {
+    state: sampleState,
+    analytics: { nepMilestoneListByYear: sampleState.nepMilestoneListByYear },
+    schemas: { registry: REGIONAL_REGISTRY },
+    whereaboutsTargetYearFilter: { 'mov-whereabouts': '2026' },
+    whereaboutsProvinceFilter: { 'mov-whereabouts': 'ALL' },
+    whereaboutsColFilters: {},
+    whereaboutsSearch: {},
+    whereaboutsPage: {},
+    whereaboutsPageSize: {},
+    whereaboutsShowGraph: {},
+    whereaboutsGraphMode: {}
+  };
+
+  const movHtml = renderMilestoneWhereaboutsView(testCtx2026, WHEREABOUTS_CONFIGS['mov-whereabouts']);
+
+  // Leyte should show 2 LHs for PPU Date and Received DARPO, 1 LH for Date of MOV, Trans to LBP/AOC, Reported Month
+  assert.ok(movHtml.includes('WITH PPU DATE'), 'Includes WITH PPU DATE header');
+  assert.ok(movHtml.includes('WITH RECEIVED DARPO'), 'Includes WITH RECEIVED DARPO header');
+  assert.ok(movHtml.includes('WITH DATE OF MOV'), 'Includes WITH DATE OF MOV header');
+  assert.ok(movHtml.includes('WITH TRANS TO LBP/AOC'), 'Includes WITH TRANS TO LBP/AOC header');
+  assert.ok(movHtml.includes('WITH REPORTED MONTH'), 'Includes WITH REPORTED MONTH header');
+
+  // Verify that the Samar 2027 row does NOT get counted under 2026
+  assert.ok(!movHtml.includes('Samar (2027) counted in 2026'), '2027 row is isolated from 2026 accomplishment');
 });
 
 

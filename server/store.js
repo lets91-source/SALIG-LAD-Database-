@@ -358,7 +358,15 @@ const REPORTED_MONTH_KEYS = [
 
 function resolveFirstDateQuarter(row, dateKeys, fallbackYear = null) {
   const rowTargetYear =
-    Number(row?.targetYear || row?.['Target Year'] || row?.year || row?.['Year']) || fallbackYear;
+    Number(
+      row?.targetYear ||
+      row?.['Year Target'] ||
+      row?.['YEAR TARGET'] ||
+      row?.['Target Year'] ||
+      row?.['TARGET YEAR'] ||
+      row?.year ||
+      row?.['Year']
+    ) || fallbackYear;
 
   // 1. Accomplishment quarter/month/year must be derived primarily from Reported Month
   for (const key of REPORTED_MONTH_KEYS) {
@@ -445,6 +453,87 @@ export function isSurveyAccomplished(r, targetYearFilter = null) {
   return true;
 }
 
+export function isMilestoneDatePopulated(val) {
+  if (val === null || val === undefined) return false;
+  const s = String(val).trim();
+  if (
+    !s ||
+    s === '-' ||
+    s === '—' ||
+    s === 'N/A' ||
+    s === 'n/a' ||
+    s.toLowerCase() === 'null' ||
+    s.toLowerCase() === 'undated' ||
+    s.toLowerCase() === 'pending'
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function isMovAccomplished(r, targetYearFilter = null) {
+  if (!r) return false;
+  const targetYearRaw = String(
+    (Array.isArray(r) ? r[12] : '') ||
+    r.targetYear ||
+    r['Year Target'] ||
+    r['YEAR TARGET'] ||
+    r['Target Year'] ||
+    r['TARGET YEAR'] ||
+    r.year ||
+    r['Year'] ||
+    ''
+  ).trim();
+
+  const targetYearMatch = targetYearRaw.match(/\b(20\d{2})\b/);
+  let targetYear = targetYearMatch ? Number(targetYearMatch[1]) : null;
+  if (!targetYear && targetYearFilter && targetYearFilter !== 'ALL') {
+    targetYear = Number(targetYearFilter);
+  }
+  if (!targetYear) {
+    const dateStr = [
+      (Array.isArray(r) ? r[1] : '') || r.ppuDate || r['PPU Date'] || r['PPU DATE'] || r['WITH PPU DATE'],
+      (Array.isArray(r) ? r[3] : '') || r.dateReceivedDarpo || r['Date Received at DARPO'] || r['Received DARPO'] || r['WITH RECEIVED DARPO'],
+      (Array.isArray(r) ? r[5] : '') || r.dateOfMov || r['Date of MOV'] || r['DATE OF MOV'] || r['WITH DATE OF MOV'],
+      (Array.isArray(r) ? r[6] : '') || r.dateTransLbpAoc || r['Date Trans to LBP/AOC'] || r['TRANS TO LBP/AOC'] || r['WITH TRANS TO LBP/AOC'],
+      (Array.isArray(r) ? r[10] : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH']
+    ].filter(isMilestoneDatePopulated).join(' ');
+    const dm = dateStr.match(/\b(20\d{2})\b/);
+    if (dm) targetYear = Number(dm[1]);
+  }
+
+  if (!targetYear) return false;
+  if (targetYearFilter && targetYearFilter !== 'ALL' && targetYear !== Number(targetYearFilter)) {
+    return false;
+  }
+
+  // Count if any of the Land Valuation milestone indicators are populated:
+  // Column B: PPU Date
+  // Column D: WITH RECEIVED DARPO
+  // Column F: WITH DATE OF MOV
+  // Column G: WITH TRANS TO LBP/AOC
+  // Column K: WITH REPORTED MONTH
+  const hasPpu = isMilestoneDatePopulated((Array.isArray(r) ? r[1] : '') || r.ppuDate || r['PPU Date'] || r['PPU DATE'] || r['WITH PPU DATE']);
+  const hasDarpo = isMilestoneDatePopulated((Array.isArray(r) ? r[3] : '') || r.dateReceivedDarpo || r['Date Received at DARPO'] || r['Received DARPO'] || r['WITH RECEIVED DARPO']);
+  const hasMov = isMilestoneDatePopulated((Array.isArray(r) ? r[5] : '') || r.dateOfMov || r['Date of MOV'] || r['DATE OF MOV'] || r['WITH DATE OF MOV']);
+  const hasTrans = isMilestoneDatePopulated((Array.isArray(r) ? r[6] : '') || r.dateTransLbpAoc || r['Date Trans to LBP/AOC'] || r['TRANS TO LBP/AOC'] || r['WITH TRANS TO LBP/AOC']);
+  const repMonth = String((Array.isArray(r) ? r[10] : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH'] || '').trim();
+  const hasRepMonth = isMilestoneDatePopulated(repMonth);
+
+  if (!hasPpu && !hasDarpo && !hasMov && !hasTrans && !hasRepMonth) {
+    return false;
+  }
+
+  if (hasRepMonth) {
+    const wordMatch = repMonth.match(/\b([A-Za-z]+)\s*,?\s*(\d{4})\b/);
+    if (wordMatch && Number(wordMatch[2]) !== targetYear) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 const MILESTONE_ANALYTICS_SPECS = {
   cf_doc: {
     tabName: 'CF(DOC)',
@@ -470,8 +559,22 @@ const MILESTONE_ANALYTICS_SPECS = {
   },
   land_valuation: {
     tabName: 'MOV',
-    dateKeys: ['reportedMonth', 'dateTransLbpAoc', 'dateOfMov', 'dateReceivedDarpo', 'ppuDate'],
-    include: () => true,
+    dateKeys: [
+      'reportedMonth',
+      'Reported Month',
+      'dateTransLbpAoc',
+      'Date Trans to LBP/AOC',
+      'TRANS TO LBP/AOC',
+      'dateOfMov',
+      'Date of MOV',
+      'dateReceivedDarpo',
+      'Date Received at DARPO',
+      'Received DARPO',
+      'ppuDate',
+      'PPU Date'
+    ],
+    // Accomplishment rule: count PPU Date in Col B, Received DARPO in Col D, Date of MOV in Col F, Trans to LBP/AOC in Col G, Reported Month in Col K equal to Year Target in Col M
+    include: (r, filterYear) => isMovAccomplished(r, filterYear),
     getCount: () => 1,
     getArea: (_r, db) => getDbParcelArea(db)
   },

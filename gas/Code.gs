@@ -141,9 +141,8 @@ const OPTOOL_SCHEMA_HEADERS = {
   MOV: [
     'LHID', 'PPU Date', 'PPU Review Result\n(PASSED/FAILED)',
     'Date Received at DARPO', 'Compensation Amount', 'Date of MOV',
-    'Lot Number', 'Sub Lot Number',
-    'Date Trans to LBP/AOC', 'LBP Claim Number', 'AOC Number',
-    'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File', 'Target Year'
+    'Date Trans to LBP/AOC', 'Lot Number', 'Sub Lot Number',
+    'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File', 'Year Target'
   ],
   RegistrationDistribution: [
     'LHID/ Sequence No.', 'Origin/\nSource:\n(New Land, REDOC & DNYD)',
@@ -1200,6 +1199,7 @@ function readSheetObjects_(sheet) {
       const val = data[r][idx];
       obj[key] = val instanceof Date ? Utilities.formatDate(val, 'Asia/Manila', 'yyyy-MM-dd') : val;
     });
+    obj.__rawRow = data[r];
     rows.push(obj);
   }
   return rows;
@@ -1379,6 +1379,73 @@ function readProvincialMilestoneSupportLists_() {
                 }
               }
             }
+          }
+
+          // Normalize Land Valuation (MOV) columns:
+          // Column B (col idx 1): PPU Date
+          // Column D (col idx 3): WITH RECEIVED DARPO (Date Received at DARPO)
+          // Column F (col idx 5): WITH DATE OF MOV (Date of MOV)
+          // Column G (col idx 6): WITH TRANS TO LBP/AOC (Date Trans to LBP/AOC)
+          // Column K (col idx 10): WITH REPORTED MONTH (Reported Month)
+          // Column M (col idx 12): Year Target / Target Year
+          if (tabName === 'MOV') {
+            if (!row.ppuDate) {
+              row.ppuDate = row['PPU Date'] || row['PPU DATE'] || row['WITH PPU DATE'] || row['PPU'] || '';
+              if (!row.ppuDate && row.__rawRow && row.__rawRow[1]) {
+                const valB = row.__rawRow[1];
+                row.ppuDate = valB instanceof Date ? Utilities.formatDate(valB, 'Asia/Manila', 'yyyy-MM-dd') : String(valB).trim();
+              }
+            }
+            if (!row['PPU Date'] && row.ppuDate) row['PPU Date'] = row.ppuDate;
+
+            if (!row.dateReceivedDarpo) {
+              row.dateReceivedDarpo = row['Date Received at DARPO'] || row['Date Received DARPO'] || row['Received DARPO'] || row['WITH RECEIVED DARPO'] || row['RECEIVED DARPO'] || row.date_received_darpo || '';
+              if (!row.dateReceivedDarpo && row.__rawRow && row.__rawRow[3]) {
+                const valD = row.__rawRow[3];
+                row.dateReceivedDarpo = valD instanceof Date ? Utilities.formatDate(valD, 'Asia/Manila', 'yyyy-MM-dd') : String(valD).trim();
+              }
+            }
+            if (!row['Date Received at DARPO'] && row.dateReceivedDarpo) row['Date Received at DARPO'] = row.dateReceivedDarpo;
+
+            if (!row.dateOfMov) {
+              row.dateOfMov = row['Date of MOV'] || row['DATE OF MOV'] || row['WITH DATE OF MOV'] || row['MOV Date'] || row.date_of_mov || '';
+              if (!row.dateOfMov && row.__rawRow && row.__rawRow[5]) {
+                const valF = row.__rawRow[5];
+                row.dateOfMov = valF instanceof Date ? Utilities.formatDate(valF, 'Asia/Manila', 'yyyy-MM-dd') : String(valF).trim();
+              }
+            }
+            if (!row['Date of MOV'] && row.dateOfMov) row['Date of MOV'] = row.dateOfMov;
+
+            if (!row.dateTransLbpAoc) {
+              row.dateTransLbpAoc = row['Date Trans to LBP/AOC'] || row['Date Transmitted to LBP/AOC'] || row['TRANS TO LBP/AOC'] || row['WITH TRANS TO LBP/AOC'] || row['Trans to LBP/AOC'] || row.date_trans_lbp_aoc || '';
+              if (!row.dateTransLbpAoc && row.__rawRow && row.__rawRow[6]) {
+                const valG = row.__rawRow[6];
+                row.dateTransLbpAoc = valG instanceof Date ? Utilities.formatDate(valG, 'Asia/Manila', 'yyyy-MM-dd') : String(valG).trim();
+              }
+            }
+            if (!row['Date Trans to LBP/AOC'] && row.dateTransLbpAoc) row['Date Trans to LBP/AOC'] = row.dateTransLbpAoc;
+
+            if (!row.reportedMonth) {
+              row.reportedMonth = row['Reported Month'] || row['REPORTED MONTH'] || row['WITH REPORTED MONTH'] || row['Month Reported'] || '';
+              if (!row.reportedMonth && row.__rawRow && row.__rawRow[10]) {
+                const valK = row.__rawRow[10];
+                row.reportedMonth = valK instanceof Date ? Utilities.formatDate(valK, 'Asia/Manila', 'yyyy-MM-dd') : String(valK).trim();
+              }
+            }
+            if (!row['Reported Month'] && row.reportedMonth) row['Reported Month'] = row.reportedMonth;
+
+            if (!row.targetYear) {
+              row.targetYear = row['Year Target'] || row['YEAR TARGET'] || row['Target Year'] || row['TARGET YEAR'] || row.target_year || row.year || '';
+              if (!row.targetYear && row.__rawRow && row.__rawRow[12]) {
+                row.targetYear = String(row.__rawRow[12]).trim();
+              }
+            }
+            if (row.targetYear) {
+              const ym = String(row.targetYear).trim().replace(/\.0$/, '').match(/\b(20\d{2})\b/);
+              if (ym) row.targetYear = ym[1];
+            }
+            if (!row['Target Year'] && row.targetYear) row['Target Year'] = row.targetYear;
+            if (!row['Year Target'] && row.targetYear) row['Year Target'] = row.targetYear;
           }
           optoolData[tabName].push(row);
         });
@@ -1656,12 +1723,14 @@ function applyMilestoneTargetYearFormula_(sheet, tabName) {
 
   let targetCriteria = '';
   const normTab = normalizeHeaderKey_(tabName);
+  if (normTab === 'mov') {
+    // User requested: in MOV (Land Valuation) Column M, do not add any formula; let the user manually enter Year
+    return;
+  }
   if (normTab === 'cfdoc') {
     targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="CF(DOC)", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'survey') {
     targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Survey", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
-  } else if (normTab === 'mov') {
-    targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="MOV", VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Land Valuation", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'registrationdistribution') {
     targetCriteria = 'OR(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="Registration/Distribution", VLOOKUP(A2, Database!$A:$Z, 25, FALSE)="RegistrationDistribution", ISBLANK(VLOOKUP(A2, Database!$A:$Z, 25, FALSE)))';
   } else if (normTab === 'installation') {
