@@ -1424,9 +1424,6 @@ export function renderNepView(ctx) {
       yearFilter: activeFilter,
       panelId: 'panel-nep-provincial'
     })}
-
-    <!-- Regional List — Per-Milestone NEP Targets -->
-    ${renderMilestoneNepSection(ctx)}
   `;
 }
 
