@@ -3493,7 +3493,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             <thead>
               <tr class="survey-th-l1">
                 <th rowspan="2" class="survey-th-unit">PROVINCE</th>
-                <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
+                <th rowspan="2" class="survey-th-nep survey-th-nep-single right">NEP TARGET (LHS)</th>
                 ${cfg.dates.map((d) => `
                   <th colspan="3" class="survey-th-stage center">WITH ${esc(d.shortLabel.toUpperCase())}</th>
                 `).join('')}
@@ -3510,7 +3510,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               ${rows.map((p) => `
                 <tr>
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                  <td class="right survey-td-nep-single">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                   ${cfg.dates.map((d) => {
           const indAcc = cfIndicators.find((i) => i.key === d.key);
           const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
@@ -3528,7 +3528,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             <tfoot>
               <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+                <td class="right survey-td-nep-single">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
                 ${cfg.dates.map((d) => {
           const indAcc = cfIndicators.find((i) => i.key === d.key);
           const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
@@ -3552,7 +3552,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             <thead>
               <tr class="survey-th-l1">
                 <th rowspan="2" class="survey-th-unit">PROVINCE</th>
-                <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
+                <th rowspan="2" class="survey-th-nep survey-th-nep-single right">NEP TARGET (AREA HAS)</th>
                 ${cfg.dates.map((d) => `
                   <th colspan="3" class="survey-th-stage center">WITH ${esc(d.shortLabel.toUpperCase())}</th>
                 `).join('')}
@@ -3569,7 +3569,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               ${rows.map((p) => `
                 <tr>
                   <td class="survey-td-unit font-bold">${esc(p.name)}</td>
-                  <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                  <td class="right survey-td-nep-single">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                   ${cfg.dates.map((d) => {
           const indAcc = cfIndicators.find((i) => i.key === d.key);
           const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
@@ -3587,7 +3587,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             <tfoot>
               <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
                 <td class="survey-td-unit">REGION VIII TOTAL</td>
-                <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+                <td class="right survey-td-nep-single">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
                 ${cfg.dates.map((d) => {
           const indAcc = cfIndicators.find((i) => i.key === d.key);
           const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
@@ -3617,8 +3617,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
               `).join('')}
             </tr>
             <tr class="survey-th-l2">
-              <th rowspan="2" class="right">LHS</th>
-              <th rowspan="2" class="right">AREA(HAS)</th>
+              <th rowspan="2" class="right survey-th-nep-lhs">LHS</th>
+              <th rowspan="2" class="right survey-th-nep-area">AREA(HAS)</th>
               ${cfg.dates.map(() => `
                 <th colspan="2" class="center">ACCOMPLISHMENT</th>
                 <th colspan="2" class="center">RATE OF ACCOMP.</th>
@@ -3640,8 +3640,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             ${rows.map((p) => `
               <tr>
                 <td class="survey-td-unit font-bold">${esc(p.name)}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
-                <td class="right">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                <td class="right survey-td-nep-lhs">${renderCfFigureBtn({ val: p.targetLhs, isArea: false, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
+                <td class="right survey-td-nep-area">${renderCfFigureBtn({ val: p.targetArea, isArea: true, province: p.name, indicator: indTarget, balanceArea: fmtArea(p.targetArea) })}</td>
                 ${cfg.dates.map((d) => {
         const indAcc = cfIndicators.find((i) => i.key === d.key);
         const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
@@ -3663,8 +3663,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           <tfoot>
             <tr class="survey-tf-total" style="background:#09341b;color:#ffffff;font-weight:800;">
               <td class="survey-td-unit">REGION VIII TOTAL</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
-              <td class="right">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+              <td class="right survey-td-nep-lhs">${renderCfFigureBtn({ val: totals.targetLhs, isArea: false, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
+              <td class="right survey-td-nep-area">${renderCfFigureBtn({ val: totals.targetArea, isArea: true, province: 'ALL', indicator: indTarget, balanceArea: fmtArea(totals.targetArea), isTotal: true })}</td>
               ${cfg.dates.map((d) => {
         const indAcc = cfIndicators.find((i) => i.key === d.key);
         const indBal = cfIndicators.find((i) => i.key === `bal_${d.key}`);
@@ -4286,7 +4286,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         return `
           <tr class="survey-th-l1">
             <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
-            <th rowspan="2" class="survey-th-nep right">NEP TARGET (LHS)</th>
+            <th rowspan="2" class="survey-th-nep survey-th-nep-single right">NEP TARGET (LHS)</th>
             ${stages.map((st) => `<th colspan="3" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
           </tr>
           <tr class="survey-th-l2">
@@ -4302,7 +4302,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         return `
           <tr class="survey-th-l1">
             <th rowspan="2" class="survey-th-unit">OPERATING UNIT</th>
-            <th rowspan="2" class="survey-th-nep right">NEP TARGET (AREA HAS)</th>
+            <th rowspan="2" class="survey-th-nep survey-th-nep-single right">NEP TARGET (AREA HAS)</th>
             ${stages.map((st) => `<th colspan="3" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
           </tr>
           <tr class="survey-th-l2">
@@ -4322,8 +4322,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
           ${stages.map((st) => `<th colspan="6" class="survey-th-stage center">${esc(st.label)}</th>`).join('')}
         </tr>
         <tr class="survey-th-l2">
-          <th rowspan="2" class="right">LHS</th>
-          <th rowspan="2" class="right">AREA(HAS)</th>
+          <th rowspan="2" class="right survey-th-nep-lhs">LHS</th>
+          <th rowspan="2" class="right survey-th-nep-area">AREA(HAS)</th>
           ${stages.map(() => `
             <th colspan="2" class="center">ACCOMPLISHMENT</th>
             <th colspan="2" class="center">RATE OF ACCOMP.</th>
@@ -4347,7 +4347,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       if (metricMode === 'lhs') {
         return `
           <td class="survey-td-unit font-bold">${esc(r.name)}</td>
-          <td class="right">${r.targetLhs.toLocaleString()}</td>
+          <td class="right survey-td-nep-single">${r.targetLhs.toLocaleString()}</td>
           ${stages.map((st) => {
           const s = r.stages[st.key];
           const rateLhs = r.targetLhs > 0 ? Number(((s.lhs / r.targetLhs) * 100).toFixed(2)) : 0;
@@ -4365,7 +4365,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       if (metricMode === 'area') {
         return `
           <td class="survey-td-unit font-bold">${esc(r.name)}</td>
-          <td class="right">${fmtArea(r.targetArea)}</td>
+          <td class="right survey-td-nep-single">${fmtArea(r.targetArea)}</td>
           ${stages.map((st) => {
           const s = r.stages[st.key];
           const rateArea = r.targetArea > 0 ? Number(((s.area / r.targetArea) * 100).toFixed(2)) : 0;
@@ -4383,8 +4383,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       // Both:
       return `
         <td class="survey-td-unit font-bold">${esc(r.name)}</td>
-        <td class="right">${r.targetLhs.toLocaleString()}</td>
-        <td class="right">${fmtArea(r.targetArea)}</td>
+        <td class="right survey-td-nep-lhs">${r.targetLhs.toLocaleString()}</td>
+        <td class="right survey-td-nep-area">${fmtArea(r.targetArea)}</td>
         ${stages.map((st) => {
         const s = r.stages[st.key];
         const rateLhs = r.targetLhs > 0 ? Number(((s.lhs / r.targetLhs) * 100).toFixed(2)) : 0;
@@ -4411,7 +4411,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       if (metricMode === 'lhs') {
         return `
           <td class="survey-td-unit">REGION VIII</td>
-          <td class="right">${totals.targetLhs.toLocaleString()}</td>
+          <td class="right survey-td-nep-single">${totals.targetLhs.toLocaleString()}</td>
           ${stages.map((st) => {
           const s = totals.stages[st.key];
           const totRateLhs = totals.targetLhs > 0 ? Number(((s.lhs / totals.targetLhs) * 100).toFixed(2)) : 0;
@@ -4429,7 +4429,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       if (metricMode === 'area') {
         return `
           <td class="survey-td-unit">REGION VIII</td>
-          <td class="right">${fmtArea(totals.targetArea)}</td>
+          <td class="right survey-td-nep-single">${fmtArea(totals.targetArea)}</td>
           ${stages.map((st) => {
           const s = totals.stages[st.key];
           const totRateArea = totals.targetArea > 0 ? Number(((s.area / totals.targetArea) * 100).toFixed(2)) : 0;
@@ -4447,8 +4447,8 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
       // Both:
       return `
         <td class="survey-td-unit">REGION VIII</td>
-        <td class="right">${totals.targetLhs.toLocaleString()}</td>
-        <td class="right">${fmtArea(totals.targetArea)}</td>
+        <td class="right survey-td-nep-lhs">${totals.targetLhs.toLocaleString()}</td>
+        <td class="right survey-td-nep-area">${fmtArea(totals.targetArea)}</td>
         ${stages.map((st) => {
         const s = totals.stages[st.key];
         const totRateLhs = totals.targetLhs > 0 ? Number(((s.lhs / totals.targetLhs) * 100).toFixed(2)) : 0;

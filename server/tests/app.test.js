@@ -5382,6 +5382,58 @@ test('Land Valuation (MOV) counts PPU Date (Col B), Received DARPO (Col D), Date
   assert.ok(!movHtml.includes('Samar (2027) counted in 2026'), '2027 row is isolated from 2026 accomplishment');
 });
 
+test('50. Frozen / Sticky NEP Target columns in Provincial Whereabouts matrix tables and styles', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../../public/styles.css'), 'utf8');
+
+  // Verify CSS sticky rules for Whereabouts tables
+  assert.ok(css.includes('.survey-monitoring-table th.survey-th-unit'), 'Contains sticky th.survey-th-unit');
+  assert.ok(css.includes('.survey-monitoring-table th.survey-th-nep'), 'Contains sticky th.survey-th-nep');
+  assert.ok(css.includes('.survey-monitoring-table th.survey-th-nep-lhs'), 'Contains sticky th.survey-th-nep-lhs');
+  assert.ok(css.includes('.survey-monitoring-table th.survey-th-nep-area'), 'Contains sticky th.survey-th-nep-area');
+  assert.ok(css.includes('.survey-monitoring-table td.survey-td-nep-lhs'), 'Contains sticky td.survey-td-nep-lhs');
+  assert.ok(css.includes('.survey-monitoring-table td.survey-td-nep-area'), 'Contains sticky td.survey-td-nep-area');
+  assert.ok(css.includes('.survey-monitoring-table th.survey-th-nep-single'), 'Contains sticky th.survey-th-nep-single');
+  assert.ok(css.includes('.survey-monitoring-table td.survey-td-nep-single'), 'Contains sticky td.survey-td-nep-single');
+  assert.ok(css.includes('left: 155px'), 'Sticky NEP LHS/Single placed at left: 155px');
+  assert.ok(css.includes('left: 225px'), 'Sticky NEP Area placed at left: 225px');
+
+  // Verify HTML rendering in Whereabouts views
+  const sampleState = {
+    records: [],
+    milestoneData: { MOV: [] },
+    nepMilestoneListByYear: {
+      '2026': {
+        land_valuation: {
+          LEY: { lhs: 106, area: 713.69, arbs: 0, year: 2026 },
+          SAM: { lhs: 13, area: 165.1951, arbs: 0, year: 2026 }
+        }
+      }
+    }
+  };
+
+  const testCtx = {
+    state: sampleState,
+    analytics: { nepMilestoneListByYear: sampleState.nepMilestoneListByYear },
+    schemas: { registry: REGIONAL_REGISTRY },
+    whereaboutsTargetYearFilter: { 'mov-whereabouts': '2026' },
+    whereaboutsProvinceFilter: { 'mov-whereabouts': 'ALL' },
+    whereaboutsColFilters: {},
+    whereaboutsSearch: {},
+    whereaboutsPage: {},
+    whereaboutsPageSize: {},
+    whereaboutsShowGraph: {},
+    whereaboutsGraphMode: {}
+  };
+
+  const movHtml = renderMilestoneWhereaboutsView(testCtx, WHEREABOUTS_CONFIGS['mov-whereabouts']);
+  assert.ok(movHtml.includes('survey-th-nep'), 'MOV table includes survey-th-nep header');
+  assert.ok(movHtml.includes('survey-th-nep-lhs'), 'MOV table includes survey-th-nep-lhs header');
+  assert.ok(movHtml.includes('survey-th-nep-area'), 'MOV table includes survey-th-nep-area header');
+  assert.ok(movHtml.includes('survey-td-nep-lhs'), 'MOV table includes survey-td-nep-lhs body cells');
+  assert.ok(movHtml.includes('survey-td-nep-area'), 'MOV table includes survey-td-nep-area body cells');
+});
+
+
 
 
 
