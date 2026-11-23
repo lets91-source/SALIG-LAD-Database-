@@ -6167,6 +6167,9 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
   const recCol = regSchema.find((c) => c.key === 'dateReceivedAtRod');
   assert.equal(recCol?.type, 'date');
   assert.equal(recCol?.label, 'Date Received at ROD');
+  const regIdx = regSchema.findIndex((c) => c.key === 'dateRegistered');
+  const recIdx = regSchema.findIndex((c) => c.key === 'dateReceivedAtRod');
+  assert.ok(recIdx > regIdx, 'dateReceivedAtRod must appear after dateRegistered');
 
   const epebNumCol = regSchema.find((c) => c.key === 'epebNumber');
   assert.equal(epebNumCol?.type, 'text');
@@ -6252,10 +6255,6 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
   const stageFwd = regConfig.resolveStage({ dateForwardedToRod: '2026-04-10' });
   assert.equal(stageFwd.stage, 'Forwarded to ROD');
 
-  // When received at ROD
-  const stageRec = regConfig.resolveStage({ dateForwardedToRod: '2026-04-10', dateReceivedAtRod: '2026-04-12' });
-  assert.equal(stageRec.stage, 'Received at ROD');
-
   // When EPEB status is set
   const stageEpeb = regConfig.resolveStage({ epebStatus: 'Examination' });
   assert.equal(stageEpeb.stage, 'EPEB: Examination');
@@ -6263,6 +6262,10 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
   // When registered
   const stageReg = regConfig.resolveStage({ epebStatus: 'Released', dateRegistered: '2026-04-23' });
   assert.equal(stageReg.stage, 'Registered with ROD');
+
+  // When received at ROD (after registration)
+  const stageRec = regConfig.resolveStage({ dateForwardedToRod: '2026-04-10', dateRegistered: '2026-04-23', dateReceivedAtRod: '2026-04-25' });
+  assert.equal(stageRec.stage, 'Received at ROD');
 
   // When distributed
   const stageDist = regConfig.resolveStage({ dateRegistered: '2026-04-23', dateOfDistribution: '2026-05-12' });

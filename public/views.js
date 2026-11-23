@@ -1589,16 +1589,16 @@ export const WHEREABOUTS_CONFIGS = {
     openTabName: 'RegistrationDistribution',
     dates: [
       { key: 'dateForwardedToRod', label: 'FORWARDED TO ROD', shortLabel: 'Forwarded ROD', badgeClass: 'badge-purple', icon: '✔' },
-      { key: 'dateReceivedAtRod', label: 'RECEIVED AT ROD', shortLabel: 'Received ROD', badgeClass: 'badge-blue', icon: '✔' },
       { key: 'dateRegistered', label: 'DATE REGISTERED', shortLabel: 'Date Registered', badgeClass: 'badge-blue', icon: '✔' },
+      { key: 'dateReceivedAtRod', label: 'RECEIVED AT ROD', shortLabel: 'Received ROD', badgeClass: 'badge-blue', icon: '✔' },
       { key: 'dateOfDistribution', label: 'DATE OF DISTRIBUTION', shortLabel: 'Date Distributed', badgeClass: 'badge-green', icon: '✔', isKeyMilestone: true },
       { key: 'monthReported', label: 'MONTH REPORTED', shortLabel: 'Month Reported', badgeClass: 'badge-amber', isMonth: true }
     ],
     resolveStage: (row) => {
       if (row.dateOfDistribution) return { stage: 'Distributed to ARBs', badge: 'badge-green' };
+      if (row.dateReceivedAtRod) return { stage: 'Received at ROD', badge: 'badge-blue' };
       if (row.dateRegistered) return { stage: 'Registered with ROD', badge: 'badge-blue' };
       if (row.epebStatus) return { stage: `EPEB: ${row.epebStatus}`, badge: 'badge-purple' };
-      if (row.dateReceivedAtRod) return { stage: 'Received at ROD', badge: 'badge-blue' };
       if (row.dateForwardedToRod) return { stage: 'Forwarded to ROD', badge: 'badge-amber' };
       if (row.monthReported) return { stage: 'Reported (Pending Reg)', badge: 'badge-amber' };
       return { stage: 'Pending Registration', badge: 'badge-gray' };
@@ -7109,12 +7109,12 @@ export const DEFAULT_OPTOOL_REGDIST_SCHEMA = [
   { key: 'areaHas', header: 'AREA\n(HAs)', label: 'Area (HAS)', group: 'ARB & Title Details', type: 'decimal' },
   { key: 'moa', header: 'MOA', label: 'MOA', group: 'ARB & Title Details', type: 'text' },
   { key: 'dateForwardedToRod', header: 'DATE FORWARDED TO ROD', label: 'Date Forwarded to ROD', group: 'Registration & Distribution', type: 'date' },
-  { key: 'dateReceivedAtRod', header: 'DATE RECEIVED AT ROD', label: 'Date Received at ROD', group: 'Registration & Distribution', type: 'date' },
   { key: 'epebNumber', header: 'EPEB NUMBER', label: 'EPEB Number', group: 'Registration & Distribution', type: 'text' },
   { key: 'epebDate', header: 'EPEB DATE', label: 'EPEB Date', group: 'Registration & Distribution', type: 'date' },
   { key: 'epebStatus', header: 'EPEB STATUS', label: 'EPEB Status', group: 'Registration & Distribution', type: 'select', options: EPEB_STATUS_OPTIONS },
   { key: 'rodTitleNo', header: 'ROD TITLE NO.', label: 'ROD Title No.', group: 'Registration & Distribution', type: 'text' },
   { key: 'dateRegistered', header: 'DATE REGISTERED', label: 'Date Registered', group: 'Registration & Distribution', type: 'date' },
+  { key: 'dateReceivedAtRod', header: 'DATE RECEIVED AT ROD', label: 'Date Received at ROD', group: 'Registration & Distribution', type: 'date' },
   { key: 'dateOfDistribution', header: 'DATE OF DISTRIBUTION (mm/dd/yyyy)', label: 'Date of Distribution', group: 'Registration & Distribution', type: 'text' },
   { key: 'noOfArbs', header: 'Total Number of ARB', label: 'Total Number of ARB', group: 'Reporting', type: 'integer' },
   { key: 'maleArbs', header: 'Male', label: 'Male', group: 'Reporting', type: 'integer' },
@@ -7241,12 +7241,12 @@ export const DEFAULT_OPTOOL_PREVIEW_KEYS = {
     'epOrCloaSerialNo',
     'areaHas',
     'dateForwardedToRod',
-    'dateReceivedAtRod',
     'epebNumber',
     'epebDate',
     'epebStatus',
     'rodTitleNo',
     'dateRegistered',
+    'dateReceivedAtRod',
     'dateOfDistribution',
     'noOfArbs',
     'maleArbs',
