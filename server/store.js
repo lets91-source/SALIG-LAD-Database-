@@ -905,6 +905,11 @@ export class ConsolidatedStore {
       dirty = true;
     }
     if (this.state.deletedUserEmails.length > 0 || this.state.deletedUserIds.length > 0) {
+      for (const u of (this.state.users || [])) {
+        if (u && (u.status === 'approved' || u.status === 'pending') && this.isUserDeleted(u.email, u.id)) {
+          this.clearDeletedUserTombstone(u.email, u.id);
+        }
+      }
       const beforeCount = (this.state.users || []).length;
       this.state.users = (this.state.users || []).filter((u) => !this.isUserDeleted(u?.email, u?.id));
       if (this.state.users.length !== beforeCount) {
@@ -3259,6 +3264,24 @@ export class ConsolidatedStore {
     return false;
   }
 
+  /** Clear tombstone for an account email and/or user ID when re-registering or actively approved/pending. */
+  clearDeletedUserTombstone(email, id = null) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanId = String(id || '').trim();
+    let changed = false;
+    if (cleanEmail && Array.isArray(this.state?.deletedUserEmails)) {
+      const beforeLen = this.state.deletedUserEmails.length;
+      this.state.deletedUserEmails = this.state.deletedUserEmails.filter((e) => e !== cleanEmail);
+      if (this.state.deletedUserEmails.length !== beforeLen) changed = true;
+    }
+    if (cleanId && Array.isArray(this.state?.deletedUserIds)) {
+      const beforeLen = this.state.deletedUserIds.length;
+      this.state.deletedUserIds = this.state.deletedUserIds.filter((i) => i !== cleanId);
+      if (this.state.deletedUserIds.length !== beforeLen) changed = true;
+    }
+    return changed;
+  }
+
   /** Record a tombstone for a deleted account email/id and purge from local state. */
   recordDeletedUserTombstone(id, email) {
     const cleanEmail = String(email || '').trim().toLowerCase();
@@ -3335,12 +3358,7 @@ export class ConsolidatedStore {
       err.statusCode = 409;
       throw err;
     }
-    if (Array.isArray(this.state.deletedUserEmails)) {
-      const delIdx = this.state.deletedUserEmails.indexOf(cleanEmail);
-      if (delIdx >= 0) {
-        this.state.deletedUserEmails.splice(delIdx, 1);
-      }
-    }
+    this.clearDeletedUserTombstone(cleanEmail);
 
     if (!this.state.pendingOtps || typeof this.state.pendingOtps !== 'object') {
       this.state.pendingOtps = {};
@@ -3413,6 +3431,12 @@ export class ConsolidatedStore {
     return true;
   }
 
+  /** Alias for createPendingUser to support direct user registration across store callers and test harnesses. */
+  registerUser(payload, options = {}) {
+    const opts = typeof options === 'boolean' ? { requireOtp: options } : options;
+    return this.createPendingUser(payload, opts);
+  }
+
   /** Register a new account in pending status awaiting Admin confirmation after OTP verification. */
   createPendingUser({ name, email, province, contactNumber, password, otpCode }, options = {}) {
     const { requireOtp = true } = options;
@@ -3440,12 +3464,7 @@ export class ConsolidatedStore {
       err.statusCode = 409;
       throw err;
     }
-    if (Array.isArray(this.state.deletedUserEmails)) {
-      const delIdx = this.state.deletedUserEmails.indexOf(cleanEmail);
-      if (delIdx >= 0) {
-        this.state.deletedUserEmails.splice(delIdx, 1);
-      }
-    }
+    this.clearDeletedUserTombstone(cleanEmail);
     if (requireOtp) {
       this.verifyAndConsumeSignupOtp(cleanEmail, otpCode);
     }
@@ -3478,7 +3497,20 @@ export class ConsolidatedStore {
   /** Verify credentials and ensure the account has been confirmed by an Administrator. */
   authenticateUser(email, password) {
     const user = this.findUserByEmail(email);
-    if (!user || !verifyPassword(password, user.passwordHash)) {
+    if (!user) {
+      if (this.isUserDeleted(email)) {
+        const err = new Error(
+          'This account was deactivated or deleted by an Administrator. Please register a new account or contact your Region VIII Administrator.'
+        );
+        err.statusCode = 403;
+        err.code = 'ACCOUNT_DELETED';
+        throw err;
+      }
+      const err = new Error('Invalid email or password.');
+      err.statusCode = 401;
+      throw err;
+    }
+    if (!verifyPassword(password, user.passwordHash)) {
       const err = new Error('Invalid email or password.');
       err.statusCode = 401;
       throw err;
@@ -3610,6 +3642,11 @@ export class ConsolidatedStore {
       this.save();
     }
     return { added, updated, total: this.state.users.length };
+  }
+
+  /** Alias for deleteUserAccount to support deleteUser across store callers and test harnesses. */
+  deleteUser(id, actingAdmin = null) {
+    return this.deleteUserAccount(id, actingAdmin);
   }
 
   /** Permanently delete a user account while preventing self-delete or removing the last admin. */

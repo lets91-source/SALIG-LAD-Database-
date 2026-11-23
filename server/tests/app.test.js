@@ -5819,6 +5819,110 @@ test('55. Target Summary displays all 6 provinces and Region VIII total across a
   } catch (_) {}
 });
 
+test('56. User deletion tombstones, clean re-registration untombstoning, Google Sheet sync immunity, and informative login feedback', async () => {
+  const tmpDir = path.join(os.tmpdir(), `optool-test-56-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const store = new ConsolidatedStore(tmpDir);
+
+  // 1. Register a staff user
+  const user = store.registerUser({
+    name: 'Staff Leo',
+    email: 'staff.leo@dar8.gov.ph',
+    password: 'password123',
+    province: 'Northern Samar',
+    contactNumber: '09206564007'
+  }, false);
+
+  assert.strictEqual(user.email, 'staff.leo@dar8.gov.ph');
+  assert.strictEqual(user.status, 'pending');
+
+  // Approve user
+  store.updateUserStatus(user.id, { status: 'approved' }, 'admin');
+  const authed = store.authenticateUser('staff.leo@dar8.gov.ph', 'password123');
+  assert.strictEqual(authed.status, 'approved');
+
+  // 2. Admin deletes user -> should record tombstone and purge user
+  store.deleteUser(user.id);
+  assert.ok(store.isUserDeleted('staff.leo@dar8.gov.ph', user.id), 'Account is tombstoned');
+  assert.strictEqual(store.findUserByEmail('staff.leo@dar8.gov.ph'), null, 'Purged from store.users');
+
+  // Attempting to authenticate deleted user throws ACCOUNT_DELETED
+  assert.throws(
+    () => store.authenticateUser('staff.leo@dar8.gov.ph', 'password123'),
+    (err) => err.code === 'ACCOUNT_DELETED' && err.statusCode === 403,
+    'Throws ACCOUNT_DELETED error when logging in with deleted account'
+  );
+
+  // 3. User re-registers with the same email -> should clear tombstone completely
+  const reUser = store.registerUser({
+    name: 'Staff Leo Restored',
+    email: 'staff.leo@dar8.gov.ph',
+    password: 'newpassword456',
+    province: 'Northern Samar',
+    contactNumber: '09206564007'
+  }, false);
+
+  assert.strictEqual(store.isUserDeleted('staff.leo@dar8.gov.ph'), false, 'Tombstone is cleared on re-registration');
+  assert.strictEqual(reUser.status, 'pending');
+
+  store.updateUserStatus(reUser.id, { status: 'approved' }, 'admin');
+  const reAuthed = store.authenticateUser('staff.leo@dar8.gov.ph', 'newpassword456');
+  assert.strictEqual(reAuthed.name, 'Staff Leo Restored');
+
+  // 4. Test Google Sheet sync:
+  // Another user is tombstoned locally
+  const otherUser = store.registerUser({
+    name: 'Other Staff',
+    email: 'other.staff@dar8.gov.ph',
+    password: 'password123',
+    province: 'Leyte',
+    contactNumber: '09171234567'
+  }, false);
+  store.deleteUser(otherUser.id);
+  assert.ok(store.isUserDeleted('other.staff@dar8.gov.ph', otherUser.id));
+
+  // The old tombstoned ID cannot resurrect from Google Sheet
+  const zombieMerge = store.mergeUsersFromSheet([otherUser]);
+  assert.strictEqual(zombieMerge.added, 0, 'Zombie account with deleted ID is dropped');
+
+  // But when the user re-registers with the same email, the email tombstone is cleared
+  const reOther = store.registerUser({
+    name: 'Other Staff Restored',
+    email: 'other.staff@dar8.gov.ph',
+    password: 'password456',
+    province: 'Leyte',
+    contactNumber: '09171234567'
+  }, false);
+  assert.strictEqual(store.isUserDeleted('other.staff@dar8.gov.ph'), false, 'Email tombstone cleared');
+  store.updateUserStatus(reOther.id, { status: 'approved' }, 'admin');
+
+  // Now sync from Google Sheet merges cleanly without dropping
+  const syncResult = store.mergeUsersFromSheet([
+    {
+      id: reOther.id,
+      name: 'Other Staff Active',
+      email: 'other.staff@dar8.gov.ph',
+      province: 'Leyte',
+      status: 'approved',
+      role: 'user'
+    }
+  ]);
+  assert.strictEqual(store.isUserDeleted('other.staff@dar8.gov.ph', reOther.id), false);
+  const activeUser = store.findUserByEmail('other.staff@dar8.gov.ph');
+  assert.ok(activeUser, 'Active user exists in store');
+  assert.strictEqual(activeUser.status, 'approved');
+
+  // 5. Test store.load() persistence: restarting store does not purge restored users
+  const reloadedStore = new ConsolidatedStore(tmpDir);
+  assert.ok(reloadedStore.findUserByEmail('staff.leo@dar8.gov.ph'), 'Re-registered user persists across reloads');
+  assert.ok(reloadedStore.findUserByEmail('other.staff@dar8.gov.ph'), 'Active user persists across reloads');
+
+  // Cleanup
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
 
 
 

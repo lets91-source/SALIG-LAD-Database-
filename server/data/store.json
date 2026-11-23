@@ -362397,6 +362397,36 @@
       "updatedAt": "2026-11-17T08:24:32.739Z",
       "approvedAt": "2026-11-17T08:24:32.739Z",
       "approvedBy": "admin@dar8.gov.ph"
+    },
+    {
+      "id": "usr-32923c0fbba2",
+      "name": "Leo Adre",
+      "email": "adrejhat@gmail.com",
+      "province": "Northern Samar",
+      "contactNumber": "09206564007",
+      "role": "user",
+      "status": "approved",
+      "emailVerified": true,
+      "passwordHash": "79691ffab05b8e4ba07bceba366a4a16:aa8a493f8f7085995d9a43f063053e8b574640984fed612be811988bc533747e77bb0edf73e55f7f564b06d31368330a79eaddd26c69bd287c23ee8222950ffc",
+      "createdAt": "2026-11-23T00:53:46.335Z",
+      "updatedAt": "2026-11-23T00:58:09.848Z",
+      "approvedAt": "2026-11-23T00:58:09.848Z",
+      "approvedBy": "admin@dar8.gov.ph"
+    },
+    {
+      "id": "usr-c8ca6ce8291d",
+      "name": "Chod Everett Gonzales",
+      "email": "chodeverettgonzales@gmail.com",
+      "province": "Southern Leyte",
+      "contactNumber": "09619202497",
+      "role": "user",
+      "status": "approved",
+      "emailVerified": true,
+      "passwordHash": "b7a8cd107a5a73be512f5448a45022f4:726d499a5b421549ab37c7a68acafb95c13f9609b9a5a888bf76c0b4438d4410d18720fa826826bd3c525ad843f587cd7e26dca3110ecf75f7ad48126d847123",
+      "createdAt": "2026-11-18T06:49:23.360Z",
+      "updatedAt": "2026-11-19T00:49:30.385Z",
+      "approvedAt": "2026-11-19T00:49:30.385Z",
+      "approvedBy": "admin@dar8.gov.ph"
     }
   ],
   "pendingOtps": {},
@@ -362906,12 +362936,8 @@
   },
   "driveFolderId": "1z7SycuDvk9M5pPDZ2IvhwebQDsGHOhsJ",
   "uploadedFiles": {},
-  "deletedUserEmails": [
-    "adrejhat@gmail.com"
-  ],
-  "deletedUserIds": [
-    "usr-d4251a44ab6a"
-  ],
+  "deletedUserEmails": [],
+  "deletedUserIds": [],
   "leasehold": [
     {
       "REG": "VIII",
