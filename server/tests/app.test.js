@@ -6349,6 +6349,15 @@ test('Test 60: Resilient OTP verification (multi-code window, stateless signed o
     const verified = coldStartStore.verifyAndConsumeSignupOtp(secondEmail, issuedCold.code, { otpToken: signedToken });
     assert.equal(verified, true, 'Stateless OTP verification succeeds across instances without pendingOtps in memory');
 
+    // Test multi-hash token: resend code, then use token from resend to verify first code on cold instance
+    const thirdEmail = 'multitoken.tester@dar8.gov.ph';
+    const c1 = coldStartStore.issueSignupOtp(thirdEmail);
+    const c2 = coldStartStore.issueSignupOtp(thirdEmail, { bypassCooldown: true });
+    const multiToken = signOtpToken(thirdEmail, c2.code, coldStartStore.getAuthSecret(), undefined, c2.validHashes);
+    coldStartStore.state.pendingOtps = {};
+    const verifiedFirstAcrossCold = coldStartStore.verifyAndConsumeSignupOtp(thirdEmail, c1.code, { otpToken: multiToken });
+    assert.equal(verifiedFirstAcrossCold, true, 'Multi-hash stateless token validates older code across cold instances');
+
     try { fs.rmSync(coldStartDir, { recursive: true, force: true }); } catch (_) {}
 
     // 5. Existing user detection rejects send-otp with 409

@@ -892,7 +892,7 @@ export class ConsolidatedStore {
     if (!this.state.authSecret) {
       this.state.authSecret =
         String(process.env.SALIG_AUTH_SECRET || '').trim() ||
-        crypto.randomBytes(32).toString('hex');
+        DEFAULT_AUTH_SECRET;
       dirty = true;
     }
     if (!Array.isArray(this.state.users)) {
@@ -3406,6 +3406,8 @@ export class ConsolidatedStore {
     return {
       email: cleanEmail,
       code,
+      otpHash: newHash,
+      validHashes: validHashes.slice(-5),
       expiresInMinutes: Math.round(OTP_TTL_MS / 60000),
       cooldownSeconds: Math.round(OTP_RESEND_COOLDOWN_MS / 1000)
     };
@@ -3414,7 +3416,7 @@ export class ConsolidatedStore {
   /** Verify and consume a 6-digit signup email OTP code. */
   verifyAndConsumeSignupOtp(email, otpCode, options = {}) {
     const cleanEmail = String(email || '').trim().toLowerCase();
-    const cleanCode = String(otpCode || '').trim();
+    const cleanCode = String(otpCode || '').replace(/\s+/g, '').trim();
     const otpToken = options.otpToken || (typeof options === 'string' ? options : null);
     if (!/^\d{6}$/.test(cleanCode)) {
       const err = new Error('Please enter the 6-digit Email OTP code.');

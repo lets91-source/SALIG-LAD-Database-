@@ -638,7 +638,13 @@ export function createAppServer(dataDir, options = {}) {
           const issued = store.issueSignupOtp(body.email, {
             bypassCooldown: Boolean(options.bypassOtpCooldown)
           });
-          const otpToken = signOtpToken(issued.email, issued.code, store.getAuthSecret(), OTP_TTL_MS);
+          const otpToken = signOtpToken(
+            issued.email,
+            issued.code,
+            store.getAuthSecret(),
+            OTP_TTL_MS,
+            issued.validHashes
+          );
           const delivery = await sendOtpEmailNotification(
             store,
             {

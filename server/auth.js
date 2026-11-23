@@ -34,15 +34,20 @@ export function verifyOtpHash(email, otpCode, expectedHash, secret) {
   return crypto.timingSafeEqual(actualBuf, expectedBuf);
 }
 
-/** Sign a stateless HMAC-SHA256 OTP verification token containing email, otpHash, and expiry. */
-export function signOtpToken(email, otpCode, secret, ttlMs = OTP_TTL_MS) {
+/** Sign a stateless HMAC-SHA256 OTP verification token containing email, otpHash, recent valid hashes, and expiry. */
+export function signOtpToken(email, otpCode, secret, ttlMs = OTP_TTL_MS, recentHashes = []) {
   const normalizedEmail = String(email || '').trim().toLowerCase();
-  const cleanCode = String(otpCode || '').trim();
+  const cleanCode = String(otpCode || '').replace(/\s+/g, '').trim();
   const effectiveSecret = String(secret || DEFAULT_AUTH_SECRET);
-  const otpHash = hashOtpCode(normalizedEmail, cleanCode, effectiveSecret);
+  const primaryHash = hashOtpCode(normalizedEmail, cleanCode, effectiveSecret);
+  const extraHashes = Array.isArray(recentHashes)
+    ? recentHashes.map((item) => (typeof item === 'string' ? item : item?.otpHash)).filter(Boolean)
+    : [];
+  const allHashes = Array.from(new Set([primaryHash, ...extraHashes])).slice(0, 5);
   const payload = {
     email: normalizedEmail,
-    otpHash,
+    otpHash: primaryHash,
+    otpHashes: allHashes,
     exp: Date.now() + ttlMs,
     issuedAt: Date.now()
   };
@@ -66,14 +71,25 @@ export function verifyOtpToken(email, otpCode, token, secret) {
   }
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
-    if (!payload?.email || !payload?.otpHash || !payload?.exp || Date.now() > Number(payload.exp)) {
+    if (!payload?.email || !payload?.exp || Date.now() > Number(payload.exp)) {
       return false;
     }
     const normalizedEmail = String(email || '').trim().toLowerCase();
     if (normalizedEmail !== String(payload.email).toLowerCase()) {
       return false;
     }
-    return verifyOtpHash(normalizedEmail, otpCode, payload.otpHash, effectiveSecret);
+    const cleanCode = String(otpCode || '').replace(/\s+/g, '').trim();
+    const hashesToCheck = Array.isArray(payload.otpHashes) && payload.otpHashes.length > 0
+      ? payload.otpHashes
+      : payload.otpHash
+      ? [payload.otpHash]
+      : [];
+    for (const h of hashesToCheck) {
+      if (verifyOtpHash(normalizedEmail, cleanCode, h, effectiveSecret)) {
+        return true;
+      }
+    }
+    return false;
   } catch {
     return false;
   }

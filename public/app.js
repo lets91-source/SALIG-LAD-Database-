@@ -6613,6 +6613,7 @@ function bindAuthEvents() {
         currentSignupOtpToken = res.otpToken;
         try {
           sessionStorage.setItem('salig_signup_otp_token', res.otpToken);
+          localStorage.setItem('salig_signup_otp_token', res.otpToken);
         } catch (_) {}
       }
       setSignupOtpStep(true, email);
@@ -6632,7 +6633,11 @@ function bindAuthEvents() {
       document.getElementById('signup-otp')?.focus();
       return true;
     } catch (err) {
-      setAuthFeedback(err.message, 'error');
+      if (err.message && /invalid email otp code/i.test(err.message)) {
+        setAuthFeedback('Invalid Email OTP code. If you requested multiple codes, please enter the most recent one received or click Resend OTP.', 'error');
+      } else {
+        setAuthFeedback(err.message, 'error');
+      }
       if (err.message && /already exists/i.test(err.message)) {
         setTimeout(() => {
           switchAuthTab('login');
@@ -6706,7 +6711,11 @@ function bindAuthEvents() {
       await bootAppSession({ syncOnLogin: true });
       toast(`Welcome back, ${res.user.name}`);
     } catch (err) {
-      setAuthFeedback(err.message, 'error');
+      if (err.message && /invalid email otp code/i.test(err.message)) {
+        setAuthFeedback('Invalid Email OTP code. If you requested multiple codes, please enter the most recent one received or click Resend OTP.', 'error');
+      } else {
+        setAuthFeedback(err.message, 'error');
+      }
     }
   });
 
@@ -6740,8 +6749,11 @@ function bindAuthEvents() {
     setAuthFeedback('');
     try {
       const otpToken = currentSignupOtpToken || (function () {
-        try { return sessionStorage.getItem('salig_signup_otp_token') || ''; } catch (_) { return ''; }
+        try {
+          return sessionStorage.getItem('salig_signup_otp_token') || localStorage.getItem('salig_signup_otp_token') || '';
+        } catch (_) { return ''; }
       })();
+      const cleanOtp = String(otpCode || '').replace(/\s+/g, '').trim();
       const res = await withLoading(
         'saving',
         'Creating Account…',
@@ -6750,19 +6762,26 @@ function bindAuthEvents() {
           api('/api/auth/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, province, contactNumber, password, otpCode, otpToken })
+            body: JSON.stringify({ name, email, province, contactNumber, password, otpCode: cleanOtp, otpToken })
           })
       );
       document.getElementById('signup-form').reset();
       currentSignupOtpToken = '';
-      try { sessionStorage.removeItem('salig_signup_otp_token'); } catch (_) {}
+      try {
+        sessionStorage.removeItem('salig_signup_otp_token');
+        localStorage.removeItem('salig_signup_otp_token');
+      } catch (_) {}
       setSignupOtpStep(false);
       document.getElementById('otp-preview-banner')?.classList.add('hidden');
       stopOtpCooldown();
       showAuthScreen(res.message, 'success', 'login');
       document.getElementById('login-email').value = email;
     } catch (err) {
-      setAuthFeedback(err.message, 'error');
+      if (err.message && /invalid email otp code/i.test(err.message)) {
+        setAuthFeedback('Invalid Email OTP code. If you requested multiple codes, please enter the most recent one received or click Resend OTP.', 'error');
+      } else {
+        setAuthFeedback(err.message, 'error');
+      }
       if (err.message && /already exists/i.test(err.message)) {
         setTimeout(() => {
           switchAuthTab('login');
