@@ -9,9 +9,11 @@ import {
   USER_PROVINCE_OPTIONS,
   OTP_TTL_MS,
   OTP_RESEND_COOLDOWN_MS,
+  DEFAULT_AUTH_SECRET,
   generateOtpCode,
   hashOtpCode,
   verifyOtpHash,
+  verifyOtpToken,
   hashPassword,
   verifyPassword,
   toPublicUser
@@ -3255,7 +3257,7 @@ export class ConsolidatedStore {
 
   /** Return the HMAC secret used to sign session cookies. */
   getAuthSecret() {
-    return this.state.authSecret;
+    return this.state.authSecret || DEFAULT_AUTH_SECRET;
   }
 
   /** Check if an account email or user ID has been deleted (tombstoned). */
@@ -3379,8 +3381,23 @@ export class ConsolidatedStore {
     }
 
     const code = generateOtpCode();
+    const effectiveSecret = this.getAuthSecret();
+    const newHash = hashOtpCode(cleanEmail, code, effectiveSecret);
+
+    // Keep active valid hashes from recent resends within 10-minute expiry window
+    const validHashes = Array.isArray(existing?.validHashes)
+      ? existing.validHashes.filter((h) => Number(h.expiresAt || 0) > now)
+      : [];
+    if (existing?.otpHash && Number(existing.expiresAt || 0) > now) {
+      if (!validHashes.some((h) => h.otpHash === existing.otpHash)) {
+        validHashes.push({ otpHash: existing.otpHash, expiresAt: existing.expiresAt });
+      }
+    }
+    validHashes.push({ otpHash: newHash, expiresAt: now + OTP_TTL_MS });
+
     this.state.pendingOtps[cleanEmail] = {
-      otpHash: hashOtpCode(cleanEmail, code, this.getAuthSecret()),
+      otpHash: newHash,
+      validHashes: validHashes.slice(-5),
       expiresAt: now + OTP_TTL_MS,
       sentAt: now,
       attempts: 0
@@ -3395,14 +3412,28 @@ export class ConsolidatedStore {
   }
 
   /** Verify and consume a 6-digit signup email OTP code. */
-  verifyAndConsumeSignupOtp(email, otpCode) {
+  verifyAndConsumeSignupOtp(email, otpCode, options = {}) {
     const cleanEmail = String(email || '').trim().toLowerCase();
     const cleanCode = String(otpCode || '').trim();
+    const otpToken = options.otpToken || (typeof options === 'string' ? options : null);
     if (!/^\d{6}$/.test(cleanCode)) {
       const err = new Error('Please enter the 6-digit Email OTP code.');
       err.statusCode = 400;
       throw err;
     }
+
+    const effectiveSecret = this.getAuthSecret();
+
+    // 1. Check stateless signed otpToken first (resilient across serverless instances)
+    if (otpToken && verifyOtpToken(cleanEmail, cleanCode, otpToken, effectiveSecret)) {
+      if (this.state.pendingOtps?.[cleanEmail]) {
+        delete this.state.pendingOtps[cleanEmail];
+        this.save();
+      }
+      return true;
+    }
+
+    // 2. Check in-memory / persisted pendingOtps
     const entry = this.state.pendingOtps?.[cleanEmail];
     if (!entry) {
       const err = new Error('No active OTP found for this email. Click "Send OTP" first.');
@@ -3423,8 +3454,19 @@ export class ConsolidatedStore {
       err.statusCode = 429;
       throw err;
     }
-    const ok = verifyOtpHash(cleanEmail, cleanCode, entry.otpHash, this.getAuthSecret());
-    if (!ok) {
+
+    let isMatch = verifyOtpHash(cleanEmail, cleanCode, entry.otpHash, effectiveSecret);
+    if (!isMatch && Array.isArray(entry.validHashes)) {
+      const now = Date.now();
+      for (const h of entry.validHashes) {
+        if (Number(h.expiresAt || 0) > now && verifyOtpHash(cleanEmail, cleanCode, h.otpHash, effectiveSecret)) {
+          isMatch = true;
+          break;
+        }
+      }
+    }
+
+    if (!isMatch) {
       entry.attempts = (entry.attempts || 0) + 1;
       this.save();
       const err = new Error('Invalid Email OTP code. Please double-check and try again.');
@@ -3443,7 +3485,7 @@ export class ConsolidatedStore {
   }
 
   /** Register a new account in pending status awaiting Admin confirmation after OTP verification. */
-  createPendingUser({ name, email, province, contactNumber, password, otpCode }, options = {}) {
+  createPendingUser({ name, email, province, contactNumber, password, otpCode, otpToken }, options = {}) {
     const { requireOtp = true } = options;
     const cleanName = String(name || '').trim();
     const cleanEmail = String(email || '').trim().toLowerCase();
@@ -3471,7 +3513,7 @@ export class ConsolidatedStore {
     }
     this.clearDeletedUserTombstone(cleanEmail);
     if (requireOtp) {
-      this.verifyAndConsumeSignupOtp(cleanEmail, otpCode);
+      this.verifyAndConsumeSignupOtp(cleanEmail, otpCode, { otpToken: otpToken || options.otpToken });
     }
 
     const now = new Date().toISOString();

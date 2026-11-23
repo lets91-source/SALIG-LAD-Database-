@@ -6281,6 +6281,96 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
   } catch (_) {}
 });
 
+test('Test 60: Resilient OTP verification (multi-code window, stateless signed otpToken, existing user sheet detection)', async () => {
+  const dir = makeTempDir();
+  const sentEmails = [];
+  const { server, store } = createAppServer(dir, {
+    sendOtpEmail: async (payload) => {
+      sentEmails.push(payload);
+    },
+    bypassOtpCooldown: true
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const email = 'jason.tester@dar8.gov.ph';
+    const signupData = {
+      name: 'Jason Tester',
+      email,
+      province: 'Northern Samar',
+      contactNumber: '09171234567',
+      password: 'StrongPassword2026!'
+    };
+
+    // 1. Issue first OTP
+    const firstOtpRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: signupData.name })
+    });
+    assert.equal(firstOtpRes.status, 200);
+    const firstOtpJson = await firstOtpRes.json();
+    assert.ok(firstOtpJson.otpToken, 'Response includes signed otpToken');
+    const firstCode = sentEmails[0].otp;
+
+    // 2. Resend OTP (simulating user clicking resend before first email arrived)
+    const secondOtpRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: signupData.name })
+    });
+    assert.equal(secondOtpRes.status, 200);
+    const secondOtpJson = await secondOtpRes.json();
+    const secondCode = sentEmails[1].otp;
+    assert.notEqual(firstCode, secondCode, 'Generated distinct codes');
+
+    // 3. User enters code from the FIRST email -> must still SUCCEED!
+    const verifyFirstCodeRes = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...signupData, otpCode: firstCode, otpToken: firstOtpJson.otpToken })
+    });
+    assert.equal(verifyFirstCodeRes.status, 201, 'Entering code from first email succeeds despite resend');
+
+    // 4. Test stateless token verification across clean instance (simulating Vercel cold starts)
+    const secondEmail = 'coldstart.tester@dar8.gov.ph';
+    const coldStartDir = makeTempDir();
+    const coldStartStore = new ConsolidatedStore(coldStartDir);
+    const issuedCold = coldStartStore.issueSignupOtp(secondEmail);
+    const { signOtpToken } = await import('../auth.js');
+    const signedToken = signOtpToken(secondEmail, issuedCold.code, coldStartStore.getAuthSecret());
+
+    // Wipe in-memory pendingOtps completely to simulate hitting another container
+    coldStartStore.state.pendingOtps = {};
+
+    // Verify using stateless token succeeds even when pendingOtps is empty
+    const verified = coldStartStore.verifyAndConsumeSignupOtp(secondEmail, issuedCold.code, { otpToken: signedToken });
+    assert.equal(verified, true, 'Stateless OTP verification succeeds across instances without pendingOtps in memory');
+
+    try { fs.rmSync(coldStartDir, { recursive: true, force: true }); } catch (_) {}
+
+    // 5. Existing user detection rejects send-otp with 409
+    const existingOtpRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: 'Jason Tester' })
+    });
+    assert.equal(existingOtpRes.status, 409, 'Existing user is immediately stopped at send-otp with 409');
+    const existingOtpJson = await existingOtpRes.json();
+    assert.ok(
+      existingOtpJson.error.includes('already been registered') || existingOtpJson.error.includes('already exists'),
+      'Error message informs user account already exists or registered'
+    );
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch (_) {}
+  }
+});
+
 
 
 

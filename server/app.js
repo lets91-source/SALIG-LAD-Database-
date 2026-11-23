@@ -24,6 +24,8 @@ import {
   SESSION_COOKIE_NAME,
   DEFAULT_SESSION_TTL_MS,
   USER_PROVINCE_OPTIONS,
+  OTP_TTL_MS,
+  signOtpToken,
   signSessionToken,
   verifySessionToken,
   parseCookies,
@@ -610,9 +612,29 @@ export function createAppServer(dataDir, options = {}) {
       if (req.method === 'POST' && pathname === '/api/auth/send-otp') {
         try {
           const body = await readJsonBody(req);
+          const cleanEmail = String(body.email || '').trim().toLowerCase();
+
+          // Check if user already exists in local store or Google Sheets
+          let existingUser = store.findUserByEmail(cleanEmail);
+          if (!existingUser && store.state.gasWebAppUrl) {
+            await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
+            existingUser = store.findUserByEmail(cleanEmail);
+          }
+          if (existingUser) {
+            const statusMsg = existingUser.status === 'approved'
+              ? 'An account with this email already exists and is active. Please switch to Sign In.'
+              : existingUser.status === 'pending'
+              ? 'Your account has already been registered and is awaiting Administrator confirmation.'
+              : 'An account with this email already exists.';
+            const err = new Error(statusMsg);
+            err.statusCode = 409;
+            throw err;
+          }
+
           const issued = store.issueSignupOtp(body.email, {
             bypassCooldown: Boolean(options.bypassOtpCooldown)
           });
+          const otpToken = signOtpToken(issued.email, issued.code, store.getAuthSecret(), OTP_TTL_MS);
           const delivery = await sendOtpEmailNotification(
             store,
             {
@@ -626,6 +648,7 @@ export function createAppServer(dataDir, options = {}) {
           return sendJson(res, 200, {
             ok: true,
             email: issued.email,
+            otpToken,
             expiresInMinutes: issued.expiresInMinutes,
             cooldownSeconds: issued.cooldownSeconds,
             deliveryMode: delivery.sent ? 'email' : 'preview',
@@ -646,8 +669,28 @@ export function createAppServer(dataDir, options = {}) {
       if (req.method === 'POST' && pathname === '/api/auth/signup') {
         try {
           const body = await readJsonBody(req);
+          const cleanEmail = String(body.email || '').trim().toLowerCase();
+
+          // Check if already registered in Google Sheet
+          let existingUser = store.findUserByEmail(cleanEmail);
+          if (!existingUser && store.state.gasWebAppUrl) {
+            await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
+            existingUser = store.findUserByEmail(cleanEmail);
+          }
+          if (existingUser) {
+            const statusMsg = existingUser.status === 'approved'
+              ? 'An account with this email already exists and is active. Please switch to Sign In.'
+              : existingUser.status === 'pending'
+              ? 'Your account has already been registered and is awaiting Administrator confirmation.'
+              : 'An account with this email already exists.';
+            const err = new Error(statusMsg);
+            err.statusCode = 409;
+            throw err;
+          }
+
           const created = store.createPendingUser(body, {
-            requireOtp: options.requireOtp !== false
+            requireOtp: options.requireOtp !== false,
+            otpToken: body.otpToken
           });
           const fullRecord = store.findUserByEmail(created.email);
           let gasPushResult = null;

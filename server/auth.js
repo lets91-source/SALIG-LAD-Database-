@@ -4,6 +4,8 @@ export const SESSION_COOKIE_NAME = 'salig_session';
 export const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const OTP_TTL_MS = 10 * 60 * 1000;
 export const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
+export const DEFAULT_AUTH_SECRET =
+  process.env.SALIG_AUTH_SECRET || '22668033564d7de7f31fba9a11efcc994f52de51aa3dd79a9b5598ffd65bcb6d';
 
 /** Generate a cryptographically random 6-digit numeric OTP code. */
 export function generateOtpCode() {
@@ -14,8 +16,9 @@ export function generateOtpCode() {
 export function hashOtpCode(email, otpCode, secret) {
   const normalizedEmail = String(email || '').trim().toLowerCase();
   const cleanCode = String(otpCode || '').trim();
+  const effectiveSecret = String(secret || DEFAULT_AUTH_SECRET);
   return crypto
-    .createHmac('sha256', String(secret || 'salig-otp-fallback'))
+    .createHmac('sha256', effectiveSecret)
     .update(`otp:${normalizedEmail}:${cleanCode}`)
     .digest('hex');
 }
@@ -24,10 +27,56 @@ export function hashOtpCode(email, otpCode, secret) {
 export function verifyOtpHash(email, otpCode, expectedHash, secret) {
   const cleanCode = String(otpCode || '').trim();
   if (!/^\d{6}$/.test(cleanCode) || !expectedHash) return false;
-  const actualBuf = Buffer.from(hashOtpCode(email, cleanCode, secret), 'hex');
+  const effectiveSecret = String(secret || DEFAULT_AUTH_SECRET);
+  const actualBuf = Buffer.from(hashOtpCode(email, cleanCode, effectiveSecret), 'hex');
   const expectedBuf = Buffer.from(String(expectedHash), 'hex');
   if (actualBuf.length !== expectedBuf.length) return false;
   return crypto.timingSafeEqual(actualBuf, expectedBuf);
+}
+
+/** Sign a stateless HMAC-SHA256 OTP verification token containing email, otpHash, and expiry. */
+export function signOtpToken(email, otpCode, secret, ttlMs = OTP_TTL_MS) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const cleanCode = String(otpCode || '').trim();
+  const effectiveSecret = String(secret || DEFAULT_AUTH_SECRET);
+  const otpHash = hashOtpCode(normalizedEmail, cleanCode, effectiveSecret);
+  const payload = {
+    email: normalizedEmail,
+    otpHash,
+    exp: Date.now() + ttlMs,
+    issuedAt: Date.now()
+  };
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', effectiveSecret).update(`otptok:${encoded}`).digest('base64url');
+  return `${encoded}.${sig}`;
+}
+
+/** Verify a stateless HMAC-SHA256 OTP token against the submitted email and code. */
+export function verifyOtpToken(email, otpCode, token, secret) {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const [encoded, sig] = parts;
+  const effectiveSecret = String(secret || DEFAULT_AUTH_SECRET);
+  const expectedSig = crypto.createHmac('sha256', effectiveSecret).update(`otptok:${encoded}`).digest('base64url');
+  const sigBuf = Buffer.from(sig, 'utf8');
+  const expectedBuf = Buffer.from(expectedSig, 'utf8');
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+    return false;
+  }
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (!payload?.email || !payload?.otpHash || !payload?.exp || Date.now() > Number(payload.exp)) {
+      return false;
+    }
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (normalizedEmail !== String(payload.email).toLowerCase()) {
+      return false;
+    }
+    return verifyOtpHash(normalizedEmail, otpCode, payload.otpHash, effectiveSecret);
+  } catch {
+    return false;
+  }
 }
 
 export const USER_PROVINCE_OPTIONS = [

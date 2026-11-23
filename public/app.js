@@ -6529,6 +6529,7 @@ async function bootAppSession(options = {}) {
 function bindAuthEvents() {
   let otpCooldownTimer = null;
   let signupOtpStepActive = false;
+  let currentSignupOtpToken = '';
 
   const stopOtpCooldown = () => {
     if (otpCooldownTimer) {
@@ -6608,6 +6609,12 @@ function bindAuthEvents() {
             body: JSON.stringify({ email, name })
           })
       );
+      if (res.otpToken) {
+        currentSignupOtpToken = res.otpToken;
+        try {
+          sessionStorage.setItem('salig_signup_otp_token', res.otpToken);
+        } catch (_) {}
+      }
       setSignupOtpStep(true, email);
       const previewEl = document.getElementById('otp-preview-banner');
       if (previewEl) {
@@ -6626,7 +6633,16 @@ function bindAuthEvents() {
       return true;
     } catch (err) {
       setAuthFeedback(err.message, 'error');
-      if (err.message && /wait (\d+)s/i.test(err.message)) {
+      if (err.message && /already exists/i.test(err.message)) {
+        setTimeout(() => {
+          switchAuthTab('login');
+          const loginEmailEl = document.getElementById('login-email');
+          if (loginEmailEl) {
+            loginEmailEl.value = email;
+            document.getElementById('login-password')?.focus();
+          }
+        }, 2500);
+      } else if (err.message && /wait (\d+)s/i.test(err.message)) {
         const m = err.message.match(/wait (\d+)s/i);
         if (m) {
           setSignupOtpStep(true, email);
@@ -6723,6 +6739,9 @@ function bindAuthEvents() {
 
     setAuthFeedback('');
     try {
+      const otpToken = currentSignupOtpToken || (function () {
+        try { return sessionStorage.getItem('salig_signup_otp_token') || ''; } catch (_) { return ''; }
+      })();
       const res = await withLoading(
         'saving',
         'Creating Account…',
@@ -6731,10 +6750,12 @@ function bindAuthEvents() {
           api('/api/auth/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, province, contactNumber, password, otpCode })
+            body: JSON.stringify({ name, email, province, contactNumber, password, otpCode, otpToken })
           })
       );
       document.getElementById('signup-form').reset();
+      currentSignupOtpToken = '';
+      try { sessionStorage.removeItem('salig_signup_otp_token'); } catch (_) {}
       setSignupOtpStep(false);
       document.getElementById('otp-preview-banner')?.classList.add('hidden');
       stopOtpCooldown();
@@ -6742,6 +6763,16 @@ function bindAuthEvents() {
       document.getElementById('login-email').value = email;
     } catch (err) {
       setAuthFeedback(err.message, 'error');
+      if (err.message && /already exists/i.test(err.message)) {
+        setTimeout(() => {
+          switchAuthTab('login');
+          const loginEmailEl = document.getElementById('login-email');
+          if (loginEmailEl) {
+            loginEmailEl.value = email;
+            document.getElementById('login-password')?.focus();
+          }
+        }, 2500);
+      }
     }
   });
 
