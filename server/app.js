@@ -220,10 +220,15 @@ function inferOptoolRowProvinceCode(store, row) {
 }
 
 function computeScopedAnalytics(store, query, scopeCode) {
+  const reqProv = query.province;
+  const isTargetSummary = query.view === 'target-summary' || query.targetSummary === 'true';
+  const isAll = reqProv === 'ALL' || (isTargetSummary && (!reqProv || reqProv === 'ALL'));
+  const effectiveProvince = isAll ? 'ALL' : (reqProv || scopeCode || 'ALL');
+
   return store.computeAnalytics({
     ...query,
-    province: scopeCode || query.province,
-    restrictToProvince: Boolean(scopeCode)
+    province: effectiveProvince,
+    restrictToProvince: !isAll && Boolean(scopeCode)
   });
 }
 
@@ -854,6 +859,7 @@ export function createAppServer(dataDir, options = {}) {
         }
         const bootstrapFilters = {
           milestoneYear: query.milestoneYear || '2027',
+          targetSummary: true,
           ...query
         };
         const analytics = computeScopedAnalytics(store, bootstrapFilters, scopeCode);
@@ -2184,6 +2190,7 @@ export function createAppServer(dataDir, options = {}) {
       if (req.method === 'GET' && pathname === '/api/export/xlsx') {
         const bootstrapFilters = {
           milestoneYear: query.milestoneYear || '2027',
+          targetSummary: true,
           ...query
         };
         const analytics = computeScopedAnalytics(store, bootstrapFilters, scopeCode);

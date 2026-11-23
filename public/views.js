@@ -256,7 +256,12 @@ function renderMilestoneNepSection(ctx) {
   const years = Array.from(yearsSet).sort((a, b) => b - a);
   const activeYear = filters.milestoneYear || 'ALL';
   const activeProvince = filters.province || 'ALL';
-  const provNodes = (schemas?.registry || []).filter((n) => n.role === 'Provincial Node');
+  const provNodes = DEFAULT_CF_PROVINCES.map((p) => ({
+    code: p.code,
+    provinceName: p.name,
+    name: p.name,
+    role: 'Provincial Node'
+  }));
   const canEditNepTargets = !provinceScope;
   const hasNepTargetFilters = activeMilestoneTable !== 'ALL' || (activeYear !== 'ALL' && activeYear !== '') || (activeProvince !== 'ALL' && activeProvince !== '');
 
@@ -417,20 +422,15 @@ function renderMilestoneNepSection(ctx) {
             <button type="button" class="btn btn-sm ${nepMetricMode === 'count' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="count">LHs</button>
             <button type="button" class="btn btn-sm ${nepMetricMode === 'area' ? 'btn-primary' : 'btn-secondary'}" data-nep-metric="area">Area (HAS)</button>
           </div>
-          ${!provinceScope
-      ? `
-            <select class="form-control nep-filter-select" id="nep-province-filter" aria-label="Filter Milestones by Province">
-              <option value="ALL" ${activeProvince === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
-              ${provNodes
-        .map(
-          (p) =>
-            `<option value="${esc(p.code)}" ${activeProvince === p.code ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
-        )
-        .join('')}
-            </select>
-          `
-      : `<span class="badge badge-green">${esc(provinceScope.provinceName)} (${esc(provinceScope.code)})</span>`
-    }
+          <select class="form-control nep-filter-select" id="nep-province-filter" aria-label="Filter Milestones by Province">
+            <option value="ALL" ${activeProvince === 'ALL' ? 'selected' : ''}>All Region VIII Provinces</option>
+            ${provNodes
+              .map(
+                (p) =>
+                  `<option value="${esc(p.code)}" ${activeProvince === p.code ? 'selected' : ''}>${esc(p.provinceName)} (${esc(p.code)})</option>`
+              )
+              .join('')}
+          </select>
           <select class="form-control nep-filter-select" id="nep-milestone-table-filter" aria-label="Filter by Milestone">
             ${milestoneTableOptions
       .map(
@@ -614,6 +614,25 @@ function renderMilestoneNepSection(ctx) {
           ? nepExpandedMilestones[r.key] !== false
           : Boolean(nepExpandedMilestones[r.key]);
         let provEntries = Object.values(r.provinceBreakdown || {});
+        if (provEntries.length < DEFAULT_CF_PROVINCES.length) {
+          const existingMap = new Map(provEntries.map((p) => [p.code, p]));
+          provEntries = DEFAULT_CF_PROVINCES.map((defP) => {
+            if (existingMap.has(defP.code)) return existingMap.get(defP.code);
+            return {
+              code: defP.code,
+              name: defP.name,
+              count: 0,
+              areaHas: 0,
+              targetCount: 0,
+              targetAreaHas: 0,
+              hasAccomp: false,
+              q1: { count: 0, areaHas: 0 },
+              q2: { count: 0, areaHas: 0 },
+              q3: { count: 0, areaHas: 0 },
+              q4: { count: 0, areaHas: 0 }
+            };
+          });
+        }
         if (activeProvince !== 'ALL') {
           provEntries = provEntries.filter((p) => p.code === activeProvince);
         }

@@ -2927,7 +2927,8 @@ export class ConsolidatedStore {
       milestoneYear = 'ALL',
       restrictToProvince = false,
       useOptoolRegistration = false,
-      registrationSource = ''
+      registrationSource = '',
+      allProvincesForNep = false
     } = filters;
 
     // Registered accomplishment: dynamically sourced from Google Sheets RegistrationDistribution

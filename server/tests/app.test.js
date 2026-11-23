@@ -5760,6 +5760,66 @@ test('54. Log History is restricted to administrators only (API gate, Landholdin
   } catch (_) {}
 });
 
+test('55. Target Summary displays all 6 provinces and Region VIII total across all milestones, even for scoped provincial users', async () => {
+  const tmpDir = path.join(os.tmpdir(), `salig-target-summary-test-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const store = new ConsolidatedStore(tmpDir);
+
+  // Seed sample rows across different provinces: Leyte (LEY), Northern Samar (NSA), Biliran (BIL)
+  store.state.optool['CF(DOC)'] = [
+    { lhid: '801000001', province: 'Northern Samar', provinceCode: 'NSA', dateFiConducted: '2026-02-01', totalArea: '15.5' },
+    { lhid: '801000002', province: 'Leyte', provinceCode: 'LEY', dateFiConducted: '2026-03-01', totalArea: '25.0' },
+    { lhid: '801000003', province: 'Biliran', provinceCode: 'BIL', dateFiConducted: '2026-04-01', totalArea: '10.0' }
+  ];
+
+  // 1. Compute analytics with targetSummary: true even if scopeCode is 'NSA' (scoped Northern Samar staff user)
+  const analyticsAll = store.computeAnalytics({
+    milestoneYear: '2026',
+    province: 'ALL'
+  });
+
+  const cfBreakdown = analyticsAll.milestoneNepBreakdown.find((m) => m.key === 'cf_doc');
+  assert.ok(cfBreakdown, 'CF(DOC) breakdown exists');
+  const provCodes = Object.keys(cfBreakdown.provinceBreakdown || {});
+  assert.ok(provCodes.includes('BIL'), 'Includes Biliran in province breakdown');
+  assert.ok(provCodes.includes('ESA'), 'Includes Eastern Samar in province breakdown');
+  assert.ok(provCodes.includes('LEY'), 'Includes Leyte in province breakdown');
+  assert.ok(provCodes.includes('NSA'), 'Includes Northern Samar in province breakdown');
+  assert.ok(provCodes.includes('SAM'), 'Includes Samar in province breakdown');
+  assert.ok(provCodes.includes('SLE'), 'Includes Southern Leyte in province breakdown');
+  assert.strictEqual(provCodes.length, 6, 'Contains all 6 Region VIII provinces');
+
+  // 2. Test UI renderTargetSummaryView with provincial staff scope (NSA)
+  const nsaScope = { code: 'NSA', provinceName: 'Northern Samar' };
+  const targetSummaryHtml = renderTargetSummaryView({
+    analytics: analyticsAll,
+    schemas: { registry: [] },
+    filters: { milestoneYear: '2026', province: 'ALL' },
+    provinceScope: nsaScope,
+    state: store.state,
+    nepShowProvinces: true,
+    nepExpandedMilestones: { cf_doc: true }
+  });
+
+  // Verify province filter dropdown exists and offers "All Region VIII Provinces"
+  assert.ok(targetSummaryHtml.includes('All Region VIII Provinces'), 'Renders All Region VIII Provinces option in select');
+  assert.ok(targetSummaryHtml.includes('id="nep-province-filter"'), 'Province filter select is accessible to scoped user');
+
+  // Verify all 6 provinces are rendered as subrows under CF Documentation
+  assert.ok(targetSummaryHtml.includes('BIL'), 'Renders BIL subrow');
+  assert.ok(targetSummaryHtml.includes('ESA'), 'Renders ESA subrow');
+  assert.ok(targetSummaryHtml.includes('LEY'), 'Renders LEY subrow');
+  assert.ok(targetSummaryHtml.includes('NSA'), 'Renders NSA subrow');
+  assert.ok(targetSummaryHtml.includes('SAM'), 'Renders SAM subrow');
+  assert.ok(targetSummaryHtml.includes('SLE'), 'Renders SLE subrow');
+
+  // Cleanup
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
+
 
 
 

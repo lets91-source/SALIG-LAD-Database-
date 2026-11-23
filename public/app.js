@@ -1065,8 +1065,8 @@ function updateHeaderTitles() {
         : 'SALIG (LAD Database) Master Support List • Tagging of Milestone Targets'
     ],
     'target-summary': [
-      `${scopeLabel} Target Summary`,
-      'Physical Accomplishment per Milestone vs Regional NEP Targets & Quarterly Performance'
+      'Region VIII Target Summary',
+      'Physical Accomplishment per Milestone vs Regional NEP Targets & Quarterly Performance (All Region VIII Provinces)'
     ],
     'cf-whereabouts': [
       `${scopeLabel} CF Whereabouts & Date Summary`,
@@ -6861,6 +6861,12 @@ async function init() {
         } catch (err) {
           toast(err.message, true);
         }
+      } else if (appState.view === 'target-summary') {
+        appState.filters.province = 'ALL';
+        appState.nepShowProvinces = true;
+        try {
+          await refreshAnalytics();
+        } catch (_) {}
       } else if (appState.view === 'audit-logs') {
         if (appState.currentUser?.role !== 'admin') {
           appState.view = 'dashboard';
@@ -6873,6 +6879,12 @@ async function init() {
         } catch (err) {
           toast(err.message, true);
         }
+      } else if (appState.view === 'target-summary') {
+        appState.filters.province = 'ALL';
+        appState.nepShowProvinces = true;
+        try {
+          await refreshAnalytics();
+        } catch (_) {}
       }
       maybeAutoSyncGoogleSheets();
       renderActiveView();
