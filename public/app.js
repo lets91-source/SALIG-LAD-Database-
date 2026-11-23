@@ -1037,7 +1037,7 @@ function updateHeaderTitles() {
     : 'Region VIII';
   const titles = {
     dashboard: [
-      `${scopeLabel} ${appState.provinceScope ? 'Dashboard' : 'Consolidated Dashboard'}`,
+      'Region VIII Consolidated Dashboard',
       `Monitoring Level: ${
         appState.monitoringLevel === 'both'
           ? 'Both (eTitles & Area in HAS)'
@@ -2253,6 +2253,9 @@ async function clearToEmptyWorkspace() {
 
 async function refreshAnalytics() {
   const params = new URLSearchParams(appState.filters);
+  if (appState.view === 'dashboard' || appState.view === 'target-summary') {
+    params.set('view', appState.view);
+  }
   appState.analytics = await api(`/api/analytics?${params.toString()}`);
   renderActiveView();
 }

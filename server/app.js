@@ -224,7 +224,9 @@ function inferOptoolRowProvinceCode(store, row) {
 function computeScopedAnalytics(store, query, scopeCode) {
   const reqProv = query.province;
   const isTargetSummary = query.view === 'target-summary' || query.targetSummary === 'true';
-  const isAll = reqProv === 'ALL' || (isTargetSummary && (!reqProv || reqProv === 'ALL'));
+  const isDashboard = query.view === 'dashboard';
+  const isRegionalView = isTargetSummary || isDashboard;
+  const isAll = reqProv === 'ALL' || (isRegionalView && (!reqProv || reqProv === 'ALL'));
   const effectiveProvince = isAll ? 'ALL' : (reqProv || scopeCode || 'ALL');
 
   return store.computeAnalytics({
@@ -244,7 +246,12 @@ function buildScopedStatePayload(store, scopeCode, includeStaticConfig = true) {
     syncLogs: view.syncLogs,
     milestoneData: view.milestoneData,
     optool: view.optool,
-    leasehold: view.leasehold || []
+    leasehold: view.leasehold || [],
+    allDatabase: store.state.optool?.Database || [],
+    allRegDist: store.state.optool?.RegistrationDistribution || [],
+    allMilestoneData: store.state.milestoneData || [],
+    allOptool: store.state.optool || {},
+    allLeasehold: store.state.leasehold || []
   };
   if (includeStaticConfig) {
     payload.gasWebAppUrl = view.gasWebAppUrl;

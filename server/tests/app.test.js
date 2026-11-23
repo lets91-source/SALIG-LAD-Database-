@@ -6024,6 +6024,107 @@ test('57. Audit Logs Google Sheet synchronization, revision tracking with exact 
   } catch (_) {}
 });
 
+test('58. Dashboard displays all Region VIII records regardless of admin or provincial user', async () => {
+  const tmpDir = makeTempDir();
+  const { server, store } = createAppServer(tmpDir, { requireAuth: true, requireOtp: false });
+
+  // Multi-province database
+  store.state.optool.Database = [
+    { lhid: '801000001', province: 'BILIRAN', totalArea: '10.5000', carpable: '10.5000', ladStatus: 'LAD Balance' },
+    { lhid: '802000002', province: 'EASTERN SAMAR', totalArea: '20.0000', carpable: '20.0000', ladStatus: 'LAD Balance' },
+    { lhid: '803000003', province: 'LEYTE', totalArea: '30.0000', carpable: '30.0000', ladStatus: 'Temp. Park' },
+    { lhid: '804000004', province: 'NORTHERN SAMAR', totalArea: '40.0000', carpable: '40.0000', ladStatus: 'LAD Balance' },
+    { lhid: '805000005', province: 'SAMAR', totalArea: '50.0000', carpable: '50.0000', ladStatus: 'LAD Balance' },
+    { lhid: '806000006', province: 'SOUTHERN LEYTE', totalArea: '60.0000', carpable: '60.0000', ladStatus: 'Temp. Park' }
+  ];
+  store.state.optool.RegistrationDistribution = [
+    { lhid: '801000001', province: 'BILIRAN', dateRegistered: '2026-05-10', areaHas: '5.2500' },
+    { lhid: '804000004', province: 'NORTHERN SAMAR', dateRegistered: '2026-06-15', areaHas: '15.7600' }
+  ];
+  store.save();
+
+  // Create a provincial user for Northern Samar
+  const nsaUser = store.createPendingUser(
+    {
+      name: 'Leo Adre',
+      email: 'leo.adre@dar8.gov.ph',
+      province: 'Northern Samar',
+      contactNumber: '09174445555',
+      password: 'Password123!'
+    },
+    { requireOtp: false }
+  );
+  store.updateUserStatus(nsaUser.id, { status: 'approved' }, 'admin');
+
+  // Verify scoped state payload includes all regional rows
+  const scopedView = store.getScopedState('NSA');
+  assert.equal(scopedView.optool.Database.length, 1, 'OPTool edit scope remains isolated to Northern Samar');
+
+  // Verify server helper buildScopedStatePayload attaches allDatabase and allRegDist
+  const scopedPayload = {
+    ...scopedView,
+    allDatabase: store.state.optool.Database,
+    allRegDist: store.state.optool.RegistrationDistribution,
+    allOptool: store.state.optool
+  };
+  assert.equal(scopedPayload.allDatabase.length, 6, 'allDatabase includes all 6 provinces');
+  assert.equal(scopedPayload.allRegDist.length, 2, 'allRegDist includes all regional registered records');
+
+  // Verify computeScopedAnalytics with view=dashboard returns all 6 provinces
+  const regionalAnalytics = store.computeAnalytics({ province: 'ALL' });
+  assert.equal(regionalAnalytics.provincialBreakdown.length, 6);
+
+  // Render Dashboard View with Northern Samar provincial scope
+  const ctx = {
+    state: scopedPayload,
+    analytics: regionalAnalytics,
+    provinceScope: { code: 'NSA', provinceName: 'Northern Samar' },
+    schemas: { optoolTabs: OPTOOL_SHEET_SCHEMAS },
+    dashboardMapProvince: 'ALL',
+    dashboardRightPanelTab: 'map'
+  };
+
+  const html = renderDashboardView(ctx);
+
+  // 1. Title must be Region VIII Provincial Breakdown
+  assert.ok(html.includes('Region VIII Provincial Breakdown'), 'Dashboard must title the breakdown panel Region VIII Provincial Breakdown');
+  assert.ok(!html.includes('Northern Samar Provincial Breakdown'), 'Must not restrict table panel title to single province');
+
+  // 2. Top 3 KPI cards must show full Region VIII totals and Region VIII badge
+  // Total DB LHS = 6 (10.5 + 20 + 30 + 40 + 50 + 60 = 210.5 HAS)
+  assert.ok(html.includes('<span class="cf-kpi-val">6</span>'), 'Top card must show 6 total LHS across Region VIII');
+  assert.ok(html.includes('210.5000'), 'Top card must show 210.5000 total HAS across Region VIII');
+  // LAD Balance = 4 LHS (BIL: 10.5, EAS: 20, NSA: 40, SAM: 50 -> total 120.5 HAS)
+  assert.ok(html.includes('<span class="cf-kpi-val">4</span>'), 'LAD Balance card must show 4 LHS');
+  assert.ok(html.includes('120.5000'), 'LAD Balance card must show 120.5000 HAS');
+  // Temp Park = 2 LHS (LEY: 30, SLE: 60 -> total 90.0 HAS)
+  assert.ok(html.includes('<span class="cf-kpi-val">2</span>'), 'Temp Park card must show 2 LHS');
+  assert.ok(html.includes('90.0000'), 'Temp Park card must show 90.0000 HAS');
+
+  // 3. All 6 provinces must be rendered in the breakdown table with their non-zero figures
+  assert.ok(html.includes('BILIRAN'), 'Table contains BILIRAN');
+  assert.ok(html.includes('EASTERN SAMAR'), 'Table contains EASTERN SAMAR');
+  assert.ok(html.includes('LEYTE'), 'Table contains LEYTE');
+  assert.ok(html.includes('NORTHERN SAMAR'), 'Table contains NORTHERN SAMAR');
+  assert.ok(html.includes('SAMAR'), 'Table contains SAMAR');
+  assert.ok(html.includes('SOUTHERN LEYTE'), 'Table contains SOUTHERN LEYTE');
+
+  // Provincial badge for logged-in user
+  assert.ok(html.includes('Your Province'), 'Logged-in user province is badged');
+
+  // Registered HAS checks
+  assert.ok(html.includes('5.2500'), 'Biliran registered area 5.2500 HAS displayed');
+  assert.ok(html.includes('15.7600'), 'Northern Samar registered area 15.7600 HAS displayed');
+
+  // Region VIII Total row
+  assert.ok(html.includes('Region VIII Total'), 'Footer contains Region VIII Total');
+
+  // Cleanup
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
 
 
 

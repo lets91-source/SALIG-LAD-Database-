@@ -5588,7 +5588,10 @@ export function getLeaseholdTargetYear(r) {
 
 export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCode = 'ALL') {
   const isAll = !selectedCode || selectedCode === 'ALL';
-  const allDbRows = state?.optool?.Database || [];
+  const optoolObj = state?.allOptool || state?.optool || {};
+  const allDbRows = (state?.allDatabase && state.allDatabase.length > 0)
+    ? state.allDatabase
+    : (optoolObj.Database || []);
   const dbMap = new Map();
   for (const db of allDbRows) {
     const rawKey = String(db.lhid || '').trim().toLowerCase();
@@ -5652,7 +5655,7 @@ export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCod
   };
 
   // 1. CF(DOC)
-  const allCfRows = (state?.optool?.['CF(DOC)'] || []).filter(matchesCode);
+  const allCfRows = (optoolObj['CF(DOC)'] || []).filter(matchesCode);
   const cfCount = allCfRows.length;
   const cfArea = allCfRows.reduce((s, r) => s + getArea(r), 0);
 
@@ -5674,27 +5677,32 @@ export function computeMilestoneWhereaboutsBreakdown(state, schemas, selectedCod
   const cfUnspecifiedArea = Math.max(0, cfArea - (cfNeedingArea + cfNotNeedingArea));
 
   // 2. Survey
-  const allSurveyRows = (state?.optool?.Survey || []).filter(matchesCode);
+  const allSurveyRows = (optoolObj.Survey || []).filter(matchesCode);
   const surveyCount = allSurveyRows.length;
   const surveyArea = allSurveyRows.reduce((s, r) => s + getArea(r), 0);
 
   // 3. MOV (Land Valuation)
-  const allMovRows = (state?.optool?.MOV || []).filter(matchesCode);
+  const allMovRows = (optoolObj.MOV || []).filter(matchesCode);
   const movCount = allMovRows.length;
   const movArea = allMovRows.reduce((s, r) => s + getArea(r), 0);
 
   // 4. RegistrationDistribution
-  const allRegRows = (state?.optool?.RegistrationDistribution || state?.optool?.['Registration/Distribution'] || []).filter(matchesCode);
+  const regDistRaw = (state?.allRegDist && state.allRegDist.length > 0)
+    ? state.allRegDist
+    : (optoolObj.RegistrationDistribution || optoolObj['Registration/Distribution'] || []);
+  const allRegRows = regDistRaw.filter(matchesCode);
   const regCount = allRegRows.length;
   const regArea = allRegRows.reduce((s, r) => s + getArea(r), 0);
 
   // 5. Installation
-  const allInstRows = (state?.optool?.Installation || []).filter(matchesCode);
+  const allInstRows = (optoolObj.Installation || []).filter(matchesCode);
   const instCount = allInstRows.length;
   const instArea = allInstRows.reduce((s, r) => s + getArea(r), 0);
 
   // 6. Leasehold (Uses Column M: Area Tenanted)
-  const leaseRowsRaw = (state?.leasehold && state.leasehold.length) ? state.leasehold : (state?.optool?.Leasehold || []);
+  const leaseRowsRaw = (state?.allLeasehold && state.allLeasehold.length)
+    ? state.allLeasehold
+    : ((state?.leasehold && state.leasehold.length) ? state.leasehold : (optoolObj.Leasehold || []));
   const allLeaseRows = leaseRowsRaw.filter(matchesCode);
   const leaseCount = allLeaseRows.length;
   const leaseArea = allLeaseRows.reduce((s, r) => s + (getLeaseholdAreaTenanted(r) || 0), 0);
@@ -6398,10 +6406,11 @@ export function renderDashboardView(ctx) {
   const { kpis = {}, provincialBreakdown = [] } = analytics || {};
 
   // 1. Calculate Top 3 Cards from Master Database matching attached layout
-  const allDbRows = state.optool?.Database || [];
-  const dbScopeRows = provinceScope
-    ? allDbRows.filter((r) => matchProvinceName(r.province, provinceScope.provinceName) || matchProvinceName(r.province, provinceScope.code))
-    : allDbRows;
+  // Always display all Region VIII records across the dashboard regardless of admin or provincial user account
+  const allDbRows = (state?.allDatabase && state.allDatabase.length > 0)
+    ? state.allDatabase
+    : (state?.optool?.Database || []);
+  const dbScopeRows = allDbRows;
 
   const ladRows = dbScopeRows.filter((r) => isLadBalance(r));
   const tempRows = dbScopeRows.filter((r) => isTempPark(r));
@@ -6415,13 +6424,15 @@ export function renderDashboardView(ctx) {
 
   const pctLadLhs = totalDbLhs > 0 ? ((totalLadLhs / totalDbLhs) * 100).toFixed(1) : '0.0';
   const pctTempLhs = totalDbLhs > 0 ? ((totalTempLhs / totalDbLhs) * 100).toFixed(1) : '0.0';
-  const scopeBadge = provinceScope ? provinceScope.provinceName : 'Region VIII';
+  const scopeBadge = 'Region VIII';
 
   // 2. Provincial Breakdown Table
   // Registered calculation: Exclusively and strictly from Google Sheets Registration/Distribution per province
   // Column M: Date Registered (if empty, count and area must be strictly zero)
   // Column J: Area (HAS) (summed for rows with non-empty Date Registered)
-  const regDistRows = (state.optool?.RegistrationDistribution || state.optool?.['Registration/Distribution'] || []);
+  const regDistRows = (state?.allRegDist && state.allRegDist.length > 0)
+    ? state.allRegDist
+    : (state?.optool?.RegistrationDistribution || state?.optool?.['Registration/Distribution'] || []);
 
   const provBreakdownRows = DEFAULT_CF_PROVINCES.map((p) => {
     const provDb = allDbRows.filter((r) => {
@@ -6575,7 +6586,7 @@ export function renderDashboardView(ctx) {
       <div class="panel">
         <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div>
-            <h3 class="panel-title">${esc(scopeBadge)} Provincial Breakdown</h3>
+            <h3 class="panel-title">Region VIII Provincial Breakdown</h3>
             <p class="panel-subtitle">LAD Balance target, Temp. Park, master parcels &amp; registered titles per province</p>
           </div>
           <button type="button" class="btn btn-secondary btn-xs" data-nav="optool">Open Optool Support List(tagging of Target)</button>
@@ -6606,6 +6617,7 @@ export function renderDashboardView(ctx) {
                   <td>
                     <strong>${esc(p.name)}</strong>
                     <span class="mono" style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${esc(p.code)})</span>
+                    ${provinceScope && (p.code === provinceScope.code || matchProvinceName(p.name, provinceScope.provinceName || provinceScope.code)) ? '<span class="badge badge-blue badge-xs" style="margin-left:6px;font-size:10px;">Your Province</span>' : ''}
                   </td>
                   <td class="right num"><strong>${p.ladLhs.toLocaleString()}</strong></td>
                   <td class="right mono num">${fmtArea(p.ladArea)}</td>
