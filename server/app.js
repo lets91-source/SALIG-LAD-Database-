@@ -364,13 +364,21 @@ async function sendOtpEmailNotification(
 
   if (store.state.gasWebAppUrl) {
     try {
-      const gasRes = await gasPushFn(store.state.gasWebAppUrl, {
-        action: 'sendOtpEmail',
-        email,
-        name: safeName,
-        otp,
-        expiresInMinutes
-      });
+      const pushPromise = gasPushFn(
+        store.state.gasWebAppUrl,
+        {
+          action: 'sendOtpEmail',
+          email,
+          name: safeName,
+          otp,
+          expiresInMinutes
+        },
+        10000
+      );
+      const gasRes = await Promise.race([
+        pushPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Email relay timed out after 10s')), 10000))
+      ]);
       if (gasRes && gasRes.ok !== false && !String(gasRes.error || '').toLowerCase().includes('unsupported')) {
         return { sent: true, channel: 'gas-mail' };
       }
@@ -614,12 +622,8 @@ export function createAppServer(dataDir, options = {}) {
           const body = await readJsonBody(req);
           const cleanEmail = String(body.email || '').trim().toLowerCase();
 
-          // Check if user already exists in local store or Google Sheets
-          let existingUser = store.findUserByEmail(cleanEmail);
-          if (!existingUser && store.state.gasWebAppUrl) {
-            await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
-            existingUser = store.findUserByEmail(cleanEmail);
-          }
+          // Fast local store check (0ms)
+          const existingUser = store.findUserByEmail(cleanEmail);
           if (existingUser) {
             const statusMsg = existingUser.status === 'approved'
               ? 'An account with this email already exists and is active. Please switch to Sign In.'
@@ -671,12 +675,8 @@ export function createAppServer(dataDir, options = {}) {
           const body = await readJsonBody(req);
           const cleanEmail = String(body.email || '').trim().toLowerCase();
 
-          // Check if already registered in Google Sheet
-          let existingUser = store.findUserByEmail(cleanEmail);
-          if (!existingUser && store.state.gasWebAppUrl) {
-            await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
-            existingUser = store.findUserByEmail(cleanEmail);
-          }
+          // Fast local store check (0ms)
+          const existingUser = store.findUserByEmail(cleanEmail);
           if (existingUser) {
             const statusMsg = existingUser.status === 'approved'
               ? 'An account with this email already exists and is active. Please switch to Sign In.'
