@@ -1190,6 +1190,10 @@ function renderActiveView() {
     dashboardRightPanelTab: appState.dashboardRightPanelTab || 'map'
   };
 
+  if (appState.view !== 'users') {
+    stopUsersAutoPoll();
+  }
+
   if (appState.view === 'dashboard') {
     container.innerHTML = renderDashboardView(ctx);
     bindDashboardViewEvents(container);
@@ -1358,7 +1362,9 @@ function renderActiveView() {
       currentUser: appState.currentUser
     });
     bindUsersViewEvents(container);
+    startUsersAutoPoll();
   } else if (appState.view === 'audit-logs') {
+    stopUsersAutoPoll();
     container.innerHTML = renderAuditLogsView({
       logs: appState.auditLogs || [],
       total: appState.auditLogsTotal || 0,
@@ -2596,13 +2602,21 @@ function attachRegistrationArbCountListeners(formEl, existingRow) {
 }
 
 function openOptoolModal(tabName, existingRow, rowIndex) {
-  // Rescue year mistakenly placed in pdfFile for Survey or other support tabs
-  if (existingRow && existingRow.pdfFile && /^(20\d{2})(\.0)?$/.test(String(existingRow.pdfFile).trim())) {
-    const ym = String(existingRow.pdfFile).trim().replace(/\.0$/, '').match(/^(20\d{2})$/);
-    if (ym && (!existingRow.targetYear || String(existingRow.targetYear).trim() === '')) {
-      existingRow.targetYear = ym[1];
+  // Rescue year mistakenly placed in pdfFile or any PDF-labeled field for Survey, MOV, CF(DOC), etc.
+  if (existingRow && typeof existingRow === 'object') {
+    for (const [k, v] of Object.entries(existingRow)) {
+      if (typeof v === 'string' || typeof v === 'number') {
+        const strV = String(v).trim();
+        const ym = strV.replace(/\.0+$/, '').match(/^(20\d{2})$/);
+        const kNorm = k.toLowerCase().replace(/[^a-z]/g, '');
+        if (ym && (kNorm.includes('pdf') || kNorm.includes('transmittal') || kNorm === 'l')) {
+          if (!existingRow.targetYear || String(existingRow.targetYear).trim() === '') {
+            existingRow.targetYear = ym[1];
+          }
+          existingRow[k] = '';
+        }
+      }
     }
-    existingRow.pdfFile = '';
   }
   const schemaCols = appState.schemas.optoolTabs[tabName] || [];
   const isEdit = existingRow !== null;
@@ -2749,9 +2763,11 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
           </div>${linkedAfterLhid}
         `;
       }
-      if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile') {
-        const isYearString = typeof val === 'string' && /^(20\d{2})(\.0)?$/.test(val.trim());
-        const effectiveVal = isYearString ? '' : val;
+      if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile' || (c.label && c.label.toLowerCase().includes('pdf'))) {
+        const strVal = String(val ?? '').trim();
+        const isYearString = /^(20\d{2})(\.0+)?$/.test(strVal);
+        const isYearNum = typeof val === 'number' && val >= 2000 && val <= 2099;
+        const effectiveVal = (isYearString || isYearNum) ? '' : val;
         const isPdfAttached = effectiveVal && typeof effectiveVal === 'string' && (effectiveVal.startsWith('http') || effectiveVal.startsWith('/api/pdf/') || effectiveVal.startsWith('/uploads/') || effectiveVal.startsWith('data:application/pdf') || effectiveVal.toLowerCase().endsWith('.pdf'));
         const isMarkedYes = effectiveVal === 'Yes' || effectiveVal === true || effectiveVal === 'true';
         const displayVal = isPdfAttached ? effectiveVal : (isMarkedYes ? '' : effectiveVal);
@@ -4611,17 +4627,48 @@ async function openLandholdingDrawer(lhid) {
   }
 }
 
+let usersAutoPollTimer = null;
+
+function startUsersAutoPoll() {
+  if (usersAutoPollTimer) return;
+  usersAutoPollTimer = setInterval(async () => {
+    if (appState.view !== 'users') {
+      stopUsersAutoPoll();
+      return;
+    }
+    try {
+      const prevPending = appState.pendingUserCount || 0;
+      const prevCount = (appState.usersList || []).length;
+      const data = await loadUsersDirectory(true);
+      if (data && ((data.pendingCount ?? 0) !== prevPending || (data.users || []).length !== prevCount)) {
+        renderActiveView();
+      }
+    } catch (_) {}
+  }, 4000);
+}
+
+function stopUsersAutoPoll() {
+  if (usersAutoPollTimer) {
+    clearInterval(usersAutoPollTimer);
+    usersAutoPollTimer = null;
+  }
+}
+
 /** Fetch user registration list for Administrator confirmation management. */
-async function loadUsersDirectory() {
-  const data = await withLoading(
-    'fetching',
-    'Fetching User Accounts…',
-    'Loading pending registrations and confirmed regional accounts…',
-    () => api('/api/auth/users')
-  );
+async function loadUsersDirectory(silent = false) {
+  const fetcher = () => api('/api/auth/users');
+  const data = silent
+    ? await fetcher()
+    : await withLoading(
+        'fetching',
+        'Fetching User Accounts…',
+        'Loading pending registrations and confirmed regional accounts…',
+        fetcher
+      );
   appState.usersList = data.users || [];
   appState.pendingUserCount = data.pendingCount || 0;
   syncCurrentUserUi();
+  return data;
 }
 
 /** Attach Administrator Account Confirmation view actions. */

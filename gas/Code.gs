@@ -47,6 +47,8 @@ const PROVINCIAL_NODES = [
   { code: 'SLE', name: 'Southern Leyte', id: '1joqlZK0VkFk-tUJnlwIebIa3vknh5fThcfZC6Yb7I8E' }
 ];
 
+const PROVINCE_CODES = ['BIL', 'ESA', 'LEY', 'NSA', 'SAM', 'SLE'];
+
 const MILESTONE_HEADERS = [
   'Record_ID',
   'Province_Code',

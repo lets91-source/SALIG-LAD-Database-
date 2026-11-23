@@ -616,19 +616,24 @@ export function createAppServer(dataDir, options = {}) {
       if (req.method === 'POST' && pathname === '/api/auth/signup') {
         try {
           const body = await readJsonBody(req);
-          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
           const created = store.createPendingUser(body, {
             requireOtp: options.requireOtp !== false
           });
           const fullRecord = store.findUserByEmail(created.email);
-          const gasPushResult = fullRecord
-            ? await pushMutationToGas(
-                store,
-                { action: 'upsertUserAccount', user: fullRecord },
-                `Synced registration (${created.email}) to Regional Hub User_Accounts tab.`,
-                gasPushFn
-              )
-            : null;
+          let gasPushResult = null;
+          if (fullRecord && store.state.gasWebAppUrl) {
+            // Push directly to Regional Hub User_Accounts with fast timeout so signup responds with 0 delay
+            const pushPromise = pushMutationToGas(
+              store,
+              { action: 'upsertUserAccount', user: fullRecord },
+              `Synced registration (${created.email}) to Regional Hub User_Accounts tab.`,
+              gasPushFn
+            ).catch(() => null);
+            gasPushResult = await Promise.race([
+              pushPromise,
+              new Promise((resolve) => setTimeout(() => resolve(null), 1200))
+            ]);
+          }
           return sendJson(res, 201, {
             ok: true,
             pending: true,
@@ -645,7 +650,12 @@ export function createAppServer(dataDir, options = {}) {
       if (req.method === 'POST' && pathname === '/api/auth/login') {
         try {
           const body = await readJsonBody(req);
-          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
+          // Check local store first: if user is already locally approved, authenticate immediately with 0 delay!
+          let localUser = store.findUserByEmail(body.email);
+          if (!localUser || localUser.status === 'pending') {
+            // Only pull from GAS if user is not in local memory or currently pending
+            await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
+          }
           const user = store.authenticateUser(body.email, body.password);
           const token = signSessionToken(
             { id: user.id, email: user.email, role: user.role },
@@ -693,7 +703,11 @@ export function createAppServer(dataDir, options = {}) {
         if (requireAuth && sessionUser?.role !== 'admin') {
           return sendJson(res, 403, { error: 'Administrator access required.' });
         }
-        await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
+        if (query.sync === 'true') {
+          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
+        } else {
+          pullUsersFromGasIfConfigured(store, gasPullUsersFn).catch(() => {});
+        }
         return sendJson(res, 200, {
           users: store.listPublicUsers(),
           pendingCount: store.getPendingUserCount()
@@ -741,18 +755,22 @@ export function createAppServer(dataDir, options = {}) {
         const userId = decodeURIComponent(rawId);
         const emailHint = query.email ? decodeURIComponent(query.email).trim() : '';
         try {
-          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
           const body = await readJsonBody(req);
           const user = store.updateUserStatus(userId || emailHint, body, sessionUser || 'admin');
           const fullRecord = store.findUserById(user.id);
-          const gasPushResult = fullRecord
-            ? await pushMutationToGas(
-                store,
-                { action: 'upsertUserAccount', user: fullRecord },
-                `Updated User_Accounts status (${user.email}: ${user.status}/${user.role}) in Regional Hub Google Sheet.`,
-                gasPushFn
-              )
-            : null;
+          let gasPushResult = null;
+          if (fullRecord && store.state.gasWebAppUrl) {
+            const pushPromise = pushMutationToGas(
+              store,
+              { action: 'upsertUserAccount', user: fullRecord },
+              `Updated User_Accounts status (${user.email}: ${user.status}/${user.role}) in Regional Hub Google Sheet.`,
+              gasPushFn
+            ).catch(() => null);
+            gasPushResult = await Promise.race([
+              pushPromise,
+              new Promise((resolve) => setTimeout(() => resolve(null), 1200))
+            ]);
+          }
           return sendJson(res, 200, {
             ok: true,
             user,
@@ -2547,6 +2565,18 @@ export function createAppServer(dataDir, options = {}) {
           for (const [ms, map] of Object.entries(remote.nepMilestoneList)) {
             store.updateNepProvinceList(map, ms);
           }
+        }
+        if (remote?.nepMilestoneListByYear && typeof remote.nepMilestoneListByYear === 'object') {
+          store.state.nepMilestoneListByYear = {
+            ...(store.state.nepMilestoneListByYear || {}),
+            ...remote.nepMilestoneListByYear
+          };
+        }
+        if (remote?.nepProvinceListByYear && typeof remote.nepProvinceListByYear === 'object') {
+          store.state.nepProvinceListByYear = {
+            ...(store.state.nepProvinceListByYear || {}),
+            ...remote.nepProvinceListByYear
+          };
         }
         store.save();
       } catch (_) {}

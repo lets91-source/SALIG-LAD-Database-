@@ -2843,18 +2843,21 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         }
       }
     } else {
-      // If no milestone target entered in nepMilestoneListByYear / nepMilestoneList for this year/province, fallback to Database target
-      if (targetYearFilterVal === 'ALL' || targetYearFilterVal === String(curYear)) {
+      // If no milestone target entered in nepMilestoneListByYear, check fallback nepMilestoneList or freeze at 0 (never fallback to Database counts on specific Year)
+      const fallbackMsMap = state?.nepMilestoneList?.[nepMsKey] || analytics?.nepMilestoneList?.[nepMsKey];
+      if (fallbackMsMap) {
+        for (const [pCode, pData] of Object.entries(fallbackMsMap)) {
+          if (provinceScope && pCode !== provinceScope.code) continue;
+          if (targetProvCodes.length > 0 && !targetProvCodes.includes(pCode)) continue;
+          selectedYearTargetLhs += Math.max(0, Math.round(Number(pData?.lhs) || 0));
+          selectedYearTargetArea += Math.max(0, Number(pData?.area) || 0);
+        }
+      } else if (targetYearFilterVal === 'ALL') {
         selectedYearTargetLhs = globalTargetLhs;
         selectedYearTargetArea = globalTargetArea;
       } else {
-        const yearDbRows = dbScopeRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
-        selectedYearTargetLhs = yearDbRows.length;
-        selectedYearTargetArea = yearDbRows.reduce((sum, r) => sum + parseNumericValue(r.totalArea || r.carpable || r.areaHas || r.computedArea || 0), 0);
-        if (selectedYearTargetLhs === 0 && selectedYearTargetArea === 0) {
-          selectedYearTargetLhs = globalTargetLhs;
-          selectedYearTargetArea = globalTargetArea;
-        }
+        selectedYearTargetLhs = 0;
+        selectedYearTargetArea = 0;
       }
     }
     selectedYearTargetArea = Number(selectedYearTargetArea.toFixed(4));
@@ -3068,20 +3071,27 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
         targetLhs = 0;
         targetArea = 0;
       } else {
-        // Fallback to Database tagged rows if no NEP target definition exists for this milestone/year
-        let dbProvRows = dbRows.filter((r) => matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
-        if (!isTargetYearAll) {
-          dbProvRows = dbProvRows.filter((r) => matchesWhereaboutsTargetYear(r, targetYearFilterVal, curYear));
-        }
-        const ladDbProv = dbProvRows.filter((r) => isLadBalance(r));
-        const activePool = ladDbProv.length > 0 ? ladDbProv : dbProvRows;
-        const taggedDb = activePool.filter((r) => matchesMilestoneDatabaseTag(r, viewKey));
-        if (taggedDb.length > 0) {
-          targetLhs = taggedDb.length;
-          targetArea = taggedDb.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
+        // If specific target year is selected, display strictly based on Regional Hub Sheet Name NEP (do NOT fallback to Database parcel count)
+        const fallbackMsMap = state?.nepMilestoneList?.[nepMsKey] || analytics?.nepMilestoneList?.[nepMsKey];
+        if (fallbackMsMap && fallbackMsMap[p.code]) {
+          targetLhs = Math.max(0, Math.round(Number(fallbackMsMap[p.code]?.lhs) || 0));
+          targetArea = Math.max(0, Number(fallbackMsMap[p.code]?.area) || 0);
+        } else if (!isTargetYearAll) {
+          targetLhs = 0;
+          targetArea = 0;
         } else {
-          targetLhs = activePool.length;
-          targetArea = activePool.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
+          // Only when ALL years selected and no NEP targets configured at all, fallback to Database
+          let dbProvRows = dbRows.filter((r) => matchProvinceName(r.province, p.name) || matchProvinceName(r.province, p.code));
+          const ladDbProv = dbProvRows.filter((r) => isLadBalance(r));
+          const activePool = ladDbProv.length > 0 ? ladDbProv : dbProvRows;
+          const taggedDb = activePool.filter((r) => matchesMilestoneDatabaseTag(r, viewKey));
+          if (taggedDb.length > 0) {
+            targetLhs = taggedDb.length;
+            targetArea = taggedDb.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
+          } else {
+            targetLhs = activePool.length;
+            targetArea = activePool.reduce((s, r) => s + parseNumericValue(r.totalArea || r.carpable || r.areaHas || 0), 0);
+          }
         }
       }
       targetArea = Number(targetArea.toFixed(4));
@@ -8723,7 +8733,9 @@ export function renderUsersView({ users = [], currentUser = null }) {
         <p class="view-subtitle">Confirm pending Sign-Up registrations before provincial users can access SALIG</p>
       </div>
       <div class="view-header-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-primary btn-sm" id="btn-sync-users-sheet">Sync User_Accounts with Regional Sheet</button>
+        <span class="badge badge-green" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 12px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;" title="User accounts automatically synchronize directly with Google Sheet User_Accounts tab">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;"></span> Live Google Sheet Connected (Direct Sync)
+        </span>
         <button class="btn btn-secondary btn-sm" id="btn-refresh-users">↻ Refresh Accounts</button>
         <button class="btn btn-danger btn-sm" id="btn-delete-mock-milestones" style="background:#dc2626;color:#ffffff;border:1px solid #b91c1c;display:inline-flex;align-items:center;gap:6px;" title="Permanently delete all sample/mock data across every milestone stage and every province">
           <span>🗑</span> Delete Mock Data in Every Milestone

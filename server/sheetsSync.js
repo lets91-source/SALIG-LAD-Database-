@@ -357,6 +357,24 @@ export async function parseWorkbookBuffer(buffer, options = {}) {
           }
         }
 
+        // Universal rescue for any tab: if pdfFile or any PDF-labeled field contains a year (e.g. 2026.0 or 2026), rescue it to targetYear
+        if (record.pdfFile) {
+          const ym = String(record.pdfFile).trim().replace(/\.0+$/, '').match(/^(20\d{2})$/);
+          if (ym) {
+            if (!record.targetYear) record.targetYear = ym[1];
+            record.pdfFile = '';
+          }
+        }
+        for (const [k, v] of Object.entries(record)) {
+          if (v && (k.toLowerCase().includes('pdf') || k.toLowerCase().includes('transmittal'))) {
+            const ym = String(v).trim().replace(/\.0+$/, '').match(/^(20\d{2})$/);
+            if (ym) {
+              if (!record.targetYear) record.targetYear = ym[1];
+              record[k] = '';
+            }
+          }
+        }
+
         // Positional & value rescue for Survey:
         // Col AM (1-based 39, idx 38): TARGET (Current/Previous)
         // Col AN (1-based 40, idx 39): Reported Month

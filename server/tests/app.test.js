@@ -57,7 +57,8 @@ import {
   generateLeaseholdCsv,
   getLeaseholdAreaTenanted,
   getLeaseholdTargetYear,
-  renderTargetSummaryView
+  renderTargetSummaryView,
+  getWhereaboutsNepTargetMap
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -5561,6 +5562,80 @@ test('52. Survey data alignment, no formula for Target Year, and User Revision A
   assert.strictEqual(dossier.auditLogs[0].changes[1].newValue, '2026');
 
   // Cleanup tmp dir
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
+test('53. Universal PDF year sanitization, importParsedDataset multi-year NEP, and fast direct account registration', async () => {
+  const tmpDir = path.join(os.tmpdir(), `optool-test-53-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const store = new ConsolidatedStore(tmpDir);
+
+  // 1. Verify importParsedDataset handles multi-year NEP datasets properly without errors
+  const mockDataset = {
+    milestoneData: [],
+    optool: {
+      'CF(DOC)': [
+        { lhid: '801009991', province: 'Eastern Samar', pdfFile: '2026.0', target: 'Previous Year' }
+      ],
+      MOV: [
+        { lhid: '801009992', province: 'Leyte', pdfFile: '2026.0', target: 'Previous Year' }
+      ]
+    },
+    nepMilestoneListByYear: {
+      '2026': {
+        cf_doc: {
+          ESA: { province: 'Eastern Samar', lhs: 0, area: 23.5124, year: 2026 },
+          LEY: { province: 'Leyte', lhs: 0, area: 140.6996, year: 2026 }
+        },
+        land_valuation: {
+          ESA: { province: 'Eastern Samar', lhs: 1, area: 6.7469, year: 2026 },
+          LEY: { province: 'Leyte', lhs: 106, area: 713.6900, year: 2026 }
+        }
+      }
+    },
+    nepProvinceListByYear: {
+      '2026': {
+        ESA: { province: 'Eastern Samar', lhs: 1, area: 30.2593, year: 2026 }
+      }
+    }
+  };
+
+  store.importParsedDataset(mockDataset);
+  assert.ok(store.state.nepMilestoneListByYear['2026'], 'Imports nepMilestoneListByYear 2026');
+  assert.strictEqual(
+    store.state.nepMilestoneListByYear['2026'].cf_doc.ESA.area,
+    23.5124,
+    'Imports CF(DOC) NEP target for ESA'
+  );
+  assert.strictEqual(
+    store.state.nepMilestoneListByYear['2026'].land_valuation.LEY.lhs,
+    106,
+    'Imports MOV NEP target for LEY'
+  );
+
+  // 2. Verify universal PDF year sanitization for CF(DOC) and MOV
+  const cfRow = store.state.optool['CF(DOC)'].find((r) => r.lhid === '801009991');
+  assert.ok(cfRow, 'Found newly imported CF(DOC) row');
+  assert.strictEqual(cfRow.targetYear, '2026', 'Rescued 2026.0 from pdfFile to targetYear in CF(DOC)');
+  assert.strictEqual(cfRow.pdfFile, '', 'Cleared 2026.0 from pdfFile in CF(DOC)');
+
+  const movRow = store.state.optool.MOV.find((r) => r.lhid === '801009992');
+  assert.ok(movRow, 'Found newly imported MOV row');
+  assert.strictEqual(movRow.targetYear, '2026', 'Rescued 2026.0 from pdfFile to targetYear in MOV)');
+  assert.strictEqual(movRow.pdfFile, '', 'Cleared 2026.0 from pdfFile in MOV');
+
+  // 3. Verify getWhereaboutsNepTargetMap accurately extracts NEP target map for cf_doc and land_valuation
+  const cfTargetMap = getWhereaboutsNepTargetMap('cf_doc', '2026', store.state, {});
+  assert.ok(cfTargetMap, 'Returns target map for cf_doc in 2026');
+  assert.strictEqual(cfTargetMap.ESA.area, 23.5124, 'CF(DOC) target map matches regional hub');
+
+  const movTargetMap = getWhereaboutsNepTargetMap('land_valuation', '2026', store.state, {});
+  assert.ok(movTargetMap, 'Returns target map for land_valuation in 2026');
+  assert.strictEqual(movTargetMap.LEY.lhs, 106, 'MOV target map matches regional hub');
+
+  // Cleanup
   try {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   } catch (_) {}

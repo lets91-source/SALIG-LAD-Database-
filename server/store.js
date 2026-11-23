@@ -623,8 +623,9 @@ export function resolveDefaultDataDir() {
 
 export class ConsolidatedStore {
   constructor(dataDir) {
-    this.isVercelTmpFallback = !dataDir && Boolean(process.env.VERCEL);
-    this.dataDir = dataDir || resolveDefaultDataDir();
+    const resolvedDir = (dataDir && typeof dataDir === 'object') ? dataDir.dataDir : dataDir;
+    this.isVercelTmpFallback = !resolvedDir && Boolean(process.env.VERCEL);
+    this.dataDir = resolvedDir || resolveDefaultDataDir();
     this.storePath = path.join(this.dataDir, 'store.json');
     this.state = null;
     this.load();
@@ -781,25 +782,26 @@ export class ConsolidatedStore {
             delete row.test;
             dirty = true;
           }
+          // Universal year rescue from PDF fields across all tabs (e.g. CF(DOC), Survey, MOV, etc.)
+          if (row.pdfFile && /^(20\d{2})(\.0+)?$/.test(String(row.pdfFile).trim())) {
+            const ym = String(row.pdfFile).trim().replace(/\.0+$/, '').match(/^(20\d{2})$/);
+            if (ym && (!row.targetYear || String(row.targetYear).trim() === '')) {
+              row.targetYear = ym[1];
+            }
+            row.pdfFile = '';
+            dirty = true;
+          }
+          if (row['PDF File'] && /^(20\d{2})(\.0+)?$/.test(String(row['PDF File']).trim())) {
+            const ym = String(row['PDF File']).trim().replace(/\.0+$/, '').match(/^(20\d{2})$/);
+            if (ym && (!row.targetYear || String(row.targetYear).trim() === '')) {
+              row.targetYear = ym[1];
+            }
+            delete row['PDF File'];
+            dirty = true;
+          }
           if (tab === 'Survey') {
             if (Object.prototype.hasOwnProperty.call(row, 'srForwardedPreIvas')) {
               delete row.srForwardedPreIvas;
-              dirty = true;
-            }
-            if (row.pdfFile && /^(20\d{2})(\.0)?$/.test(String(row.pdfFile).trim())) {
-              const ym = String(row.pdfFile).trim().replace(/\.0$/, '').match(/^(20\d{2})$/);
-              if (ym && (!row.targetYear || String(row.targetYear).trim() === '')) {
-                row.targetYear = ym[1];
-              }
-              row.pdfFile = '';
-              dirty = true;
-            }
-            if (row['PDF File'] && /^(20\d{2})(\.0)?$/.test(String(row['PDF File']).trim())) {
-              const ym = String(row['PDF File']).trim().replace(/\.0$/, '').match(/^(20\d{2})$/);
-              if (ym && (!row.targetYear || String(row.targetYear).trim() === '')) {
-                row.targetYear = ym[1];
-              }
-              delete row['PDF File'];
               dirty = true;
             }
           }
@@ -1165,12 +1167,12 @@ export class ConsolidatedStore {
         val = Number.isFinite(num) ? num.toFixed(4) : String(val);
       } else if (col.type === 'checkbox') {
         val = normalizeChecklistValue(val);
-      } else if (col.type === 'pdfFile' || col.key === 'pdfFile') {
+      } else if (col.type === 'pdfFile' || col.key === 'pdfFile' || (col.label && col.label.toLowerCase().includes('pdf'))) {
         const strVal = String(val ?? '').trim();
-        const yearMatch = strVal.replace(/\.0$/, '').match(/^(20\d{2})$/);
+        const yearMatch = strVal.replace(/\.0+$/, '').match(/^(20\d{2})$/) || (typeof val === 'number' && val >= 2000 && val <= 2099 ? [String(val), String(val)] : null);
         if (yearMatch) {
           // Mistakenly put Year into PDF File column: redirect to targetYear if not set
-          if (!rowPayload.targetYear && !cleanRow.targetYear) {
+          if (!cleanRow.targetYear || String(cleanRow.targetYear).trim() === '') {
             cleanRow.targetYear = yearMatch[1];
           }
           val = '';
@@ -1243,7 +1245,8 @@ export class ConsolidatedStore {
   }
 
   /** Bulk-upsert parsed Milestone_Data, OPTool tabs, and optional NEP province sheet using O(1) indexes and a single save. */
-  importParsedDataset({ milestoneData = [], optool = {}, leasehold = [], nepProvinceList = null, nepMilestoneList = null } = {}, options = {}) {
+  importParsedDataset(dataset = {}, options = {}) {
+    let { milestoneData = [], optool = {}, leasehold = [], nepProvinceList = null, nepMilestoneList = null } = dataset || {};
     const { skipSave = false } = options;
     let importedCount = 0;
 
@@ -1487,6 +1490,29 @@ export class ConsolidatedStore {
           };
           importedCount++;
         }
+      }
+    }
+
+    if (dataset.nepMilestoneListByYear && typeof dataset.nepMilestoneListByYear === 'object') {
+      if (!this.state.nepMilestoneListByYear) this.state.nepMilestoneListByYear = {};
+      for (const [yr, msMap] of Object.entries(dataset.nepMilestoneListByYear)) {
+        if (!this.state.nepMilestoneListByYear[yr]) this.state.nepMilestoneListByYear[yr] = {};
+        for (const [msKey, pMap] of Object.entries(msMap || {})) {
+          this.state.nepMilestoneListByYear[yr][msKey] = {
+            ...(this.state.nepMilestoneListByYear[yr][msKey] || {}),
+            ...pMap
+          };
+        }
+      }
+    }
+
+    if (dataset.nepProvinceListByYear && typeof dataset.nepProvinceListByYear === 'object') {
+      if (!this.state.nepProvinceListByYear) this.state.nepProvinceListByYear = {};
+      for (const [yr, pMap] of Object.entries(dataset.nepProvinceListByYear)) {
+        this.state.nepProvinceListByYear[yr] = {
+          ...(this.state.nepProvinceListByYear[yr] || {}),
+          ...pMap
+        };
       }
     }
 
