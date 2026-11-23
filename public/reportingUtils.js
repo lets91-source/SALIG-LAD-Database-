@@ -1,5 +1,18 @@
 export const TARGET_PERIOD_OPTIONS = ['Current', 'Previous Year'];
 
+export const EPEB_STATUS_OPTIONS = [
+  'For Entry',
+  'TD Encoding',
+  'Examination',
+  'Approval',
+  'Uploading',
+  'Printing',
+  'Released',
+  'ETD@CO',
+  'Freeze/System Update',
+  'COD'
+];
+
 /**
  * Normalizes an LHID or parcel identifier from scientific notation (e.g. "8.05000007E8")
  * or float with trailing ".0" back to the exact standard database integer string (e.g. "805000007").
@@ -343,11 +356,12 @@ export function getOptoolRowKey(tabName, r) {
     const s = String(r.epOrCloaSerialNo || '').trim().toLowerCase();
     const rod = String(r.rodTitleNo || '').trim().toLowerCase();
     const a = String(r.arbName || '').trim().toLowerCase();
+    const e = String(r.epebNumber || '').trim().toLowerCase();
     if (cleanLhid) {
-      if (s || rod || a) return `regdist|${cleanLhid}|s:${s}|r:${rod}|a:${a}`;
+      if (s || rod || a || e) return `regdist|${cleanLhid}|s:${s}|r:${rod}|a:${a}|e:${e}`;
       return `regdist|${cleanLhid}`;
     }
-    return `regdist|s:${s}|r:${rod}|a:${a}`;
+    return `regdist|s:${s}|r:${rod}|a:${a}|e:${e}`;
   }
 
   if (tabName === 'Installation') {

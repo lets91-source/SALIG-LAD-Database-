@@ -87,6 +87,11 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
           if (cleanNorm === cleanHeader || cleanNorm === cleanLabel || cleanNorm === cleanKey) return true;
 
           return (
+            (col.key === 'dateForwardedToRod' && (cleanNorm.includes('forwardedtorod') || cleanNorm.includes('forwardedrod') || cleanNorm.includes('dateforwarded'))) ||
+            (col.key === 'dateReceivedAtRod' && (cleanNorm.includes('receivedatrod') || cleanNorm.includes('receivedrod') || cleanNorm.includes('datereceivedatrod') || cleanNorm.includes('datereceivedrod'))) ||
+            (col.key === 'epebNumber' && (cleanNorm.includes('epebno') || cleanNorm.includes('epebnum') || cleanNorm.includes('epeb#') || cleanNorm.includes('epebnumber'))) ||
+            (col.key === 'epebDate' && cleanNorm.includes('epebdate')) ||
+            (col.key === 'epebStatus' && cleanNorm.includes('epebstatus')) ||
             (col.key === 'ladStatus' && (norm === 'lad' || norm === 'ladcolumn' || norm === 'ladstatus')) ||
             (col.key === 'workability' && norm === 'workability') ||
             (col.key === 'carperLadForm42' && (norm.includes('form42') || norm.includes('form47'))) ||

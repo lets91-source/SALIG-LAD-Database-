@@ -164,7 +164,10 @@ const OPTOOL_SCHEMA_HEADERS = {
     'LHID/ Sequence No.', 'Origin/\nSource:\n(New Land, REDOC & DNYD)',
     'CLOA TYPE (EP/CLOA OR COLLECTIVE)', 'REGION', 'PROVINCE',
     'MUNICIPALITY', 'BARANGAY', 'NAME OF ARB (LN, FN, MI)',
-    'EP or CLOA \nSERIAL No.', 'AREA\n(HAs)', 'MOA', 'ROD TITLE NO.',
+    'EP or CLOA \nSERIAL No.', 'AREA\n(HAs)', 'MOA',
+    'DATE FORWARDED TO ROD', 'DATE RECEIVED AT ROD',
+    'EPEB NUMBER', 'EPEB DATE', 'EPEB STATUS',
+    'ROD TITLE NO.',
     'DATE REGISTERED', 'DATE OF DISTRIBUTION (mm/dd/yyyy)',
     'Total Number of ARB', 'Male', 'Female', 'NO. OF TITLES',
     'TARGET YEAR\n (Current/ Previous)', 'MONTH REPORTED', 'REMARKS', 'PDF File', 'Target Year'
@@ -1384,6 +1387,46 @@ function readProvincialMilestoneSupportLists_() {
                 row['DATE REGISTERED'] ||
                 row['Date Registered'] ||
                 row.date_registered ||
+                '';
+            }
+            if (!row.dateForwardedToRod) {
+              row.dateForwardedToRod =
+                row['DATE FORWARDED TO ROD'] ||
+                row['Date Forwarded to ROD'] ||
+                row['Date Forwarded ROD'] ||
+                row.date_forwarded_to_rod ||
+                '';
+            }
+            if (!row.dateReceivedAtRod) {
+              row.dateReceivedAtRod =
+                row['DATE RECEIVED AT ROD'] ||
+                row['Date Received at ROD'] ||
+                row['Date Received ROD'] ||
+                row.date_received_at_rod ||
+                '';
+            }
+            if (!row.epebNumber) {
+              row.epebNumber =
+                row['EPEB NUMBER'] ||
+                row['EPEB Number'] ||
+                row['EPEB No.'] ||
+                row['EPEB No'] ||
+                row['EPEB #'] ||
+                row.epeb_number ||
+                '';
+            }
+            if (!row.epebDate) {
+              row.epebDate =
+                row['EPEB DATE'] ||
+                row['EPEB Date'] ||
+                row.epeb_date ||
+                '';
+            }
+            if (!row.epebStatus) {
+              row.epebStatus =
+                row['EPEB STATUS'] ||
+                row['EPEB Status'] ||
+                row.epeb_status ||
                 '';
             }
           }

@@ -17,7 +17,8 @@ import {
   inferProvinceCodeFromMunicipality,
   isChecklistChecked as isServerChecklistChecked,
   LEASEHOLD_COLUMNS,
-  normalizeLeaseholdRow
+  normalizeLeaseholdRow,
+  EPEB_STATUS_OPTIONS
 } from '../schema.js';
 import { ConsolidatedStore, resolveDefaultDataDir, isMovAccomplished } from '../store.js';
 import { createSeedState } from '../seedData.js';
@@ -124,7 +125,34 @@ test('Schema & Region VIII Registry integrity', () => {
   const ppuCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'ppuReviewResult');
   assert.equal(ppuCol?.type, 'select');
   assert.deepEqual(ppuCol?.options, ['PASSED', 'FAILED']);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 23);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 28);
+  const fwdCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'dateForwardedToRod');
+  assert.equal(fwdCol?.type, 'date');
+  assert.equal(fwdCol?.group, 'Registration & Distribution');
+  const recCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'dateReceivedAtRod');
+  assert.equal(recCol?.type, 'date');
+  assert.equal(recCol?.group, 'Registration & Distribution');
+  const epebNumCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'epebNumber');
+  assert.equal(epebNumCol?.type, 'text');
+  assert.equal(epebNumCol?.group, 'Registration & Distribution');
+  const epebDateCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'epebDate');
+  assert.equal(epebDateCol?.type, 'date');
+  assert.equal(epebDateCol?.group, 'Registration & Distribution');
+  const epebStatCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'epebStatus');
+  assert.equal(epebStatCol?.type, 'select');
+  assert.equal(epebStatCol?.group, 'Registration & Distribution');
+  assert.deepEqual(epebStatCol?.options, [
+    'For Entry',
+    'TD Encoding',
+    'Examination',
+    'Approval',
+    'Uploading',
+    'Printing',
+    'Released',
+    'ETD@CO',
+    'Freeze/System Update',
+    'COD'
+  ]);
   const regReporting = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.slice(-9);
   assert.deepEqual(
     regReporting.map((c) => c.key),
@@ -6118,6 +6146,131 @@ test('58. Dashboard displays all Region VIII records regardless of admin or prov
 
   // Region VIII Total row
   assert.ok(html.includes('Region VIII Total'), 'Footer contains Region VIII Total');
+
+  // Cleanup
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
+test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema, store, views, and whereabouts', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'regdist-epeb-test-'));
+  const store = new ConsolidatedStore(tmpDir);
+
+  // 1. Schema integrity
+  const regSchema = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution;
+  const fwdCol = regSchema.find((c) => c.key === 'dateForwardedToRod');
+  assert.equal(fwdCol?.type, 'date');
+  assert.equal(fwdCol?.label, 'Date Forwarded to ROD');
+  assert.equal(fwdCol?.group, 'Registration & Distribution');
+
+  const recCol = regSchema.find((c) => c.key === 'dateReceivedAtRod');
+  assert.equal(recCol?.type, 'date');
+  assert.equal(recCol?.label, 'Date Received at ROD');
+
+  const epebNumCol = regSchema.find((c) => c.key === 'epebNumber');
+  assert.equal(epebNumCol?.type, 'text');
+  assert.equal(epebNumCol?.label, 'EPEB Number');
+
+  const epebDateCol = regSchema.find((c) => c.key === 'epebDate');
+  assert.equal(epebDateCol?.type, 'date');
+  assert.equal(epebDateCol?.label, 'EPEB Date');
+
+  const epebStatusCol = regSchema.find((c) => c.key === 'epebStatus');
+  assert.equal(epebStatusCol?.type, 'select');
+  assert.equal(epebStatusCol?.label, 'EPEB Status');
+  assert.deepEqual(epebStatusCol?.options, EPEB_STATUS_OPTIONS);
+
+  // 2. Store upsert and retrieval
+  const testRow = {
+    lhid: '804209075',
+    region: 'REGION VIII',
+    province: 'NORTHERN SAMAR',
+    municipality: 'CATARMAN',
+    barangay: 'LIBJO',
+    arbName: 'DELA CRUZ, JUAN M.',
+    epOrCloaSerialNo: '00987654',
+    areaHas: '2.5000',
+    moa: 'VOS',
+    dateForwardedToRod: '2026-04-10',
+    dateReceivedAtRod: '2026-04-12',
+    epebNumber: 'EPEB-2026-0042',
+    epebDate: '2026-04-15',
+    epebStatus: 'Examination',
+    rodTitleNo: '2026000099',
+    dateRegistered: '2026-04-23',
+    dateOfDistribution: '2026-05-12',
+    target: 'Current',
+    targetYear: '2026'
+  };
+
+  store.upsertOptoolRow('RegistrationDistribution', testRow);
+  const rows = store.state.optool.RegistrationDistribution;
+  const found = rows.find((r) => String(r.lhid) === '804209075');
+  assert.ok(found, 'Row should be found in store');
+  assert.equal(found.dateForwardedToRod, '2026-04-10');
+  assert.equal(found.dateReceivedAtRod, '2026-04-12');
+  assert.equal(found.epebNumber, 'EPEB-2026-0042');
+  assert.equal(found.epebDate, '2026-04-15');
+  assert.equal(found.epebStatus, 'Examination');
+
+  // 3. renderOptoolView table rendering & inline select
+  const optoolHtml = renderOptoolView({
+    user: { role: 'ADMIN', province: 'Region VIII Hub' },
+    activeOptoolTab: 'RegistrationDistribution',
+    optoolPage: 1,
+    optoolPageSize: 50,
+    optoolSearch: '',
+    optoolColumnFilters: {},
+    optoolSort: { colIndex: 0, dir: 'asc' },
+    state: {
+      optool: {
+        RegistrationDistribution: [testRow]
+      }
+    },
+    schemas: {
+      optoolTabs: {
+        RegistrationDistribution: regSchema
+      },
+      optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS
+    }
+  });
+
+  assert.ok(optoolHtml.includes('Date Forwarded to ROD'), 'Header contains Date Forwarded to ROD');
+  assert.ok(optoolHtml.includes('Date Received at ROD'), 'Header contains Date Received at ROD');
+  assert.ok(optoolHtml.includes('EPEB Number'), 'Header contains EPEB Number');
+  assert.ok(optoolHtml.includes('EPEB Date'), 'Header contains EPEB Date');
+  assert.ok(optoolHtml.includes('EPEB Status'), 'Header contains EPEB Status');
+  assert.ok(optoolHtml.includes('data-optool-select-key="epebStatus"'), 'Inline select rendered for epebStatus');
+  assert.ok(optoolHtml.includes('value="Examination" selected'), 'Selected value Examination rendered');
+
+  // 4. regdist-whereabouts config stage resolution and extraColValue
+  const regConfig = WHEREABOUTS_CONFIGS['regdist-whereabouts'];
+  assert.ok(regConfig, 'regdist-whereabouts config exists');
+
+  // When only forwarded to ROD
+  const stageFwd = regConfig.resolveStage({ dateForwardedToRod: '2026-04-10' });
+  assert.equal(stageFwd.stage, 'Forwarded to ROD');
+
+  // When received at ROD
+  const stageRec = regConfig.resolveStage({ dateForwardedToRod: '2026-04-10', dateReceivedAtRod: '2026-04-12' });
+  assert.equal(stageRec.stage, 'Received at ROD');
+
+  // When EPEB status is set
+  const stageEpeb = regConfig.resolveStage({ epebStatus: 'Examination' });
+  assert.equal(stageEpeb.stage, 'EPEB: Examination');
+
+  // When registered
+  const stageReg = regConfig.resolveStage({ epebStatus: 'Released', dateRegistered: '2026-04-23' });
+  assert.equal(stageReg.stage, 'Registered with ROD');
+
+  // When distributed
+  const stageDist = regConfig.resolveStage({ dateRegistered: '2026-04-23', dateOfDistribution: '2026-05-12' });
+  assert.equal(stageDist.stage, 'Distributed to ARBs');
+
+  // extraColValue rendering
+  const extraHtml = regConfig.extraColValue({ epebNumber: 'EPEB-2026-0042', epebStatus: 'Examination' });
+  assert.ok(extraHtml.includes('EPEB: EPEB-2026-0042 (Examination)'));
 
   // Cleanup
   try {

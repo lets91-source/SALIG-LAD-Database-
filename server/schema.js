@@ -1,9 +1,10 @@
 import {
   TARGET_PERIOD_OPTIONS,
+  EPEB_STATUS_OPTIONS,
   getReportedMonthOptions
 } from '../public/reportingUtils.js';
 
-export { TARGET_PERIOD_OPTIONS, getReportedMonthOptions };
+export { TARGET_PERIOD_OPTIONS, EPEB_STATUS_OPTIONS, getReportedMonthOptions };
 
 export const REGIONAL_REGISTRY = [
   {
@@ -618,6 +619,11 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'epOrCloaSerialNo', header: 'EP or CLOA \nSERIAL No.', label: 'EP or CLOA Serial No.', group: 'ARB & Title Details', type: 'text' },
     { key: 'areaHas', header: 'AREA\n(HAs)', label: 'Area (HAS)', group: 'ARB & Title Details', type: 'decimal' },
     { key: 'moa', header: 'MOA', label: 'MOA', group: 'ARB & Title Details', type: 'text' },
+    { key: 'dateForwardedToRod', header: 'DATE FORWARDED TO ROD', label: 'Date Forwarded to ROD', group: 'Registration & Distribution', type: 'date' },
+    { key: 'dateReceivedAtRod', header: 'DATE RECEIVED AT ROD', label: 'Date Received at ROD', group: 'Registration & Distribution', type: 'date' },
+    { key: 'epebNumber', header: 'EPEB NUMBER', label: 'EPEB Number', group: 'Registration & Distribution', type: 'text' },
+    { key: 'epebDate', header: 'EPEB DATE', label: 'EPEB Date', group: 'Registration & Distribution', type: 'date' },
+    { key: 'epebStatus', header: 'EPEB STATUS', label: 'EPEB Status', group: 'Registration & Distribution', type: 'select', options: EPEB_STATUS_OPTIONS },
     { key: 'rodTitleNo', header: 'ROD TITLE NO.', label: 'ROD Title No.', group: 'Registration & Distribution', type: 'text' },
     { key: 'dateRegistered', header: 'DATE REGISTERED', label: 'Date Registered', group: 'Registration & Distribution', type: 'date' },
     { key: 'dateOfDistribution', header: 'DATE OF DISTRIBUTION (mm/dd/yyyy)', label: 'Date of Distribution', group: 'Registration & Distribution', type: 'text' },
@@ -751,6 +757,11 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'arbName',
     'epOrCloaSerialNo',
     'areaHas',
+    'dateForwardedToRod',
+    'dateReceivedAtRod',
+    'epebNumber',
+    'epebDate',
+    'epebStatus',
     'rodTitleNo',
     'dateRegistered',
     'dateOfDistribution',
