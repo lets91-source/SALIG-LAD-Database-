@@ -21,7 +21,7 @@ import {
 } from '../schema.js';
 import { ConsolidatedStore, resolveDefaultDataDir, isMovAccomplished } from '../store.js';
 import { createSeedState } from '../seedData.js';
-import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from '../auth.js';
+import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD, signSessionToken } from '../auth.js';
 import {
   buildConsolidatedWorkbookBuffer,
   parseWorkbookBuffer,
@@ -58,7 +58,8 @@ import {
   getLeaseholdAreaTenanted,
   getLeaseholdTargetYear,
   renderTargetSummaryView,
-  getWhereaboutsNepTargetMap
+  getWhereaboutsNepTargetMap,
+  renderAuditLogsView
 } from '../../public/views.js';
 import {
   TARGET_PERIOD_OPTIONS,
@@ -5640,6 +5641,125 @@ test('53. Universal PDF year sanitization, importParsedDataset multi-year NEP, a
     fs.rmSync(tmpDir, { recursive: true, force: true });
   } catch (_) {}
 });
+
+test('54. Log History is restricted to administrators only (API gate, Landholding 360 stripping, and UI access control)', async () => {
+  const tmpDir = path.join(os.tmpdir(), `salig-audit-admin-test-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const store = new ConsolidatedStore(tmpDir);
+
+  // Seed an audit log entry
+  store.recordAuditLog({
+    user: { name: 'Juan Dela Cruz', email: 'juan@dar8.gov.ph', role: 'user', province: 'Leyte' },
+    action: 'update',
+    tabName: 'CF(DOC)',
+    lhid: '803700012',
+    changes: [{ field: 'target', label: 'Target', oldValue: 'Current', newValue: 'Previous Year' }]
+  });
+
+  const { handler } = createAppServer(store, {
+    requireAuth: true,
+    requireOtp: false,
+    autoFetchHubNep: false
+  });
+
+  // 1. Non-admin user gets 403 Forbidden on /api/audit-logs
+  const nonAdminUser = { id: 'u-1', email: 'staff@dar8.gov.ph', role: 'user', status: 'approved' };
+  const adminUser = { id: 'a-1', email: 'admin@dar8.gov.ph', role: 'admin', status: 'approved' };
+
+  // Set users in store so session lookup succeeds
+  store.state.users = [
+    { ...nonAdminUser, passwordHash: 'hash' },
+    { ...adminUser, passwordHash: 'hash' }
+  ];
+
+  const adminToken = signSessionToken(adminUser, store.getAuthSecret());
+  const userToken = signSessionToken(nonAdminUser, store.getAuthSecret());
+
+  // Helper to make mock requests to handler
+  const makeRequest = async (method, path, token = null) => {
+    return new Promise((resolve, reject) => {
+      const headers = { 'content-type': 'application/json' };
+      if (token) {
+        headers['cookie'] = `salig_session=${token}`;
+      }
+      const req = new http.IncomingMessage();
+      req.method = method;
+      req.url = path;
+      req.headers = headers;
+
+      const res = new http.ServerResponse(req);
+      let resBody = '';
+      const originalWrite = res.write.bind(res);
+      const originalEnd = res.end.bind(res);
+
+      res.write = (chunk, ...args) => {
+        if (chunk) resBody += chunk.toString();
+        return originalWrite(chunk, ...args);
+      };
+
+      res.end = (chunk, ...args) => {
+        if (chunk) resBody += chunk.toString();
+        originalEnd(chunk, ...args);
+        let parsed = null;
+        try {
+          parsed = JSON.parse(resBody);
+        } catch (_) {
+          parsed = resBody;
+        }
+        resolve({ statusCode: res.statusCode, body: parsed });
+      };
+
+      req.push(null);
+      handler(req, res);
+    });
+  };
+
+  // 1. Non-admin request to /api/audit-logs is forbidden (403)
+  const nonAdminRes = await makeRequest('GET', '/api/audit-logs', userToken);
+  assert.strictEqual(nonAdminRes.statusCode, 403, 'Non-admin receives 403 Forbidden on /api/audit-logs');
+  assert.strictEqual(nonAdminRes.body.ok, false);
+  assert.ok(nonAdminRes.body.error.includes('administrators only'));
+
+  // 2. Admin request to /api/audit-logs succeeds (200)
+  const adminRes = await makeRequest('GET', '/api/audit-logs', adminToken);
+  assert.strictEqual(adminRes.statusCode, 200, 'Admin receives 200 OK on /api/audit-logs');
+  assert.strictEqual(adminRes.body.ok, true);
+  assert.ok(Array.isArray(adminRes.body.logs), 'Admin receives audit logs array');
+  assert.strictEqual(adminRes.body.logs[0].lhid, '803700012', 'Finds recorded audit log');
+
+  // 3. Non-admin request to Landholding 360 has auditLogs stripped
+  const nonAdminDossierRes = await makeRequest('GET', '/api/landholding/803700012', userToken);
+  assert.strictEqual(nonAdminDossierRes.statusCode, 200);
+  assert.deepStrictEqual(nonAdminDossierRes.body.auditLogs, [], 'Non-admin dossier has auditLogs stripped');
+
+  // 4. Admin request to Landholding 360 retains auditLogs
+  const adminDossierRes = await makeRequest('GET', '/api/landholding/803700012', adminToken);
+  assert.strictEqual(adminDossierRes.statusCode, 200);
+  assert.strictEqual(adminDossierRes.body.auditLogs.length, 1, 'Admin dossier retains auditLogs');
+  assert.strictEqual(adminDossierRes.body.auditLogs[0].lhid, '803700012');
+
+  // 5. Test UI access guard: renderAuditLogsView for non-admin shows access denied card
+  const nonAdminHtml = renderAuditLogsView({
+    logs: store.state.auditLogs,
+    currentUser: nonAdminUser
+  });
+  assert.ok(nonAdminHtml.includes('Administrator Access Required'), 'UI denies access for standard staff user');
+  assert.ok(nonAdminHtml.includes('restricted to administrators only'), 'UI explains admin restriction');
+
+  // 6. Test UI access guard: renderAuditLogsView for admin shows full audit logs feed
+  const adminHtml = renderAuditLogsView({
+    logs: store.state.auditLogs,
+    currentUser: adminUser
+  });
+  assert.ok(adminHtml.includes('User Edit & Revision Log History'), 'UI permits access for admin');
+  assert.ok(adminHtml.includes('803700012'), 'Admin UI includes tracked LHID audit entries');
+
+  // Cleanup
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
 
 
 

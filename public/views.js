@@ -9826,6 +9826,21 @@ export function generateLeaseholdCsv(rows = []) {
  * timestamp, province, and milestone tab.
  */
 export function renderAuditLogsView({ logs = [], total = 0, filters = {}, currentUser = null }) {
+  if (currentUser && currentUser.role !== 'admin') {
+    return `
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">📜 User Edit & Revision Log History</h1>
+        </div>
+      </div>
+      <div class="card" style="padding:40px;text-align:center;max-width:540px;margin:40px auto;border-radius:12px;background:var(--bg-surface,#ffffff);border:1px solid var(--border,#e2e8f0);box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+        <div style="font-size:42px;margin-bottom:12px;">🔒</div>
+        <h2 style="font-size:18px;margin-bottom:8px;color:var(--text-main,#1a202c);">Administrator Access Required</h2>
+        <p style="color:var(--text-muted,#718096);font-size:13px;margin:0;">The User Revision and LHID Edit Log History is restricted to administrators only.</p>
+      </div>
+    `;
+  }
+
   const currentSearch = String(filters.search || '').trim();
   const currentTab = String(filters.tabName || 'all').trim();
   const currentAction = String(filters.action || 'all').trim();

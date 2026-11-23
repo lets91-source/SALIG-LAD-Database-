@@ -1313,10 +1313,18 @@ export function createAppServer(dataDir, options = {}) {
       if (req.method === 'GET' && pathname.startsWith('/api/landholding/')) {
         const lhid = decodeURIComponent(pathname.slice('/api/landholding/'.length));
         const dossier = store.getLandholding360(lhid);
+        // Log History is restricted to administrators only
+        if (requireAuth && sessionUser?.role !== 'admin' && dossier && dossier.auditLogs) {
+          dossier.auditLogs = [];
+        }
         return sendJson(res, 200, store.filterLandholding360ByScope(dossier, scopeCode));
       }
 
       if (req.method === 'GET' && pathname === '/api/audit-logs') {
+        // Log History is restricted to administrators only
+        if (requireAuth && sessionUser?.role !== 'admin') {
+          return sendJson(res, 403, { ok: false, error: 'Forbidden: Log History is for administrators only.' });
+        }
         const auditRes = store.getAuditLogs({
           lhid: query.lhid,
           userEmail: query.user,

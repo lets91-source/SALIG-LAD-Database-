@@ -622,6 +622,7 @@ function syncCurrentUserUi() {
   const user = appState.currentUser;
   const isAdmin = user?.role === 'admin';
   const navUsersBtn = document.getElementById('nav-user-approvals');
+  const navAuditBtn = document.getElementById('nav-audit-logs');
   const pendingPill = document.getElementById('nav-pending-users-count');
   const userCard = document.getElementById('sidebar-user-card');
   const userNameEl = document.getElementById('sidebar-user-name');
@@ -632,6 +633,7 @@ function syncCurrentUserUi() {
   const topbarUserRole = document.getElementById('topbar-user-role');
 
   navUsersBtn?.classList.toggle('hidden', !isAdmin);
+  navAuditBtn?.classList.toggle('hidden', !isAdmin);
   if (pendingPill) {
     pendingPill.textContent = String(appState.pendingUserCount || 0);
   }
@@ -1365,6 +1367,11 @@ function renderActiveView() {
     startUsersAutoPoll();
   } else if (appState.view === 'audit-logs') {
     stopUsersAutoPoll();
+    if (appState.currentUser?.role !== 'admin') {
+      appState.view = 'dashboard';
+      renderActiveView();
+      return;
+    }
     container.innerHTML = renderAuditLogsView({
       logs: appState.auditLogs || [],
       total: appState.auditLogsTotal || 0,
@@ -4565,7 +4572,7 @@ async function openLandholdingDrawer(lhid) {
       `);
     }
 
-    if (Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
+    if (appState.currentUser?.role === 'admin' && Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
       blocks.push(`
         <div class="panel">
           <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
@@ -6855,6 +6862,12 @@ async function init() {
           toast(err.message, true);
         }
       } else if (appState.view === 'audit-logs') {
+        if (appState.currentUser?.role !== 'admin') {
+          appState.view = 'dashboard';
+          toast('Log History is for administrators only.', true);
+          renderActiveView();
+          return;
+        }
         try {
           await loadAuditLogs();
         } catch (err) {
