@@ -633,10 +633,8 @@ function renderMilestoneNepSection(ctx) {
             };
           });
         }
-        if (activeProvince !== 'ALL') {
-          provEntries = provEntries.filter((p) => p.code === activeProvince);
-        }
-        const zeroList = (r.zeroAccompProvinces || []).filter((c) => activeProvince === 'ALL' || c === activeProvince);
+        // In Target Summary, always display all provinces so provincial and regional users can view all provinces
+        const zeroList = (r.zeroAccompProvinces || []);
 
         return `
               <tr class="nep-milestone-main-row ${isMsExpanded ? 'nep-expanded-row' : ''}">
@@ -691,6 +689,9 @@ function renderMilestoneNepSection(ctx) {
                       <span class="nep-prov-tree">└─</span>
                       <strong class="nep-prov-code-tag">${esc(pd.code)}</strong>
                       <span class="nep-prov-name-text">${esc(pd.name)}</span>
+                      ${activeProvince !== 'ALL' && pd.code === activeProvince
+                    ? `<span class="badge badge-blue badge-xs" style="font-weight:700;">Filtered Scope</span>`
+                    : ''}
                       ${pd.hasAccomp
                     ? `<span class="badge badge-green badge-xs">Active</span>`
                     : `<span class="badge badge-danger badge-xs nep-zero-status">No Accomp (0)</span>`
@@ -5460,7 +5461,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                         data-edit-lhid="${esc(formatLhidDisplay(r.lhid))}"
                         title="Directly edit this ${esc(cfg.tabName)} record"
                       >
-                        Open in ${esc(cfg.openTabName)}
+                        Open in ${esc(cfg.openTabName)} (Edit)
                       </button>
                     </td>
                   </tr>

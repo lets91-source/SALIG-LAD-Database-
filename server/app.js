@@ -16,7 +16,8 @@ import {
   OPTOOL_SHEET_SCHEMAS,
   OPTOOL_PREVIEW_COLUMNS,
   inferProvinceCodeFromText,
-  inferProvinceCodeFromMunicipality
+  inferProvinceCodeFromMunicipality,
+  formatLhidDisplay
 } from './schema.js';
 import { ConsolidatedStore } from './store.js';
 import {
@@ -36,6 +37,7 @@ import {
   buildConsolidatedWorkbookBuffer,
   pullFromGasWebApp,
   pullUsersFromGasWebApp,
+  pullAuditLogsFromGasWebApp,
   pullNepFromGasWebApp,
   pushToGasWebApp
 } from './sheetsSync.js';
@@ -411,6 +413,21 @@ async function pullUsersFromGasIfConfigured(store, pullUsersFn = pullUsersFromGa
   }
 }
 
+async function pullAuditLogsFromGasIfConfigured(store, pullLogsFn = pullAuditLogsFromGasWebApp) {
+  const gasUrl = String(store.state.gasWebAppUrl || '').trim();
+  if (!gasUrl) return { ok: false, skipped: true };
+  try {
+    const res = await pullLogsFn(gasUrl);
+    if (Array.isArray(res?.logs)) {
+      const merged = store.mergeAuditLogsFromSheet(res.logs);
+      return { ok: true, ...merged };
+    }
+    return { ok: false, skipped: false };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 export async function performProvincialSync(store, options = {}) {
   const {
     scopeCode = null,
@@ -546,6 +563,7 @@ export function createAppServer(dataDir, options = {}) {
   const gasPushFn = options.pushToGasWebApp || pushToGasWebApp;
   const gasPullFn = options.pullFromGasWebApp || pullFromGasWebApp;
   const gasPullUsersFn = options.pullUsersFromGasWebApp || pullUsersFromGasWebApp;
+  const gasPullAuditLogsFn = options.pullAuditLogsFromGasWebApp || pullAuditLogsFromGasWebApp;
   const gasPullNepFn = options.pullNepFromGasWebApp || pullNepFromGasWebApp;
   const requireAuth = options.requireAuth !== false;
   const customOtpSender = options.sendOtpEmail;
@@ -708,11 +726,7 @@ export function createAppServer(dataDir, options = {}) {
         if (requireAuth && sessionUser?.role !== 'admin') {
           return sendJson(res, 403, { error: 'Administrator access required.' });
         }
-        if (query.sync === 'true') {
-          await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
-        } else {
-          pullUsersFromGasIfConfigured(store, gasPullUsersFn).catch(() => {});
-        }
+        await pullUsersFromGasIfConfigured(store, gasPullUsersFn);
         return sendJson(res, 200, {
           users: store.listPublicUsers(),
           pendingCount: store.getPendingUserCount()
@@ -929,7 +943,39 @@ export function createAppServer(dataDir, options = {}) {
           }
         }
         const payload = scopeCode ? { ...body, Province_Code: scopeCode } : body;
+        const prevMilestone = payload.Record_ID
+          ? (store.state.milestoneData || []).find((m) => m.Record_ID === payload.Record_ID)
+          : null;
         const saved = store.upsertMilestone(payload);
+        try {
+          const auditChanges = [];
+          if (prevMilestone) {
+            for (const key of ['Milestone_Stage', 'Milestone_Date', 'Batch_Category', 'LHID']) {
+              const oldVal = String(prevMilestone[key] || '').trim();
+              const newVal = String(saved[key] || '').trim();
+              if (oldVal !== newVal) {
+                auditChanges.push({ field: key, label: key.replace(/_/g, ' '), oldValue: oldVal, newValue: newVal });
+              }
+            }
+          } else {
+            for (const key of ['Milestone_Stage', 'Milestone_Date', 'Batch_Category', 'LHID']) {
+              const newVal = String(saved[key] || '').trim();
+              if (newVal !== '') {
+                auditChanges.push({ field: key, label: key.replace(/_/g, ' '), oldValue: '', newValue: newVal });
+              }
+            }
+          }
+          if (auditChanges.length > 0) {
+            const logEntry = store.recordAuditLog({
+              user: sessionUser,
+              action: prevMilestone ? 'update' : 'create',
+              tabName: 'Milestone_Data',
+              lhid: saved.LHID || '',
+              changes: auditChanges
+            });
+            pushMutationToGas(store, { action: 'appendAuditLog', entry: logEntry }, `Recorded milestone update`, gasPushFn).catch(() => {});
+          }
+        } catch (_) {}
         const gasPushResult =
           body.pushToGas !== false
             ? await pushMutationToGas(
@@ -997,7 +1043,33 @@ export function createAppServer(dataDir, options = {}) {
             return sendJson(res, 404, { error: 'Database row not found' });
           }
           try {
+            const prevRow = store.state.optool.Database?.[globalIdx] ? { ...store.state.optool.Database[globalIdx] } : null;
+            const prevTarget = String(prevRow?.milestoneTarget || '').trim();
             const result = store.setDatabaseMilestoneTarget(globalIdx, body.milestoneTarget ?? '');
+            const newTarget = String(result.row?.milestoneTarget || '').trim();
+            if (prevTarget !== newTarget) {
+              try {
+                const logEntry = store.recordAuditLog({
+                  user: sessionUser,
+                  action: 'update',
+                  tabName: 'Database',
+                  lhid: result.row?.lhid || '',
+                  rowIndex: globalIdx,
+                  changes: [{
+                    field: 'milestoneTarget',
+                    label: 'Milestone Target',
+                    oldValue: prevTarget || '(None)',
+                    newValue: newTarget || '(None)'
+                  }]
+                });
+                pushMutationToGas(
+                  store,
+                  { action: 'appendAuditLog', entry: logEntry },
+                  `Recorded milestone target update for LHID ${result.row?.lhid || ''}`,
+                  gasPushFn
+                ).catch(() => {});
+              } catch (_) {}
+            }
             const gasPushResult = await pushMutationToGas(
               store,
               {
@@ -1069,10 +1141,17 @@ export function createAppServer(dataDir, options = {}) {
             }
           }
 
-          const prevRow =
+          let prevRow =
             globalIdx !== null && Number.isInteger(globalIdx) && globalIdx >= 0
               ? store.state.optool[tabName]?.[globalIdx] ? { ...store.state.optool[tabName][globalIdx] } : null
               : null;
+          if (!prevRow && (rowPayload.lhid || rowPayload.LHID)) {
+            const cleanTargetLhid = formatLhidDisplay(rowPayload.lhid || rowPayload.LHID).toLowerCase();
+            const found = (store.state.optool[tabName] || []).find(
+              (r) => formatLhidDisplay(r.lhid || r.LHID).toLowerCase() === cleanTargetLhid
+            );
+            if (found) prevRow = { ...found };
+          }
           const saved = store.upsertOptoolRow(tabName, rowPayload, globalIdx);
 
           // Compute field changes for User Revision Audit Log History
@@ -1106,7 +1185,7 @@ export function createAppServer(dataDir, options = {}) {
               }
             }
             if (auditChanges.length > 0) {
-              store.recordAuditLog({
+              const logEntry = store.recordAuditLog({
                 user: sessionUser,
                 action: prevRow ? 'update' : 'create',
                 tabName,
@@ -1114,6 +1193,12 @@ export function createAppServer(dataDir, options = {}) {
                 rowIndex: globalIdx,
                 changes: auditChanges
               });
+              pushMutationToGas(
+                store,
+                { action: 'appendAuditLog', entry: logEntry },
+                `Recorded audit revision for LHID ${saved.lhid || ''}`,
+                gasPushFn
+              ).catch(() => {});
             }
           } catch (_) {}
 
@@ -1213,7 +1298,41 @@ export function createAppServer(dataDir, options = {}) {
         try {
           const rawRow = body.row || body;
           const index = body.index !== undefined && body.index !== null ? Number(body.index) : null;
+          const prevRow = index !== null && Number.isInteger(index) && index >= 0
+            ? store.state.optool.Leasehold?.[index] ? { ...store.state.optool.Leasehold[index] } : null
+            : null;
           const saved = store.upsertLeaseholdRow(rawRow, index, sessionUser, scopeCode);
+          try {
+            const schemaCols = OPTOOL_SHEET_SCHEMAS.Leasehold || [];
+            const auditChanges = [];
+            if (prevRow) {
+              for (const col of schemaCols) {
+                const oldVal = prevRow[col.key] !== undefined && prevRow[col.key] !== null ? String(prevRow[col.key]).trim() : '';
+                const newVal = saved[col.key] !== undefined && saved[col.key] !== null ? String(saved[col.key]).trim() : '';
+                if (oldVal !== newVal) {
+                  auditChanges.push({ field: col.key, label: col.label || col.header || col.key, oldValue: oldVal, newValue: newVal });
+                }
+              }
+            } else {
+              for (const col of schemaCols) {
+                const newVal = saved[col.key] !== undefined && saved[col.key] !== null ? String(saved[col.key]).trim() : '';
+                if (newVal !== '') {
+                  auditChanges.push({ field: col.key, label: col.label || col.header || col.key, oldValue: '', newValue: newVal });
+                }
+              }
+            }
+            if (auditChanges.length > 0) {
+              const logEntry = store.recordAuditLog({
+                user: sessionUser,
+                action: prevRow ? 'update' : 'create',
+                tabName: 'Leasehold',
+                lhid: saved.lhid || saved.titleNo || '',
+                rowIndex: index,
+                changes: auditChanges
+              });
+              pushMutationToGas(store, { action: 'appendAuditLog', entry: logEntry }, `Recorded Leasehold revision`, gasPushFn).catch(() => {});
+            }
+          } catch (_) {}
           const gasPushResult = await pushMutationToGas(
             store,
             {
@@ -1331,6 +1450,7 @@ export function createAppServer(dataDir, options = {}) {
         if (requireAuth && sessionUser?.role !== 'admin') {
           return sendJson(res, 403, { ok: false, error: 'Forbidden: Log History is for administrators only.' });
         }
+        await pullAuditLogsFromGasIfConfigured(store, gasPullAuditLogsFn);
         const auditRes = store.getAuditLogs({
           lhid: query.lhid,
           userEmail: query.user,

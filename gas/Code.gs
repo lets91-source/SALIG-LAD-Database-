@@ -80,6 +80,20 @@ const USER_ACCOUNTS_HEADERS = [
 
 const NEP_SHEET_HEADERS = ['Province_Code', 'Province', 'LHS', 'AREA', 'ARBs', 'Year', 'Milestone'];
 
+const AUDIT_LOGS_HEADERS = [
+  'Log_ID',
+  'Timestamp',
+  'User_Name',
+  'User_Email',
+  'User_Role',
+  'User_Province',
+  'Action',
+  'Tab_Name',
+  'LHID',
+  'Changes_JSON',
+  'Summary'
+];
+
 const WORKABILITY_OPTIONS = ['Workable', 'For Replacement', 'Replacement'];
 const LAD_STATUS_OPTIONS = ['LAD Balance', 'Temp. Park', 'For Inclusion'];
 
@@ -561,6 +575,13 @@ function doGet(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === 'auditLogs') {
+      ensureAuditLogsSheet_();
+      return ContentService.createTextOutput(
+        JSON.stringify({ ok: true, spreadsheetId: HUB_SPREADSHEET_ID, logs: readAuditLogsFromHub_((e && e.parameter && e.parameter.limit) || 500) })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (action === 'nep') {
       ensureNepSheet_();
       const hubNep = readNepSheetFromHub_();
@@ -728,6 +749,12 @@ function doPost(e) {
     if (body.action === 'deleteUserAccount' && (body.userId || body.email)) {
       const deleted = deleteUserAccountRecord_(body.userId || '', body.email || '');
       return ContentService.createTextOutput(JSON.stringify({ ok: true, deleted: deleted }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (body.action === 'appendAuditLog' && body.entry) {
+      const saved = appendAuditLogToHub_(body.entry);
+      return ContentService.createTextOutput(JSON.stringify(saved))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -2686,4 +2713,100 @@ function installRealTimeWebhookTrigger(saligWebhookUrl) {
   const currentUrl = saligWebhookUrl || PropertiesService.getScriptProperties().getProperty('SALIG_WEBHOOK_URL');
   Logger.log('Real-time onChange webhook trigger installed for: ' + currentUrl);
   return { ok: true, message: 'Real-time webhook trigger installed successfully. Target: ' + currentUrl };
+}
+
+/** Ensure the Audit_Logs tab exists in the Regional Hub Google Sheet. */
+function ensureAuditLogsSheet_() {
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  let sheet = hub.getSheetByName('Audit_Logs');
+  if (!sheet) {
+    sheet = hub.insertSheet('Audit_Logs');
+    sheet.getRange(1, 1, 1, AUDIT_LOGS_HEADERS.length).setValues([AUDIT_LOGS_HEADERS]);
+    sheet
+      .getRange(1, 1, 1, AUDIT_LOGS_HEADERS.length)
+      .setFontWeight('bold')
+      .setBackground('#14532D')
+      .setFontColor('#FFFFFF');
+    sheet.setFrozenRows(1);
+    sheet.setFrozenColumns(2);
+  }
+  return sheet;
+}
+
+/** Append a new user edit revision audit log into the Regional Hub Audit_Logs tab. */
+function appendAuditLogToHub_(entry) {
+  if (!entry || typeof entry !== 'object') return { ok: false, error: 'Invalid entry' };
+  const sheet = ensureAuditLogsSheet_();
+  const id = String(entry.id || ('audit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7))).trim();
+  const timestamp = String(entry.timestamp || new Date().toISOString()).trim();
+  const u = entry.user || {};
+  const userName = String(u.name || u.fullName || 'Staff / Anonymous').trim();
+  const userEmail = String(u.email || 'user@dar8.gov.ph').trim().toLowerCase();
+  const userRole = String(u.role || 'staff').trim().toLowerCase();
+  const userProv = String(u.province || 'Region VIII Hub').trim();
+  const action = String(entry.action || 'update').trim().toLowerCase();
+  const tabName = String(entry.tabName || '').trim();
+  const lhid = String(entry.lhid || '').trim();
+  const changesJson = typeof entry.changes === 'string' ? entry.changes : JSON.stringify(entry.changes || []);
+  const summary = String(entry.summary || '').trim();
+
+  sheet.appendRow([
+    id,
+    timestamp,
+    userName,
+    userEmail,
+    userRole,
+    userProv,
+    action,
+    tabName,
+    lhid,
+    changesJson,
+    summary
+  ]);
+
+  return { ok: true, id: id };
+}
+
+/** Read recent audit logs from Regional Hub Audit_Logs tab (newest first). */
+function readAuditLogsFromHub_(limit) {
+  const hub = SpreadsheetApp.openById(HUB_SPREADSHEET_ID);
+  const sheet = hub.getSheetByName('Audit_Logs');
+  if (!sheet || sheet.getLastRow() <= 1) return [];
+  const maxRows = Number(limit) || 500;
+  const lastRow = sheet.getLastRow();
+  const startRow = Math.max(2, lastRow - maxRows + 1);
+  const numRowsToFetch = lastRow - startRow + 1;
+  if (numRowsToFetch <= 0) return [];
+
+  const values = sheet.getRange(startRow, 1, numRowsToFetch, AUDIT_LOGS_HEADERS.length).getDisplayValues();
+  const logs = [];
+
+  for (let i = values.length - 1; i >= 0; i--) {
+    const row = values[i];
+    const id = String(row[0] || '').trim();
+    if (!id) continue;
+    let changes = [];
+    try {
+      changes = JSON.parse(row[9] || '[]');
+    } catch (_) {
+      changes = [];
+    }
+    logs.push({
+      id: id,
+      timestamp: String(row[1] || '').trim(),
+      user: {
+        name: String(row[2] || '').trim(),
+        email: String(row[3] || '').trim(),
+        role: String(row[4] || '').trim(),
+        province: String(row[5] || '').trim()
+      },
+      action: String(row[6] || '').trim(),
+      tabName: String(row[7] || '').trim(),
+      lhid: String(row[8] || '').trim(),
+      changes: changes,
+      summary: String(row[10] || '').trim()
+    });
+  }
+
+  return logs;
 }

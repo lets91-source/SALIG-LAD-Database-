@@ -3584,8 +3584,17 @@ export class ConsolidatedStore {
       const cleanEmail = String(raw?.email || '').trim().toLowerCase();
       const cleanId = String(raw?.id || '').trim();
       if (!cleanEmail && !cleanId) continue;
-      if (this.isUserDeleted(cleanEmail, cleanId)) {
+      if (cleanId && Array.isArray(this.state?.deletedUserIds) && this.state.deletedUserIds.includes(cleanId)) {
+        // A specific deleted account ID must never resurrect from sheet sync
         continue;
+      }
+      if (cleanEmail && Array.isArray(this.state?.deletedUserEmails) && this.state.deletedUserEmails.includes(cleanEmail)) {
+        // If an approved account exists in Google Sheet with a non-deleted ID, clear the email tombstone
+        if (raw.status === 'approved') {
+          this.clearDeletedUserTombstone(cleanEmail);
+        } else {
+          continue;
+        }
       }
       const finalId = cleanId || `usr-${crypto.randomBytes(6).toString('hex')}`;
       const existing =
@@ -3642,6 +3651,37 @@ export class ConsolidatedStore {
       this.save();
     }
     return { added, updated, total: this.state.users.length };
+  }
+
+  /**
+   * Merge audit log entries fetched from the Regional Hub Google Sheet (`Audit_Logs`)
+   * into `this.state.auditLogs`, de-duplicating by log.id and preserving newest first.
+   */
+  mergeAuditLogsFromSheet(sheetLogs = []) {
+    if (!Array.isArray(sheetLogs) || sheetLogs.length === 0) {
+      return { added: 0, total: (this.state.auditLogs || []).length };
+    }
+    if (!Array.isArray(this.state.auditLogs)) {
+      this.state.auditLogs = [];
+    }
+    const existingIds = new Set(this.state.auditLogs.map((l) => l.id).filter(Boolean));
+    let added = 0;
+    for (const log of sheetLogs) {
+      if (!log || !log.id) continue;
+      if (!existingIds.has(log.id)) {
+        this.state.auditLogs.push(log);
+        existingIds.add(log.id);
+        added += 1;
+      }
+    }
+    this.state.auditLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    if (this.state.auditLogs.length > 2500) {
+      this.state.auditLogs = this.state.auditLogs.slice(0, 2500);
+    }
+    if (added > 0) {
+      this.save();
+    }
+    return { added, total: this.state.auditLogs.length };
   }
 
   /** Alias for deleteUserAccount to support deleteUser across store callers and test harnesses. */

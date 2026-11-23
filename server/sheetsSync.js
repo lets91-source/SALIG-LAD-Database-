@@ -753,6 +753,16 @@ export async function pullUsersFromGasWebApp(gasUrl) {
   return fetchGasAction(gasUrl, 'users');
 }
 
+/** Pull Audit_Logs list from the deployed Regional Hub GAS Web App. */
+export async function pullAuditLogsFromGasWebApp(gasUrl) {
+  return fetchGasAction(gasUrl, 'auditLogs');
+}
+
+/** Append a single audit log entry into the Regional Hub Audit_Logs tab. */
+export async function pushAuditLogToGasWebApp(gasUrl, entry, timeoutMs = 25000) {
+  return pushToGasWebApp(gasUrl, { action: 'appendAuditLog', entry }, timeoutMs);
+}
+
 /** Pull the Regional Hub NEP Sheet per-province totals (?action=nep). */
 export async function pullNepFromGasWebApp(gasUrl) {
   return fetchGasAction(gasUrl, 'nep');

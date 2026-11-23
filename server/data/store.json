@@ -419946,5 +419946,74 @@
       }
     }
   },
-  "auditLogs": []
+  "auditLogs": [
+    {
+      "id": "audit-log-nsa-804209069",
+      "timestamp": "2026-11-23T01:35:00.000Z",
+      "user": {
+        "name": "Leo Adre",
+        "email": "adrejhat@gmail.com",
+        "role": "staff",
+        "province": "Northern Samar"
+      },
+      "action": "update",
+      "tabName": "CF(DOC)",
+      "lhid": "804209069",
+      "changes": [
+        {
+          "field": "targetYear",
+          "label": "Target Year",
+          "oldValue": "",
+          "newValue": "2026"
+        },
+        {
+          "field": "target",
+          "label": "Target (Current / Previous)",
+          "oldValue": "",
+          "newValue": "Current"
+        },
+        {
+          "field": "reportedMonth",
+          "label": "Reported Month",
+          "oldValue": "",
+          "newValue": "November 2026"
+        }
+      ],
+      "summary": "Updated CF(DOC) parcel details for LHID 804209069: Target Year (2026), Target (Current), Reported Month (November 2026)"
+    },
+    {
+      "id": "audit-log-nsa-804209075",
+      "timestamp": "2026-11-23T01:30:00.000Z",
+      "user": {
+        "name": "Leo Adre",
+        "email": "adrejhat@gmail.com",
+        "role": "staff",
+        "province": "Northern Samar"
+      },
+      "action": "update",
+      "tabName": "Survey",
+      "lhid": "804209075",
+      "changes": [
+        {
+          "field": "targetYear",
+          "label": "Target Year",
+          "oldValue": "",
+          "newValue": "2026"
+        },
+        {
+          "field": "target",
+          "label": "Target (Current / Previous)",
+          "oldValue": "",
+          "newValue": "Current"
+        },
+        {
+          "field": "reportedMonth",
+          "label": "Reported Month",
+          "oldValue": "",
+          "newValue": "November 2026"
+        }
+      ],
+      "summary": "Updated Survey parcel details for LHID 804209075: Target Year (2026), Target (Current), Reported Month (November 2026)"
+    }
+  ]
 }

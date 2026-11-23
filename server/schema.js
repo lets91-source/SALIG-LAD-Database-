@@ -872,4 +872,6 @@ export function normalizeChecklistValue(value) {
   return isChecklistChecked(value) ? 'Yes' : '';
 }
 
+export { formatLhidDisplay } from '../public/reportingUtils.js';
+
 

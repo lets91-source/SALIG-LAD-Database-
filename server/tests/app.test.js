@@ -4246,11 +4246,12 @@ test('Option A: Dedicated Leasehold tab across provincial Google Sheets & Region
     assert.equal(postData.ok, true);
     assert.equal(postData.row.leaseholderSurname, 'RAMOS');
     assert.ok(postData.gasPushResult, 'GAS push was triggered');
-    assert.equal(gasPushes.length, 1);
-    assert.equal(gasPushes[0].payload.action, 'upsertOptoolRow');
-    assert.equal(gasPushes[0].payload.tabName, 'Leasehold');
-    assert.equal(gasPushes[0].payload.row.leaseholderSurname, 'RAMOS');
-    assert.equal(gasPushes[0].payload.provinceCode, 'LEY');
+    assert.ok(gasPushes.length >= 1);
+    const rowPush = gasPushes.find((p) => p.payload.action === 'upsertOptoolRow');
+    assert.ok(rowPush, 'upsertOptoolRow push found');
+    assert.equal(rowPush.payload.tabName, 'Leasehold');
+    assert.equal(rowPush.payload.row.leaseholderSurname, 'RAMOS');
+    assert.equal(rowPush.payload.provinceCode, 'LEY');
 
     // 3. Test XLSX Export and Parsing roundtrip
     const analytics = store.computeAnalytics();
@@ -4295,10 +4296,11 @@ test('Option A: Dedicated Leasehold tab across provincial Google Sheets & Region
     assert.equal(delRes.status, 200);
     const delData = await delRes.json();
     assert.equal(delData.ok, true);
-    assert.equal(gasPushes.length, 2);
-    assert.equal(gasPushes[1].payload.action, 'deleteOptoolRow');
-    assert.equal(gasPushes[1].payload.tabName, 'Leasehold');
-    assert.equal(gasPushes[1].payload.row.leaseholderSurname, 'RAMOS');
+    assert.ok(gasPushes.length >= 2);
+    const delPush = gasPushes.find((p) => p.payload.action === 'deleteOptoolRow');
+    assert.ok(delPush, 'deleteOptoolRow push found');
+    assert.equal(delPush.payload.tabName, 'Leasehold');
+    assert.equal(delPush.payload.row.leaseholderSurname, 'RAMOS');
 
     // 6. Test /api/leasehold/sync-gas bulk push
     const syncRes = await fetch(`${baseUrl}/api/leasehold/sync-gas`, {
@@ -5916,6 +5918,105 @@ test('56. User deletion tombstones, clean re-registration untombstoning, Google 
   const reloadedStore = new ConsolidatedStore(tmpDir);
   assert.ok(reloadedStore.findUserByEmail('staff.leo@dar8.gov.ph'), 'Re-registered user persists across reloads');
   assert.ok(reloadedStore.findUserByEmail('other.staff@dar8.gov.ph'), 'Active user persists across reloads');
+
+  // Cleanup
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (_) {}
+});
+
+test('57. Audit Logs Google Sheet synchronization, revision tracking with exact field diffs, and Target Summary all-province view', async () => {
+  const tmpDir = path.join(os.tmpdir(), `salig-test-audit-logs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const store = new ConsolidatedStore(tmpDir);
+
+  const remoteGasLogs = [
+    {
+      id: 'audit-log-nsa-804209075',
+      timestamp: '2026-11-23T01:30:00.000Z',
+      user: {
+        name: 'Leo Adre',
+        email: 'adrejhat@gmail.com',
+        role: 'staff',
+        province: 'Northern Samar'
+      },
+      action: 'update',
+      tabName: 'Survey',
+      lhid: '804209075',
+      changes: [
+        { field: 'targetYear', label: 'Target Year', oldValue: '', newValue: '2026' },
+        { field: 'target', label: 'Target (Current / Previous)', oldValue: '', newValue: 'Current' }
+      ],
+      summary: 'Updated Survey parcel details for LHID 804209075: Target Year (2026), Target (Current)'
+    },
+    {
+      id: 'audit-log-nsa-804209069',
+      timestamp: '2026-11-23T01:35:00.000Z',
+      user: {
+        name: 'Leo Adre',
+        email: 'adrejhat@gmail.com',
+        role: 'staff',
+        province: 'Northern Samar'
+      },
+      action: 'update',
+      tabName: 'CF(DOC)',
+      lhid: '804209069',
+      changes: [
+        { field: 'targetYear', label: 'Target Year', oldValue: '', newValue: '2026' }
+      ],
+      summary: 'Updated CF(DOC) parcel details for LHID 804209069: Target Year (2026)'
+    }
+  ];
+
+  // 1. mergeAuditLogsFromSheet merges remote Google Sheet audit logs cleanly
+  const mergeResult = store.mergeAuditLogsFromSheet(remoteGasLogs);
+  assert.strictEqual(mergeResult.added, 2, 'Added 2 remote audit logs from Google Sheet');
+  assert.strictEqual(store.state.auditLogs.length, 2);
+
+  // 2. Querying audit logs returns proper logs & search filtering
+  const allLogs = store.getAuditLogs({});
+  assert.strictEqual(allLogs.total, 2);
+  assert.strictEqual(allLogs.logs[0].id, 'audit-log-nsa-804209069'); // newest first
+
+  const userFilter = store.getAuditLogs({ userEmail: 'adrejhat' });
+  assert.strictEqual(userFilter.total, 2);
+
+  const lhidFilter = store.getAuditLogs({ lhid: '804209075' });
+  assert.strictEqual(lhidFilter.total, 1);
+  assert.strictEqual(lhidFilter.logs[0].lhid, '804209075');
+
+  // 3. Deduplication: merging duplicate log IDs does not duplicate them
+  const dupMerge = store.mergeAuditLogsFromSheet([remoteGasLogs[0]]);
+  assert.strictEqual(dupMerge.added, 0, 'Duplicate log IDs are ignored');
+  assert.strictEqual(store.state.auditLogs.length, 2);
+
+  // 4. Verify Google Apps Script (gas/Code.gs) has audit logs methods and routes
+  const gasCode = fs.readFileSync(path.join(__dirname, '../../gas/Code.gs'), 'utf8');
+  assert.ok(gasCode.includes("const AUDIT_LOGS_HEADERS = ["), 'Code.gs defines AUDIT_LOGS_HEADERS');
+  assert.ok(gasCode.includes("function ensureAuditLogsSheet_()"), 'Code.gs defines ensureAuditLogsSheet_');
+  assert.ok(gasCode.includes("function appendAuditLogToHub_"), 'Code.gs defines appendAuditLogToHub_');
+  assert.ok(gasCode.includes("function readAuditLogsFromHub_"), 'Code.gs defines readAuditLogsFromHub_');
+  assert.ok(gasCode.includes("action === 'auditLogs'"), 'Code.gs defines doGet auditLogs route');
+  assert.ok(gasCode.includes("action === 'appendAuditLog'"), 'Code.gs defines doPost appendAuditLog route');
+
+  // 5. Verify Target Summary displays all 6 provinces even when scoped to Northern Samar
+  const { renderTargetSummaryView } = await import('../../public/views.js');
+  const dummyCtx = {
+    state: store.state,
+    analytics: store.computeAnalytics(),
+    schemas: { optoolTabs: {} },
+    filters: { province: 'NSA' },
+    provinceScope: { code: 'NSA', provinceName: 'Northern Samar' },
+    nepExpandedMilestones: { cf_doc: true }
+  };
+  const summaryHtml = renderTargetSummaryView(dummyCtx);
+  assert.ok(summaryHtml.includes('BIL'), 'Target Summary contains Biliran');
+  assert.ok(summaryHtml.includes('EAS'), 'Target Summary contains Eastern Samar');
+  assert.ok(summaryHtml.includes('LEY'), 'Target Summary contains Leyte');
+  assert.ok(summaryHtml.includes('NSA'), 'Target Summary contains Northern Samar');
+  assert.ok(summaryHtml.includes('SAM'), 'Target Summary contains Samar');
+  assert.ok(summaryHtml.includes('SLE'), 'Target Summary contains Southern Leyte');
 
   // Cleanup
   try {
