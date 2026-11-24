@@ -3129,19 +3129,25 @@ td.cell-check {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.auth-step-num {
+.auth-step-num,
+.auth-step .auth-step-num {
   width: 24px;
   height: 24px;
-  border-radius: 999px;
+  min-width: 24px;
+  border-radius: 50%;
   background: #f59e0b;
-  color: #091d12;
+  color: #091d12 !important;
   font-size: 12px;
   font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  padding: 0 !important;
   flex-shrink: 0;
   margin-top: 1px;
+  box-sizing: border-box;
 }
 
 .auth-step strong {
@@ -3151,7 +3157,8 @@ td.cell-check {
   margin-bottom: 2px;
 }
 
-.auth-step span {
+.auth-step div > span,
+.auth-step-desc {
   display: block;
   font-size: 12px;
   line-height: 1.4;
