@@ -6502,7 +6502,7 @@ async function bootAppSession(options = {}) {
         'fetching',
         'Synchronizing Live data…',
         'Fetching live CF, Survey, and milestone records across provincial sheets…',
-        () => api('/api/sync/provincial-optool', { method: 'POST', timeoutMs: 25000 })
+        () => api('/api/sync/provincial-optool', { method: 'POST', timeoutMs: 60000 })
       );
       if (syncResult && syncResult.ok) {
         if (syncResult.state) appState.state = { ...appState.state, ...syncResult.state };
