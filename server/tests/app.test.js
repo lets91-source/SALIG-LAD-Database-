@@ -6466,6 +6466,45 @@ test('Test 61: Executive LAD Analytics Dashboard rendering in Target Summary aft
   assert.ok(execIdx > tableIdx, 'Executive dashboard is positioned after the Physical Accomplishment table');
 });
 
+test('Test 62: Executive LAD Analytics Dashboard interactive milestone & province filtering and drilldown', async () => {
+  const { renderExecutiveLadDashboard } = await import('../../public/views.js');
+
+  // 1. Unfiltered Dashboard: shows Tip / Hint and no active selection
+  const defaultHtml = renderExecutiveLadDashboard({ execMilestoneFilter: 'ALL', execProvinceFilter: 'ALL' });
+  assert.ok(defaultHtml.includes('exec-filter-hint'), 'Displays interactive analytics hint when unfiltered');
+  assert.ok(!defaultHtml.includes('exec-filter-banner'), 'Does not display filter banner when unfiltered');
+  assert.ok(!defaultHtml.includes('exec-ms-selected-badge'), 'No active badges on milestone rows');
+
+  // 2. Filter by Milestone (e.g. CF Documentation)
+  const msHtml = renderExecutiveLadDashboard({ execMilestoneFilter: 'cf_doc' });
+  assert.ok(msHtml.includes('exec-filter-banner'), 'Displays filter banner when milestone is selected');
+  assert.ok(msHtml.includes('Milestone: <strong>CF Documentation</strong>'), 'Banner displays selected milestone label');
+  assert.ok(msHtml.includes('data-exec-clear-milestone'), 'Includes clear milestone button in banner');
+  assert.ok(msHtml.includes('btn-exec-reset-filters'), 'Includes reset all filters button');
+  assert.ok(msHtml.includes('btn-exec-view-landholdings'), 'Includes support list records drilldown button');
+  assert.ok(msHtml.includes('data-exec-milestone="cf_doc"'), 'Has data-exec-milestone="cf_doc" attribute');
+  assert.ok(msHtml.includes('exec-milestone-row is-selected'), 'Applies is-selected class to CF Documentation row');
+  assert.ok(msHtml.includes('exec-ms-selected-badge'), 'Shows active badge on CF Documentation');
+  assert.ok(msHtml.includes('(CF Documentation)'), 'KPI card subtitle reflects CF Documentation');
+
+  // 3. Filter by Province (e.g. Leyte)
+  const provHtml = renderExecutiveLadDashboard({ execProvinceFilter: 'LEY' });
+  assert.ok(provHtml.includes('exec-filter-banner'), 'Displays filter banner when province is selected');
+  assert.ok(provHtml.includes('Province: <strong>Leyte</strong>'), 'Banner displays selected province name');
+  assert.ok(provHtml.includes('data-exec-clear-province'), 'Includes clear province button in banner');
+  assert.ok(provHtml.includes('exec-prov-bar-group is-selected'), 'Applies is-selected class to Leyte bar group');
+  assert.ok(provHtml.includes('exec-gauge-item is-selected'), 'Applies is-selected class to Leyte circular gauge');
+  assert.ok(provHtml.includes('(Leyte • All Milestones)'), 'KPI card subtitle reflects Leyte');
+
+  // 4. Combined Filter: Milestone AND Province (e.g. CF Documentation in Leyte)
+  const bothHtml = renderExecutiveLadDashboard({ execMilestoneFilter: 'cf_doc', execProvinceFilter: 'LEY' });
+  assert.ok(bothHtml.includes('Milestone: <strong>CF Documentation</strong>'), 'Includes milestone pill');
+  assert.ok(bothHtml.includes('Province: <strong>Leyte</strong>'), 'Includes province pill');
+  assert.ok(bothHtml.includes('(Leyte • CF Documentation)'), 'KPI card subtitle reflects both province and milestone');
+  assert.ok(bothHtml.includes('exec-milestone-row is-selected'), 'Milestone row is highlighted');
+  assert.ok(bothHtml.includes('exec-prov-bar-group is-selected'), 'Province bar is highlighted');
+});
+
 
 
 

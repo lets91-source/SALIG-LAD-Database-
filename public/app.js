@@ -85,6 +85,8 @@ const appState = {
   nepExpandedAccompSems: true,
   nepShowProvinces: false,
   nepExpandedMilestones: {},
+  execMilestoneFilter: 'ALL', // 'ALL' | 'cf_doc' | 'land_survey' | 'land_valuation' | 'ep_cloa_registration' | 'ep_cloa_distribution' | 'leasehold' | 'installation'
+  execProvinceFilter: 'ALL',  // 'ALL' | 'BIL' | 'ESA' | 'LEY' | 'NSA' | 'SAM' | 'SLE'
   filters: {
     province: 'ALL',
     periodMonth: 'LATEST',
@@ -1189,7 +1191,9 @@ function renderActiveView() {
     filters: appState.filters,
     activeOptoolTab: appState.activeOptoolTab,
     dashboardMapProvince: appState.dashboardMapProvince || 'ALL',
-    dashboardRightPanelTab: appState.dashboardRightPanelTab || 'map'
+    dashboardRightPanelTab: appState.dashboardRightPanelTab || 'map',
+    execMilestoneFilter: appState.execMilestoneFilter || 'ALL',
+    execProvinceFilter: appState.execProvinceFilter || 'ALL'
   };
 
   if (appState.view !== 'users') {
@@ -3481,6 +3485,239 @@ function bindDashboardViewEvents(container) {
     });
   });
   container.querySelector('#btn-sync-nep-sheet')?.addEventListener('click', syncHubNepSheet);
+
+  // Executive LAD Dashboard interactivity: click milestone row or province to filter
+  container.querySelectorAll('[data-exec-milestone]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const key = el.dataset.execMilestone;
+      appState.execMilestoneFilter = (appState.execMilestoneFilter === key) ? 'ALL' : key;
+      renderActiveView();
+    });
+  });
+
+  container.querySelectorAll('[data-exec-province]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = el.dataset.execProvince;
+      appState.execProvinceFilter = (appState.execProvinceFilter === code) ? 'ALL' : code;
+      renderActiveView();
+    });
+  });
+
+  container.querySelector('[data-exec-clear-milestone]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    appState.execMilestoneFilter = 'ALL';
+    renderActiveView();
+  });
+
+  container.querySelector('[data-exec-clear-province]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    appState.execProvinceFilter = 'ALL';
+    renderActiveView();
+  });
+
+  container.querySelector('#btn-exec-reset-filters')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    appState.execMilestoneFilter = 'ALL';
+    appState.execProvinceFilter = 'ALL';
+    renderActiveView();
+  });
+
+  container.querySelector('#btn-exec-view-landholdings')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openExecLandholdingsModal(appState.execMilestoneFilter, appState.execProvinceFilter);
+  });
+}
+
+function openExecLandholdingsModal(msKey = 'ALL', provCode = 'ALL') {
+  const PROV_MAP = {
+    BIL: 'Biliran',
+    ESA: 'Eastern Samar',
+    LEY: 'Leyte',
+    NSA: 'Northern Samar',
+    SAM: 'Samar',
+    SLE: 'Southern Leyte'
+  };
+  const MS_LABELS = {
+    ALL: 'All LAD Milestones',
+    cf_doc: 'CF Documentation',
+    land_survey: 'Land Survey',
+    land_valuation: 'Land Valuation',
+    ep_cloa_registration: 'EP CLOA Registration',
+    ep_cloa_distribution: 'EP CLOA Distribution',
+    leasehold: 'Leasehold',
+    installation: 'Installation'
+  };
+
+  const msLabel = MS_LABELS[msKey] || msKey;
+  const provLabel = PROV_MAP[provCode] || (provCode === 'ALL' ? 'Region VIII (All Provinces)' : provCode);
+
+  const dbRows = appState.state?.optool?.Database || [];
+  const dbMap = new Map();
+  for (const r of dbRows) {
+    const k = String(r.lhid || '').trim().toLowerCase();
+    if (k && !dbMap.has(k)) dbMap.set(k, r);
+  }
+
+  let sourceRows = [];
+  let tabName = 'Database';
+  if (msKey === 'cf_doc') {
+    tabName = 'CF(DOC)';
+    sourceRows = appState.state?.optool?.['CF(DOC)'] || [];
+  } else if (msKey === 'land_survey') {
+    tabName = 'Survey';
+    sourceRows = appState.state?.optool?.Survey || [];
+  } else if (msKey === 'land_valuation') {
+    tabName = 'MOV';
+    sourceRows = appState.state?.optool?.MOV || [];
+  } else if (msKey === 'ep_cloa_registration' || msKey === 'ep_cloa_distribution') {
+    tabName = 'RegistrationDistribution';
+    const allReg = appState.state?.optool?.RegistrationDistribution || [];
+    sourceRows = msKey === 'ep_cloa_registration'
+      ? allReg.filter((r) => String(r.dateRegistered || r['DATE REGISTERED'] || '').trim() !== '')
+      : allReg.filter((r) => String(r.dateOfDistribution || '').trim() !== '');
+  } else if (msKey === 'leasehold') {
+    tabName = 'Leasehold';
+    sourceRows = appState.state?.optool?.Leasehold || [];
+  } else if (msKey === 'installation') {
+    tabName = 'Installation';
+    sourceRows = appState.state?.optool?.Installation || [];
+  } else {
+    sourceRows = dbRows;
+  }
+
+  const filtered = sourceRows.filter((r) => {
+    if (provCode === 'ALL') return true;
+    const lhidKey = String(r.lhid || r.LHID || '').trim().toLowerCase();
+    const db = dbMap.get(lhidKey) || {};
+    const p = String(r.province || db.province || '').trim().toUpperCase();
+    const targetCode = provCode.toUpperCase();
+    const targetName = (PROV_MAP[provCode] || '').toUpperCase();
+    return p === targetCode || p.includes(targetCode) || (targetName && p.includes(targetName));
+  });
+
+  const totalArea = filtered.reduce((sum, r) => {
+    const lhidKey = String(r.lhid || r.LHID || '').trim().toLowerCase();
+    const db = dbMap.get(lhidKey) || {};
+    const a = Number(r.areaHas || r.areaHas1 || r.carpable || r.totalArea || db.totalArea || db.carpable || 0) || 0;
+    return sum + a;
+  }, 0);
+
+  const title = `Executive LAD Drilldown: ${msLabel} • ${provLabel}`;
+
+  const renderRowsHtml = (rows) => {
+    if (!rows.length) {
+      return `<tr><td colspan="7" style="text-align:center; padding: 24px; color: #64748b;">No matching landholdings found for this filter.</td></tr>`;
+    }
+    return rows.slice(0, 150).map((r) => {
+      const lhidKey = String(r.lhid || r.LHID || '').trim().toLowerCase();
+      const db = dbMap.get(lhidKey) || {};
+      const lhid = r.lhid || db.lhid || '—';
+      const prov = r.province || db.province || '—';
+      const muni = r.municipality || db.municipality || '—';
+      const brgy = r.barangay || db.barangay || '—';
+      const arb = r.arbName || r.nameOfArb || db.landOwner || '—';
+      const area = Number(r.areaHas || r.areaHas1 || r.carpable || r.totalArea || db.totalArea || db.carpable || 0) || 0;
+      const status = r.currentStatus || r.status || (r.dateRegistered ? 'Registered' : r.dateTransLbpAoc ? 'Trans LBP' : 'Active');
+
+      return `
+        <tr>
+          <td style="font-weight: 700; color: #004b93;">${esc(formatLhidDisplay(lhid))}</td>
+          <td>${esc(prov)}</td>
+          <td>${esc(muni)}</td>
+          <td>${esc(brgy)}</td>
+          <td style="font-weight: 500;">${esc(arb)}</td>
+          <td style="text-align: right; font-weight: 600;">${area.toFixed(4)}</td>
+          <td><span class="badge badge-blue">${esc(status)}</span></td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  const modalHtml = `
+    <div style="display: flex; flex-direction: column; gap: 14px; max-height: 75vh;">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div style="display: flex; gap: 16px; font-size: 13px;">
+          <div>Total Records: <strong style="color: #004b93;">${filtered.length.toLocaleString()}</strong></div>
+          <div>Total Area: <strong style="color: #047857;">${totalArea.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ha</strong></div>
+          <div>Worksheet Tab: <strong style="color: #0284c7;">${esc(tabName)}</strong></div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="exec-modal-search" class="input input-sm" placeholder="Search LHID, ARB, Town..." style="width: 200px; padding: 4px 8px; font-size: 12px;"/>
+          <button type="button" class="btn btn-xs btn-primary" id="btn-exec-export-csv">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div style="overflow: auto; flex: 1; border: 1px solid #e2e8f0; border-radius: 6px;">
+        <table class="table table-bordered table-sm" id="exec-modal-table" style="font-size: 12px; margin-bottom: 0;">
+          <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 1;">
+            <tr>
+              <th>LHID</th>
+              <th>Province</th>
+              <th>Municipality</th>
+              <th>Barangay</th>
+              <th>Name of ARB / Landowner</th>
+              <th style="text-align: right;">Area (ha)</th>
+              <th>Status / Stage</th>
+            </tr>
+          </thead>
+          <tbody id="exec-modal-tbody">
+            ${renderRowsHtml(filtered)}
+          </tbody>
+        </table>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b;">
+        <span>Showing up to 150 matching landholding records</span>
+        <button type="button" class="btn btn-sm btn-secondary" id="btn-exec-modal-close">Close</button>
+      </div>
+    </div>
+  `;
+
+  showModal(title, modalHtml);
+
+  // Search filter inside modal
+  const searchInput = document.getElementById('exec-modal-search');
+  searchInput?.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    const rows = q ? filtered.filter((r) => {
+      const lhidKey = String(r.lhid || r.LHID || '').toLowerCase();
+      const db = dbMap.get(lhidKey) || {};
+      const str = `${r.lhid || ''} ${db.lhid || ''} ${r.province || ''} ${db.province || ''} ${r.municipality || ''} ${db.municipality || ''} ${r.barangay || ''} ${db.barangay || ''} ${r.arbName || ''} ${r.nameOfArb || ''} ${db.landOwner || ''}`.toLowerCase();
+      return str.includes(q);
+    }) : filtered;
+    const tbody = document.getElementById('exec-modal-tbody');
+    if (tbody) tbody.innerHTML = renderRowsHtml(rows);
+  });
+
+  // Export CSV
+  document.getElementById('btn-exec-export-csv')?.addEventListener('click', () => {
+    const headers = ['LHID', 'Province', 'Municipality', 'Barangay', 'ARB / Landowner', 'Area (ha)', 'Status'];
+    const csvRows = [headers.join(',')];
+    filtered.forEach((r) => {
+      const lhidKey = String(r.lhid || r.LHID || '').trim().toLowerCase();
+      const db = dbMap.get(lhidKey) || {};
+      const lhid = r.lhid || db.lhid || '';
+      const prov = r.province || db.province || '';
+      const muni = r.municipality || db.municipality || '';
+      const brgy = r.barangay || db.barangay || '';
+      const arb = r.arbName || r.nameOfArb || db.landOwner || '';
+      const area = Number(r.areaHas || r.areaHas1 || r.carpable || r.totalArea || db.totalArea || db.carpable || 0) || 0;
+      const status = r.currentStatus || r.status || '';
+
+      const line = [lhid, prov, muni, brgy, arb, area.toFixed(4), status].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',');
+      csvRows.push(line);
+    });
+
+    const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `LAD_Drilldown_${msKey}_${provCode}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btn-exec-modal-close')?.addEventListener('click', closeModal);
 }
 
 function bindProvincialAllocationTableEvents(container) {

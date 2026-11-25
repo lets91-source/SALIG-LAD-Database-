@@ -1466,7 +1466,13 @@ export function renderTargetSummaryView(ctx) {
 }
 
 export function renderExecutiveLadDashboard(ctx = {}) {
-  const { analytics = {}, nepMetricMode = 'both', filters = {} } = ctx;
+  const {
+    analytics = {},
+    nepMetricMode = 'both',
+    filters = {},
+    execMilestoneFilter = 'ALL',
+    execProvinceFilter = 'ALL'
+  } = ctx;
   const milestones = analytics.milestoneNepBreakdown || [];
 
   const fmt = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1497,21 +1503,7 @@ export function renderExecutiveLadDashboard(ctx = {}) {
     ]
   };
 
-  // Determine if live data is populated
-  let liveTarget = 0;
-  let liveAccomp = 0;
-  milestones.forEach((m) => {
-    liveTarget += Number(m.nepTargetAreaHas || m.targetAreaHas || 0);
-    liveAccomp += Number(m.total?.areaHas || 0);
-  });
-
-  const useLive = liveTarget > 0;
-  const totalTarget = useLive ? liveTarget : refData.totalTarget;
-  const totalAccomp = useLive ? liveAccomp : refData.totalAccomp;
-  const overallRate = totalTarget > 0 ? Number(((totalAccomp / totalTarget) * 100).toFixed(2)) : 0;
-  const remainingBalance = Math.max(0, Number((totalTarget - totalAccomp).toFixed(2)));
-
-  // Provinces
+  // Provinces list
   const provCodes = [
     { code: 'BIL', name: 'Biliran' },
     { code: 'ESA', name: 'Eastern Samar' },
@@ -1521,11 +1513,53 @@ export function renderExecutiveLadDashboard(ctx = {}) {
     { code: 'SLE', name: 'Southern Leyte' }
   ];
 
+  // Active filter metadata
+  const activeMilestone = refData.milestones.find((m) => m.key === execMilestoneFilter) || null;
+  const activeProvince = provCodes.find((p) => p.code === execProvinceFilter) || null;
+  const isFiltered = execMilestoneFilter !== 'ALL' || execProvinceFilter !== 'ALL';
+
+  // Determine if live data is populated
+  let liveTarget = 0;
+  let liveAccomp = 0;
+  milestones.forEach((m) => {
+    liveTarget += Number(m.nepTargetAreaHas || m.targetAreaHas || 0);
+    liveAccomp += Number(m.total?.areaHas || 0);
+  });
+
+  const useLive = liveTarget > 0;
+
+  // 1. Provincial breakdown (for bar chart and circular gauges)
+  // If a milestone is selected, show provincial metrics for that specific milestone!
   const provData = provCodes.map((p) => {
     if (!useLive) {
+      if (execMilestoneFilter !== 'ALL') {
+        const refM = refData.milestones.find((rm) => rm.key === execMilestoneFilter) || refData.milestones[0];
+        const refP = refData.provinces.find((rp) => rp.code === p.code) || { target: 1000, accomp: 700 };
+        const share = refP.target / refData.totalTarget;
+        const target = Number((refM.target * share).toFixed(2));
+        const accomp = Number((refM.accomp * share).toFixed(2));
+        const pct = target > 0 ? Number(((accomp / target) * 100).toFixed(2)) : 0;
+        return { code: p.code, name: p.name, target, accomp, pct };
+      }
       const refP = refData.provinces.find((rp) => rp.code === p.code);
       return refP || { code: p.code, name: p.name, target: 0, accomp: 0, pct: 0 };
     }
+
+    if (execMilestoneFilter !== 'ALL') {
+      const liveM = milestones.find((m) => m.key === execMilestoneFilter);
+      const pb = liveM?.provinceBreakdown?.[p.code];
+      const target = Number(pb?.targetAreaHas || 0);
+      const accomp = Number(pb?.areaHas || 0);
+      const pct = target > 0 ? Number(((accomp / target) * 100).toFixed(2)) : 0;
+      return {
+        code: p.code,
+        name: p.name,
+        target: Number(target.toFixed(2)),
+        accomp: Number(accomp.toFixed(2)),
+        pct
+      };
+    }
+
     let pTarget = 0;
     let pAccomp = 0;
     milestones.forEach((m) => {
@@ -1545,11 +1579,41 @@ export function renderExecutiveLadDashboard(ctx = {}) {
     };
   });
 
-  // Milestones list
+  // 2. Milestones list (for LAD Milestone Summary table)
+  // If a province is selected, show milestone metrics for that specific province!
   const msDisplayList = refData.milestones.map((rm) => {
-    if (!useLive) return rm;
+    if (!useLive) {
+      if (execProvinceFilter !== 'ALL') {
+        const refP = refData.provinces.find((rp) => rp.code === execProvinceFilter) || { target: 1000, accomp: 700 };
+        const share = refP.target / refData.totalTarget;
+        const target = Number((rm.target * share).toFixed(2));
+        const accomp = Number((rm.accomp * share).toFixed(2));
+        const pct = target > 0 ? Number(((accomp / target) * 100).toFixed(2)) : 0;
+        const bal = Math.max(0, Number((target - accomp).toFixed(2)));
+        return { ...rm, target, accomp, pct, balance: bal };
+      }
+      return rm;
+    }
+
     const liveM = milestones.find((m) => m.key === rm.key);
     if (!liveM) return rm;
+
+    if (execProvinceFilter !== 'ALL') {
+      const pb = liveM.provinceBreakdown?.[execProvinceFilter];
+      const t = Number(pb?.targetAreaHas || 0);
+      const a = Number(pb?.areaHas || 0);
+      const pct = t > 0 ? Number(((a / t) * 100).toFixed(2)) : 0;
+      const bal = Math.max(0, Number((t - a).toFixed(2)));
+      return {
+        ...rm,
+        label: liveM.label || rm.label,
+        target: Number(t.toFixed(2)),
+        accomp: Number(a.toFixed(2)),
+        pct,
+        balance: bal
+      };
+    }
+
     const t = Number(liveM.nepTargetAreaHas || liveM.targetAreaHas || 0);
     const a = Number(liveM.total?.areaHas || 0);
     const pct = t > 0 ? Number(((a / t) * 100).toFixed(2)) : 0;
@@ -1563,6 +1627,49 @@ export function renderExecutiveLadDashboard(ctx = {}) {
       balance: bal
     };
   });
+
+  // 3. Top KPI Cards calculations (dynamically reflects milestone / province selection)
+  let totalTarget = 0;
+  let totalAccomp = 0;
+
+  if (execMilestoneFilter !== 'ALL' && execProvinceFilter !== 'ALL') {
+    const selMs = msDisplayList.find((m) => m.key === execMilestoneFilter);
+    totalTarget = selMs ? selMs.target : 0;
+    totalAccomp = selMs ? selMs.accomp : 0;
+  } else if (execMilestoneFilter !== 'ALL') {
+    const selMs = msDisplayList.find((m) => m.key === execMilestoneFilter);
+    totalTarget = selMs ? selMs.target : 0;
+    totalAccomp = selMs ? selMs.accomp : 0;
+  } else if (execProvinceFilter !== 'ALL') {
+    const selP = provData.find((p) => p.code === execProvinceFilter);
+    totalTarget = selP ? selP.target : 0;
+    totalAccomp = selP ? selP.accomp : 0;
+  } else {
+    totalTarget = useLive ? liveTarget : refData.totalTarget;
+    totalAccomp = useLive ? liveAccomp : refData.totalAccomp;
+  }
+
+  const overallRate = totalTarget > 0 ? Number(((totalAccomp / totalTarget) * 100).toFixed(2)) : 0;
+  const remainingBalance = Math.max(0, Number((totalTarget - totalAccomp).toFixed(2)));
+
+  // KPI card dynamic labels
+  let kpiTargetTitle = 'Regional Target';
+  let kpiAccompTitle = 'Regional Accomplishment';
+  let kpiSub = '(All Milestones)';
+
+  if (execMilestoneFilter !== 'ALL' && execProvinceFilter !== 'ALL') {
+    kpiTargetTitle = `${activeProvince?.name || 'Provincial'} Target`;
+    kpiAccompTitle = `${activeProvince?.name || 'Provincial'} Accomp.`;
+    kpiSub = `(${activeProvince?.name || execProvinceFilter} • ${activeMilestone?.label || execMilestoneFilter})`;
+  } else if (execMilestoneFilter !== 'ALL') {
+    kpiTargetTitle = 'Milestone Target';
+    kpiAccompTitle = 'Milestone Accomp.';
+    kpiSub = `(${activeMilestone?.label || execMilestoneFilter})`;
+  } else if (execProvinceFilter !== 'ALL') {
+    kpiTargetTitle = `${activeProvince?.name || 'Provincial'} Target`;
+    kpiAccompTitle = `${activeProvince?.name || 'Provincial'} Accomp.`;
+    kpiSub = `(${activeProvince?.name || execProvinceFilter} • All Milestones)`;
+  }
 
   // Icon helper
   const renderMsIcon = (iconType) => {
@@ -1586,9 +1693,9 @@ export function renderExecutiveLadDashboard(ctx = {}) {
   };
 
   // Bar Chart calculations
-  const rawMax = Math.max(100, ...provData.map((p) => Math.max(p.target, p.accomp)));
-  const step = rawMax > 2000 ? 500 : (rawMax > 1000 ? 250 : (rawMax > 500 ? 100 : 50));
-  const maxVal = Math.ceil(rawMax / step) * step;
+  const rawMax = Math.max(10, ...provData.map((p) => Math.max(p.target, p.accomp)));
+  const step = rawMax > 2000 ? 500 : (rawMax > 1000 ? 250 : (rawMax > 500 ? 100 : (rawMax > 100 ? 25 : 10)));
+  const maxVal = Math.max(10, Math.ceil(rawMax / step) * step);
   const numSteps = Math.min(6, Math.max(1, Math.round(maxVal / step)));
   const chartHeight = 195;
   const chartBaseY = 220;
@@ -1604,6 +1711,7 @@ export function renderExecutiveLadDashboard(ctx = {}) {
   }
 
   const provBarsHtml = provData.map((p, i) => {
+    const isSelected = p.code === execProvinceFilter;
     const groupCenter = 55 + (i * 80) + 40;
     const tX = groupCenter - 18;
     const tH = Math.max(2, (p.target / maxVal) * chartHeight);
@@ -1614,33 +1722,162 @@ export function renderExecutiveLadDashboard(ctx = {}) {
     const aY = chartBaseY - aH;
 
     return `
-      <g class="exec-prov-bar-group">
+      <g class="exec-prov-bar-group ${isSelected ? 'is-selected' : ''}"
+         data-exec-province="${p.code}"
+         role="button"
+         tabindex="0"
+         title="Click to ${isSelected ? 'clear province filter' : 'filter dashboard by ' + p.name}"
+         style="cursor: pointer;">
+        ${isSelected ? `
+          <rect x="${groupCenter - 22}" y="14" width="44" height="${chartBaseY - 12}" rx="6" fill="#e0f2fe" opacity="0.6" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <circle cx="${groupCenter}" cy="8" r="3.5" fill="#0284c7"/>
+        ` : ''}
         <!-- Target Bar -->
-        <rect x="${tX}" y="${tY}" width="16" height="${tH}" rx="3" fill="url(#exec-bar-blue)"/>
+        <rect x="${tX}" y="${tY}" width="16" height="${tH}" rx="3" fill="url(#exec-bar-blue)" class="exec-bar-rect" ${isSelected ? 'stroke="#003366" stroke-width="1.2"' : ''}/>
         <text x="${tX + 8}" y="${tY - 5}" text-anchor="middle" font-size="10" font-weight="700" fill="#0369a1">${fmtInt(p.target)}</text>
 
         <!-- Accomplishment Bar -->
-        <rect x="${aX}" y="${aY}" width="16" height="${aH}" rx="3" fill="url(#exec-bar-green)"/>
+        <rect x="${aX}" y="${aY}" width="16" height="${aH}" rx="3" fill="url(#exec-bar-green)" class="exec-bar-rect" ${isSelected ? 'stroke="#004d20" stroke-width="1.2"' : ''}/>
         <text x="${aX + 8}" y="${aY - 5}" text-anchor="middle" font-size="10" font-weight="700" fill="#047857">${fmtInt(p.accomp)}</text>
 
         <!-- Province Label -->
-        <text x="${groupCenter}" y="240" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">${esc(p.name)}</text>
+        <text x="${groupCenter}" y="240" text-anchor="middle" font-size="11" font-weight="${isSelected ? '900' : '700'}" fill="${isSelected ? '#0284c7' : '#1e293b'}">${esc(p.name)}</text>
       </g>
     `;
   }).join('');
 
-  // Top Province for Insights
-  const topProv = [...provData].sort((a, b) => b.target - a.target)[0] || { name: 'Leyte', target: 2500 };
+  // Top Province and Best Milestone calculations for Quick Insights
+  const sortedProvs = [...provData].sort((a, b) => b.target - a.target);
+  const topTargetProv = sortedProvs[0] || { name: 'Leyte', target: 2500 };
+  const sortedByAccomp = [...provData].sort((a, b) => b.pct - a.pct);
+  const bestAccompProv = sortedByAccomp[0] || { name: 'Biliran', pct: 75, accomp: 900 };
+  const sortedMs = [...msDisplayList].sort((a, b) => b.pct - a.pct);
+  const bestMs = sortedMs[0] || { label: 'CF Documentation', pct: 92.31 };
   const onTrackCount = msDisplayList.filter((m) => m.pct >= 70).length;
-  const onTrackText = onTrackCount === msDisplayList.length
-    ? 'All milestones are on track (≥70%)'
-    : `${onTrackCount} of ${msDisplayList.length} milestones on track (≥70%)`;
+
+  let insightsListHtml = '';
+  if (execMilestoneFilter !== 'ALL' && execProvinceFilter !== 'ALL') {
+    insightsListHtml = `
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${esc(activeMilestone?.label || '')}</strong> in <strong>${esc(activeProvince?.name || '')}</strong>: <strong>${overallRate.toFixed(2)}%</strong> accomplishment rate</span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span>Target: <strong>${fmt(totalTarget)} ha</strong> | Accomplished: <strong>${fmt(totalAccomp)} ha</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span>Remaining balance to accomplish: <strong>${fmt(remainingBalance)} ha</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span>Status: <strong>${overallRate >= 100 ? 'Target fully surpassed! 🎉' : overallRate >= 70 ? 'On track towards annual target' : 'Ongoing implementation'}</strong></span>
+      </div>
+    `;
+  } else if (execMilestoneFilter !== 'ALL') {
+    insightsListHtml = `
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${esc(activeMilestone?.label || '')}</strong> regional accomplishment is at <strong>${overallRate.toFixed(2)}%</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${fmt(remainingBalance)} ha</strong> remaining to meet <strong>${esc(activeMilestone?.label || '')}</strong> target</span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${esc(topTargetProv.name)}</strong> has the largest target at <strong>${fmtInt(topTargetProv.target)} ha</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span>Top province: <strong>${esc(bestAccompProv.name)}</strong> leads with <strong>${bestAccompProv.pct.toFixed(2)}%</strong> (${fmtInt(bestAccompProv.accomp)} ha)</span>
+      </div>
+    `;
+  } else if (execProvinceFilter !== 'ALL') {
+    insightsListHtml = `
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${esc(activeProvince?.name || '')}</strong> overall accomplishment is at <strong>${overallRate.toFixed(2)}%</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${fmt(remainingBalance)} ha</strong> remaining balance for <strong>${esc(activeProvince?.name || '')}</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span>Leading milestone: <strong>${esc(bestMs.label)}</strong> at <strong>${bestMs.pct.toFixed(2)}%</strong> accomplishment</span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${onTrackCount} of ${msDisplayList.length}</strong> milestones are on track (≥70%) in ${esc(activeProvince?.name || '')}</span>
+      </div>
+    `;
+  } else {
+    insightsListHtml = `
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span>Overall LAD accomplishment is at <strong>${overallRate.toFixed(2)}%</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${fmt(remainingBalance)} ha</strong> remaining to meet the target</span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span><strong>${esc(topTargetProv.name)}</strong> has the largest target at <strong>${fmtInt(topTargetProv.target)} ha</strong></span>
+      </div>
+      <div class="exec-insight-item">
+        <span class="exec-insight-check">✔</span>
+        <span>${esc(onTrackCount === msDisplayList.length ? 'All milestones are on track (≥70%)' : `${onTrackCount} of ${msDisplayList.length} milestones on track (≥70%)`)}</span>
+      </div>
+    `;
+  }
+
+  // Active filter banner HTML
+  const filterBannerHtml = isFiltered ? `
+    <div class="exec-filter-banner" id="exec-filter-banner">
+      <div class="exec-filter-banner-left">
+        <span class="exec-filter-badge">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Active Filter:
+        </span>
+        ${execMilestoneFilter !== 'ALL' ? `
+          <button type="button" class="exec-filter-pill" data-exec-clear-milestone title="Click to clear milestone filter">
+            Milestone: <strong>${esc(activeMilestone?.label || execMilestoneFilter)}</strong>
+            <span class="exec-pill-x">✕</span>
+          </button>
+        ` : ''}
+        ${execProvinceFilter !== 'ALL' ? `
+          <button type="button" class="exec-filter-pill" data-exec-clear-province title="Click to clear province filter">
+            Province: <strong>${esc(activeProvince?.name || execProvinceFilter)}</strong>
+            <span class="exec-pill-x">✕</span>
+          </button>
+        ` : ''}
+      </div>
+      <div class="exec-filter-banner-right">
+        <button type="button" class="btn btn-xs btn-outline" id="btn-exec-reset-filters" title="Reset all interactive filters">Clear Filter ✕</button>
+        <button type="button" class="btn btn-xs btn-primary" id="btn-exec-view-landholdings" title="View individual landholding records for this selection">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>View Support List Records ↗</span>
+        </button>
+      </div>
+    </div>
+  ` : `
+    <div class="exec-filter-hint">
+      <span class="exec-filter-hint-icon">💡</span>
+      <span><strong>Interactive Analytics:</strong> Click any <strong>Milestone</strong> row in the summary table or <strong>Province</strong> in the chart / gauges to drill down.</span>
+    </div>
+  `;
 
   return `
     <section class="exec-lad-dashboard" id="exec-lad-dashboard" aria-label="Executive LAD Performance Overview">
+      <!-- Interactive Filter Bar / Hint -->
+      ${filterBannerHtml}
+
       <!-- 1. Top 4 KPI Cards -->
       <div class="exec-kpi-grid">
-        <!-- Card 1: Regional Target -->
+        <!-- Card 1: Target -->
         <div class="exec-kpi-card exec-kpi-target">
           <div class="exec-kpi-icon-wrap">
             <svg class="exec-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1649,12 +1886,12 @@ export function renderExecutiveLadDashboard(ctx = {}) {
             </svg>
           </div>
           <div class="exec-kpi-content">
-            <div class="exec-kpi-title">Regional Target<br><span class="exec-kpi-sub">(All Milestones)</span></div>
+            <div class="exec-kpi-title">${kpiTargetTitle}<br><span class="exec-kpi-sub">${kpiSub}</span></div>
             <div class="exec-kpi-val">${fmt(totalTarget)} ha</div>
           </div>
         </div>
 
-        <!-- Card 2: Regional Accomplishment -->
+        <!-- Card 2: Accomplishment -->
         <div class="exec-kpi-card exec-kpi-accomp">
           <div class="exec-kpi-icon-wrap">
             <svg class="exec-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -1663,7 +1900,7 @@ export function renderExecutiveLadDashboard(ctx = {}) {
             </svg>
           </div>
           <div class="exec-kpi-content">
-            <div class="exec-kpi-title">Regional Accomplishment<br><span class="exec-kpi-sub">(All Milestones)</span></div>
+            <div class="exec-kpi-title">${kpiAccompTitle}<br><span class="exec-kpi-sub">${kpiSub}</span></div>
             <div class="exec-kpi-val">${fmt(totalAccomp)} ha</div>
           </div>
         </div>
@@ -1693,7 +1930,7 @@ export function renderExecutiveLadDashboard(ctx = {}) {
             </svg>
           </div>
           <div class="exec-kpi-content">
-            <div class="exec-kpi-title">Remaining Balance<br><span class="exec-kpi-sub">(All Milestones)</span></div>
+            <div class="exec-kpi-title">Remaining Balance<br><span class="exec-kpi-sub">${kpiSub}</span></div>
             <div class="exec-kpi-val">${fmt(remainingBalance)} ha</div>
           </div>
         </div>
@@ -1710,7 +1947,7 @@ export function renderExecutiveLadDashboard(ctx = {}) {
                 <rect x="9.5" y="4" width="5" height="18" rx="1"/>
                 <rect x="17" y="14" width="5" height="8" rx="1"/>
               </svg>
-              <span>Provincial Performance</span>
+              <span>Provincial Performance ${execMilestoneFilter !== 'ALL' ? `<small style="font-weight: normal; opacity: 0.9;">(${esc(activeMilestone?.label || '')})</small>` : ''}</span>
             </div>
             <div class="exec-panel-legend">
               <span class="exec-legend-item"><span class="exec-legend-dot exec-legend-blue"></span> Target</span>
@@ -1751,7 +1988,7 @@ export function renderExecutiveLadDashboard(ctx = {}) {
                 <circle cx="12" cy="12" r="6"/>
                 <circle cx="12" cy="12" r="2"/>
               </svg>
-              <span>LAD Milestone Summary</span>
+              <span>LAD Milestone Summary ${execProvinceFilter !== 'ALL' ? `<small style="font-weight: normal; opacity: 0.9;">(${esc(activeProvince?.name || '')})</small>` : ''}</span>
             </div>
           </div>
           <div class="exec-panel-body" style="padding: 0;">
@@ -1766,27 +2003,36 @@ export function renderExecutiveLadDashboard(ctx = {}) {
                 </tr>
               </thead>
               <tbody>
-                ${msDisplayList.map((m) => `
-                  <tr>
-                    <td>
-                      <div class="exec-ms-cell">
-                        <span class="exec-ms-icon" style="background: ${m.color};">${renderMsIcon(m.icon)}</span>
-                        <span>${esc(m.label)}</span>
-                      </div>
-                    </td>
-                    <td style="text-align: right; font-weight: 600;">${fmt(m.target)}</td>
-                    <td style="text-align: right; font-weight: 600; color: #047857;">${fmt(m.accomp)}</td>
-                    <td>
-                      <div class="exec-progress-track">
-                        <div class="exec-progress-bar-bg">
-                          <div class="exec-progress-bar-fill" style="width: ${Math.min(100, m.pct)}%;"></div>
+                ${msDisplayList.map((m) => {
+                  const isSelected = m.key === execMilestoneFilter;
+                  return `
+                    <tr class="exec-milestone-row ${isSelected ? 'is-selected' : ''}"
+                        data-exec-milestone="${m.key}"
+                        role="button"
+                        tabindex="0"
+                        title="Click to ${isSelected ? 'clear milestone filter' : 'filter dashboard by ' + m.label}"
+                        style="cursor: pointer;">
+                      <td>
+                        <div class="exec-ms-cell">
+                          <span class="exec-ms-icon" style="background: ${m.color};">${renderMsIcon(m.icon)}</span>
+                          <span class="exec-ms-name">${esc(m.label)}</span>
+                          ${isSelected ? '<span class="exec-ms-selected-badge">ACTIVE</span>' : ''}
                         </div>
-                        <span class="exec-progress-pct">${m.pct.toFixed(2)}%</span>
-                      </div>
-                    </td>
-                    <td style="text-align: right; font-weight: 600; color: #b45309;">${fmt(m.balance)}</td>
-                  </tr>
-                `).join('')}
+                      </td>
+                      <td style="text-align: right; font-weight: 600;">${fmt(m.target)}</td>
+                      <td style="text-align: right; font-weight: 600; color: #047857;">${fmt(m.accomp)}</td>
+                      <td>
+                        <div class="exec-progress-track">
+                          <div class="exec-progress-bar-bg">
+                            <div class="exec-progress-bar-fill" style="width: ${Math.min(100, m.pct)}%;"></div>
+                          </div>
+                          <span class="exec-progress-pct">${m.pct.toFixed(2)}%</span>
+                        </div>
+                      </td>
+                      <td style="text-align: right; font-weight: 600; color: #b45309;">${fmt(m.balance)}</td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           </div>
@@ -1804,20 +2050,26 @@ export function renderExecutiveLadDashboard(ctx = {}) {
                 <rect x="9.5" y="4" width="5" height="18" rx="1"/>
                 <rect x="17" y="14" width="5" height="8" rx="1"/>
               </svg>
-              <span>Performance by Province</span>
+              <span>Performance by Province ${execMilestoneFilter !== 'ALL' ? `<small style="font-weight: normal; opacity: 0.9;">(${esc(activeMilestone?.label || '')})</small>` : ''}</span>
             </div>
           </div>
           <div class="exec-panel-body" style="padding: 12px 6px;">
             <div class="exec-gauge-container">
               ${provData.map((p) => {
+                const isSelected = p.code === execProvinceFilter;
                 const ringCircum = 188.5;
                 const offset = ringCircum * (1 - Math.min(1, p.pct / 100));
                 return `
-                  <div class="exec-gauge-item">
+                  <div class="exec-gauge-item ${isSelected ? 'is-selected' : ''}"
+                       data-exec-province="${p.code}"
+                       role="button"
+                       tabindex="0"
+                       title="Click to ${isSelected ? 'clear province filter' : 'filter dashboard by ' + p.name}"
+                       style="cursor: pointer;">
                     <div class="exec-gauge-title">${esc(p.name)}</div>
                     <svg viewBox="0 0 76 76" width="70" height="70">
-                      <circle cx="38" cy="38" r="30" fill="none" stroke="#e2e8f0" stroke-width="7"/>
-                      <circle cx="38" cy="38" r="30" fill="none" stroke="#16a34a" stroke-width="7"
+                      <circle cx="38" cy="38" r="30" fill="none" stroke="${isSelected ? '#bbf7d0' : '#e2e8f0'}" stroke-width="7"/>
+                      <circle cx="38" cy="38" r="30" fill="none" stroke="${isSelected ? '#059669' : '#16a34a'}" stroke-width="${isSelected ? 8 : 7}"
                         stroke-dasharray="${ringCircum}" stroke-dashoffset="${offset}"
                         stroke-linecap="round" transform="rotate(-90 38 38)"/>
                       <text x="38" y="42.5" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">${p.pct.toFixed(2)}%</text>
@@ -1844,22 +2096,7 @@ export function renderExecutiveLadDashboard(ctx = {}) {
           <div class="exec-panel-body" style="padding: 14px 16px;">
             <div class="exec-insights-body" style="padding: 0;">
               <div class="exec-insights-list">
-                <div class="exec-insight-item">
-                  <span class="exec-insight-check">✔</span>
-                  <span>Overall LAD accomplishment is at <strong>${overallRate.toFixed(2)}%</strong></span>
-                </div>
-                <div class="exec-insight-item">
-                  <span class="exec-insight-check">✔</span>
-                  <span><strong>${fmt(remainingBalance)} ha</strong> remaining to meet the target</span>
-                </div>
-                <div class="exec-insight-item">
-                  <span class="exec-insight-check">✔</span>
-                  <span><strong>${esc(topProv.name)}</strong> has the largest target at <strong>${fmtInt(topProv.target)} ha</strong></span>
-                </div>
-                <div class="exec-insight-item">
-                  <span class="exec-insight-check">✔</span>
-                  <span>${esc(onTrackText)}</span>
-                </div>
+                ${insightsListHtml}
               </div>
               <div class="exec-branding-box">
                 <div class="exec-branding-text">
