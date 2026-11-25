@@ -5484,6 +5484,427 @@ th:hover .q-toggle-pill {
   }
 }
 
+/* ==========================================================================
+   Executive LAD Analytics Dashboard (Post-Table Regional Performance Overview)
+   ========================================================================== */
+
+.exec-lad-dashboard {
+  margin-top: 24px;
+  background: var(--surface, #ffffff);
+  border-radius: 12px;
+  border: 1px solid var(--border, #cbd5e1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 1. Top 4 KPI Cards */
+.exec-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.exec-kpi-card {
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  min-height: 84px;
+  box-sizing: border-box;
+}
+
+.exec-kpi-target {
+  background: linear-gradient(135deg, #004b93 0%, #0060ba 100%);
+}
+
+.exec-kpi-accomp {
+  background: linear-gradient(135deg, #007730 0%, #00933d 100%);
+}
+
+.exec-kpi-rate {
+  background: linear-gradient(135deg, #044b7f 0%, #0369a1 100%);
+}
+
+.exec-kpi-balance {
+  background: linear-gradient(135deg, #d96800 0%, #f07d00 100%);
+}
+
+.exec-kpi-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.exec-kpi-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.exec-kpi-donut-wrap {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exec-kpi-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.exec-kpi-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  opacity: 0.92;
+}
+
+.exec-kpi-sub {
+  font-size: 11px;
+  opacity: 0.85;
+  font-weight: normal;
+}
+
+.exec-kpi-val {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+/* 2. Middle Row Grid (Provincial Bar Chart + Milestone Table) */
+.exec-mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.exec-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border, #cbd5e1);
+  background: var(--surface, #ffffff);
+}
+
+.exec-panel-header {
+  background: #072d54;
+  color: #ffffff;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.exec-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.exec-panel-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.exec-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.exec-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.exec-legend-blue { background: #0284c7; }
+.exec-legend-green { background: #10b981; }
+
+.exec-panel-body {
+  padding: 14px;
+  flex: 1;
+  background: var(--surface, #ffffff);
+}
+
+.exec-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.exec-chart-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 480px;
+}
+
+/* Milestone Summary Table */
+.exec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.exec-table th {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 7px 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.exec-table td {
+  padding: 6.5px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.exec-table tr:hover td {
+  background: #f8fafc;
+}
+
+.exec-ms-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.exec-ms-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.exec-progress-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exec-progress-bar-bg {
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 9px;
+  flex: 1;
+  min-width: 55px;
+  overflow: hidden;
+}
+
+.exec-progress-bar-fill {
+  background: #10b981;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.exec-progress-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: #047857;
+  min-width: 45px;
+  text-align: right;
+}
+
+/* 3. Bottom Row Grid (Province Gauges + Quick Insights) */
+.exec-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 16px;
+}
+
+.exec-gauge-container {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 4px;
+}
+
+.exec-gauge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.exec-gauge-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 6px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.exec-gauge-sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 6px;
+  white-space: nowrap;
+}
+
+/* Quick Insights */
+.exec-insights-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #ffffff;
+}
+
+.exec-insights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+}
+
+.exec-insight-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #1e293b;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.exec-insight-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.exec-branding-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 14px;
+  border-left: 1px dashed #cbd5e1;
+  flex-shrink: 0;
+}
+
+.exec-branding-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.exec-brand-dar {
+  font-size: 26px;
+  font-weight: 900;
+  color: #003366;
+  line-height: 0.95;
+  font-style: italic;
+  letter-spacing: -0.03em;
+}
+
+.exec-brand-region {
+  font-size: 20px;
+  font-family: 'Brush Script MT', 'Segoe Script', cursive, sans-serif;
+  color: #004b93;
+  line-height: 1.1;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.exec-brand-swoosh {
+  width: 85px;
+  height: 6px;
+  border-bottom: 3.5px solid #f59e0b;
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+.exec-branding-map svg {
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .exec-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .exec-mid-grid,
+  .exec-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .exec-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .exec-gauge-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .exec-insights-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .exec-branding-box {
+    border-left: none;
+    border-top: 1px dashed #cbd5e1;
+    padding-left: 0;
+    padding-top: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 
 
 

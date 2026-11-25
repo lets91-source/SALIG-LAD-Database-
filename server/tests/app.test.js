@@ -6426,6 +6426,46 @@ test('Test 60: Resilient OTP verification (multi-code window, stateless signed o
   }
 });
 
+test('Test 61: Executive LAD Analytics Dashboard rendering in Target Summary after Physical Accomplishment table', async () => {
+  const { renderExecutiveLadDashboard, renderTargetSummaryView } = await import('../../public/views.js');
+
+  // 1. Direct render of renderExecutiveLadDashboard
+  const html = renderExecutiveLadDashboard({});
+  assert.ok(html.includes('id="exec-lad-dashboard"'), 'Includes executive dashboard section id');
+  assert.ok(html.includes('Regional Target'), 'Includes Regional Target card');
+  assert.ok(html.includes('Regional Accomplishment'), 'Includes Regional Accomplishment card');
+  assert.ok(html.includes('Overall<br>Accomplishment'), 'Includes Overall Accomplishment card');
+  assert.ok(html.includes('Remaining Balance'), 'Includes Remaining Balance card');
+  assert.ok(html.includes('Provincial Performance'), 'Includes Provincial Performance panel');
+  assert.ok(html.includes('LAD Milestone Summary'), 'Includes LAD Milestone Summary panel');
+  assert.ok(html.includes('Performance by Province'), 'Includes Performance by Province panel');
+  assert.ok(html.includes('Quick Insights'), 'Includes Quick Insights panel');
+  assert.ok(html.includes('Region VIII'), 'Includes DAR Region VIII branding');
+
+  // Verify all 6 provinces are represented in the bar chart & gauges
+  for (const prov of ['Biliran', 'Eastern Samar', 'Leyte', 'Northern Samar', 'Samar', 'Southern Leyte']) {
+    assert.ok(html.includes(prov), `Includes ${prov} in dashboard`);
+  }
+
+  // Verify all 7 LAD milestones in summary table
+  for (const ms of ['CF Documentation', 'Land Survey', 'Land Valuation', 'EP CLOA Registration', 'EP CLOA Distribution', 'Leasehold', 'Installation']) {
+    assert.ok(html.includes(ms), `Includes milestone ${ms}`);
+  }
+
+  // 2. Integration in renderTargetSummaryView after panel-milestone-nep
+  const summaryHtml = renderTargetSummaryView({
+    analytics: {},
+    filters: {},
+    state: {},
+    schemas: { registry: [] }
+  });
+  const tableIdx = summaryHtml.indexOf('panel-milestone-nep');
+  const execIdx = summaryHtml.indexOf('exec-lad-dashboard');
+  assert.ok(tableIdx >= 0, 'Physical Accomplishment table exists');
+  assert.ok(execIdx >= 0, 'Executive dashboard exists');
+  assert.ok(execIdx > tableIdx, 'Executive dashboard is positioned after the Physical Accomplishment table');
+});
+
 
 
 

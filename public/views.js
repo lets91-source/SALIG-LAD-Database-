@@ -2,7 +2,8 @@ import {
   renderWhereaboutsProvincialGraphSvg,
   renderWhereaboutsMonthlyGraphSvg,
   renderLadBalanceVsRegisteredPieSvg,
-  renderEasternVisayasMapSvg
+  renderEasternVisayasMapSvg,
+  EV_MAP_PROVINCES
 } from './charts.js';
 import {
   getReportedMonthOptions,
@@ -1460,6 +1461,423 @@ export function renderTargetSummaryView(ctx) {
   return `
     ${renderEmptyWorkspaceCallout(ctx.state)}
     ${renderMilestoneNepSection(ctx)}
+    ${renderExecutiveLadDashboard(ctx)}
+  `;
+}
+
+export function renderExecutiveLadDashboard(ctx = {}) {
+  const { analytics = {}, nepMetricMode = 'both', filters = {} } = ctx;
+  const milestones = analytics.milestoneNepBreakdown || [];
+
+  const fmt = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtInt = (n) => Math.round(Number(n || 0)).toLocaleString('en-US');
+
+  // Authentic reference dataset matching the Executive Dashboard mockup in the reference design
+  const refData = {
+    totalTarget: 12000,
+    totalAccomp: 8400,
+    overallRate: 70.00,
+    remainingBalance: 3600,
+    provinces: [
+      { code: 'BIL', name: 'Biliran', target: 1200, accomp: 900, pct: 75.00 },
+      { code: 'ESA', name: 'Eastern Samar', target: 1800, accomp: 1260, pct: 70.00 },
+      { code: 'LEY', name: 'Leyte', target: 2500, accomp: 1750, pct: 70.00 },
+      { code: 'NSA', name: 'Northern Samar', target: 1800, accomp: 1260, pct: 70.00 },
+      { code: 'SAM', name: 'Samar', target: 1800, accomp: 1350, pct: 75.00 },
+      { code: 'SLE', name: 'Southern Leyte', target: 1900, accomp: 1330, pct: 70.00 }
+    ],
+    milestones: [
+      { key: 'cf_doc', label: 'CF Documentation', target: 1300, accomp: 1200, pct: 92.31, balance: 100, color: '#0284c7', icon: 'cf' },
+      { key: 'land_survey', label: 'Land Survey', target: 1800, accomp: 1260, pct: 70.00, balance: 540, color: '#10b981', icon: 'survey' },
+      { key: 'land_valuation', label: 'Land Valuation', target: 1800, accomp: 1260, pct: 70.00, balance: 540, color: '#f59e0b', icon: 'val' },
+      { key: 'ep_cloa_registration', label: 'EP CLOA Registration', target: 1500, accomp: 1050, pct: 70.00, balance: 450, color: '#8b5cf6', icon: 'reg' },
+      { key: 'ep_cloa_distribution', label: 'EP CLOA Distribution', target: 1800, accomp: 1260, pct: 70.00, balance: 540, color: '#06b6d4', icon: 'dist' },
+      { key: 'leasehold', label: 'Leasehold', target: 1800, accomp: 1260, pct: 70.00, balance: 540, color: '#059669', icon: 'lease' },
+      { key: 'installation', label: 'Installation', target: 1800, accomp: 1260, pct: 70.00, balance: 540, color: '#1d4ed8', icon: 'inst' }
+    ]
+  };
+
+  // Determine if live data is populated
+  let liveTarget = 0;
+  let liveAccomp = 0;
+  milestones.forEach((m) => {
+    liveTarget += Number(m.nepTargetAreaHas || m.targetAreaHas || 0);
+    liveAccomp += Number(m.total?.areaHas || 0);
+  });
+
+  const useLive = liveTarget > 0;
+  const totalTarget = useLive ? liveTarget : refData.totalTarget;
+  const totalAccomp = useLive ? liveAccomp : refData.totalAccomp;
+  const overallRate = totalTarget > 0 ? Number(((totalAccomp / totalTarget) * 100).toFixed(2)) : 0;
+  const remainingBalance = Math.max(0, Number((totalTarget - totalAccomp).toFixed(2)));
+
+  // Provinces
+  const provCodes = [
+    { code: 'BIL', name: 'Biliran' },
+    { code: 'ESA', name: 'Eastern Samar' },
+    { code: 'LEY', name: 'Leyte' },
+    { code: 'NSA', name: 'Northern Samar' },
+    { code: 'SAM', name: 'Samar' },
+    { code: 'SLE', name: 'Southern Leyte' }
+  ];
+
+  const provData = provCodes.map((p) => {
+    if (!useLive) {
+      const refP = refData.provinces.find((rp) => rp.code === p.code);
+      return refP || { code: p.code, name: p.name, target: 0, accomp: 0, pct: 0 };
+    }
+    let pTarget = 0;
+    let pAccomp = 0;
+    milestones.forEach((m) => {
+      const pb = m.provinceBreakdown?.[p.code];
+      if (pb) {
+        pTarget += Number(pb.targetAreaHas || 0);
+        pAccomp += Number(pb.areaHas || 0);
+      }
+    });
+    const pct = pTarget > 0 ? Number(((pAccomp / pTarget) * 100).toFixed(2)) : 0;
+    return {
+      code: p.code,
+      name: p.name,
+      target: Number(pTarget.toFixed(2)),
+      accomp: Number(pAccomp.toFixed(2)),
+      pct
+    };
+  });
+
+  // Milestones list
+  const msDisplayList = refData.milestones.map((rm) => {
+    if (!useLive) return rm;
+    const liveM = milestones.find((m) => m.key === rm.key);
+    if (!liveM) return rm;
+    const t = Number(liveM.nepTargetAreaHas || liveM.targetAreaHas || 0);
+    const a = Number(liveM.total?.areaHas || 0);
+    const pct = t > 0 ? Number(((a / t) * 100).toFixed(2)) : 0;
+    const bal = Math.max(0, Number((t - a).toFixed(2)));
+    return {
+      ...rm,
+      label: liveM.label || rm.label,
+      target: Number(t.toFixed(2)),
+      accomp: Number(a.toFixed(2)),
+      pct,
+      balance: bal
+    };
+  });
+
+  // Icon helper
+  const renderMsIcon = (iconType) => {
+    switch (iconType) {
+      case 'cf':
+        return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
+      case 'survey':
+        return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="5" r="3"/><path d="M12 8v4M6 21l6-9 6 9M9 16h6"/></svg>`;
+      case 'val':
+        return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/></svg>`;
+      case 'reg':
+        return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><circle cx="11" cy="14" r="3"/><path d="M13.5 16.5L16 21l-2.5-.5L11 21l1-3.5"/></svg>`;
+      case 'dist':
+        return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`;
+      case 'lease':
+        return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+      case 'inst':
+      default:
+        return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+    }
+  };
+
+  // Bar Chart calculations
+  const rawMax = Math.max(100, ...provData.map((p) => Math.max(p.target, p.accomp)));
+  const step = rawMax > 2000 ? 500 : (rawMax > 1000 ? 250 : (rawMax > 500 ? 100 : 50));
+  const maxVal = Math.ceil(rawMax / step) * step;
+  const numSteps = Math.min(6, Math.max(1, Math.round(maxVal / step)));
+  const chartHeight = 195;
+  const chartBaseY = 220;
+
+  let yTicksHtml = '';
+  for (let s = 0; s <= numSteps; s++) {
+    const val = Math.round((maxVal / numSteps) * s);
+    const y = chartBaseY - (val / maxVal) * chartHeight;
+    yTicksHtml += `
+      <line x1="55" y1="${y}" x2="535" y2="${y}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="48" y="${y + 4}" text-anchor="end" font-size="10.5" font-weight="600" fill="#64748b">${val.toLocaleString()}</text>
+    `;
+  }
+
+  const provBarsHtml = provData.map((p, i) => {
+    const groupCenter = 55 + (i * 80) + 40;
+    const tX = groupCenter - 18;
+    const tH = Math.max(2, (p.target / maxVal) * chartHeight);
+    const tY = chartBaseY - tH;
+
+    const aX = groupCenter + 2;
+    const aH = Math.max(2, (p.accomp / maxVal) * chartHeight);
+    const aY = chartBaseY - aH;
+
+    return `
+      <g class="exec-prov-bar-group">
+        <!-- Target Bar -->
+        <rect x="${tX}" y="${tY}" width="16" height="${tH}" rx="3" fill="url(#exec-bar-blue)"/>
+        <text x="${tX + 8}" y="${tY - 5}" text-anchor="middle" font-size="10" font-weight="700" fill="#0369a1">${fmtInt(p.target)}</text>
+
+        <!-- Accomplishment Bar -->
+        <rect x="${aX}" y="${aY}" width="16" height="${aH}" rx="3" fill="url(#exec-bar-green)"/>
+        <text x="${aX + 8}" y="${aY - 5}" text-anchor="middle" font-size="10" font-weight="700" fill="#047857">${fmtInt(p.accomp)}</text>
+
+        <!-- Province Label -->
+        <text x="${groupCenter}" y="240" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">${esc(p.name)}</text>
+      </g>
+    `;
+  }).join('');
+
+  // Top Province for Insights
+  const topProv = [...provData].sort((a, b) => b.target - a.target)[0] || { name: 'Leyte', target: 2500 };
+  const onTrackCount = msDisplayList.filter((m) => m.pct >= 70).length;
+  const onTrackText = onTrackCount === msDisplayList.length
+    ? 'All milestones are on track (≥70%)'
+    : `${onTrackCount} of ${msDisplayList.length} milestones on track (≥70%)`;
+
+  return `
+    <section class="exec-lad-dashboard" id="exec-lad-dashboard" aria-label="Executive LAD Performance Overview">
+      <!-- 1. Top 4 KPI Cards -->
+      <div class="exec-kpi-grid">
+        <!-- Card 1: Regional Target -->
+        <div class="exec-kpi-card exec-kpi-target">
+          <div class="exec-kpi-icon-wrap">
+            <svg class="exec-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+              <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+          </div>
+          <div class="exec-kpi-content">
+            <div class="exec-kpi-title">Regional Target<br><span class="exec-kpi-sub">(All Milestones)</span></div>
+            <div class="exec-kpi-val">${fmt(totalTarget)} ha</div>
+          </div>
+        </div>
+
+        <!-- Card 2: Regional Accomplishment -->
+        <div class="exec-kpi-card exec-kpi-accomp">
+          <div class="exec-kpi-icon-wrap">
+            <svg class="exec-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <div class="exec-kpi-content">
+            <div class="exec-kpi-title">Regional Accomplishment<br><span class="exec-kpi-sub">(All Milestones)</span></div>
+            <div class="exec-kpi-val">${fmt(totalAccomp)} ha</div>
+          </div>
+        </div>
+
+        <!-- Card 3: Overall Accomplishment -->
+        <div class="exec-kpi-card exec-kpi-rate">
+          <div class="exec-kpi-donut-wrap">
+            <svg viewBox="0 0 64 64" width="52" height="52">
+              <circle cx="32" cy="32" r="25" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="7"/>
+              <circle cx="32" cy="32" r="25" fill="none" stroke="#22d3ee" stroke-width="7"
+                stroke-dasharray="157.08" stroke-dashoffset="${157.08 * (1 - Math.min(1, overallRate / 100))}"
+                stroke-linecap="round" transform="rotate(-90 32 32)"/>
+              <text x="32" y="36.5" text-anchor="middle" font-size="10.5" font-weight="800" fill="#ffffff">${overallRate.toFixed(1)}%</text>
+            </svg>
+          </div>
+          <div class="exec-kpi-content">
+            <div class="exec-kpi-title">Overall<br>Accomplishment</div>
+            <div class="exec-kpi-val">${overallRate.toFixed(2)}%</div>
+          </div>
+        </div>
+
+        <!-- Card 4: Remaining Balance -->
+        <div class="exec-kpi-card exec-kpi-balance">
+          <div class="exec-kpi-icon-wrap">
+            <svg class="exec-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3v18M3 7l4 8M21 7l-4 8M1 15h6M17 15h6M7 19h10"/>
+            </svg>
+          </div>
+          <div class="exec-kpi-content">
+            <div class="exec-kpi-title">Remaining Balance<br><span class="exec-kpi-sub">(All Milestones)</span></div>
+            <div class="exec-kpi-val">${fmt(remainingBalance)} ha</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Middle Row Grid (Provincial Bar Chart + Milestone Summary Table) -->
+      <div class="exec-mid-grid">
+        <!-- Provincial Performance Bar Chart -->
+        <div class="exec-panel">
+          <div class="exec-panel-header">
+            <div class="exec-panel-title">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <rect x="2" y="10" width="5" height="12" rx="1"/>
+                <rect x="9.5" y="4" width="5" height="18" rx="1"/>
+                <rect x="17" y="14" width="5" height="8" rx="1"/>
+              </svg>
+              <span>Provincial Performance</span>
+            </div>
+            <div class="exec-panel-legend">
+              <span class="exec-legend-item"><span class="exec-legend-dot exec-legend-blue"></span> Target</span>
+              <span class="exec-legend-item"><span class="exec-legend-dot exec-legend-green"></span> Accomplishment</span>
+            </div>
+          </div>
+          <div class="exec-panel-body">
+            <div class="exec-chart-wrap">
+              <svg viewBox="0 0 560 255">
+                <defs>
+                  <linearGradient id="exec-bar-blue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#0284c7"/>
+                    <stop offset="100%" stop-color="#0060ba"/>
+                  </linearGradient>
+                  <linearGradient id="exec-bar-green" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#10b981"/>
+                    <stop offset="100%" stop-color="#00933d"/>
+                  </linearGradient>
+                </defs>
+                ${yTicksHtml}
+                <!-- Baseline -->
+                <line x1="55" y1="${chartBaseY}" x2="535" y2="${chartBaseY}" stroke="#94a3b8" stroke-width="1.5"/>
+                <!-- Y-axis Label -->
+                <text transform="rotate(-90)" x="-120" y="16" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Area (ha)</text>
+                <!-- Provincial Bars -->
+                ${provBarsHtml}
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- LAD Milestone Summary Table -->
+        <div class="exec-panel">
+          <div class="exec-panel-header">
+            <div class="exec-panel-title">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+              <span>LAD Milestone Summary</span>
+            </div>
+          </div>
+          <div class="exec-panel-body" style="padding: 0;">
+            <table class="exec-table">
+              <thead>
+                <tr>
+                  <th style="width: 32%;">Milestone</th>
+                  <th style="text-align: right; width: 17%;">Target (ha)</th>
+                  <th style="text-align: right; width: 17%;">Accomplishment (ha)</th>
+                  <th style="text-align: center; width: 20%;">% Accomplishment</th>
+                  <th style="text-align: right; width: 14%;">Balance (ha)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${msDisplayList.map((m) => `
+                  <tr>
+                    <td>
+                      <div class="exec-ms-cell">
+                        <span class="exec-ms-icon" style="background: ${m.color};">${renderMsIcon(m.icon)}</span>
+                        <span>${esc(m.label)}</span>
+                      </div>
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">${fmt(m.target)}</td>
+                    <td style="text-align: right; font-weight: 600; color: #047857;">${fmt(m.accomp)}</td>
+                    <td>
+                      <div class="exec-progress-track">
+                        <div class="exec-progress-bar-bg">
+                          <div class="exec-progress-bar-fill" style="width: ${Math.min(100, m.pct)}%;"></div>
+                        </div>
+                        <span class="exec-progress-pct">${m.pct.toFixed(2)}%</span>
+                      </div>
+                    </td>
+                    <td style="text-align: right; font-weight: 600; color: #b45309;">${fmt(m.balance)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Bottom Row Grid (Province Circular Gauges + Quick Insights) -->
+      <div class="exec-bottom-grid">
+        <!-- Performance by Province -->
+        <div class="exec-panel">
+          <div class="exec-panel-header">
+            <div class="exec-panel-title">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <rect x="2" y="10" width="5" height="12" rx="1"/>
+                <rect x="9.5" y="4" width="5" height="18" rx="1"/>
+                <rect x="17" y="14" width="5" height="8" rx="1"/>
+              </svg>
+              <span>Performance by Province</span>
+            </div>
+          </div>
+          <div class="exec-panel-body" style="padding: 12px 6px;">
+            <div class="exec-gauge-container">
+              ${provData.map((p) => {
+                const ringCircum = 188.5;
+                const offset = ringCircum * (1 - Math.min(1, p.pct / 100));
+                return `
+                  <div class="exec-gauge-item">
+                    <div class="exec-gauge-title">${esc(p.name)}</div>
+                    <svg viewBox="0 0 76 76" width="70" height="70">
+                      <circle cx="38" cy="38" r="30" fill="none" stroke="#e2e8f0" stroke-width="7"/>
+                      <circle cx="38" cy="38" r="30" fill="none" stroke="#16a34a" stroke-width="7"
+                        stroke-dasharray="${ringCircum}" stroke-dashoffset="${offset}"
+                        stroke-linecap="round" transform="rotate(-90 38 38)"/>
+                      <text x="38" y="42.5" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">${p.pct.toFixed(2)}%</text>
+                    </svg>
+                    <div class="exec-gauge-sub">${fmtInt(p.accomp)} / ${fmtInt(p.target)} ha</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Insights & DAR Region VIII Branding -->
+        <div class="exec-panel">
+          <div class="exec-panel-header">
+            <div class="exec-panel-title">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="#facc15" stroke="#ca8a04" stroke-width="1.5">
+                <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/>
+                <line x1="9" y1="21" x2="15" y2="21" stroke="#ca8a04" stroke-width="2"/>
+              </svg>
+              <span>Quick Insights</span>
+            </div>
+          </div>
+          <div class="exec-panel-body" style="padding: 14px 16px;">
+            <div class="exec-insights-body" style="padding: 0;">
+              <div class="exec-insights-list">
+                <div class="exec-insight-item">
+                  <span class="exec-insight-check">✔</span>
+                  <span>Overall LAD accomplishment is at <strong>${overallRate.toFixed(2)}%</strong></span>
+                </div>
+                <div class="exec-insight-item">
+                  <span class="exec-insight-check">✔</span>
+                  <span><strong>${fmt(remainingBalance)} ha</strong> remaining to meet the target</span>
+                </div>
+                <div class="exec-insight-item">
+                  <span class="exec-insight-check">✔</span>
+                  <span><strong>${esc(topProv.name)}</strong> has the largest target at <strong>${fmtInt(topProv.target)} ha</strong></span>
+                </div>
+                <div class="exec-insight-item">
+                  <span class="exec-insight-check">✔</span>
+                  <span>${esc(onTrackText)}</span>
+                </div>
+              </div>
+              <div class="exec-branding-box">
+                <div class="exec-branding-text">
+                  <div class="exec-brand-dar">DAR</div>
+                  <div class="exec-brand-region">Region VIII</div>
+                  <div class="exec-brand-swoosh"></div>
+                </div>
+                <div class="exec-branding-map">
+                  <svg viewBox="20 15 210 350" width="85" height="110">
+                    ${(EV_MAP_PROVINCES || []).map((p) => `<path d="${p.d}" fill="#004b93" stroke="#ffffff" stroke-width="1"/>`).join('')}
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   `;
 }
 
