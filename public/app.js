@@ -6437,7 +6437,7 @@ async function bootAppSession(options = {}) {
         isLogin
           ? 'Loading Region VIII OPTool database, analytics, and session…'
           : 'Loading Region VIII OPTool database, analytics, and sync state…',
-        () => api(`/api/bootstrap?sync=skip&milestoneYear=${encodeURIComponent(appState.filters?.milestoneYear || '2027')}`, { timeoutMs: 30000 })
+        () => api(`/api/bootstrap?sync=skip&milestoneYear=${encodeURIComponent(appState.filters?.milestoneYear || '2027')}`, { timeoutMs: 60000 })
       );
       if (boot && boot.state) break;
     } catch (err) {

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
   REGIONAL_REGISTRY,
@@ -112,9 +113,11 @@ startxref
   return Buffer.from(pdfStr);
 }
 
-function sendJson(res, status, data, extraHeaders = {}) {
-  const body = JSON.stringify(data);
-  res.writeHead(status, {
+function sendJson(res, status, data, extraHeaders = {}, req = null) {
+  const effectiveReq = req || res.req;
+  const rawBody = Buffer.from(JSON.stringify(data), 'utf8');
+  const acceptEncoding = String(effectiveReq?.headers?.['accept-encoding'] || '');
+  const headers = {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     'Pragma': 'no-cache',
@@ -123,8 +126,20 @@ function sendJson(res, status, data, extraHeaders = {}) {
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,X-Filename',
     ...extraHeaders
-  });
-  res.end(body);
+  };
+
+  if (rawBody.length > 1024 && /\bgzip\b/i.test(acceptEncoding)) {
+    headers['Content-Encoding'] = 'gzip';
+    const compressed = zlib.gzipSync(rawBody);
+    headers['Content-Length'] = compressed.length;
+    res.writeHead(status, headers);
+    res.end(compressed);
+    return;
+  }
+
+  headers['Content-Length'] = rawBody.length;
+  res.writeHead(status, headers);
+  res.end(rawBody);
 }
 
 /** Build an HttpOnly Set-Cookie header string for the SALIG session token. */
@@ -248,13 +263,16 @@ function buildScopedStatePayload(store, scopeCode, includeStaticConfig = true) {
     syncLogs: view.syncLogs,
     milestoneData: view.milestoneData,
     optool: view.optool,
-    leasehold: view.leasehold || [],
-    allDatabase: store.state.optool?.Database || [],
-    allRegDist: store.state.optool?.RegistrationDistribution || [],
-    allMilestoneData: store.state.milestoneData || [],
-    allOptool: store.state.optool || {},
-    allLeasehold: store.state.leasehold || []
+    leasehold: view.leasehold || []
   };
+  // When scoped to a single province, provide all-province arrays so the Regional Dashboard
+  // & Target Summary map view can calculate cross-province totals without duplicating
+  // the entire 9,547-record Database when viewing as Regional Administrator.
+  if (scopeCode) {
+    payload.allDatabase = store.state.optool?.Database || [];
+    payload.allRegDist = store.state.optool?.RegistrationDistribution || [];
+    payload.allLeasehold = store.state.leasehold || [];
+  }
   if (includeStaticConfig) {
     payload.gasWebAppUrl = view.gasWebAppUrl;
     payload.baselines = view.baselines;
@@ -586,6 +604,7 @@ export function createAppServer(dataDir, options = {}) {
   const customOtpSender = options.sendOtpEmail;
 
   const handler = async (req, res) => {
+    if (!res.req) res.req = req;
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',

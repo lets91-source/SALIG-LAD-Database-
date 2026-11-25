@@ -14,6 +14,7 @@ function getApp() {
  * to the shared SALIG HTTP handler without duplicating route logic.
  */
 export default function vercelHandler(req, res) {
+  if (!res.req) res.req = req;
   return getApp().handler(req, res);
 }
 
