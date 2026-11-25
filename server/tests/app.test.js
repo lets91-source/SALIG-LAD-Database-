@@ -6505,6 +6505,72 @@ test('Test 62: Executive LAD Analytics Dashboard interactive milestone & provinc
   assert.ok(bothHtml.includes('exec-prov-bar-group is-selected'), 'Province bar is highlighted');
 });
 
+test('Test 63: Log History high-priority functional improvements (Province, Date Range, Pagination, and CSV Export controls)', async () => {
+  const tmpDir = path.join(os.tmpdir(), `salig-test-audit-improvements-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const store = new ConsolidatedStore(tmpDir);
+
+  // Seed sample audit logs with different provinces and dates
+  store.recordAuditLog({
+    user: { id: 'usr-1', name: 'Carla Bula', email: 'carla@dar8.gov.ph', role: 'user', province: 'Northern Samar' },
+    action: 'update',
+    tabName: 'MOV',
+    lhid: '804000933',
+    changes: [{ field: 'ppuReviewResult', label: 'PPU Review Result', oldValue: '46073.0', newValue: 'PASSED' }]
+  });
+
+  store.recordAuditLog({
+    user: { id: 'usr-2', name: 'Leyte Staff', email: 'leyte@dar8.gov.ph', role: 'user', province: 'Leyte' },
+    action: 'create',
+    tabName: 'Survey',
+    lhid: '803700012',
+    changes: [{ field: 'dateSurvey', label: 'Date Survey', oldValue: '', newValue: '2026-11-20' }]
+  });
+
+  // 1. Province Filter
+  const nsaLogs = store.getAuditLogs({ province: 'Northern Samar' });
+  assert.strictEqual(nsaLogs.total, 1, 'Filters strictly to Northern Samar');
+  assert.strictEqual(nsaLogs.logs[0].lhid, '804000933');
+
+  const leyteLogs = store.getAuditLogs({ province: 'Leyte' });
+  assert.strictEqual(leyteLogs.total, 1, 'Filters strictly to Leyte');
+  assert.strictEqual(leyteLogs.logs[0].lhid, '803700012');
+
+  // 2. Date Range Filter ('today')
+  const todayLogs = store.getAuditLogs({ dateRange: 'today' });
+  assert.strictEqual(todayLogs.total, 2, 'Both logs were recorded today');
+
+  // 3. Pagination (limit and offset)
+  const page1 = store.getAuditLogs({ limit: 1, offset: 0 });
+  assert.strictEqual(page1.logs.length, 1, 'Page 1 limit 1');
+  assert.strictEqual(page1.total, 2, 'Total remains 2');
+  assert.strictEqual(page1.offset, 0);
+
+  const page2 = store.getAuditLogs({ limit: 1, offset: 1 });
+  assert.strictEqual(page2.logs.length, 1, 'Page 2 limit 1');
+  assert.strictEqual(page2.offset, 1);
+  assert.notStrictEqual(page1.logs[0].id, page2.logs[0].id, 'Page 1 and Page 2 have different entries');
+
+  // 4. UI Rendering in renderAuditLogsView
+  const { renderAuditLogsView } = await import('../../public/views.js');
+  const uiHtml = renderAuditLogsView({
+    logs: store.state.auditLogs,
+    total: 50,
+    page: 2,
+    pageSize: 25,
+    filters: { province: 'Leyte', dateRange: 'today' },
+    currentUser: { role: 'admin' }
+  });
+
+  assert.ok(uiHtml.includes('btn-export-audit-csv'), 'Includes CSV export button');
+  assert.ok(uiHtml.includes('id="audit-filter-province"'), 'Includes Province filter dropdown');
+  assert.ok(uiHtml.includes('id="audit-filter-date"'), 'Includes Date Range filter dropdown');
+  assert.ok(uiHtml.includes('id="btn-audit-prev-page"'), 'Includes Previous Page button');
+  assert.ok(uiHtml.includes('id="btn-audit-next-page"'), 'Includes Next Page button');
+  assert.ok(uiHtml.includes('Showing <strong>26</strong> to <strong>50</strong> of <strong>50</strong> edits logged'), 'Accurately displays pagination status');
+});
+
 
 
 

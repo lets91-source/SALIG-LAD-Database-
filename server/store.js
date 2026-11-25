@@ -1699,9 +1699,20 @@ export class ConsolidatedStore {
   }
 
   /**
-   * Retrieve filtered audit logs by LHID, user email, tab, or action with pagination.
+   * Retrieve filtered audit logs by LHID, user email, tab, action, province, or date range with pagination.
    */
-  getAuditLogs({ lhid = '', userEmail = '', tabName = '', action = '', limit = 100, offset = 0 } = {}) {
+  getAuditLogs({
+    lhid = '',
+    userEmail = '',
+    tabName = '',
+    action = '',
+    province = '',
+    dateRange = 'all',
+    dateFrom = '',
+    dateTo = '',
+    limit = 100,
+    offset = 0
+  } = {}) {
     if (!Array.isArray(this.state.auditLogs)) return { logs: [], total: 0 };
 
     const normLhid = lhid ? formatLhidDisplay(lhid).toLowerCase() : '';
@@ -1709,6 +1720,42 @@ export class ConsolidatedStore {
     const normUser = userEmail ? String(userEmail).trim().toLowerCase() : '';
     const normTab = tabName ? String(tabName).trim().toLowerCase() : '';
     const normAction = action ? String(action).trim().toLowerCase() : '';
+    const normProv = province && province !== 'all' ? String(province).trim().toLowerCase() : '';
+
+    // Date range boundaries
+    const now = new Date();
+    let minTime = 0;
+    let maxTime = Infinity;
+
+    if (dateRange === 'today') {
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      minTime = startOfDay.getTime();
+    } else if (dateRange === 'week') {
+      minTime = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === 'month') {
+      minTime = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === 'custom') {
+      if (dateFrom) {
+        const dFrom = new Date(dateFrom);
+        if (!isNaN(dFrom.getTime())) minTime = dFrom.getTime();
+      }
+      if (dateTo) {
+        const dTo = new Date(dateTo);
+        if (!isNaN(dTo.getTime())) {
+          dTo.setHours(23, 59, 59, 999);
+          maxTime = dTo.getTime();
+        }
+      }
+    }
+
+    // Build LHID-to-province lookup cache from Database if filtering by province
+    const lhidProvMap = new Map();
+    if (normProv && Array.isArray(this.state.optool?.Database)) {
+      for (const r of this.state.optool.Database) {
+        const k = String(r?.lhid || '').trim().toLowerCase();
+        if (k && r?.province) lhidProvMap.set(k, String(r.province).trim().toLowerCase());
+      }
+    }
 
     const filtered = this.state.auditLogs.filter((entry) => {
       if (normLhid) {
@@ -1728,10 +1775,26 @@ export class ConsolidatedStore {
       if (normAction && normAction !== 'all') {
         if (String(entry.action || '').toLowerCase() !== normAction) return false;
       }
+      if (normProv) {
+        const userProv = String(entry.user?.province || '').toLowerCase();
+        const entryProv = String(entry.province || '').toLowerCase();
+        const cleanLhidKey = String(entry.lhid || '').trim().toLowerCase();
+        const lhidProv = lhidProvMap.get(cleanLhidKey) || '';
+
+        const matches =
+          userProv.includes(normProv) ||
+          entryProv.includes(normProv) ||
+          lhidProv.includes(normProv);
+        if (!matches) return false;
+      }
+      if (minTime > 0 || maxTime < Infinity) {
+        const entryTime = new Date(entry.timestamp).getTime();
+        if (isNaN(entryTime) || entryTime < minTime || entryTime > maxTime) return false;
+      }
       return true;
     });
 
-    const parsedLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+    const parsedLimit = Math.max(1, Math.min(1000, Number(limit) || 100));
     const parsedOffset = Math.max(0, Number(offset) || 0);
 
     return {

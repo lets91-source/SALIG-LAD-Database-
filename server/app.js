@@ -1531,6 +1531,10 @@ export function createAppServer(dataDir, options = {}) {
           userEmail: query.user,
           tabName: query.tabName || query.tab,
           action: query.action,
+          province: query.province,
+          dateRange: query.dateRange,
+          dateFrom: query.dateFrom,
+          dateTo: query.dateTo,
           limit: query.limit,
           offset: query.offset
         });

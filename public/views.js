@@ -10543,7 +10543,14 @@ export function generateLeaseholdCsv(rows = []) {
  * Enables staff and administrators to track who edited what LH, previous vs current values,
  * timestamp, province, and milestone tab.
  */
-export function renderAuditLogsView({ logs = [], total = 0, filters = {}, currentUser = null }) {
+export function renderAuditLogsView({
+  logs = [],
+  total = 0,
+  filters = {},
+  page = 1,
+  pageSize = 25,
+  currentUser = null
+}) {
   if (currentUser && currentUser.role !== 'admin') {
     return `
       <div class="view-header">
@@ -10560,10 +10567,20 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
   }
 
   const currentSearch = String(filters.search || '').trim();
+  const currentProvince = String(filters.province || 'all').trim();
   const currentTab = String(filters.tabName || 'all').trim();
   const currentAction = String(filters.action || 'all').trim();
+  const currentDateRange = String(filters.dateRange || 'all').trim();
+  const currentDateFrom = String(filters.dateFrom || '').trim();
+  const currentDateTo = String(filters.dateTo || '').trim();
 
   const totalLogs = total || logs.length;
+  const pageNum = Math.max(1, Number(page) || 1);
+  const sizeNum = Math.max(10, Number(pageSize) || 25);
+  const totalPages = Math.max(1, Math.ceil(totalLogs / sizeNum));
+  const startNum = totalLogs === 0 ? 0 : (pageNum - 1) * sizeNum + 1;
+  const endNum = Math.min(totalLogs, pageNum * sizeNum);
+
   const uniqueLhs = new Set(logs.map((l) => l.lhid).filter(Boolean)).size;
   const uniqueUsers = new Set(logs.map((l) => l.user?.email || l.user?.name).filter(Boolean)).size;
   const todayCount = logs.filter((l) => {
@@ -10578,7 +10595,11 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
         <h1 class="view-title">📜 User Edit & Revision Log History</h1>
         <p class="view-subtitle">Audit trail of Landholding (LH) modifications: determine who edited each LHID, previous update vs current update, and exact field diffs.</p>
       </div>
-      <div class="view-actions">
+      <div class="view-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-export-audit-csv" title="Export filtered audit logs to CSV / Excel">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Export Audit Log (CSV)</span>
+        </button>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-audit-logs">
           🔄 Refresh Logs
         </button>
@@ -10612,7 +10633,8 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
     <!-- Filter Toolbar -->
     <div class="card" style="margin-bottom:20px;padding:14px;">
       <div class="audit-filter-bar" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-        <div style="flex:1;min-width:220px;">
+        <!-- Search Input -->
+        <div style="flex:1;min-width:200px;">
           <input
             id="audit-filter-search"
             type="text"
@@ -10621,7 +10643,22 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
             value="${esc(currentSearch)}"
           />
         </div>
-        <div style="min-width:160px;">
+
+        <!-- Province Filter -->
+        <div style="min-width:150px;">
+          <select id="audit-filter-province" class="form-control">
+            <option value="all" ${currentProvince === 'all' ? 'selected' : ''}>All Provinces</option>
+            <option value="Biliran" ${currentProvince === 'Biliran' ? 'selected' : ''}>Biliran</option>
+            <option value="Eastern Samar" ${currentProvince === 'Eastern Samar' ? 'selected' : ''}>Eastern Samar</option>
+            <option value="Leyte" ${currentProvince === 'Leyte' ? 'selected' : ''}>Leyte</option>
+            <option value="Northern Samar" ${currentProvince === 'Northern Samar' ? 'selected' : ''}>Northern Samar</option>
+            <option value="Samar" ${currentProvince === 'Samar' ? 'selected' : ''}>Samar (Western)</option>
+            <option value="Southern Leyte" ${currentProvince === 'Southern Leyte' ? 'selected' : ''}>Southern Leyte</option>
+          </select>
+        </div>
+
+        <!-- Milestone / Tab Filter -->
+        <div style="min-width:150px;">
           <select id="audit-filter-tab" class="form-control">
             <option value="all" ${currentTab === 'all' ? 'selected' : ''}>All Milestones / Tabs</option>
             <option value="Survey" ${currentTab === 'Survey' ? 'selected' : ''}>Land Survey (Survey)</option>
@@ -10633,7 +10670,9 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
             <option value="Database" ${currentTab === 'Database' ? 'selected' : ''}>Master Database</option>
           </select>
         </div>
-        <div style="min-width:140px;">
+
+        <!-- Action Filter -->
+        <div style="min-width:125px;">
           <select id="audit-filter-action" class="form-control">
             <option value="all" ${currentAction === 'all' ? 'selected' : ''}>All Actions</option>
             <option value="update" ${currentAction === 'update' ? 'selected' : ''}>Updates Only</option>
@@ -10641,6 +10680,27 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
             <option value="delete" ${currentAction === 'delete' ? 'selected' : ''}>Deletions Only</option>
           </select>
         </div>
+
+        <!-- Date Range Filter -->
+        <div style="min-width:130px;">
+          <select id="audit-filter-date" class="form-control">
+            <option value="all" ${currentDateRange === 'all' ? 'selected' : ''}>All Time</option>
+            <option value="today" ${currentDateRange === 'today' ? 'selected' : ''}>Today</option>
+            <option value="week" ${currentDateRange === 'week' ? 'selected' : ''}>Past 7 Days</option>
+            <option value="month" ${currentDateRange === 'month' ? 'selected' : ''}>Past 30 Days</option>
+            <option value="custom" ${currentDateRange === 'custom' ? 'selected' : ''}>Custom Dates…</option>
+          </select>
+        </div>
+
+        ${currentDateRange === 'custom' ? `
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="date" id="audit-filter-date-from" class="form-control" style="font-size:12px;padding:4px 8px;width:130px;" value="${esc(currentDateFrom)}"/>
+            <span style="font-size:12px;color:var(--text-muted);">to</span>
+            <input type="date" id="audit-filter-date-to" class="form-control" style="font-size:12px;padding:4px 8px;width:130px;" value="${esc(currentDateTo)}"/>
+            <button type="button" class="btn btn-primary btn-xs" id="btn-apply-custom-dates">Apply</button>
+          </div>
+        ` : ''}
+
         <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-audit-filters">
           Clear Filters
         </button>
@@ -10650,7 +10710,7 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
     <!-- Audit Log Entries Timeline -->
     <div class="card" style="padding:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px;">
-        <h3 style="margin:0;font-size:16px;font-weight:700;">Revisions Feed (${logs.length} displayed)</h3>
+        <h3 style="margin:0;font-size:16px;font-weight:700;">Revisions Feed (${logs.length} displayed of ${totalLogs.toLocaleString()})</h3>
         <span style="font-size:12px;color:var(--text-muted);">Sorted newest first • Instant diff tracking</span>
       </div>
 
@@ -10742,6 +10802,27 @@ export function renderAuditLogsView({ logs = [], total = 0, filters = {}, curren
           }).join('')}
         </div>
       `}
+
+      <!-- Pagination Controls -->
+      <div class="audit-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+        <div style="font-size:13px;color:var(--text-muted);">
+          Showing <strong>${startNum}</strong> to <strong>${endNum}</strong> of <strong>${totalLogs.toLocaleString()}</strong> edits logged
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-audit-prev-page" ${pageNum <= 1 ? 'disabled' : ''}>
+            ◀ Previous
+          </button>
+          <span style="font-size:12px;font-weight:600;padding:0 6px;">Page ${pageNum} of ${totalPages}</span>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-audit-next-page" ${pageNum >= totalPages ? 'disabled' : ''}>
+            Next ▶
+          </button>
+          <select id="audit-page-size" class="form-control" style="font-size:12px;padding:3px 6px;width:auto;margin-left:8px;">
+            <option value="25" ${sizeNum === 25 ? 'selected' : ''}>25 per page</option>
+            <option value="50" ${sizeNum === 50 ? 'selected' : ''}>50 per page</option>
+            <option value="100" ${sizeNum === 100 ? 'selected' : ''}>100 per page</option>
+          </select>
+        </div>
+      </div>
     </div>
   `;
 }

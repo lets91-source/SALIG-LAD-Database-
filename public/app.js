@@ -1380,6 +1380,8 @@ function renderActiveView() {
       logs: appState.auditLogs || [],
       total: appState.auditLogsTotal || 0,
       filters: appState.auditLogsFilters || {},
+      page: appState.auditLogsPage || 1,
+      pageSize: appState.auditLogsPageSize || 25,
       currentUser: appState.currentUser
     });
     bindAuditLogsEvents(container);
@@ -5047,12 +5049,22 @@ function bindUsersViewEvents(container) {
 async function loadAuditLogs(filters = {}) {
   const merged = { ...(appState.auditLogsFilters || {}), ...filters };
   appState.auditLogsFilters = merged;
+
+  const page = Math.max(1, Number(merged.page || appState.auditLogsPage) || 1);
+  const pageSize = Math.max(10, Number(merged.pageSize || appState.auditLogsPageSize) || 25);
+  const offset = (page - 1) * pageSize;
+
   const params = new URLSearchParams();
   if (merged.search) params.set('lhid', merged.search);
+  if (merged.province && merged.province !== 'all') params.set('province', merged.province);
   if (merged.tabName && merged.tabName !== 'all') params.set('tabName', merged.tabName);
   if (merged.action && merged.action !== 'all') params.set('action', merged.action);
+  if (merged.dateRange && merged.dateRange !== 'all') params.set('dateRange', merged.dateRange);
+  if (merged.dateFrom) params.set('dateFrom', merged.dateFrom);
+  if (merged.dateTo) params.set('dateTo', merged.dateTo);
   if (merged.user) params.set('user', merged.user);
-  params.set('limit', '100');
+  params.set('limit', String(pageSize));
+  params.set('offset', String(offset));
 
   const data = await withLoading(
     'fetching',
@@ -5063,45 +5075,85 @@ async function loadAuditLogs(filters = {}) {
   if (data && data.ok) {
     appState.auditLogs = data.logs || [];
     appState.auditLogsTotal = data.total || 0;
+    appState.auditLogsPage = page;
+    appState.auditLogsPageSize = pageSize;
   }
 }
 
 /** Attach event listeners for the User Revision Log History view. */
 function bindAuditLogsEvents(container) {
+  // Search Filter
   const searchInput = container.querySelector('#audit-filter-search');
   if (searchInput) {
     let debounceTimer = null;
     searchInput.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(async () => {
-        await loadAuditLogs({ search: searchInput.value.trim() });
+        await loadAuditLogs({ search: searchInput.value.trim(), page: 1 });
         renderActiveView();
       }, 300);
     });
   }
 
+  // Province Filter
+  const provSelect = container.querySelector('#audit-filter-province');
+  if (provSelect) {
+    provSelect.addEventListener('change', async () => {
+      await loadAuditLogs({ province: provSelect.value, page: 1 });
+      renderActiveView();
+    });
+  }
+
+  // Tab / Milestone Filter
   const tabSelect = container.querySelector('#audit-filter-tab');
   if (tabSelect) {
     tabSelect.addEventListener('change', async () => {
-      await loadAuditLogs({ tabName: tabSelect.value });
+      await loadAuditLogs({ tabName: tabSelect.value, page: 1 });
       renderActiveView();
     });
   }
 
+  // Action Filter
   const actionSelect = container.querySelector('#audit-filter-action');
   if (actionSelect) {
     actionSelect.addEventListener('change', async () => {
-      await loadAuditLogs({ action: actionSelect.value });
+      await loadAuditLogs({ action: actionSelect.value, page: 1 });
       renderActiveView();
     });
   }
 
-  container.querySelector('#btn-clear-audit-filters')?.addEventListener('click', async () => {
-    appState.auditLogsFilters = {};
-    await loadAuditLogs({ search: '', tabName: 'all', action: 'all', user: '' });
+  // Date Range Filter
+  const dateSelect = container.querySelector('#audit-filter-date');
+  if (dateSelect) {
+    dateSelect.addEventListener('change', async () => {
+      const val = dateSelect.value;
+      if (val === 'custom') {
+        appState.auditLogsFilters = { ...(appState.auditLogsFilters || {}), dateRange: 'custom' };
+        renderActiveView();
+      } else {
+        await loadAuditLogs({ dateRange: val, dateFrom: '', dateTo: '', page: 1 });
+        renderActiveView();
+      }
+    });
+  }
+
+  // Apply Custom Date Range
+  container.querySelector('#btn-apply-custom-dates')?.addEventListener('click', async () => {
+    const fromVal = container.querySelector('#audit-filter-date-from')?.value || '';
+    const toVal = container.querySelector('#audit-filter-date-to')?.value || '';
+    await loadAuditLogs({ dateRange: 'custom', dateFrom: fromVal, dateTo: toVal, page: 1 });
     renderActiveView();
   });
 
+  // Clear All Filters
+  container.querySelector('#btn-clear-audit-filters')?.addEventListener('click', async () => {
+    appState.auditLogsFilters = {};
+    appState.auditLogsPage = 1;
+    await loadAuditLogs({ search: '', province: 'all', tabName: 'all', action: 'all', dateRange: 'all', dateFrom: '', dateTo: '', user: '', page: 1 });
+    renderActiveView();
+  });
+
+  // Refresh
   container.querySelector('#btn-refresh-audit-logs')?.addEventListener('click', async () => {
     try {
       await loadAuditLogs();
@@ -5112,12 +5164,125 @@ function bindAuditLogsEvents(container) {
     }
   });
 
+  // Pagination: Previous Page
+  container.querySelector('#btn-audit-prev-page')?.addEventListener('click', async () => {
+    const currentPage = Math.max(1, Number(appState.auditLogsPage) || 1);
+    if (currentPage > 1) {
+      await loadAuditLogs({ page: currentPage - 1 });
+      renderActiveView();
+    }
+  });
+
+  // Pagination: Next Page
+  container.querySelector('#btn-audit-next-page')?.addEventListener('click', async () => {
+    const currentPage = Math.max(1, Number(appState.auditLogsPage) || 1);
+    const pageSize = Math.max(10, Number(appState.auditLogsPageSize) || 25);
+    const totalPages = Math.max(1, Math.ceil((appState.auditLogsTotal || 0) / pageSize));
+    if (currentPage < totalPages) {
+      await loadAuditLogs({ page: currentPage + 1 });
+      renderActiveView();
+    }
+  });
+
+  // Page Size Selector
+  container.querySelector('#audit-page-size')?.addEventListener('change', async (e) => {
+    const newSize = Number(e.target.value) || 25;
+    appState.auditLogsPageSize = newSize;
+    await loadAuditLogs({ pageSize: newSize, page: 1 });
+    renderActiveView();
+  });
+
+  // Export to CSV
+  container.querySelector('#btn-export-audit-csv')?.addEventListener('click', () => {
+    exportAuditLogsCsv();
+  });
+
+  // Click LHID to open drawer
   container.querySelectorAll('.btn-drawer-link').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       openLandholdingDrawer(btn.dataset.lhid);
     });
   });
+}
+
+/** Export filtered revision audit logs to Excel/CSV. */
+async function exportAuditLogsCsv() {
+  const merged = { ...(appState.auditLogsFilters || {}) };
+  const params = new URLSearchParams();
+  if (merged.search) params.set('lhid', merged.search);
+  if (merged.province && merged.province !== 'all') params.set('province', merged.province);
+  if (merged.tabName && merged.tabName !== 'all') params.set('tabName', merged.tabName);
+  if (merged.action && merged.action !== 'all') params.set('action', merged.action);
+  if (merged.dateRange && merged.dateRange !== 'all') params.set('dateRange', merged.dateRange);
+  if (merged.dateFrom) params.set('dateFrom', merged.dateFrom);
+  if (merged.dateTo) params.set('dateTo', merged.dateTo);
+  if (merged.user) params.set('user', merged.user);
+  params.set('limit', '1000');
+  params.set('offset', '0');
+
+  try {
+    const data = await api(`/api/audit-logs?${params.toString()}`);
+    const exportLogs = (data && data.ok && Array.isArray(data.logs)) ? data.logs : (appState.auditLogs || []);
+
+    if (!exportLogs.length) {
+      toast('No audit logs to export for the current filters', true);
+      return;
+    }
+
+    const headers = [
+      'Timestamp',
+      'Action',
+      'Worksheet / Tab',
+      'LHID',
+      'Editor Name',
+      'Editor Email',
+      'Province',
+      'Role',
+      'Field Name',
+      'Previous Value',
+      'Current / Updated Value'
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    exportLogs.forEach((log) => {
+      const timestamp = log.timestamp || '';
+      const action = (log.action || '').toUpperCase();
+      const tabName = log.tabName || '';
+      const lhid = formatLhidDisplay(log.lhid) || '';
+      const userName = log.user?.name || '';
+      const userEmail = log.user?.email || '';
+      const userProv = log.user?.province || '';
+      const userRole = log.user?.role || '';
+
+      if (Array.isArray(log.changes) && log.changes.length > 0) {
+        log.changes.forEach((ch) => {
+          const fieldName = ch.label || ch.field || '';
+          const oldVal = ch.oldValue !== undefined && ch.oldValue !== null ? String(ch.oldValue) : '';
+          const newVal = ch.newValue !== undefined && ch.newValue !== null ? String(ch.newValue) : '';
+          const row = [timestamp, action, tabName, lhid, userName, userEmail, userProv, userRole, fieldName, oldVal, newVal]
+            .map((v) => `"${String(v).replace(/"/g, '""')}"`);
+          csvRows.push(row.join(','));
+        });
+      } else {
+        const row = [timestamp, action, tabName, lhid, userName, userEmail, userProv, userRole, log.summary || '', '', '']
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`);
+        csvRows.push(row.join(','));
+      }
+    });
+
+    const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DAR_Region8_Audit_Trail_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Exported ${exportLogs.length} audit logs to CSV`);
+  } catch (err) {
+    toast(`Export failed: ${err.message}`, true);
+  }
 }
 
 function exportLeaseholdCsv() {
