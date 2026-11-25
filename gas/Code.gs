@@ -165,6 +165,9 @@ const OPTOOL_SCHEMA_HEADERS = {
     'CLOA TYPE (EP/CLOA OR COLLECTIVE)', 'REGION', 'PROVINCE',
     'MUNICIPALITY', 'BARANGAY', 'NAME OF ARB (LN, FN, MI)',
     'EP or CLOA \nSERIAL No.', 'AREA\n(HAs)', 'MOA',
+    'DATE DARPO GENERATED Judicial form(JF)',
+    'Date DARRO Received Request for Signed and Sealed',
+    'Date FORWARDED TO DARPO for Registration Process',
     'DATE FORWARDED TO ROD',
     'EPEB NUMBER', 'EPEB DATE', 'EPEB STATUS',
     'ROD TITLE NO.',
@@ -1380,6 +1383,32 @@ function readProvincialMilestoneSupportLists_() {
                 row['Area (HAs)'] ||
                 row['Area (HAS)'] ||
                 row['Area'] ||
+                '';
+            }
+            if (!row.dateDarpoGeneratedJf) {
+              row.dateDarpoGeneratedJf =
+                row['DATE DARPO GENERATED Judicial form(JF)'] ||
+                row['Date DARPO Generated Judicial form(JF)'] ||
+                row['Date DARPO Generated Judicial Form (JF)'] ||
+                row['DATE DARPO GENERATED Judicial form (JF)'] ||
+                row['Date DARPO Generated JF'] ||
+                row.date_darpo_generated_jf ||
+                '';
+            }
+            if (!row.dateDarroReceivedSignedSealed) {
+              row.dateDarroReceivedSignedSealed =
+                row['Date DARRO Received Request for Signed and Sealed'] ||
+                row['DATE DARRO RECEIVED REQUEST FOR SIGNED AND SEALED'] ||
+                row['Date DARRO Received Request Signed and Sealed'] ||
+                row.date_darro_received_signed_sealed ||
+                '';
+            }
+            if (!row.dateForwardedDarpoRegistration) {
+              row.dateForwardedDarpoRegistration =
+                row['Date FORWARDED TO DARPO for Registration Process'] ||
+                row['DATE FORWARDED TO DARPO FOR REGISTRATION PROCESS'] ||
+                row['Date Forwarded to DARPO for Registration Process'] ||
+                row.date_forwarded_darpo_registration ||
                 '';
             }
             if (!row.dateRegistered) {

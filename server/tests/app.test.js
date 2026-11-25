@@ -125,7 +125,16 @@ test('Schema & Region VIII Registry integrity', () => {
   const ppuCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'ppuReviewResult');
   assert.equal(ppuCol?.type, 'select');
   assert.deepEqual(ppuCol?.options, ['PASSED', 'FAILED']);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 28);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.length, 31);
+  const jfCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'dateDarpoGeneratedJf');
+  assert.equal(jfCol?.type, 'date');
+  assert.equal(jfCol?.group, 'Generation of Judicial');
+  const sealCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'dateDarroReceivedSignedSealed');
+  assert.equal(sealCol?.type, 'date');
+  assert.equal(sealCol?.group, 'Generation of Judicial');
+  const fwdDarpoCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'dateForwardedDarpoRegistration');
+  assert.equal(fwdDarpoCol?.type, 'date');
+  assert.equal(fwdDarpoCol?.group, 'Generation of Judicial');
   const fwdCol = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution.find((c) => c.key === 'dateForwardedToRod');
   assert.equal(fwdCol?.type, 'date');
   assert.equal(fwdCol?.group, 'Registration & Distribution');
@@ -6159,6 +6168,22 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
 
   // 1. Schema integrity
   const regSchema = OPTOOL_SHEET_SCHEMAS.RegistrationDistribution;
+
+  const jfCol = regSchema.find((c) => c.key === 'dateDarpoGeneratedJf');
+  assert.equal(jfCol?.type, 'date');
+  assert.equal(jfCol?.label, 'DATE DARPO GENERATED Judicial form(JF)');
+  assert.equal(jfCol?.group, 'Generation of Judicial');
+
+  const sealCol = regSchema.find((c) => c.key === 'dateDarroReceivedSignedSealed');
+  assert.equal(sealCol?.type, 'date');
+  assert.equal(sealCol?.label, 'Date DARRO Received Request for Signed and Sealed');
+  assert.equal(sealCol?.group, 'Generation of Judicial');
+
+  const fwdDarpoCol = regSchema.find((c) => c.key === 'dateForwardedDarpoRegistration');
+  assert.equal(fwdDarpoCol?.type, 'date');
+  assert.equal(fwdDarpoCol?.label, 'Date FORWARDED TO DARPO for Registration Process');
+  assert.equal(fwdDarpoCol?.group, 'Generation of Judicial');
+
   const fwdCol = regSchema.find((c) => c.key === 'dateForwardedToRod');
   assert.equal(fwdCol?.type, 'date');
   assert.equal(fwdCol?.label, 'Date Forwarded to ROD');
@@ -6195,6 +6220,9 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
     epOrCloaSerialNo: '00987654',
     areaHas: '2.5000',
     moa: 'VOS',
+    dateDarpoGeneratedJf: '2026-03-01',
+    dateDarroReceivedSignedSealed: '2026-03-15',
+    dateForwardedDarpoRegistration: '2026-03-25',
     dateForwardedToRod: '2026-04-10',
     dateReceivedAtRod: '2026-04-12',
     epebNumber: 'EPEB-2026-0042',
@@ -6211,6 +6239,9 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
   const rows = store.state.optool.RegistrationDistribution;
   const found = rows.find((r) => String(r.lhid) === '804209075');
   assert.ok(found, 'Row should be found in store');
+  assert.equal(found.dateDarpoGeneratedJf, '2026-03-01');
+  assert.equal(found.dateDarroReceivedSignedSealed, '2026-03-15');
+  assert.equal(found.dateForwardedDarpoRegistration, '2026-03-25');
   assert.equal(found.dateForwardedToRod, '2026-04-10');
   assert.equal(found.dateReceivedAtRod, '2026-04-12');
   assert.equal(found.epebNumber, 'EPEB-2026-0042');
@@ -6244,12 +6275,27 @@ test('Test 59: Registration & Distribution EPEB and ROD forwarding fields schema
   assert.ok(optoolHtml.includes('EPEB Number'), 'Header contains EPEB Number');
   assert.ok(optoolHtml.includes('EPEB Date'), 'Header contains EPEB Date');
   assert.ok(optoolHtml.includes('EPEB Status'), 'Header contains EPEB Status');
+  assert.ok(optoolHtml.includes('DATE DARPO GENERATED Judicial form(JF)'), 'Header contains Judicial Form generation date');
+  assert.ok(optoolHtml.includes('Date DARRO Received Request for Signed and Sealed'), 'Header contains DARRO signed/sealed request date');
+  assert.ok(optoolHtml.includes('Date FORWARDED TO DARPO for Registration Process'), 'Header contains forwarded to DARPO registration date');
   assert.ok(optoolHtml.includes('data-optool-select-key="epebStatus"'), 'Inline select rendered for epebStatus');
   assert.ok(optoolHtml.includes('value="Examination" selected'), 'Selected value Examination rendered');
 
   // 4. regdist-whereabouts config stage resolution and extraColValue
   const regConfig = WHEREABOUTS_CONFIGS['regdist-whereabouts'];
   assert.ok(regConfig, 'regdist-whereabouts config exists');
+
+  // When only DARPO generated JF
+  const stageJf = regConfig.resolveStage({ dateDarpoGeneratedJf: '2026-03-01' });
+  assert.equal(stageJf.stage, 'DARPO Generated JF');
+
+  // When DARRO received request for signed and sealed
+  const stageSeal = regConfig.resolveStage({ dateDarpoGeneratedJf: '2026-03-01', dateDarroReceivedSignedSealed: '2026-03-15' });
+  assert.equal(stageSeal.stage, 'DARRO Received Request Signed/Sealed');
+
+  // When forwarded to DARPO for registration
+  const stageFwdDarpo = regConfig.resolveStage({ dateDarpoGeneratedJf: '2026-03-01', dateForwardedDarpoRegistration: '2026-03-25' });
+  assert.equal(stageFwdDarpo.stage, 'Forwarded to DARPO Reg');
 
   // When only forwarded to ROD
   const stageFwd = regConfig.resolveStage({ dateForwardedToRod: '2026-04-10' });

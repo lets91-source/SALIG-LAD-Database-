@@ -87,6 +87,9 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
           if (cleanNorm === cleanHeader || cleanNorm === cleanLabel || cleanNorm === cleanKey) return true;
 
           return (
+            (col.key === 'dateDarpoGeneratedJf' && (cleanNorm.includes('darpogenerated') || cleanNorm.includes('judicialform') || cleanNorm.includes('generatedjf') || cleanNorm.includes('judicialformjf'))) ||
+            (col.key === 'dateDarroReceivedSignedSealed' && (cleanNorm.includes('darroreceived') || (cleanNorm.includes('signed') && cleanNorm.includes('sealed')) || cleanNorm.includes('requestforsignedandsealed'))) ||
+            (col.key === 'dateForwardedDarpoRegistration' && ((cleanNorm.includes('forwarded') && cleanNorm.includes('registrationprocess')) || cleanNorm.includes('forwardedtodarpo') || cleanNorm.includes('forwardeddarpo'))) ||
             (col.key === 'dateForwardedToRod' && (cleanNorm.includes('forwardedtorod') || cleanNorm.includes('forwardedrod') || cleanNorm.includes('dateforwarded'))) ||
             (col.key === 'dateReceivedAtRod' && (cleanNorm.includes('receivedatrod') || cleanNorm.includes('receivedrod') || cleanNorm.includes('datereceivedatrod') || cleanNorm.includes('datereceivedrod'))) ||
             (col.key === 'epebNumber' && (cleanNorm.includes('epebno') || cleanNorm.includes('epebnum') || cleanNorm.includes('epeb#') || cleanNorm.includes('epebnumber'))) ||

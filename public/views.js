@@ -1588,6 +1588,9 @@ export const WHEREABOUTS_CONFIGS = {
     subtitle: 'EP CLOA Registration & Distribution Tracking • Date Forwarded & Received at ROD • EPEB Status • Date Registered • Date of Distribution • Month Reported',
     openTabName: 'RegistrationDistribution',
     dates: [
+      { key: 'dateDarpoGeneratedJf', label: 'DATE DARPO GENERATED JF', shortLabel: 'DARPO Gen JF', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'dateDarroReceivedSignedSealed', label: 'DATE DARRO REC REQ SIGNED/SEALED', shortLabel: 'DARRO Req Signed', badgeClass: 'badge-purple', icon: '✔' },
+      { key: 'dateForwardedDarpoRegistration', label: 'DATE FWD TO DARPO FOR REG', shortLabel: 'Fwd DARPO Reg', badgeClass: 'badge-purple', icon: '✔' },
       { key: 'dateForwardedToRod', label: 'FORWARDED TO ROD', shortLabel: 'Forwarded ROD', badgeClass: 'badge-purple', icon: '✔' },
       { key: 'dateRegistered', label: 'DATE REGISTERED', shortLabel: 'Date Registered', badgeClass: 'badge-blue', icon: '✔' },
       { key: 'dateReceivedAtRod', label: 'RECEIVED AT ROD', shortLabel: 'Received ROD', badgeClass: 'badge-blue', icon: '✔' },
@@ -1600,6 +1603,9 @@ export const WHEREABOUTS_CONFIGS = {
       if (row.dateRegistered) return { stage: 'Registered with ROD', badge: 'badge-blue' };
       if (row.epebStatus) return { stage: `EPEB: ${row.epebStatus}`, badge: 'badge-purple' };
       if (row.dateForwardedToRod) return { stage: 'Forwarded to ROD', badge: 'badge-amber' };
+      if (row.dateForwardedDarpoRegistration) return { stage: 'Forwarded to DARPO Reg', badge: 'badge-amber' };
+      if (row.dateDarroReceivedSignedSealed) return { stage: 'DARRO Received Request Signed/Sealed', badge: 'badge-amber' };
+      if (row.dateDarpoGeneratedJf) return { stage: 'DARPO Generated JF', badge: 'badge-amber' };
       if (row.monthReported) return { stage: 'Reported (Pending Reg)', badge: 'badge-amber' };
       return { stage: 'Pending Registration', badge: 'badge-gray' };
     },
@@ -7108,6 +7114,9 @@ export const DEFAULT_OPTOOL_REGDIST_SCHEMA = [
   { key: 'epOrCloaSerialNo', header: 'EP or CLOA \nSERIAL No.', label: 'EP or CLOA Serial No.', group: 'ARB & Title Details', type: 'text' },
   { key: 'areaHas', header: 'AREA\n(HAs)', label: 'Area (HAS)', group: 'ARB & Title Details', type: 'decimal' },
   { key: 'moa', header: 'MOA', label: 'MOA', group: 'ARB & Title Details', type: 'text' },
+  { key: 'dateDarpoGeneratedJf', header: 'DATE DARPO GENERATED Judicial form(JF)', label: 'DATE DARPO GENERATED Judicial form(JF)', group: 'Generation of Judicial', type: 'date' },
+  { key: 'dateDarroReceivedSignedSealed', header: 'Date DARRO Received Request for Signed and Sealed', label: 'Date DARRO Received Request for Signed and Sealed', group: 'Generation of Judicial', type: 'date' },
+  { key: 'dateForwardedDarpoRegistration', header: 'Date FORWARDED TO DARPO for Registration Process', label: 'Date FORWARDED TO DARPO for Registration Process', group: 'Generation of Judicial', type: 'date' },
   { key: 'dateForwardedToRod', header: 'DATE FORWARDED TO ROD', label: 'Date Forwarded to ROD', group: 'Registration & Distribution', type: 'date' },
   { key: 'epebNumber', header: 'EPEB NUMBER', label: 'EPEB Number', group: 'Registration & Distribution', type: 'text' },
   { key: 'epebDate', header: 'EPEB DATE', label: 'EPEB Date', group: 'Registration & Distribution', type: 'date' },
@@ -7240,6 +7249,10 @@ export const DEFAULT_OPTOOL_PREVIEW_KEYS = {
     'arbName',
     'epOrCloaSerialNo',
     'areaHas',
+    'moa',
+    'dateDarpoGeneratedJf',
+    'dateDarroReceivedSignedSealed',
+    'dateForwardedDarpoRegistration',
     'dateForwardedToRod',
     'epebNumber',
     'epebDate',
