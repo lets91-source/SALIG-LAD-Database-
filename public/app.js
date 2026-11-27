@@ -2779,7 +2779,7 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
           </div>${linkedAfterLhid}
         `;
       }
-      if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile' || (c.label && c.label.toLowerCase().includes('pdf'))) {
+      if (c.key === 'pdfFile' || c.key === 'transmittalSrPdf' || c.type === 'pdfFile' || (c.label && c.label.toLowerCase().includes('pdf')) || (c.label && c.label.toLowerCase().includes('scanned file'))) {
         const strVal = String(val ?? '').trim();
         const isYearString = /^(20\d{2})(\.0+)?$/.test(strVal);
         const isYearNum = typeof val === 'number' && val >= 2000 && val <= 2099;
@@ -2889,11 +2889,16 @@ function openOptoolModal(tabName, existingRow, rowIndex) {
       if (tabName === 'MOV') {
         const lotInput = document.getElementById('opt-lotNumber');
         const subLotInput = document.getElementById('opt-subLotNumber');
+        const areaAcqInput = document.getElementById('opt-areaAcquisition');
         if (lotInput && (!lotInput.value || !isEdit) && dbRow?.lotNumber) {
           lotInput.value = dbRow.lotNumber;
         }
         if (subLotInput && (!subLotInput.value || !isEdit) && dbRow?.subLotNumber) {
           subLotInput.value = dbRow.subLotNumber;
+        }
+        if (areaAcqInput && (!areaAcqInput.value || !isEdit) && (dbRow?.carpable || dbRow?.totalArea)) {
+          const valNum = parseFloat(dbRow.carpable || dbRow.totalArea);
+          if (!isNaN(valNum)) areaAcqInput.value = valNum.toFixed(4);
         }
       }
     };
@@ -6378,6 +6383,7 @@ function getCfSupportRows(appState, tabName = 'CF(DOC)') {
       targetYear: formatYearDisplay(resolvedTargetYear),
       target: row.target || db.target || 'Current',
       surveyRequirement: row.surveyRequirement || db.surveyRequirement || '',
+      areaAcquisition: row.areaAcquisition || '',
       datesMap
     };
   });
@@ -6543,6 +6549,7 @@ function getSurveySupportRows(appState) {
       targetYear: formatYearDisplay(row.targetYear || db.year || db.targetYear || ''),
       target: row.target || db.target || 'Current',
       surveyRequirement: row.surveyRequirement || db.surveyRequirement || '',
+      areaAcquisition: row.areaAcquisition || '',
       datesMap: { ...row }
     };
   });

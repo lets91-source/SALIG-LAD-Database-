@@ -206,6 +206,7 @@ const DATABASE_TO_TARGET_MAP = {
     lhid: 'lhid',
     lotNumber: 'lotNumber',
     subLotNumber: 'subLotNumber',
+    areaAcquisition: (r) => r.carpable || r.totalArea || '',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
     targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
@@ -214,6 +215,7 @@ const DATABASE_TO_TARGET_MAP = {
     lhid: 'lhid',
     lotNumber: 'lotNumber',
     subLotNumber: 'subLotNumber',
+    areaAcquisition: (r) => r.carpable || r.totalArea || '',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
     targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
@@ -222,6 +224,7 @@ const DATABASE_TO_TARGET_MAP = {
     lhid: 'lhid',
     lotNumber: 'lotNumber',
     subLotNumber: 'subLotNumber',
+    areaAcquisition: (r) => r.carpable || r.totalArea || '',
     target: (r) => resolveTargetFromDatabaseRow(r),
     reportedMonth: () => formatCurrentMonthYear(),
     targetYear: (r) => formatYearDisplay(r.year || r.targetYear || '')
@@ -506,7 +509,7 @@ export function isMovAccomplished(r, targetYearFilter = null) {
       (Array.isArray(r) ? r[3] : '') || r.dateReceivedDarpo || r['Date Received at DARPO'] || r['Received DARPO'] || r['WITH RECEIVED DARPO'],
       (Array.isArray(r) ? r[5] : '') || r.dateOfMov || r['Date of MOV'] || r['DATE OF MOV'] || r['WITH DATE OF MOV'],
       (Array.isArray(r) ? r[6] : '') || r.dateTransLbpAoc || r['Date Trans to LBP/AOC'] || r['TRANS TO LBP/AOC'] || r['WITH TRANS TO LBP/AOC'],
-      (Array.isArray(r) ? r[10] : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH']
+      (Array.isArray(r) ? (r[11] || r[10]) : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH']
     ].filter(isMilestoneDatePopulated).join(' ');
     const dm = dateStr.match(/\b(20\d{2})\b/);
     if (dm) targetYear = Number(dm[1]);
@@ -527,7 +530,7 @@ export function isMovAccomplished(r, targetYearFilter = null) {
   const hasDarpo = isMilestoneDatePopulated((Array.isArray(r) ? r[3] : '') || r.dateReceivedDarpo || r['Date Received at DARPO'] || r['Received DARPO'] || r['WITH RECEIVED DARPO']);
   const hasMov = isMilestoneDatePopulated((Array.isArray(r) ? r[5] : '') || r.dateOfMov || r['Date of MOV'] || r['DATE OF MOV'] || r['WITH DATE OF MOV']);
   const hasTrans = isMilestoneDatePopulated((Array.isArray(r) ? r[6] : '') || r.dateTransLbpAoc || r['Date Trans to LBP/AOC'] || r['TRANS TO LBP/AOC'] || r['WITH TRANS TO LBP/AOC']);
-  const repMonth = String((Array.isArray(r) ? r[10] : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH'] || '').trim();
+  const repMonth = String((Array.isArray(r) ? (r[11] || r[10]) : '') || r.reportedMonth || r['Reported Month'] || r['REPORTED MONTH'] || r['WITH REPORTED MONTH'] || '').trim();
   const hasRepMonth = isMilestoneDatePopulated(repMonth);
 
   if (!hasPpu && !hasDarpo && !hasMov && !hasTrans && !hasRepMonth) {
@@ -819,6 +822,12 @@ export class ConsolidatedStore {
             if (!Object.prototype.hasOwnProperty.call(row, col.key) || row[col.key] === '') {
               const altVal =
                 row[col.header] ??
+                (col.key === 'areaAcquisition'
+                  ? (row['Area Acquisition'] ?? row['AREA ACQUISITION'] ?? row['Area Acquisition (HAS)'] ?? row['Acquisition Area'])
+                  : undefined) ??
+                (col.key === 'pdfFile'
+                  ? (row['MOV Scanned File'] ?? row['PDF File'] ?? row['Upload MOV Scanned File'] ?? row['MOV Scanned File Link'])
+                  : undefined) ??
                 (col.key === 'areaHas'
                   ? (row['AREA (HAs)'] ?? row['AREA(HAS)'] ?? row['Area (HAs)'] ?? row['AREA'])
                   : undefined) ??

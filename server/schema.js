@@ -602,9 +602,10 @@ export const OPTOOL_SHEET_SCHEMAS = {
     { key: 'dateTransLbpAoc', header: 'Date Trans to LBP/AOC', label: 'Date Transmitted to LBP/AOC', group: 'Compensation & LBP', type: 'date' },
     { key: 'lotNumber', header: 'Lot Number', label: 'Lot Number', group: 'Compensation & LBP', type: 'text' },
     { key: 'subLotNumber', header: 'Sub Lot Number', label: 'Sub Lot Number', group: 'Compensation & LBP', type: 'text' },
+    { key: 'areaAcquisition', header: 'Area Acquisition', label: 'Area Acquisition (HAS)', group: 'Compensation & LBP', type: 'decimal' },
     { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Reporting', type: 'select', options: TARGET_PERIOD_OPTIONS },
     { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Reporting', type: 'select', options: getReportedMonthOptions() },
-    { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
+    { key: 'pdfFile', header: 'MOV Scanned File', label: 'Upload MOV Scanned File', group: 'Reporting', type: 'pdfFile' },
     { key: 'targetYear', header: 'Year Target', label: 'Year Target', group: 'Reporting', type: 'text' }
   ],
   RegistrationDistribution: [
@@ -745,6 +746,7 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'dateTransLbpAoc',
     'lotNumber',
     'subLotNumber',
+    'areaAcquisition',
     'target',
     'reportedMonth',
     'pdfFile',

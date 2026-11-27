@@ -157,8 +157,8 @@ const OPTOOL_SCHEMA_HEADERS = {
   MOV: [
     'LHID', 'PPU Date', 'PPU Review Result\n(PASSED/FAILED)',
     'Date Received at DARPO', 'Compensation Amount', 'Date of MOV',
-    'Date Trans to LBP/AOC', 'Lot Number', 'Sub Lot Number',
-    'TARGET\n (Current/ Previous)', 'Reported Month', 'PDF File', 'Year Target'
+    'Date Trans to LBP/AOC', 'Lot Number', 'Sub Lot Number', 'Area Acquisition',
+    'TARGET\n (Current/ Previous)', 'Reported Month', 'MOV Scanned File', 'Year Target'
   ],
   RegistrationDistribution: [
     'LHID/ Sequence No.', 'Origin/\nSource:\n(New Land, REDOC & DNYD)',

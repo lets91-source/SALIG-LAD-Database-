@@ -108,19 +108,27 @@ test('Schema & Region VIII Registry integrity', () => {
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'carperLadNo49'), false);
   assert.equal(OPTOOL_SHEET_SCHEMAS['CF(DOC)'].some((c) => c.key === 'approvedSubdivisionPlan'), false);
   assert.equal(OPTOOL_SHEET_SCHEMAS.Survey.length, 44);
-  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 13);
+  assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.length, 14);
   const movDateTransIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'dateTransLbpAoc');
   const movLotIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'lotNumber');
   const movSubLotIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'subLotNumber');
+  const movAreaAcqIdx = OPTOOL_SHEET_SCHEMAS.MOV.findIndex((c) => c.key === 'areaAcquisition');
   assert.equal(movDateTransIdx, 6, 'Date Trans to LBP/AOC is Column G (index 6)');
   assert.equal(movLotIdx, movDateTransIdx + 1, 'Lot Number must immediately follow Date Trans to LBP/AOC in MOV schema');
   assert.equal(movSubLotIdx, movLotIdx + 1, 'Sub Lot Number must immediately follow Lot Number in MOV schema');
+  assert.equal(movAreaAcqIdx, movSubLotIdx + 1, 'Area Acquisition must immediately follow Sub Lot Number in MOV schema');
   const movLotCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'lotNumber');
   assert.equal(movLotCol?.header, 'Lot Number');
   assert.equal(movLotCol?.group, 'Compensation & LBP');
   const movSubLotCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'subLotNumber');
   assert.equal(movSubLotCol?.header, 'Sub Lot Number');
   assert.equal(movSubLotCol?.group, 'Compensation & LBP');
+  const movAreaAcqCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'areaAcquisition');
+  assert.equal(movAreaAcqCol?.header, 'Area Acquisition');
+  assert.equal(movAreaAcqCol?.type, 'decimal');
+  const movPdfCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'pdfFile');
+  assert.equal(movPdfCol?.header, 'MOV Scanned File');
+  assert.equal(movPdfCol?.type, 'pdfFile');
   assert.equal(OPTOOL_SHEET_SCHEMAS.MOV.some((c) => c.key === 'currentStatus' || c.key === 'currentDate'), false);
   const ppuCol = OPTOOL_SHEET_SCHEMAS.MOV.find((c) => c.key === 'ppuReviewResult');
   assert.equal(ppuCol?.type, 'select');
@@ -5321,9 +5329,13 @@ test('Land Valuation (MOV) counts PPU Date (Col B), Received DARPO (Col D), Date
   assert.equal(movSchema[4].key, 'compensationAmount', 'Col 5 (E): Compensation Amount');
   assert.equal(movSchema[5].key, 'dateOfMov', 'Col 6 (F): Date of MOV');
   assert.equal(movSchema[6].key, 'dateTransLbpAoc', 'Col 7 (G): Date Trans to LBP/AOC');
-  assert.equal(movSchema[10].key, 'reportedMonth', 'Col 11 (K): Reported Month');
-  assert.equal(movSchema[12].key, 'targetYear', 'Col 13 (M): Year Target');
-  assert.equal(movSchema[12].header, 'Year Target', 'Col 13 header is Year Target');
+  assert.equal(movSchema[7].key, 'lotNumber', 'Col 8 (H): Lot Number');
+  assert.equal(movSchema[8].key, 'subLotNumber', 'Col 9 (I): Sub Lot Number');
+  assert.equal(movSchema[9].key, 'areaAcquisition', 'Col 10 (J): Area Acquisition');
+  assert.equal(movSchema[11].key, 'reportedMonth', 'Col 12 (L): Reported Month');
+  assert.equal(movSchema[12].key, 'pdfFile', 'Col 13 (M): MOV Scanned File');
+  assert.equal(movSchema[13].key, 'targetYear', 'Col 14 (N): Year Target');
+  assert.equal(movSchema[13].header, 'Year Target', 'Col 14 header is Year Target');
 
   // 2. Test isMovAccomplished rule
   // A row with Col B (PPU Date) and Col M (Year Target 2026) is accomplished for 2026
@@ -6650,6 +6662,76 @@ test('Test 64: Total Area (HAS) is inserted immediately before CARPable Area acr
       whereaboutsHtml.includes('<th class="right">Total Area (HAS)</th>\n              <th class="right">CARPable Area (HAS)</th>'),
       'Master whereabouts ledger has Total Area (HAS) immediately before CARPable Area (HAS)'
     );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Test 65: Land Valuation (MOV) has Area Acquisition beside Sub Lot Number and PDF File changed to MOV Scanned File', () => {
+  // 1. OPTOOL_SHEET_SCHEMAS.MOV
+  const movCols = OPTOOL_SHEET_SCHEMAS.MOV;
+  const subLotIdx = movCols.findIndex((c) => c.key === 'subLotNumber');
+  const areaAcqIdx = movCols.findIndex((c) => c.key === 'areaAcquisition');
+  const pdfIdx = movCols.findIndex((c) => c.key === 'pdfFile');
+
+  assert.ok(subLotIdx >= 0, 'subLotNumber must exist in MOV schema');
+  assert.ok(areaAcqIdx >= 0, 'areaAcquisition must exist in MOV schema');
+  assert.strictEqual(areaAcqIdx, subLotIdx + 1, 'areaAcquisition must be immediately beside (after) subLotNumber in MOV schema');
+
+  const areaAcqCol = movCols[areaAcqIdx];
+  assert.strictEqual(areaAcqCol.header, 'Area Acquisition');
+  assert.strictEqual(areaAcqCol.type, 'decimal');
+  assert.strictEqual(areaAcqCol.group, 'Compensation & LBP');
+
+  const pdfCol = movCols[pdfIdx];
+  assert.strictEqual(pdfCol.header, 'MOV Scanned File');
+  assert.strictEqual(pdfCol.type, 'pdfFile');
+  assert.ok(pdfCol.label.includes('MOV Scanned File'), 'Label must reflect MOV Scanned File');
+
+  // 2. OPTOOL_PREVIEW_COLUMNS.MOV
+  const prevCols = OPTOOL_PREVIEW_COLUMNS.MOV;
+  const prevSubLotIdx = prevCols.indexOf('subLotNumber');
+  const prevAreaAcqIdx = prevCols.indexOf('areaAcquisition');
+  assert.ok(prevAreaAcqIdx >= 0, 'areaAcquisition must exist in OPTOOL_PREVIEW_COLUMNS.MOV');
+  assert.strictEqual(prevAreaAcqIdx, prevSubLotIdx + 1, 'areaAcquisition must follow subLotNumber in OPTOOL_PREVIEW_COLUMNS.MOV');
+
+  // 3. gas/Code.gs headers match OPTOOL_SHEET_SCHEMAS.MOV exactly
+  const gasCode = fs.readFileSync(path.resolve('gas/Code.gs'), 'utf8');
+  const match = gasCode.match(/const OPTOOL_SCHEMA_HEADERS = (\{[\s\S]*?\n\});/);
+  assert.ok(match, 'OPTOOL_SCHEMA_HEADERS missing from gas/Code.gs');
+  const gasHeaders = new Function(`return (${match[1]});`)();
+  assert.deepEqual(gasHeaders.MOV, movCols.map((c) => c.header), 'gas/Code.gs MOV headers must match OPTOOL_SHEET_SCHEMAS.MOV');
+
+  // 4. Milestone Whereabouts view shows MOV Scanned File badge link when PDF attached
+  const rowWithPdf = {
+    lhid: '801000001',
+    province: 'Leyte',
+    municipality: 'Palo',
+    barangay: 'San Jose',
+    landOwner: 'Test Landowner',
+    titleNumber: 'T-1001',
+    subLotNumber: 'Lot 1-A',
+    areaAcquisition: 4.5678,
+    pdfFile: 'https://example.com/test-mov.pdf',
+    currentStatus: 'MOV Issued',
+    stage: 'MOV Issued',
+    datesMap: {}
+  };
+  const dir = makeTempDir();
+  try {
+    const store = new ConsolidatedStore(dir);
+    store.state.optool.MOV = [rowWithPdf];
+    const movWhereaboutsHtml = renderMilestoneWhereaboutsView({
+      state: store.state,
+      schemas: { optoolTabs: OPTOOL_SHEET_SCHEMAS, optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS },
+      filters: { province: 'ALL' },
+      whereaboutsFilter: 'ALL',
+      whereaboutsSearch: '',
+      activeWhereaboutsColFilters: {},
+      whereaboutsColPage: 1
+    }, WHEREABOUTS_CONFIGS['mov-whereabouts']);
+
+    assert.ok(movWhereaboutsHtml.includes('MOV Scanned File'), 'Whereabouts ledger renders MOV Scanned File badge link for Land Valuation');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

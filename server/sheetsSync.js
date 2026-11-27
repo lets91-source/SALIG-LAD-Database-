@@ -98,7 +98,8 @@ function buildHeaderMapping(headerRowValues, schemaCols) {
             (col.key === 'ladStatus' && (norm === 'lad' || norm === 'ladcolumn' || norm === 'ladstatus')) ||
             (col.key === 'workability' && norm === 'workability') ||
             (col.key === 'carperLadForm42' && (norm.includes('form42') || norm.includes('form47'))) ||
-            (col.key === 'pdfFile' && (norm.includes('form46') || norm.includes('pdffile') || norm === 'pdf')) ||
+            (col.key === 'pdfFile' && (norm.includes('form46') || norm.includes('pdffile') || norm === 'pdf' || cleanNorm.includes('movscannedfile') || cleanNorm.includes('scannedfile') || cleanNorm.includes('movpdf'))) ||
+            (col.key === 'areaAcquisition' && (cleanNorm.includes('areaacquisition') || cleanNorm.includes('acquisitionarea') || cleanNorm === 'areaacq' || cleanNorm === 'acquisition')) ||
             (col.key === 'certificateOfTitle' && (norm.includes('certificateoftitle') || cleanNorm.includes('certtitle'))) ||
             (col.key === 'taxDeclaration' && (norm.includes('taxdeclaration') || cleanNorm.includes('taxdec'))) ||
             (col.key === 'carperLadForm1And2' && (norm.includes('form12') || norm.includes('form1and2') || norm.includes('form1&2'))) ||

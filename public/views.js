@@ -6124,7 +6124,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       <span class="badge ${esc(r.stageBadge)}" style="font-weight:700;">${esc(r.stage)}</span>
                     </td>
                     <td class="right" style="white-space:nowrap;">
-                      ${(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf) ? `<a href="${esc(normalizePdfUrl(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf))}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="${esc(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf)}"><span style="font-size:11px;">📄</span> PDF</a>` : ''}
+                      ${(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf) ? `<a href="${esc(normalizePdfUrl(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf))}" target="_blank" rel="noopener noreferrer" class="badge badge-success pdf-link" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;font-weight:600;margin-right:6px;" title="${esc(r.pdfFile || r.transmittalSrPdf || r.row?.pdfFile || r.row?.transmittalSrPdf)}"><span style="font-size:11px;">📄</span> ${isMovWhereabouts ? 'MOV Scanned File' : 'PDF'}</a>` : ''}
                       <button
                         type="button"
                         class="btn btn-secondary btn-xs btn-whereabouts-edit-record"
@@ -7753,12 +7753,13 @@ export const DEFAULT_OPTOOL_MOV_SCHEMA = [
   { key: 'dateOfMov', header: 'Date of MOV', label: 'Date of MOV', group: 'Compensation & LBP', type: 'date' },
   { key: 'lotNumber', header: 'Lot Number', label: 'Lot Number', group: 'Compensation & LBP', type: 'text' },
   { key: 'subLotNumber', header: 'Sub Lot Number', label: 'Sub Lot Number', group: 'Compensation & LBP', type: 'text' },
+  { key: 'areaAcquisition', header: 'Area Acquisition', label: 'Area Acquisition (HAS)', group: 'Compensation & LBP', type: 'decimal' },
   { key: 'dateTransLbpAoc', header: 'Date Trans to LBP/AOC', label: 'Date Transmitted to LBP/AOC', group: 'Compensation & LBP', type: 'date' },
   { key: 'lbpClaimNumber', header: 'LBP Claim Number', label: 'LBP Claim Number', group: 'Compensation & LBP', type: 'text' },
   { key: 'aocNumber', header: 'AOC Number', label: 'AOC Number', group: 'Compensation & LBP', type: 'text' },
   { key: 'target', header: 'TARGET\n (Current/ Previous)', label: 'Target (Current / Previous)', group: 'Reporting', type: 'select', options: ['Current', 'Previous Year'] },
   { key: 'reportedMonth', header: 'Reported Month', label: 'Reported Month', group: 'Reporting', type: 'select' },
-  { key: 'pdfFile', header: 'PDF File', label: 'PDF File Link', group: 'Reporting', type: 'text' },
+  { key: 'pdfFile', header: 'MOV Scanned File', label: 'Upload MOV Scanned File', group: 'Reporting', type: 'pdfFile' },
   { key: 'targetYear', header: 'Target Year', label: 'Target Year', group: 'Reporting', type: 'text' }
 ];
 
@@ -7908,6 +7909,7 @@ export const DEFAULT_OPTOOL_PREVIEW_KEYS = {
     'dateOfMov',
     'lotNumber',
     'subLotNumber',
+    'areaAcquisition',
     'dateTransLbpAoc',
     'lbpClaimNumber',
     'aocNumber',
