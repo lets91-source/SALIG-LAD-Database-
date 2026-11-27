@@ -687,10 +687,10 @@ export const OPTOOL_PREVIEW_COLUMNS = {
     'province',
     'municipality',
     'barangay',
-    'totalArea',
-    'computedArea',
     'lotNumber',
     'subLotNumber',
+    'computedArea',
+    'totalArea',
     'carpable',
     'ladStatus',
     'workability'

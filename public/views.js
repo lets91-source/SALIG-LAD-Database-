@@ -6003,6 +6003,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                 </button>
               </th>
               <th class="right">Total Area (HAS)</th>
+              <th class="right">CARPable Area (HAS)</th>
               ${cfg.dates
             .map((d) => {
               const dLabel = getWhereaboutsColFilterLabel(activeColFilters[d.key]);
@@ -6069,7 +6070,7 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
             ${pagedRows.length === 0
         ? `
               <tr>
-                <td colspan="${8 + cfg.dates.length}" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
+                <td colspan="${9 + cfg.dates.length}" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
                   <div style="font-size:15px;font-weight:700;margin-bottom:4px;">No ${esc(cfg.tabName)} records match the selected filters</div>
                   <div style="font-size:12px;">Try clearing search or changing the province / date status filters.</div>
                 </td>
@@ -6103,7 +6104,10 @@ export function renderMilestoneWhereaboutsView(ctx, cfg) {
                       <div class="text-muted">Title: ${esc(r.titleNumber)}</div>
                     </td>
                     <td class="right" style="font-weight:600;font-variant-numeric:tabular-nums;">
-                      ${fmtArea(r.totalArea ?? r.carpable)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
+                      ${fmtArea(r.totalArea || r.areaHas || r.carpable)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
+                    </td>
+                    <td class="right" style="font-weight:600;font-variant-numeric:tabular-nums;color:var(--dar-green,#0f4d2a);">
+                      ${fmtArea(r.carpable || r.totalArea)} <span style="font-size:10.5px;color:var(--text-muted)">HAS</span>
                     </td>
                     ${cfg.dates
                 .map((d) => {
@@ -7656,6 +7660,7 @@ export const LINKED_DB_PROFILE_FIELDS = [
   { key: 'surveyNumber', label: 'SurveyNumber', type: 'text' },
   { key: 'lotNumber', label: 'LotNumber', type: 'text' },
   { key: 'subLotNumber', label: 'SubLotNumber', type: 'text' },
+  { key: 'totalArea', label: 'Total Area (HAS)', type: 'decimal', isArea: true },
   { key: 'carpable', label: 'CARPable', type: 'decimal', isArea: true }
 ];
 
@@ -7856,6 +7861,23 @@ export const DEFAULT_OPTOOL_CF_PREVIEW_KEYS = [
 ];
 
 export const DEFAULT_OPTOOL_PREVIEW_KEYS = {
+  Database: [
+    'lhid',
+    'titleNumber',
+    'landOwner',
+    'moa',
+    'regionName',
+    'province',
+    'municipality',
+    'barangay',
+    'lotNumber',
+    'subLotNumber',
+    'computedArea',
+    'totalArea',
+    'carpable',
+    'ladStatus',
+    'workability'
+  ],
   'CF(DOC)': DEFAULT_OPTOOL_CF_PREVIEW_KEYS,
   Survey: [
     'lhid',
@@ -9646,6 +9668,7 @@ export function renderSurveySupportListModalHtml({
               <th style="color:#ffffff;">BARANGAY</th>
               <th style="color:#ffffff;">LANDOWNER / TITLE</th>
               <th class="right" style="color:#ffffff;">TOTAL AREA (HAS)</th>
+              <th class="right" style="color:#ffffff;">CARPABLE AREA (HAS)</th>
               <th style="color:#ffffff;">CURRENT STATUS</th>
               <th style="color:#ffffff;">DATE RSS</th>
               <th style="color:#ffffff;">FIELD WORK START</th>
@@ -9659,7 +9682,7 @@ export function renderSurveySupportListModalHtml({
             ${rows.length === 0
       ? `
               <tr>
-                <td colspan="14" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
+                <td colspan="15" class="text-center" style="padding:28px 14px;color:var(--text-muted);">
                   <div style="font-size:14px;font-weight:700;color:var(--text);">${isBalanceMode
         ? `All current Survey records for ${esc(provLabel)} have completed this milestone!`
         : 'No landholdings found for this selection'
@@ -9687,7 +9710,8 @@ export function renderSurveySupportListModalHtml({
                   <div style="font-weight:600;font-size:12px;">${esc(r.landOwner)}</div>
                   <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber)}</div>
                 </td>
-                <td class="right font-bold">${fmtArea(r.totalArea || r.carpable)} HAS</td>
+                <td class="right font-bold" style="color:#ffffff;opacity:0.95;">${fmtArea(r.totalArea || r.areaHas || r.carpable)} HAS</td>
+                <td class="right font-bold" style="color:#86efac;">${fmtArea(r.carpable || r.totalArea)} HAS</td>
                 <td>
                   <span class="badge ${r.stageBadge || 'badge-gray'}">${esc(r.currentStatus || r.stage || '—')}</span>
                 </td>
@@ -9746,7 +9770,7 @@ export function renderCfSupportListModalHtml({
       { key: 'reportedMonth', shortLabel: 'Reported Month' }
     ];
 
-  const colSpanCount = 9 + effectiveDates.length + 1;
+  const colSpanCount = 10 + effectiveDates.length + 1;
 
   return `
     <div class="cf-support-list-modal" style="display:flex;flex-direction:column;gap:14px;max-height:80vh;">
@@ -9811,6 +9835,7 @@ export function renderCfSupportListModalHtml({
               <th style="color:#ffffff;">BARANGAY</th>
               <th style="color:#ffffff;">LANDOWNER / TITLE</th>
               <th class="right" style="color:#ffffff;">TOTAL AREA (HAS)</th>
+              <th class="right" style="color:#ffffff;">CARPABLE AREA (HAS)</th>
               <th style="color:#ffffff;">STAGE / STATUS</th>
               ${effectiveDates.map((d) => `<th style="color:#ffffff;">${esc(d.shortLabel || d.label || d.key).toUpperCase()}</th>`).join('')}
               <th style="color:#ffffff;">TARGET YEAR</th>
@@ -9846,7 +9871,8 @@ export function renderCfSupportListModalHtml({
                     </div>
                     <div style="font-size:11px;color:var(--text-muted);">Title: ${esc(r.titleNumber || '—')}${r.lotNumber && r.lotNumber !== '—' ? ` • Lot: ${esc(r.lotNumber)}` : ''}${r.subLotNumber && r.subLotNumber !== '—' ? ` • Sub-Lot: ${esc(r.subLotNumber)}` : ''}</div>
                   </td>
-                  <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.totalArea || r.carpable || 0)} HAS</td>
+                  <td class="right font-mono font-bold" style="color:var(--text-muted);">${fmtArea(r.totalArea || r.areaHas || r.carpable || 0)} HAS</td>
+                  <td class="right font-mono font-bold" style="color:var(--dar-green,#0f4d2a);">${fmtArea(r.carpable || r.totalArea || 0)} HAS</td>
                   <td>
                     <span class="badge ${r.stage?.includes('Completed') ? 'badge-green' : r.stage?.includes('Prepared') || r.stage?.includes('Distributed') ? 'badge-blue' : r.stage?.includes('FI') || r.stage?.includes('MOV') || r.stage?.includes('PPU') ? 'badge-amber' : 'badge-gray'}" style="font-size:11px;">
                       ${esc(r.currentStatus || r.stage || '—')}

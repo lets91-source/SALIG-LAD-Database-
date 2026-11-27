@@ -280,10 +280,10 @@ test('Schema & Region VIII Registry integrity', () => {
     'province',
     'municipality',
     'barangay',
-    'totalArea',
-    'computedArea',
     'lotNumber',
     'subLotNumber',
+    'computedArea',
+    'totalArea',
     'carpable',
     'ladStatus',
     'workability'
@@ -660,7 +660,7 @@ test('OPTool table displays linked Database columns right after LHID for CF(DOC)
     ).map((m) => ({ span: Number(m[1]), label: m[2] }));
     assert.deepEqual(groupBands, [
       { span: 1, label: 'Identification' },
-      { span: 11, label: 'Database Parcel Details' },
+      { span: 12, label: 'Database Parcel Details' },
       { span: 6, label: 'DARPO Compliance' },
       { span: 18, label: 'DARRO Compliance' },
       { span: 1, label: 'DARPO Compliance' },
@@ -6569,6 +6569,90 @@ test('Test 63: Log History high-priority functional improvements (Province, Date
   assert.ok(uiHtml.includes('id="btn-audit-prev-page"'), 'Includes Previous Page button');
   assert.ok(uiHtml.includes('id="btn-audit-next-page"'), 'Includes Next Page button');
   assert.ok(uiHtml.includes('Showing <strong>26</strong> to <strong>50</strong> of <strong>50</strong> edits logged'), 'Accurately displays pagination status');
+});
+
+test('Test 64: Total Area (HAS) is inserted immediately before CARPable Area across all Supportlists and schemas', () => {
+  // 1. OPTOOL_PREVIEW_COLUMNS.Database
+  const prevCols = OPTOOL_PREVIEW_COLUMNS.Database;
+  const totalAreaIdx = prevCols.indexOf('totalArea');
+  const carpableIdx = prevCols.indexOf('carpable');
+  assert.ok(totalAreaIdx >= 0, 'totalArea must be in OPTOOL_PREVIEW_COLUMNS.Database');
+  assert.ok(carpableIdx >= 0, 'carpable must be in OPTOOL_PREVIEW_COLUMNS.Database');
+  assert.strictEqual(totalAreaIdx, carpableIdx - 1, 'totalArea must be immediately before carpable in OPTOOL_PREVIEW_COLUMNS.Database');
+
+  // 2. OPTOOL_SHEET_SCHEMAS.Database
+  const dbSchema = OPTOOL_SHEET_SCHEMAS.Database;
+  const totalAreaSchemaIdx = dbSchema.findIndex((c) => c.key === 'totalArea');
+  const carpableSchemaIdx = dbSchema.findIndex((c) => c.key === 'carpable');
+  assert.ok(totalAreaSchemaIdx >= 0, 'totalArea must be in OPTOOL_SHEET_SCHEMAS.Database');
+  assert.ok(carpableSchemaIdx >= 0, 'carpable must be in OPTOOL_SHEET_SCHEMAS.Database');
+  assert.ok(totalAreaSchemaIdx < carpableSchemaIdx, 'totalArea is defined before carpable in OPTOOL_SHEET_SCHEMAS.Database');
+
+  // 3. LINKED_DB_PROFILE_FIELDS
+  const totalAreaLinkedIdx = LINKED_DB_PROFILE_FIELDS.findIndex((f) => f.key === 'totalArea');
+  const carpableLinkedIdx = LINKED_DB_PROFILE_FIELDS.findIndex((f) => f.key === 'carpable');
+  assert.ok(totalAreaLinkedIdx >= 0, 'totalArea must be in LINKED_DB_PROFILE_FIELDS');
+  assert.ok(carpableLinkedIdx >= 0, 'carpable must be in LINKED_DB_PROFILE_FIELDS');
+  assert.strictEqual(totalAreaLinkedIdx, carpableLinkedIdx - 1, 'totalArea must be immediately before carpable in LINKED_DB_PROFILE_FIELDS');
+
+  // 4. Survey Support List Modal
+  const surveyHtml = renderSurveySupportListModalHtml({
+    rows: [{
+      lhid: '801000001',
+      province: 'Leyte',
+      municipality: 'Palo',
+      barangay: 'San Jose',
+      landOwner: 'Test Owner',
+      titleNumber: 'T-12345',
+      totalArea: 7.5386,
+      carpable: 1.9514
+    }]
+  });
+  assert.ok(
+    surveyHtml.includes('TOTAL AREA (HAS)</th>\n              <th class="right" style="color:#ffffff;">CARPABLE AREA (HAS)</th>'),
+    'Survey support list header has TOTAL AREA immediately before CARPABLE AREA'
+  );
+  assert.ok(surveyHtml.includes('7.5386 HAS') && surveyHtml.includes('1.9514 HAS'), 'Survey support list renders distinct totalArea and carpable area');
+
+  // 5. CF(DOC) / Milestone Support List Modal
+  const cfHtml = renderCfSupportListModalHtml({
+    rows: [{
+      lhid: '801000002',
+      province: 'Leyte',
+      municipality: 'Palo',
+      barangay: 'San Jose',
+      landOwner: 'Test Owner',
+      titleNumber: 'T-12345',
+      totalArea: 10.5,
+      carpable: 5.25
+    }]
+  });
+  assert.ok(
+    cfHtml.includes('TOTAL AREA (HAS)</th>\n              <th class="right" style="color:#ffffff;">CARPABLE AREA (HAS)</th>'),
+    'CF support list header has TOTAL AREA immediately before CARPABLE AREA'
+  );
+  assert.ok(cfHtml.includes('10.5000 HAS') && cfHtml.includes('5.2500 HAS'), 'CF support list renders distinct totalArea and carpable area');
+
+  // 6. Milestone Whereabouts Master Ledger Table
+  const dir = makeTempDir();
+  try {
+    const store = new ConsolidatedStore(dir);
+    const whereaboutsHtml = renderMilestoneWhereaboutsView({
+      state: store.state,
+      schemas: { optoolTabs: OPTOOL_SHEET_SCHEMAS, optoolPreviewCols: OPTOOL_PREVIEW_COLUMNS },
+      filters: { province: 'ALL' },
+      whereaboutsFilter: 'ALL',
+      whereaboutsSearch: '',
+      activeWhereaboutsColFilters: {},
+      whereaboutsColPage: 1
+    }, WHEREABOUTS_CONFIGS['cf-whereabouts']);
+    assert.ok(
+      whereaboutsHtml.includes('<th class="right">Total Area (HAS)</th>\n              <th class="right">CARPable Area (HAS)</th>'),
+      'Master whereabouts ledger has Total Area (HAS) immediately before CARPable Area (HAS)'
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 

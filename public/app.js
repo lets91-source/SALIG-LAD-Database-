@@ -6198,7 +6198,8 @@ function exportWhereaboutsCsv(viewKey) {
   const enrichedRows = rawRows.map((row) => {
     const lhidKey = String(row.lhid || '').trim().toLowerCase();
     const db = dbMap.get(lhidKey) || {};
-    const carpableNum = Number(db.totalArea || row.totalArea || db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const totalAreaNum = Number(db.totalArea || row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const carpableNum = Number(db.carpable || row.carpable || db.totalArea || row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
     const provName = db.province || row.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
     const muniName = db.municipality || row.municipality || '—';
     const brgyName = db.barangay || row.barangay || '—';
@@ -6229,9 +6230,9 @@ function exportWhereaboutsCsv(viewKey) {
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
-      totalArea: carpableNum.toFixed(4),
-      carpable: carpableNum.toFixed(4),
-      areaHas: carpableNum.toFixed(4),
+      totalArea: (totalAreaNum || carpableNum).toFixed(4),
+      carpable: (carpableNum || totalAreaNum).toFixed(4),
+      areaHas: (carpableNum || totalAreaNum).toFixed(4),
       currentStatus: row.currentStatus || stage,
       datesMap,
       isAllDatesPopulated,
@@ -6277,7 +6278,7 @@ function exportWhereaboutsCsv(viewKey) {
   }
 
   const dateHeaders = cfg.dates.map((d) => d.label.replace(/\n/g, ' '));
-  const headers = ['LHID', 'Province', 'Municipality', 'Barangay', 'TitleNumber', 'LandOwner', 'CARPable_HAS', ...dateHeaders, 'Whereabouts_Status'];
+  const headers = ['LHID', 'Province', 'Municipality', 'Barangay', 'TitleNumber', 'LandOwner', 'Total_Area_HAS', 'CARPable_HAS', ...dateHeaders, 'Whereabouts_Status'];
   const headerLine = headers.map((h) => `"${h}"`).join(',');
   const lines = rows.map((r) => {
     const dateVals = cfg.dates.map((d) => r.datesMap[d.key] || 'Pending');
@@ -6288,6 +6289,7 @@ function exportWhereaboutsCsv(viewKey) {
       r.barangay,
       r.titleNumber,
       r.landOwner,
+      r.totalArea,
       r.carpable,
       ...dateVals,
       r.stage
@@ -6315,7 +6317,8 @@ function getCfSupportRows(appState, tabName = 'CF(DOC)') {
   return rawRows.map((row) => {
     const lhidKey = String(row.lhid || '').trim().toLowerCase();
     const db = dbMap.get(lhidKey) || {};
-    const carpableNum = Number(db.totalArea || row.totalArea || db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const totalAreaNum = Number(db.totalArea || row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const carpableNum = Number(db.carpable || row.carpable || db.totalArea || row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
     const provName = db.province || row.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
     const muniName = db.municipality || row.municipality || '—';
     const brgyName = db.barangay || row.barangay || '—';
@@ -6367,9 +6370,9 @@ function getCfSupportRows(appState, tabName = 'CF(DOC)') {
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
-      totalArea: carpableNum,
-      carpable: carpableNum,
-      areaHas: carpableNum,
+      totalArea: totalAreaNum || carpableNum,
+      carpable: carpableNum || totalAreaNum,
+      areaHas: carpableNum || totalAreaNum,
       currentStatus: row.currentStatus || stage,
       stage,
       targetYear: formatYearDisplay(resolvedTargetYear),
@@ -6512,7 +6515,8 @@ function getSurveySupportRows(appState) {
   return rawRows.map((row) => {
     const lhidKey = String(row.lhid || '').trim().toLowerCase();
     const db = dbMap.get(lhidKey) || {};
-    const carpableNum = Number(db.totalArea || row.totalArea || db.carpable || row.carpable || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const totalAreaNum = Number(db.totalArea || row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
+    const carpableNum = Number(db.carpable || row.carpable || db.totalArea || row.totalArea || row.areaHas || row.areaHas1 || row.areaHas2 || row.computedArea || 0) || 0;
     const provName = db.province || row.province || (appState.provinceScope ? appState.provinceScope.provinceName : 'Unknown');
     const muniName = db.municipality || row.municipality || '—';
     const brgyName = db.barangay || row.barangay || '—';
@@ -6531,9 +6535,9 @@ function getSurveySupportRows(appState) {
       barangay: brgyName,
       titleNumber: titleNum,
       landOwner: landOwner,
-      totalArea: carpableNum,
-      carpable: carpableNum,
-      areaHas: carpableNum,
+      totalArea: totalAreaNum || carpableNum,
+      carpable: carpableNum || totalAreaNum,
+      areaHas: carpableNum || totalAreaNum,
       currentStatus: row.currentStatus || stage,
       stage,
       targetYear: formatYearDisplay(row.targetYear || db.year || db.targetYear || ''),
@@ -6704,6 +6708,7 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
       'Landowner',
       'Title Number',
       'Total Area (HAS)',
+      'CARPable Area (HAS)',
       'Current Status',
       'Target Year',
       ...effectiveDates.map((d) => d.shortLabel || d.label || d.key)
@@ -6718,6 +6723,7 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
       'Landowner',
       'Title Number',
       'Total Area (HAS)',
+      'CARPable Area (HAS)',
       'Current Status',
       'Target Year',
       'Date FI Conducted',
@@ -6735,6 +6741,7 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
       'Landowner',
       'Title Number',
       'Total Area (HAS)',
+      'CARPable Area (HAS)',
       'Current Status',
       'Target Year',
       'Target',
@@ -6762,7 +6769,8 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
           escapeCsv(r.barangay),
           escapeCsv(r.landOwner),
           escapeCsv(r.titleNumber),
-          fmtArea(r.carpable),
+          fmtArea(r.totalArea || r.areaHas || r.carpable),
+          fmtArea(r.carpable || r.totalArea),
           escapeCsv(r.currentStatus || r.stage || ''),
           escapeCsv(formatYearDisplay(r.targetYear || r.year || '')),
           ...effectiveDates.map((d) => {
@@ -6782,7 +6790,8 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
           escapeCsv(r.barangay),
           escapeCsv(r.landOwner),
           escapeCsv(r.titleNumber),
-          fmtArea(r.carpable),
+          fmtArea(r.totalArea || r.areaHas || r.carpable),
+          fmtArea(r.carpable || r.totalArea),
           escapeCsv(r.currentStatus || r.stage || ''),
           escapeCsv(formatYearDisplay(r.targetYear || r.year || '')),
           escapeCsv(r.datesMap?.dateFiConducted || r.dateFiConducted || ''),
@@ -6801,7 +6810,8 @@ function exportSupportListCsv(rows, { province, status, targetYear, tabName, dat
           escapeCsv(r.barangay),
           escapeCsv(r.landOwner),
           escapeCsv(r.titleNumber),
-          fmtArea(r.carpable),
+          fmtArea(r.totalArea || r.areaHas || r.carpable),
+          fmtArea(r.carpable || r.totalArea),
           escapeCsv(r.currentStatus || r.stage || ''),
           escapeCsv(formatYearDisplay(r.targetYear || r.year || '')),
           escapeCsv(r.target || 'Current'),
